@@ -516,3 +516,16 @@ body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--acc
 @media (prefers-reduced-motion: reduce) {
   #toast, #hitmarker.on, .kf, .btn.prompt, .rec b { transition: none; animation: none; }
 }
+
+/* ---- matchmaking queue ---- */
+.q-panel { align-items: center; }
+.q-title { font-size: 26px; font-weight: 800; letter-spacing: .14em; }
+.q-ring { width: 56px; height: 56px; margin: 4px auto; border-radius: 50%; border: 3px solid rgba(255,255,255,.12); border-top-color: var(--accent); animation: qspin .9s linear infinite; }
+.q-ring span { display: none; }
+@keyframes qspin { to { transform: rotate(360deg); } }
+.q-count { font-size: 15px; color: var(--muted); letter-spacing: .1em; }
+.q-count b { color: #fff; font-size: 22px; }
+.q-bar { width: 100%; height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+.q-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .15s; }
+.q-tip { font-size: 13px; color: var(--muted); }
+#queue.found .q-title { color: var(--accent); }

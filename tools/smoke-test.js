@@ -190,11 +190,40 @@ const server = http.createServer((req, res) => {
     r.dummyPassive = !dummyFired;
     g.practiceSpawn('clearbots'); r.cleared = g.actors.length === 1;
     const L = BR.layout; L.open(); const keys = Object.keys(L.table()); L.close();
+    // hunting rifle: lightweight, accurate from the hip even while moving/airborne
+    const P = g.player, W = BR.Weapons, hw = W.create('hunter'), sw = W.create('sniper');
+    P.ads = false; P.mover.vel.set(0, 0, 0); P.mover.onGround = true;
+    const sniperStill = W.spread(P, sw), hunterStill = W.spread(P, hw);
+    P.mover.vel.set(BR.CONFIG.move.runSpeed, 0, 0); P.mover.onGround = false;
+    const hunterAir = W.spread(P, hw), sniperAir = W.spread(P, sw);
+    r.hunter = { sniperStill, hunterStill, hunterAir, sniperAir, light: (BR.CONFIG.weapons.hunter.speedMult || 1) >= 1 };
+    P.mover.vel.set(0, 0, 0); P.mover.onGround = true;
+    // bot aim: eases in (no snap) and never exceeds its turn rate
+    g.practiceSpawn('bot', 'dummy');
+    const bb = g.actors[g.actors.length - 1].brain, ba = bb.a; ba.yaw = 0; ba.pitch = 0; bb.yawVel = bb.pitchVel = 0;
+    const e0 = ba.eye(new THREE.Vector3()), steps = [];
+    for (let i = 0; i < 90; i++) { const y0 = ba.yaw; bb.lookToward(e0.x + 10, e0.y, e0.z, 1 / 60); steps.push(Math.abs(ba.yaw - y0)); }
+    r.botAim = { first: steps[0], peak: Math.max(...steps), cap: bb.d.turnRate / 60, err: Math.abs(BR.util.wrapAngle(ba.yaw + Math.PI / 2)) };
+    g.practiceSpawn('clearbots');
     r.editable = ['slot0', 'slot1', 'slot2', 'interact', 'map', 'pause', 'fire', 'jump', 'knife', 'spawnmenu'].every(k => keys.includes(k));
     return r;
   });
   const loadMs = await page.evaluate(() => { const t = performance.now(); BR.game.startMatch(); return performance.now() - t; });
   await page.evaluate(() => { BR.game.settings.bots = 19; BR.game.startMatch(); });
+  // One life: dying outside practice ends the match for good (no respawn) -> end screen
+  const death = await page.evaluate(() => {
+    const g = BR.game; g.settings.bots = 3; g.startMatch();
+    const p = g.player; p.mover.dropping = false;
+    g.kill(p, g.actors[1], 'rifle', false);
+    for (let i = 0; i < 30 * 8; i++) g.update(1 / 30);
+    return { state: g.state, alive: p.alive, endShown: !document.getElementById('end').classList.contains('hidden'), btn: document.getElementById('btn-again').textContent };
+  });
+  // Queue: the end-screen button goes through matchmaking into a fresh match
+  const queue = await page.evaluate(() => new Promise(res => {
+    const g = BR.game; document.getElementById('btn-again').click();
+    const shown = !document.getElementById('queue').classList.contains('hidden'), st = g.state;
+    setTimeout(() => res({ shown, stillEnded: st === 'end', state: g.state, alive: g.player.alive, hidden: document.getElementById('queue').classList.contains('hidden') }), 3800);
+  }));
   const match = await page.evaluate(() => {
     const g = BR.game;
     g.player.takeDamage = () => false;           // idle player can't die, so the bots finish the match
@@ -246,10 +275,14 @@ const server = http.createServer((req, res) => {
     ['spawn menu gives guns and spawns passive + combat bots', extra.gotSniper && extra.botsSpawned && extra.cleared],
     ['passive dummies never shoot', extra.dummyPassive],
     ['every HUD element is editable (slots, pickup, map, pause...)', extra.editable],
+    ['hunting rifle is accurate from the hip, even moving/airborne', extra.hunter.hunterAir < extra.hunter.sniperStill * 0.5 && extra.hunter.hunterAir < extra.hunter.hunterStill * 2 && extra.hunter.light],
+    ['bot aim eases in and respects its turn rate', extra.botAim.first < extra.botAim.peak * 0.5 && extra.botAim.peak <= extra.botAim.cap + 1e-6 && extra.botAim.err < 0.02],
+    ['dying ends your match (no respawn)', death.state === 'end' && !death.alive && death.endShown],
+    ['queue screen finds a new match', queue.shown && queue.stillEnded && queue.state === 'playing' && queue.alive && queue.hidden && /QUEUE/.test(death.btn)],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ mech, combat, acct, extra, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ mech, combat, acct, extra, death, queue, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

@@ -284,6 +284,28 @@ BR.Models = (function () {
       anchors(g, -0.74, 0.035, [-0.04, -0.01, 0.1]);
     },
     holoar(g, S, M) { BUILD.rifle(g, S, M, { holo: true }); },
+    hunter(g, S, M) {
+      // Lightweight bolt-action: walnut stock (S), slim blued barrel, compact low-power scope
+      const k = kit(g);
+      k.box(0.05, 0.06, 0.3, 0, 0.0, 0.0, S);                     // fore-stock
+      const wrist = k.box(0.042, 0.075, 0.12, 0, -0.025, 0.17, S); wrist.rotation.x = 0.25;   // grip wrist
+      k.box(0.05, 0.1, 0.22, 0, -0.03, 0.31, S);                  // buttstock
+      k.box(0.044, 0.03, 0.14, 0, 0.035, 0.3, S);                 // cheek comb
+      k.box(0.052, 0.11, 0.02, 0, -0.03, 0.425, M.grip);          // butt pad
+      k.box(0.034, 0.04, 0.2, 0, 0.045, 0.04, M.metal);           // receiver
+      k.cyl(0.011, 0.5, 0, 0.045, -0.36, M.metal, 'z', 10);       // slim barrel
+      k.cyl(0.014, 0.02, 0, 0.045, -0.6, M.dark, 'z', 10);        // crown
+      k.cyl(0.021, 0.18, 0, 0.1, 0.03, M.scopeTube, 'z', 14);     // compact scope
+      k.cyl(0.027, 0.04, 0, 0.1, -0.075, M.scopeTube, 'z', 14);
+      k.cyl(0.024, 0.03, 0, 0.1, 0.13, M.scopeTube, 'z', 14);
+      k.cyl(0.025, 0.003, 0, 0.1, -0.096, M.lensDark, 'z', 14);
+      for (const z of [-0.02, 0.08]) k.box(0.014, 0.03, 0.014, 0, 0.072, z, M.dark);
+      const bolt = k.cyl(0.006, 0.05, 0.035, 0.05, 0.11, M.metal, 'x'); const knob = new THREE.Mesh(new THREE.SphereGeometry(0.01, 8, 6), M.metal); knob.position.set(0.062, 0.05, 0.11); g.add(knob);
+      k.box(0.006, 0.02, 0.006, 0, -0.04, -0.1, M.metal); k.box(0.006, 0.02, 0.006, 0, -0.085, 0.36, M.metal);  // sling swivels
+      magGroup(g, [k.box(0.03, 0.035, 0.06, 0, -0.04, 0.03, M.dark)]);
+      hands(g, [0, -0.06, 0.17], [0, -0.035, -0.12], [0.06, 0.05, 0.11]);
+      anchors(g, -0.62, 0.045, [-0.035, -0.02, 0.24]);
+    },
     sniper(g, S, M) {
       const k = kit(g);
       k.box(0.06, 0.08, 0.36, 0, 0.03, -0.04, S);                 // receiver
@@ -555,6 +577,15 @@ BR.Models = (function () {
           for (const z of [0.29, 0.31]) k.box(0.004, 0.008, 0.006, 0.058, 0.02, z, P.G);
         } },
     },
+    hunter: {
+      timberwolf: { name: 'Timberwolf', rarity: 'Legendary', price: 950, body: 0x5a3418, bodyGloss: 1, accent: 0xc89b3c, accentGloss: 1, glow: 0xffb347,
+        mod(g, k, P) {
+          for (const z of [-0.08, 0.06, 0.38]) k.box(0.054, 0.012, 0.012, 0, z > 0.3 ? -0.03 : 0.0, z, P.A);   // brass bands
+          for (const x of [-0.026, 0.026]) k.box(0.002, 0.03, 0.12, x, -0.03, 0.31, P.A);                    // inlay
+          k.box(0.004, 0.006, 0.42, -0.03, -0.06, 0.13, new THREE.MeshLambertMaterial({ color: 0x3a2a1c }));  // leather sling
+          k.cyl(0.023, 0.006, 0, 0.1, 0.12, P.G, 'z', 14);
+        } },
+    },
     knife: {
       fade: { name: 'Fade', rarity: 'Legendary', price: 1200, body: 0x16161a, accent: 0x16161a, glow: 0xff5ec4, blade: 'fade' },
       doppler: { name: 'Doppler', rarity: 'Legendary', price: 1200, body: 0x101014, accent: 0x101014, glow: 0x4a8bff, blade: 'doppler' },
@@ -633,6 +664,15 @@ BR.Models = (function () {
     hand, gloveMats,
     merged,
     // A world-space weapon mesh (single draw call), barrel along -Z.
+    // Hand points (grip, foregrip) of a weapon model, in model space — used by third-person arm IK
+    gripPoints(id) {
+      const c = cache.grips || (cache.grips = {});
+      if (!c[id]) {
+        const u = this.weapon(id).userData;
+        c[id] = { grip: u.grip ? u.grip.clone() : new THREE.Vector3(0, -0.05, 0.1), fore: u.fore ? u.fore.clone() : null };
+      }
+      return c[id];
+    },
     worldWeapon(id) {
       mergedMat = mergedMat || new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
       return new THREE.Mesh(merged(id), mergedMat);

@@ -3,7 +3,7 @@
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, aimSmooth: 0.3, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
@@ -65,6 +65,7 @@
   range('set-bots', 'bots', v => v === 0 ? 'NONE' : v + '');
   range('set-sens', 'sens', v => v.toFixed(2) + '×');
   range('set-fov', 'fov', v => v + '°');
+  range('set-smooth', 'aimSmooth', v => v === 0 ? 'OFF' : Math.round(v * 100) + '%');
   range('set-vol', 'volume', v => Math.round(v * 100) + '%', () => BR.Audio.setVolume(settings.volume));
   check('set-assist', 'assist');
   check('set-auto', 'autoFire');
@@ -166,7 +167,43 @@
   BR.updateCoins();
 
   // ---- match flow ------------------------------------------------------------
-  const play = () => { BR.Audio.init(); tryFullscreen(); game.startMatch(); };
+  // Matchmaking queue: one life per match, so every new match goes through here
+  let qTimer = null;
+  const TIPS = ['One life. If you go down, you\'re out.', 'Hold jump in the drop to pop your chute early.', 'Slide-jump timing keeps your speed.', 'The Hunting Rifle is deadly without scoping.', 'Grapple anything: walls, rocks, trees.'];
+  const cancelQueue = () => { clearInterval(qTimer); qTimer = null; game.hud.show('queue', false); };
+  const play = () => {
+    BR.Audio.init(); tryFullscreen();
+    if (qTimer) return;
+    const total = Math.max(1, (settings.bots | 0) + 1);
+    game.hud.show('end', false); game.hud.show('pause', false);
+    const q = $('queue');
+    q.classList.remove('found');
+    $('q-total').textContent = total;
+    $('q-tip').textContent = TIPS[Math.random() * TIPS.length | 0];
+    const dur = 1.6 + Math.random() * 1.4, t0 = performance.now();
+    let n = 1;
+    const tick = () => {
+      const k = Math.min(1, (performance.now() - t0) / 1000 / dur);
+      n = Math.max(n, Math.min(total, 1 + Math.round((total - 1) * (1 - Math.pow(1 - k, 1.6)))));
+      $('q-n').textContent = n;
+      $('q-fill').style.width = (k * 100) + '%';
+      if (k >= 1) {
+        clearInterval(qTimer); qTimer = 'found';
+        q.classList.add('found');
+        q.querySelector('.q-title').textContent = 'MATCH FOUND';
+        setTimeout(() => {
+          qTimer = null;
+          q.querySelector('.q-title').textContent = 'FINDING MATCH';
+          game.hud.show('queue', false);
+          game.startMatch();
+        }, 550);
+      }
+    };
+    game.hud.show('queue', true);
+    tick();
+    qTimer = setInterval(tick, 100);
+  };
+  $('q-cancel').addEventListener('click', () => { if (qTimer !== 'found') { cancelQueue(); if (game.state !== 'menu') game.toMenu(); } });
   const practice = () => { BR.Audio.init(); tryFullscreen(); game.startMatch({ practice: true }); };
   $('btn-practice').addEventListener('click', practice);
   // spawn menu

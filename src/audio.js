@@ -71,6 +71,7 @@ BR.Audio = {
 
   shot(id, dist, pan, suppressed) {
     const near = 1 / (1 + dist / 18);
+    if (id === 'hunter') id = 'sniper';
     const v = id === 'sniper' ? 0.9 : id === 'shotgun' ? 0.8 : id === 'rifle' ? 0.55 : id === 'smg' ? 0.38 : 0.45;
     const freq = (id === 'sniper' ? 2600 : id === 'shotgun' ? 1600 : id === 'smg' ? 4200 : 3200) * (0.4 + 0.6 * near);
     const dur = id === 'sniper' ? 0.45 : id === 'shotgun' ? 0.32 : 0.14;

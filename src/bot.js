@@ -5,7 +5,7 @@
 //
 // States: drop -> loot / roam / zone -> fight
 // =============================================================================
-const PREF_DIST = { knife: 1.5, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holoar: 30, sniper: 55 };
+const PREF_DIST = { knife: 1.5, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holoar: 30, hunter: 38, sniper: 55 };
 
 BR.BotBrain = class BotBrain {
   constructor(actor, game, diff) {
@@ -18,8 +18,10 @@ BR.BotBrain = class BotBrain {
     this.targetSeenT = 0;
     this.engageT = 0;
     this.thinkT = Math.random() * 0.3;
-    this.aimOff = new THREE.Vector3();
+    this.aimOff = new THREE.Vector3();      // current (eased) aim error
+    this.aimOffGoal = new THREE.Vector3();  // where the aim error is drifting to
     this.aimOffT = 0;
+    this.yawVel = 0; this.pitchVel = 0;     // smoothed turn velocity (no snapping)
     this.strafe = Math.random() < 0.5 ? 1 : -1;
     this.strafeT = 0;
     this.goal = null;
@@ -181,8 +183,10 @@ BR.BotBrain = class BotBrain {
     if (this.aimOffT <= 0) {
       this.aimOffT = 0.22 + Math.random() * 0.25;
       const err = d.aimError * (0.55 + 1.6 * Math.exp(-this.engageT / d.settle)) * (1 + t.mover.speedH * 0.06);
-      this.aimOff.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize().multiplyScalar(err * Math.random());
+      this.aimOffGoal.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize().multiplyScalar(err * Math.random());
     }
+    // ease the error instead of snapping, so bot aim drifts like a thumb would
+    this.aimOff.lerp(this.aimOffGoal, 1 - Math.exp(-dt * 7));
     const ax = tx + this.aimOff.x, ay = ty + this.aimOff.y, az = tz + this.aimOff.z;
     const aimErr = this.lookToward(ax, ay, az, dt);
 
@@ -217,16 +221,25 @@ BR.BotBrain = class BotBrain {
     if (visible && this.engageT > d.reaction && aimErr < tol && dist < w.def.range * 2.2 && this.burstT > 0) a.fireHeld = true;
   }
 
-  // Rotate toward a point at a capped turn rate. Returns remaining angle error.
+  // Rotate toward a point smoothly: the turn speed eases in/out (critically damped
+  // toward the target, capped at turnRate) so bot aim never snaps. Returns the
+  // remaining angle error.
   lookToward(x, y, z, dt) {
     const a = this.a, e = a.eye(this.g._v3);
     const dx = x - e.x, dy = y - e.y, dz = z - e.z;
     const yaw = Math.atan2(-dx, -dz);
     const pitch = Math.atan2(dy, Math.hypot(dx, dz));
-    const tr = this.d.turnRate * dt;
+    const max = this.d.turnRate, k = 9;
     const dyaw = BR.util.wrapAngle(yaw - a.yaw), dp = pitch - a.pitch;
-    a.yaw += BR.util.clamp(dyaw, -tr, tr);
-    a.pitch += BR.util.clamp(dp, -tr, tr);
+    const wantY = BR.util.clamp(dyaw * k, -max, max), wantP = BR.util.clamp(dp * k, -max, max);
+    const ease = 1 - Math.exp(-dt * 14);
+    this.yawVel += (wantY - this.yawVel) * ease;
+    this.pitchVel += (wantP - this.pitchVel) * ease;
+    let sy = this.yawVel * dt, sp = this.pitchVel * dt;
+    if (Math.abs(sy) > Math.abs(dyaw)) sy = dyaw;          // never overshoot
+    if (Math.abs(sp) > Math.abs(dp)) sp = dp;
+    a.yaw += sy;
+    a.pitch = BR.util.clamp(a.pitch + sp, -1.45, 1.45);
     return Math.abs(BR.util.wrapAngle(yaw - a.yaw)) + Math.abs(pitch - a.pitch);
   }
 

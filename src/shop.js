@@ -80,7 +80,7 @@ BR.Profile = {
   },
 };
 
-const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['pistol', 'Pistol'], ['knife', 'Karambit']];
+const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['pistol', 'Pistol'], ['knife', 'Karambit']];
 const RARITY = { Base: '#8d97a5', Epic: '#b26bff', Legendary: '#ffb224' };
 
 BR.Shop = class Shop {

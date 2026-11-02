@@ -48,8 +48,9 @@ BR.Weapons = {
     if (actor.ads) s *= d.ads;
     if (d.pattern === 'line') return s * (m.onGround ? 1 : 1.1); // the line pattern is the spread
     const speed = Math.min(1, m.speedH / BR.CONFIG.move.runSpeed);
-    s += speed * d.spread * 0.5;
-    if (!m.onGround && !m.wallRunning) s += d.spread * 0.6 + 0.01;
+    const pen = d.easyHip ? 0.25 : 1;              // hunting rifle: movement barely hurts accuracy
+    s += speed * d.spread * 0.5 * pen;
+    if (!m.onGround && !m.wallRunning) s += (d.spread * 0.6 + 0.01) * pen;
     if (m.sliding || m.crouched) s *= 0.85;
     return s + w.bloom;
   },

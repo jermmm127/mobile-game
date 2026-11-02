@@ -383,7 +383,16 @@ BR.Game = class Game {
 
   controlPlayer(dt) {
     const p = this.player, inp = this.input, S = this.settings, L = BR.CONFIG.look;
-    const [dx, dy] = inp.consumeLook();
+    let [dx, dy] = inp.consumeLook();
+    // Optional aim smoothing: a light 1-pole filter on look input (0 = raw)
+    const sm = S.aimSmooth || 0;
+    if (sm > 0) {
+      const f = this.lookF || (this.lookF = [0, 0]);
+      const keep = Math.exp(-dt / (0.006 + sm * 0.05));   // up to ~56ms time constant
+      const ix = dx * (1 - keep) / Math.max(dt, 1e-3), iy = dy * (1 - keep) / Math.max(dt, 1e-3);
+      f[0] = f[0] * keep + ix; f[1] = f[1] * keep + iy;    // per-second filtered velocity
+      dx = f[0] * dt; dy = f[1] * dt;
+    }
     this.lookD = [dx, dy];
     const w = p.weapon;
     const zoom = p.ads && w ? w.def.zoom : 1;
@@ -702,7 +711,7 @@ BR.Game = class Game {
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
     const wid = p.weapon || 'holoar';
     const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
-    const sc = wid === 'knife' ? 5 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' ? 1.3 : 1.6;
+    const sc = wid === 'knife' ? 5 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : 1.6;
     g.scale.setScalar(sc);
     g.rotation.y = Math.PI / 2;
     g.position.set(0, wid === 'knife' ? 0.05 : -0.05, -0.15);

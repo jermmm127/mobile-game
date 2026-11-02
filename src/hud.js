@@ -138,6 +138,7 @@ BR.HUD = class HUD {
         <button data-v="easy">EASY</button><button data-v="normal">NORMAL</button><button data-v="hard">HARD</button></div></div>
       <div class="row"><label for="set-bots">BOTS</label><input id="set-bots" type="range" min="0" max="29" step="1"><output id="out-bots"></output></div>
       <div class="row"><label for="set-sens">LOOK SPEED</label><input id="set-sens" type="range" min="0.3" max="3" step="0.05"><output id="out-sens"></output></div>
+      <div class="row"><label for="set-smooth">AIM SMOOTHING</label><input id="set-smooth" type="range" min="0" max="1" step="0.05"><output id="out-smooth"></output></div>
       <div class="row"><label for="set-fov">FOV</label><input id="set-fov" type="range" min="60" max="110" step="1"><output id="out-fov"></output></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
         <button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
@@ -272,6 +273,18 @@ BR.HUD = class HUD {
   </div>
 </div>
 
+<div id="queue" class="overlay hidden">
+  <div class="panel metal q-panel">
+    <div class="eyebrow">BATTLE ROYALE · SOLO</div>
+    <div class="q-title">FINDING MATCH</div>
+    <div class="q-ring"><span></span></div>
+    <div class="q-count"><b id="q-n">1</b> / <span id="q-total">30</span> PLAYERS</div>
+    <div class="q-bar"><i id="q-fill"></i></div>
+    <div class="q-tip" id="q-tip">One life. If you go down, you're out.</div>
+    <button id="q-cancel" class="mbtn">CANCEL</button>
+  </div>
+</div>
+
 <div id="end" class="overlay hidden">
   <div class="panel metal">
     <div class="eyebrow" id="end-eyebrow">ELIMINATED</div>
@@ -283,7 +296,7 @@ BR.HUD = class HUD {
       <div><span class="num" id="end-time">0:00</span><span class="lbl">SURVIVED</span></div>
     </div>
     <div id="end-coins" class="end-coins"></div>
-    <button id="btn-again" class="mbtn hot">DROP AGAIN</button>
+    <button id="btn-again" class="mbtn hot">QUEUE NEW MATCH</button>
     <button id="btn-menu" class="mbtn">MENU</button>
   </div>
 </div>`;
