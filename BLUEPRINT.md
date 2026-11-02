@@ -141,3 +141,14 @@ Pick the closest hook:
 - **Performance:** tested in headless Chromium (≈0.1 ms per simulation step for 20 players). On older phones, use Graphics: Low and fewer players.
 - **iOS Safari** doesn't allow true fullscreen for web pages. Add the page to the home screen for a fuller screen.
 - **Audio** is synthesized placeholders; swap in real samples later via `BR.Audio`.
+
+---
+
+## 7. One-file build (for hosting anywhere)
+
+`node tools/build-single.js` writes `dist/index.html`, the entire game in a single ~740 KB file with no other files needed. Upload it to any static host to get a normal browser link (works in iOS Safari):
+
+- **Netlify Drop:** go to app.netlify.com/drop, upload the file (or a folder containing it), and you get an `https://….netlify.app` link. A free account keeps the link alive.
+- **GitHub Pages:** once the repo is pushed, Settings → Pages → deploy from branch, root folder. The site URL serves the root `index.html`.
+
+Re-run the build after every change.
