@@ -552,6 +552,11 @@ body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--acc
 .q-tip { font-size: 13px; color: var(--muted); }
 #queue.found .q-title { color: var(--accent); }
 
+/* close (X) button in a panel's top-right corner */
+.xbtn { position: sticky; top: 0; align-self: flex-end; margin: -8px -8px -34px 0; flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #fff; font: 600 18px var(--ui); line-height: 1; cursor: pointer; z-index: 2; }
+.xbtn:active { transform: scale(0.92); background: rgba(255,255,255,0.18); }
+
 </style>
 </head>
 <body>
@@ -575,7 +580,7 @@ body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--acc
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.9.0',
+  version: '0.9.1',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -712,7 +717,7 @@ BR.CONFIG = {
     holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, recoilH: 0.009, zoom: 1.75, tier: 2, color: 0x4b5566, suppressed: true, holo: true },
     // Lightweight bolt-action with open iron sights: accurate from the hip (easy no-scopes), moves fast
     hunter:  { name: 'Hunting Rifle', ammo: 'heavy', dmg: 78, pellets: 1, rpm: 75, mag: 4, reload: 2.0, spread: 0.006, ads: 0.05, bloom: 0, bloomMax: 0, range: 250, head: 2.0, recoil: 0.035, zoom: 1.45, tier: 2, color: 0x7a4a2a, bolt: true, easyHip: true, speedMult: 1.05, knockback: 2 },
-    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x7d5aa8, scope: true, bolt: true, knockback: 4 },
+    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x7d5aa8, scope: true, bolt: true, kick: 3.5, knockback: 4 },
   },
 
   // Loot rolls by spot tier. Weights are relative.
@@ -3685,7 +3690,7 @@ BR.Models = (function () {
 
     // ---- events from the game -------------------------------------------
     onFire(w) {
-      const d = w.def, a = 1 - this.adsW * 0.65, auto = d.rpm >= 500;
+      const d = w.def, a = (1 - this.adsW * 0.65) * (d.kick || 1), auto = d.rpm >= 500;
       const r = (Math.random() - 0.5);
       this.kick.z.vel += (d.recoil * 9 + 0.35) * a;                   // straight back
       this.kick.y.vel += (d.recoil * 2.2 + 0.05) * a;
@@ -6157,6 +6162,7 @@ BR.HUD = class HUD {
 
 <div id="spawnmenu" class="overlay hidden">
   <div class="panel metal wide spawn">
+    <button id="sp-x" class="xbtn" aria-label="Close spawn menu">✕</button>
     <div class="ptitle">SPAWN</div>
     <div class="sp-sec">WEAPONS</div>
     <div class="sp-grid" id="sp-weapons"></div>
@@ -7180,6 +7186,14 @@ BR.Game = class Game {
     if (dist < 150 && !this.demo) BR.Audio.shot(w.id, dist, pan, !!w.def.suppressed);
     if (actor.isPlayer) {
       this.vmr.onFire(w);
+      // Visible recoil: the view punches up and rolls, then springs back (huge on the sniper)
+      const K = w.def.kick || 0, c = this.cam;
+      if (K || w.def.recoil) {
+        const ads = this.player.ads ? 0.85 : 1;
+        c.punchV = (c.punchV || 0) + (w.def.recoil * 4 + K * 0.9) * ads;
+        c.rollV = (c.rollV || 0) + (Math.random() - 0.5) * (K * 0.35 + w.def.recoil * 2);
+        if (K) { c.kick = Math.max(c.kick, 0.06 * K); c.shake = Math.max(c.shake, 0.1 * K); }
+      }
     } else {
       if (dist < 90) this.fx.flash(this.muzzlePoint(actor, this._v4));
       this.recentShots.push({ x: actor.pos.x, z: actor.pos.z, t: this.time });
@@ -7344,6 +7358,10 @@ BR.Game = class Game {
     }
     c.off = U.damp(c.off, m.h - C.actor.eyeFromTop, 14, dt);
     c.kick = U.damp(c.kick, 0, 9, dt);
+    // view punch spring (visual only: aim returns to where it was)
+    c.punch = c.punch || 0; c.punchV = c.punchV || 0; c.rollP = c.rollP || 0; c.rollV = c.rollV || 0;
+    c.punchV += (-120 * c.punch - 16 * c.punchV) * dt; c.punch += c.punchV * dt;
+    c.rollV += (-120 * c.rollP - 16 * c.rollV) * dt; c.rollP += c.rollV * dt;
     c.shake = Math.max(0, c.shake - dt * 1.2);
     const sp = m.speedH;
     if (m.onGround && !m.sliding) c.bob += dt * sp * 1.35;
@@ -7354,7 +7372,7 @@ BR.Game = class Game {
     const right = Math.cos(p.yaw) * m.wallN.x - Math.sin(p.yaw) * m.wallN.z;
     const rollT = m.wallRunning ? -right * C.camera.wallRunRoll : m.sliding ? 0.05 : 0;
     c.roll = U.damp(c.roll, rollT, 8, dt);
-    cam.rotation.set(p.pitch, p.yaw, c.roll);
+    cam.rotation.set(p.pitch + c.punch, p.yaw, c.roll + c.rollP);
 
     const w = p.weapon;
     const zoom = p.ads && w ? w.def.zoom : 1;
@@ -7606,6 +7624,7 @@ BR.Game = class Game {
     b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);
   });
   $('sp-close').addEventListener('click', () => game.closeSpawnMenu());
+  $('sp-x').addEventListener('click', () => game.closeSpawnMenu());
   $('btn-play').addEventListener('click', play);
   $('btn-again').addEventListener('click', play);
   $('btn-menu').addEventListener('click', () => game.toMenu());

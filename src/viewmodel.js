@@ -101,7 +101,7 @@
 
     // ---- events from the game -------------------------------------------
     onFire(w) {
-      const d = w.def, a = 1 - this.adsW * 0.65, auto = d.rpm >= 500;
+      const d = w.def, a = (1 - this.adsW * 0.65) * (d.kick || 1), auto = d.rpm >= 500;
       const r = (Math.random() - 0.5);
       this.kick.z.vel += (d.recoil * 9 + 0.35) * a;                   // straight back
       this.kick.y.vel += (d.recoil * 2.2 + 0.05) * a;

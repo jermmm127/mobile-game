@@ -618,6 +618,14 @@ BR.Game = class Game {
     if (dist < 150 && !this.demo) BR.Audio.shot(w.id, dist, pan, !!w.def.suppressed);
     if (actor.isPlayer) {
       this.vmr.onFire(w);
+      // Visible recoil: the view punches up and rolls, then springs back (huge on the sniper)
+      const K = w.def.kick || 0, c = this.cam;
+      if (K || w.def.recoil) {
+        const ads = this.player.ads ? 0.85 : 1;
+        c.punchV = (c.punchV || 0) + (w.def.recoil * 4 + K * 0.9) * ads;
+        c.rollV = (c.rollV || 0) + (Math.random() - 0.5) * (K * 0.35 + w.def.recoil * 2);
+        if (K) { c.kick = Math.max(c.kick, 0.06 * K); c.shake = Math.max(c.shake, 0.1 * K); }
+      }
     } else {
       if (dist < 90) this.fx.flash(this.muzzlePoint(actor, this._v4));
       this.recentShots.push({ x: actor.pos.x, z: actor.pos.z, t: this.time });
@@ -782,6 +790,10 @@ BR.Game = class Game {
     }
     c.off = U.damp(c.off, m.h - C.actor.eyeFromTop, 14, dt);
     c.kick = U.damp(c.kick, 0, 9, dt);
+    // view punch spring (visual only: aim returns to where it was)
+    c.punch = c.punch || 0; c.punchV = c.punchV || 0; c.rollP = c.rollP || 0; c.rollV = c.rollV || 0;
+    c.punchV += (-120 * c.punch - 16 * c.punchV) * dt; c.punch += c.punchV * dt;
+    c.rollV += (-120 * c.rollP - 16 * c.rollV) * dt; c.rollP += c.rollV * dt;
     c.shake = Math.max(0, c.shake - dt * 1.2);
     const sp = m.speedH;
     if (m.onGround && !m.sliding) c.bob += dt * sp * 1.35;
@@ -792,7 +804,7 @@ BR.Game = class Game {
     const right = Math.cos(p.yaw) * m.wallN.x - Math.sin(p.yaw) * m.wallN.z;
     const rollT = m.wallRunning ? -right * C.camera.wallRunRoll : m.sliding ? 0.05 : 0;
     c.roll = U.damp(c.roll, rollT, 8, dt);
-    cam.rotation.set(p.pitch, p.yaw, c.roll);
+    cam.rotation.set(p.pitch + c.punch, p.yaw, c.roll + c.rollP);
 
     const w = p.weapon;
     const zoom = p.ads && w ? w.def.zoom : 1;

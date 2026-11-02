@@ -232,6 +232,7 @@ BR.HUD = class HUD {
 
 <div id="spawnmenu" class="overlay hidden">
   <div class="panel metal wide spawn">
+    <button id="sp-x" class="xbtn" aria-label="Close spawn menu">✕</button>
     <div class="ptitle">SPAWN</div>
     <div class="sp-sec">WEAPONS</div>
     <div class="sp-grid" id="sp-weapons"></div>

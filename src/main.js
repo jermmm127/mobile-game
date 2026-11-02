@@ -219,6 +219,7 @@
     b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);
   });
   $('sp-close').addEventListener('click', () => game.closeSpawnMenu());
+  $('sp-x').addEventListener('click', () => game.closeSpawnMenu());
   $('btn-play').addEventListener('click', play);
   $('btn-again').addEventListener('click', play);
   $('btn-menu').addEventListener('click', () => game.toMenu());

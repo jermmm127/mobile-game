@@ -535,3 +535,8 @@ body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--acc
 .q-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .15s; }
 .q-tip { font-size: 13px; color: var(--muted); }
 #queue.found .q-title { color: var(--accent); }
+
+/* close (X) button in a panel's top-right corner */
+.xbtn { position: sticky; top: 0; align-self: flex-end; margin: -8px -8px -34px 0; flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #fff; font: 600 18px var(--ui); line-height: 1; cursor: pointer; z-index: 2; }
+.xbtn:active { transform: scale(0.92); background: rgba(255,255,255,0.18); }
