@@ -10,6 +10,7 @@ const PREF_DIST = { knife: 1.5, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holo
 BR.BotBrain = class BotBrain {
   constructor(actor, game, diff) {
     this.a = actor;
+    actor.mover.chuteAt = 24 + Math.random() * 36;   // bots open their parachutes at different heights
     this.g = game;
     this.d = diff;
     this.state = 'drop';
@@ -91,6 +92,9 @@ BR.BotBrain = class BotBrain {
       if (w && w.mag < w.def.mag * 0.6) BR.Weapons.startReload(w, a);
     }
     this.unstick(dt);
+    // Practice-mode dummies: passive bots never shoot; still bots don't move either
+    if (this.passive) a.fireHeld = false;
+    if (this.still) { inp.mx = inp.mz = 0; inp.jump = inp.crouch = false; }
   }
 
   think() {

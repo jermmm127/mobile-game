@@ -4,7 +4,7 @@ Mobile-first browser FPS battle royale: movement-heavy (slide, wall-run, grapple
 
 - **Play locally:** `python3 -m http.server 8000`, then open `http://localhost:8000`
 - **Phone:** landscape, left thumb moves, right thumb looks, drag on Fire to aim while shooting
-- **Desktop:** WASD · mouse · Space jump · Shift crouch/slide · G grapple · R reload · 1/2/3 switch · X knife · V inspect · E open/swap · M map · Esc pause
+- **Desktop:** WASD · mouse · Space jump · Shift crouch/slide · G grapple · R reload · 1/2/3 switch · X knife · V inspect · E open/swap · M map · B spawn menu (practice) · Esc pause
 - **Test:** `node tools/smoke-test.js`
 
 See **[BLUEPRINT.md](BLUEPRINT.md)** for the architecture, tuning guide, and where new features plug in.

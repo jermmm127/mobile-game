@@ -163,45 +163,71 @@ BR.Actor = class Actor {
 
   // ---------------------------------------------------------------- visuals
   buildMesh() {
+    // Hierarchy: body > hips, two legs pivoting at the hip, and an upper body
+    // (torso, head, pack, gun) pivoting at the waist — so poses read clearly.
     const S = sharedGeo();
     const g = new THREE.Group();
     const mat = new THREE.MeshLambertMaterial({ color: this.color });
     const body = new THREE.Group();
-    const torso = new THREE.Mesh(S.torso, mat); torso.position.y = 1.08;
-    const hips = new THREE.Mesh(S.hips, S.dark); hips.position.y = 0.72;
-    const l1 = new THREE.Mesh(S.leg, S.dark); l1.position.set(-0.15, 0.39, 0);
-    const l2 = new THREE.Mesh(S.leg, S.dark); l2.position.set(0.15, 0.39, 0);
-    const head = new THREE.Mesh(S.head, mat); head.position.y = 1.64;
-    const visor = new THREE.Mesh(S.visor, S.visorMat); visor.position.set(0, 1.66, -0.19);
-    const pack = new THREE.Mesh(S.pack, S.dark); pack.position.set(0, 1.1, 0.26);
-    const gun = new THREE.Group(); gun.position.set(0.26, 1.18, -0.2);   // holds the real weapon model
-    body.add(torso, hips, l1, l2, head, visor, pack, gun);
+    const hips = new THREE.Mesh(S.hips, S.dark); hips.position.y = 0.74;
+    const leg = x => { const p = new THREE.Group(); p.position.set(x, 0.8, 0); const m = new THREE.Mesh(S.leg, S.dark); m.position.y = -0.4; p.add(m); return p; };
+    const l1 = leg(-0.15), l2 = leg(0.15);
+    const upper = new THREE.Group(); upper.position.y = 0.78;
+    const torso = new THREE.Mesh(S.torso, mat); torso.position.y = 0.3;
+    const head = new THREE.Mesh(S.head, mat); head.position.y = 0.86;
+    const visor = new THREE.Mesh(S.visor, S.visorMat); visor.position.set(0, 0.88, -0.19);
+    const pack = new THREE.Mesh(S.pack, S.dark); pack.position.set(0, 0.32, 0.26);
+    const gun = new THREE.Group(); gun.position.set(0.26, 0.4, -0.2);   // holds the real weapon model
+    upper.add(torso, head, visor, pack, gun);
+    body.add(hips, l1, l2, upper);
     g.add(body);
-    g.userData = { body, l1, l2, gun, mat, t: 0 };
+    const chute = BR.Models.parachute(this.color, 0xf2f2f2);
+    chute.position.y = 1.5; chute.visible = false;
+    g.add(chute);
+    g.userData = { body, upper, l1, l2, gun, mat, chute, t: 0 };
     return g;
   }
 
   syncMesh(dt) {
-    const m = this.mover, u = this.mesh.userData;
+    const m = this.mover, u = this.mesh.userData, U = BR.util;
     this.mesh.position.copy(m.pos);
-    this.mesh.rotation.y = this.yaw;
     const sp = m.speedH;
-    u.t += dt * sp * 1.6;
-    const swing = m.onGround && !m.sliding ? Math.sin(u.t) * Math.min(0.7, sp * 0.08) : 0.3;
-    u.l1.rotation.x = swing; u.l2.rotation.x = -swing;
-    // Lean back while sliding, spread out while skydiving
-    const tilt = m.sliding ? 0.9 : m.dropping ? -1.2 : m.crouched ? 0.35 : 0;
-    u.body.rotation.x = BR.util.damp(u.body.rotation.x, tilt, 12, dt);
-    u.body.position.y = BR.util.damp(u.body.position.y, m.sliding ? -0.25 : m.crouched ? -0.45 : 0, 12, dt);
-    // Lean into wall-runs
-    u.body.rotation.z = BR.util.damp(u.body.rotation.z, m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : 0, 10, dt);
-    u.gun.rotation.x = -this.pitch * 0.6;
+    // While sliding the body faces where it's going and the upper body twists to keep aiming
+    const velYaw = Math.atan2(-m.vel.x, -m.vel.z);
+    const faceYaw = m.sliding && sp > 1 ? velYaw : this.yaw;
+    this.mesh.rotation.y = faceYaw;
+    u.upper.rotation.y = U.damp(u.upper.rotation.y, m.sliding ? U.clamp(U.wrapAngle(this.yaw - faceYaw), -1.1, 1.1) : 0, 14, dt);
+    u.t += dt * sp * 1.5;
+    let l1 = 0, l2 = 0, lean = 0, bodyY = 0, bodyX = 0;
+    if (m.dropping && !m.chute) {                 // freefall: flat, limbs spread
+      bodyX = -1.35; bodyY = 0.9; l1 = 0.35; l2 = 0.5; lean = -0.2;
+    } else if (m.dropping) {                      // under canopy: upright, legs dangling
+      const sw = Math.sin(performance.now() / 400) * 0.15; l1 = 0.2 + sw; l2 = 0.25 - sw;
+    } else if (m.sliding) {                       // clean slide: lead leg out straight, trail leg tucked, torso back
+      bodyY = -0.42; l1 = -1.4; l2 = -0.85; lean = 0.5;
+    } else if (m.crouched) {
+      bodyY = -0.32; l1 = -0.9; l2 = -0.5; lean = 0.25;
+    } else if (!m.onGround) {                     // jump: knees up a bit
+      l1 = -0.5; l2 = 0.2; lean = 0.05;
+    } else {                                      // run cycle
+      const a = Math.min(0.75, sp * 0.085);
+      l1 = Math.sin(u.t) * a; l2 = -Math.sin(u.t) * a; lean = Math.min(sp * 0.012, 0.12);
+    }
+    u.l1.rotation.x = U.damp(u.l1.rotation.x, l1, 16, dt);
+    u.l2.rotation.x = U.damp(u.l2.rotation.x, l2, 16, dt);
+    u.upper.rotation.x = U.damp(u.upper.rotation.x, lean, 12, dt);
+    u.body.rotation.x = U.damp(u.body.rotation.x, bodyX, 8, dt);
+    u.body.position.y = U.damp(u.body.position.y, bodyY, 12, dt);
+    u.body.rotation.z = U.damp(u.body.rotation.z, m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : m.sliding ? 0.12 : 0, 10, dt);
+    u.gun.rotation.x = -this.pitch * 0.6 - u.upper.rotation.x;
+    u.chute.visible = !!(m.dropping && m.chute);
+    if (u.chute.visible) u.chute.rotation.z = Math.sin(performance.now() / 700) * 0.06;
     // Show the gun this bot is actually holding
     const wid = this.weapon ? this.weapon.id : null;
     if (u.wid !== wid) {
       u.wid = wid;
       while (u.gun.children.length) u.gun.remove(u.gun.children[0]);
-      if (wid) { const m = BR.Models.worldWeapon(wid); m.scale.setScalar(wid === 'knife' ? 1.6 : 1.15); u.gun.add(m); }
+      if (wid) { const gm = BR.Models.worldWeapon(wid); gm.scale.setScalar(wid === 'knife' ? 1.6 : 1.15); u.gun.add(gm); }
     }
   }
 
@@ -218,7 +244,8 @@ BR.Actor = class Actor {
   // Ragdoll-lite: topple over
   dieVisual() {
     if (!this.mesh) return;
-    this.mesh.userData.body.rotation.x = -Math.PI / 2;
-    this.mesh.userData.body.position.y = 0.2;
+    const u = this.mesh.userData;
+    u.body.rotation.x = -Math.PI / 2; u.body.position.y = 0.2;
+    u.chute.visible = false;
   }
 };

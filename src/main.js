@@ -167,6 +167,19 @@
 
   // ---- match flow ------------------------------------------------------------
   const play = () => { BR.Audio.init(); tryFullscreen(); game.startMatch(); };
+  const practice = () => { BR.Audio.init(); tryFullscreen(); game.startMatch({ practice: true }); };
+  $('btn-practice').addEventListener('click', practice);
+  // spawn menu
+  $('sp-weapons').innerHTML = Object.keys(BR.CONFIG.weapons).filter(id => id !== 'knife')
+    .map(id => `<button class="mbtn sm" data-sp="weapon" data-arg="${id}">${BR.CONFIG.weapons[id].name.toUpperCase()}</button>`).join('');
+  $('spawnmenu').addEventListener('click', e => {
+    const b = e.target.closest('[data-sp]');
+    if (!b) return;
+    game.practiceSpawn(b.dataset.sp, b.dataset.arg);
+    BR.Audio.pickup();
+    b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);
+  });
+  $('sp-close').addEventListener('click', () => game.closeSpawnMenu());
   $('btn-play').addEventListener('click', play);
   $('btn-again').addEventListener('click', play);
   $('btn-menu').addEventListener('click', () => game.toMenu());

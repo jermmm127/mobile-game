@@ -12,7 +12,8 @@ BR.Layout = class Layout {
     this.input = input;
     if (!settings.layout) settings.layout = { alpha: 0.85 };
     this.play = document.getElementById('play');
-    this.buttons = Array.from(this.play.querySelectorAll('.btn.act'));
+    // Everything tappable on the HUD: action buttons, weapon slots, pickup button, minimap, pause, spawn
+    this.buttons = Array.from(this.play.querySelectorAll(':scope > [data-act]'));
     this.sel = null;
     const $ = id => document.getElementById(id);
     this.ui = { bar: $('editor'), name: $('ed-sel'), size: $('ed-size'), hide: $('ed-hide'), alpha: $('ed-alpha') };
@@ -20,6 +21,10 @@ BR.Layout = class Layout {
     this.apply();
     window.addEventListener('resize', () => this.apply());
   }
+
+  // Round action buttons resize by diameter (px); everything else scales (percent).
+  round(b) { return b.classList.contains('act'); }
+  half(b, e) { return this.round(b) ? { w: e.s / 2, h: e.s / 2 } : { w: (e.w * e.s / 100) / 2, h: (e.h * e.s / 100) / 2 }; }
 
   orient() { return window.innerWidth >= window.innerHeight ? 'land' : 'port'; }
   table() { const L = this.settings.layout; return L[this.orient()] || (L[this.orient()] = {}); }
@@ -31,13 +36,20 @@ BR.Layout = class Layout {
     for (const b of this.buttons) {
       const e = t[b.dataset.act];
       if (e) {
-        Object.assign(b.style, {
-          left: `calc(${(e.x * 100).toFixed(3)}% - ${e.s / 2}px)`, top: `calc(${(e.y * 100).toFixed(3)}% - ${e.s / 2}px)`,
-          right: 'auto', bottom: 'auto', width: e.s + 'px', height: e.s + 'px',
-        });
+        if (this.round(b)) {
+          Object.assign(b.style, {
+            left: `calc(${(e.x * 100).toFixed(3)}% - ${e.s / 2}px)`, top: `calc(${(e.y * 100).toFixed(3)}% - ${e.s / 2}px)`,
+            right: 'auto', bottom: 'auto', width: e.s + 'px', height: e.s + 'px',
+          });
+        } else {
+          Object.assign(b.style, {
+            left: `calc(${(e.x * 100).toFixed(3)}% - ${e.w / 2}px)`, top: `calc(${(e.y * 100).toFixed(3)}% - ${e.h / 2}px)`,
+            right: 'auto', bottom: 'auto', transform: `scale(${e.s / 100})`, transformOrigin: '50% 50%',
+          });
+        }
         b.classList.toggle('user-hidden', !!e.hide);
       } else {
-        b.style.left = b.style.top = b.style.right = b.style.bottom = b.style.width = b.style.height = '';
+        b.style.left = b.style.top = b.style.right = b.style.bottom = b.style.width = b.style.height = b.style.transform = '';
         b.classList.remove('user-hidden');
       }
     }
@@ -49,7 +61,10 @@ BR.Layout = class Layout {
     for (const b of this.buttons) {
       if (t[b.dataset.act]) continue;
       const r = b.getBoundingClientRect();
-      t[b.dataset.act] = { x: (r.left + r.width / 2) / W, y: (r.top + r.height / 2) / H, s: Math.round(r.width) || 60, hide: false };
+      const e = { x: (r.left + r.width / 2) / W, y: (r.top + r.height / 2) / H, hide: false };
+      if (this.round(b)) e.s = Math.round(r.width) || 60;
+      else { e.s = 100; e.w = b.offsetWidth || r.width; e.h = b.offsetHeight || r.height; }
+      t[b.dataset.act] = e;
     }
   }
 
@@ -80,6 +95,8 @@ BR.Layout = class Layout {
     b.classList.add('ed-sel');
     const e = this.table()[b.dataset.act];
     this.ui.name.textContent = b.getAttribute('aria-label') + (b.dataset.act === 'firel' ? ' (2nd)' : '');
+    // round buttons: diameter in px; other elements: scale in %
+    this.ui.size.min = this.round(b) ? 36 : 50; this.ui.size.max = this.round(b) ? 140 : 200;
     this.ui.size.value = e.s;
     this.ui.hide.checked = !!e.hide;
   }
@@ -100,9 +117,9 @@ BR.Layout = class Layout {
         const d = this.drag;
         if (!d || d.id !== ev.pointerId || !this.input.editing) return;
         const e = this.table()[b.dataset.act];
-        const W = window.innerWidth, H = window.innerHeight, h = e.s / 2;
-        e.x = BR.util.clamp(ev.clientX - d.dx, h, W - h) / W;
-        e.y = BR.util.clamp(ev.clientY - d.dy, h, H - h) / H;
+        const W = window.innerWidth, H = window.innerHeight, hf = this.half(b, e);
+        e.x = BR.util.clamp(ev.clientX - d.dx, hf.w, W - hf.w) / W;
+        e.y = BR.util.clamp(ev.clientY - d.dy, hf.h, H - hf.h) / H;
         this.apply();
       });
       const end = ev => { if (this.drag && this.drag.id === ev.pointerId) { this.drag = null; this.save(); } };

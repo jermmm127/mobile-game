@@ -154,6 +154,7 @@ BR.Input = class Input {
       if (e.code === 'KeyG') this.press('grapple');
       if (e.code === 'KeyV') this.press('inspect');
       if (e.code === 'KeyX') this.press('knife');
+      if (e.code === 'KeyB') this.press('spawnmenu');
       if (e.code === 'Digit3') this.press('slot2');
       if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
       if (e.code === 'KeyR') this.press('reload');
@@ -188,6 +189,15 @@ BR.Input = class Input {
       if (this.locked || this.dragging) { this.lookDX += e.movementX * 0.4; this.lookDY += e.movementY * 0.4; }
     });
     this.root.addEventListener('contextmenu', e => e.preventDefault());
+    // Mouse clicks on on-screen buttons (pause, slots, spawn, pickup...) work on desktop too
+    this.root.addEventListener('click', e => {
+      if (this.usingTouch || this.editing) return;
+      const b = e.target.closest('[data-act]');
+      if (!b) return;
+      const act = b.dataset.act;
+      if (act === 'fire' || act === 'firel' || act === 'ads') return;
+      this.press(act);
+    });
     document.addEventListener('pointerlockchange', () => { this.locked = document.pointerLockElement === this.root; });
     window.addEventListener('wheel', e => { if (this.locked) this.press('swap'); }, { passive: true });
     window.addEventListener('blur', () => this.reset());

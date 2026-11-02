@@ -171,6 +171,28 @@ const server = http.createServer((req, res) => {
     BR.CONFIG.devCodeHash = realHash;
     return r;
   });
+  // Parachute + practice mode + HUD editor coverage
+  const extra = await page.evaluate(() => {
+    const r = {}, flat = new BR.World(1); flat.boxes = []; flat.cells = flat.cells.map(() => []);
+    const fall = (pressAt) => {
+      const m = new BR.Mover(flat); m.pos.set(0, 110, 0); m.dropping = true; let t = 0, openedAt = null, landV = 0;
+      while (m.dropping && t < 60) { const j = pressAt !== null && m.pos.y < pressAt && !m.chute; m.update(1 / 60, { mx: 0, mz: 1, jump: j, crouch: false }, 0); t += 1 / 60; if (m.chute && openedAt === null) openedAt = m.pos.y; landV = m.vel.y; }
+      return { openedAt, t, landed: !m.dropping };
+    };
+    r.auto = fall(null); r.manual = fall(90);
+    const g = BR.game;
+    g.startMatch({ practice: true });
+    r.practiceBots = g.actors.length; r.practiceFlag = g.practice && document.body.classList.contains('practice');
+    g.practiceSpawn('weapon', 'sniper'); r.gotSniper = g.player.weapon && g.player.weapon.id === 'sniper';
+    g.practiceSpawn('bot', 'dummy'); g.practiceSpawn('bot', 'combat');
+    r.botsSpawned = g.actors.length === 3 && g.actors[1].brain.passive && !g.actors[2].brain.passive;
+    let dummyFired = false; for (let i = 0; i < 120; i++) { g.update(1 / 30); if (g.actors[1].fireHeld) dummyFired = true; }
+    r.dummyPassive = !dummyFired;
+    g.practiceSpawn('clearbots'); r.cleared = g.actors.length === 1;
+    const L = BR.layout; L.open(); const keys = Object.keys(L.table()); L.close();
+    r.editable = ['slot0', 'slot1', 'slot2', 'interact', 'map', 'pause', 'fire', 'jump', 'knife', 'spawnmenu'].every(k => keys.includes(k));
+    return r;
+  });
   const loadMs = await page.evaluate(() => { const t = performance.now(); BR.game.startMatch(); return performance.now() - t; });
   await page.evaluate(() => { BR.game.settings.bots = 19; BR.game.startMatch(); });
   const match = await page.evaluate(() => {
@@ -218,10 +240,16 @@ const server = http.createServer((req, res) => {
     ['reload drops the magazine and refills', combat.magDrop < -0.15 && combat.reloaded],
     ['knife button swaps to the karambit and back', combat.knifeButton],
     ['rifle recoil kicks randomly sideways', combat.recoilSideways],
+    ['parachute opens by itself before the ground', extra.auto.openedAt > 15 && extra.auto.openedAt < 40 && extra.auto.landed],
+    ['Jump opens the parachute early (slower descent)', extra.manual.openedAt > 80 && extra.manual.t > extra.auto.t + 5],
+    ['practice mode starts with no bots', extra.practiceBots === 1 && extra.practiceFlag],
+    ['spawn menu gives guns and spawns passive + combat bots', extra.gotSniper && extra.botsSpawned && extra.cleared],
+    ['passive dummies never shoot', extra.dummyPassive],
+    ['every HUD element is editable (slots, pickup, map, pause...)', extra.editable],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ mech, combat, acct, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ mech, combat, acct, extra, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

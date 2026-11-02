@@ -10,6 +10,8 @@
 //   Crouch while running = slide. Crouch otherwise = toggle crouch.
 // The grapple is started from Actor.tryGrapple() (it needs the aim ray).
 // =============================================================================
+const U_lerp = (a, b, t) => a + (b - a) * t;
+
 BR.Mover = class Mover {
   constructor(world) {
     const A = BR.CONFIG.actor;
@@ -37,6 +39,8 @@ BR.Mover = class Mover {
     this.wallRunCd = 0;
     this.mantleTop = null;
     this.dropping = false;
+    this.chute = false;      // parachute open (skydive)
+    this.chuteAt = 0;        // optional custom auto-open height (bots vary it)
     this.grapple = null;     // { x, y, z, t } while hooked
     this.padHit = false;
     this.events = {};        // one-frame flags: jump, land, slide, wallrun, walljump, mantle, pad, grappleEnd, tech
@@ -75,14 +79,22 @@ BR.Mover = class Mover {
     if (wl > 1e-4) { wx /= wl; wz /= wl; }
 
     // ---- skydive ----------------------------------------------------------
+    // Freefall until you press Jump (or get close to the ground), then the parachute opens.
     if (this.dropping) {
-      const tx = wx * M.dropGlideSpeed * frac, tz = wz * M.dropGlideSpeed * frac;
-      const k = 1 - Math.exp(-M.dropAccel * 0.25 * dt);
+      if (!this.chute) {
+        const groundY = this.world.groundAt(this.pos.x, this.pos.z, this.pos.y);
+        if (inp.jump || this.pos.y - groundY < (this.chuteAt || M.chuteAutoHeight)) { this.chute = true; ev.chute = true; this.jumpBuf = 0; }
+      }
+      const glide = this.chute ? M.chuteGlideSpeed : M.dropGlideSpeed, fall = this.chute ? M.chuteFallSpeed : M.dropFallSpeed;
+      const tx = wx * glide * frac, tz = wz * glide * frac;
+      const k = 1 - Math.exp(-M.dropAccel * (this.chute ? 0.35 : 0.25) * dt);
       this.vel.x += (tx - this.vel.x) * k;
       this.vel.z += (tz - this.vel.z) * k;
-      this.vel.y = Math.max(this.vel.y - M.gravity * dt, -M.dropFallSpeed);
+      // opening the chute brakes hard, then you float down
+      if (this.chute && this.vel.y < -fall) this.vel.y = U_lerp(this.vel.y, -fall, 1 - Math.exp(-6 * dt));
+      else this.vel.y = Math.max(this.vel.y - M.gravity * dt, -fall);
       this.integrate(dt, false);
-      if (this.onGround) { this.dropping = false; ev.land = true; this.landSpeed = M.dropFallSpeed * 0.5; }
+      if (this.onGround) { this.dropping = false; this.chute = false; ev.land = true; this.landSpeed = this.vel.y < -8 ? 8 : 4; this.jumpBuf = 0; }
       return;
     }
 

@@ -117,9 +117,12 @@ BR.Models = (function () {
     metal: new THREE.MeshPhongMaterial({ color: 0x5b636d, specular: 0x9aa3ad, shininess: 50 }),
     grip: new THREE.MeshLambertMaterial({ color: 0x1a1c1f }),
     blade: new THREE.MeshPhongMaterial({ color: 0xc8d0d8, specular: 0xffffff, shininess: 120, side: THREE.DoubleSide }),
-    lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }),
+    lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false }),
     lensDark: new THREE.MeshPhongMaterial({ color: 0x102030, specular: 0x88ccff, shininess: 120 }),
-    reticle: new THREE.MeshBasicMaterial({ color: 0xff3040 }),
+    reticle: new THREE.MeshBasicMaterial({ color: 0xff2a3a }),
+    dotHalo: new THREE.MeshBasicMaterial({ color: 0xff2a3a, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }),
+    lensRed: new THREE.MeshBasicMaterial({ color: 0xffd2a0, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }),
+    scopeTube: new THREE.MeshPhongMaterial({ color: 0x1d2025, specular: 0x555a60, shininess: 40, side: THREE.DoubleSide }),
     sightDot: new THREE.MeshBasicMaterial({ color: 0xff8a1f }),
     shell: new THREE.MeshLambertMaterial({ color: 0xc8202a }),
     brass: new THREE.MeshPhongMaterial({ color: 0xc89b3c, specular: 0xffe2a0, shininess: 60 }),
@@ -209,13 +212,17 @@ BR.Models = (function () {
       k.box(0.012, 0.012, 0.18, 0.02, 0.02, 0.15, M.metal);       // stock rods
       k.box(0.012, 0.012, 0.18, -0.02, 0.02, 0.15, M.metal);
       k.box(0.05, 0.07, 0.015, 0, 0.0, 0.24, M.grip);             // butt plate
-      // open mini red dot: base + hoop, dot floating in the middle
-      k.box(0.03, 0.012, 0.05, 0, 0.1, -0.06, M.dark);
-      k.box(0.004, 0.034, 0.012, 0.016, 0.122, -0.075, M.dark);
-      k.box(0.004, 0.034, 0.012, -0.016, 0.122, -0.075, M.dark);
-      k.box(0.036, 0.004, 0.012, 0, 0.139, -0.075, M.dark);
-      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 8), M.reticle); rd.position.set(0, 0.122, -0.075); g.add(rd);
-      const ss = new THREE.Object3D(); ss.position.set(0, 0.122, -0.075); g.add(ss);
+      // Tube red dot: mount, open tube with rims, faint tinted lens, crisp dot + halo
+      k.box(0.026, 0.012, 0.042, 0, 0.1, -0.062, M.dark);
+      k.box(0.012, 0.012, 0.016, 0.02, 0.122, -0.066, M.dark);                         // windage turret
+      k.box(0.012, 0.012, 0.016, 0, 0.142, -0.066, M.dark);                            // elevation turret
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.046, 24, 1, true), M.scopeTube);
+      tube.rotation.x = Math.PI / 2; tube.position.set(0, 0.122, -0.07); g.add(tube);
+      for (const z of [-0.093, -0.047]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.0024, 6, 24), M.metal); r.position.set(0, 0.122, z); g.add(r); }
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.016, 24), M.lensRed); lens.position.set(0, 0.122, -0.092); g.add(lens);
+      const halo = new THREE.Mesh(new THREE.CircleGeometry(0.0042, 16), M.dotHalo); halo.position.set(0, 0.122, -0.0915); g.add(halo);
+      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0015, 12), M.reticle); rd.position.set(0, 0.122, -0.091); g.add(rd);
+      const ss = new THREE.Object3D(); ss.position.set(0, 0.122, -0.07); g.add(ss);
       g.userData.sight = ss; g.userData.sightDist = 0.36;
       anchors(g, -0.34, 0.035, [-0.04, -0.01, 0.03]);
     },
@@ -252,17 +259,23 @@ BR.Models = (function () {
       k.box(0.055, 0.08, 0.2, 0, 0.01, 0.23, S);                  // stock
       k.box(0.06, 0.1, 0.02, 0, -0.005, 0.33, M.grip);            // butt pad
       if (holo) {
-        // Holographic sight: open frame, tinted glass, glowing reticle
-        k.box(0.06, 0.03, 0.08, 0, 0.11, -0.08, M.dark);          // base
-        k.box(0.006, 0.065, 0.07, 0.03, 0.155, -0.08, M.dark);    // frame sides
-        k.box(0.006, 0.065, 0.07, -0.03, 0.155, -0.08, M.dark);
-        k.box(0.066, 0.006, 0.07, 0, 0.19, -0.08, M.dark);        // frame top
-        const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.054, 0.058), M.lens);
-        glass.position.set(0, 0.156, -0.1); g.add(glass);
-        const ret = new THREE.Mesh(new THREE.RingGeometry(0.006, 0.009, 16), M.reticle);
-        ret.position.set(0, 0.156, -0.099); g.add(ret);
-        const dot = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 8), M.reticle);
-        dot.position.set(0, 0.156, -0.099); g.add(dot);
+        // Holographic sight (EOTech-style): mount, battery body, hooded window,
+        // clean 65-MOA ring with ticks + centre dot, soft glow
+        k.box(0.05, 0.016, 0.1, 0, 0.104, -0.08, M.dark);                          // rail mount
+        k.box(0.064, 0.024, 0.07, 0, 0.124, -0.075, M.scopeTube);                 // body under the window
+        for (let i = 0; i < 3; i++) k.box(0.008, 0.006, 0.008, -0.034, 0.124, -0.058 - i * 0.014, M.metal);   // buttons
+        for (const x of [-0.031, 0.031]) k.box(0.005, 0.05, 0.078, x, 0.16, -0.08, M.scopeTube);       // hood sides
+        k.box(0.058, 0.005, 0.078, 0, 0.188, -0.08, M.scopeTube);                                      // hood top
+        for (const x of [-0.028, 0.028]) k.cyl(0.0055, 0.078, x, 0.185, -0.08, M.scopeTube, 'z', 8);   // rounded corners
+        k.box(0.064, 0.004, 0.004, 0, 0.135, -0.118, M.metal);                     // front window lip
+        const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.056, 0.05), M.lens);
+        glass.position.set(0, 0.16, -0.1); g.add(glass);
+        const ret = new THREE.Group(); ret.position.set(0, 0.156, -0.099); g.add(ret);
+        ret.add(new THREE.Mesh(new THREE.RingGeometry(0.0062, 0.0072, 48), M.reticle));
+        ret.add(new THREE.Mesh(new THREE.RingGeometry(0.0056, 0.0078, 48), M.dotHalo));
+        for (let i = 0; i < 4; i++) { const t = new THREE.Mesh(new THREE.PlaneGeometry(0.0009, 0.0022), M.reticle); const a2 = i * Math.PI / 2; t.position.set(Math.cos(a2) * 0.0081, Math.sin(a2) * 0.0081, 0); t.rotation.z = a2 + Math.PI / 2; ret.add(t); }
+        ret.add(new THREE.Mesh(new THREE.CircleGeometry(0.0011, 12), M.reticle));
+        const hh = new THREE.Mesh(new THREE.CircleGeometry(0.0026, 12), M.dotHalo); hh.position.z = -0.0002; ret.add(hh);
         const sight = new THREE.Object3D(); sight.position.set(0, 0.156, -0.1); g.add(sight);
         g.userData.sight = sight; g.userData.sightDist = 0.44;
       } else {
@@ -327,9 +340,9 @@ BR.Models = (function () {
       // Curved handle (skin material) with a guard bump
       const hd = new THREE.Shape();
       hd.moveTo(0.004, 0.016);
-      hd.quadraticCurveTo(-0.06, 0.03, -0.128, 0.046);                // top line curves up toward the ring
-      hd.lineTo(-0.134, 0.022);
-      hd.quadraticCurveTo(-0.07, 0.006, -0.022, -0.012);              // belly
+      hd.quadraticCurveTo(-0.045, 0.034, -0.098, 0.064);              // shorter handle, sweeping up hard toward the ring
+      hd.lineTo(-0.108, 0.042);
+      hd.quadraticCurveTo(-0.052, 0.006, -0.02, -0.012);              // curved belly
       hd.quadraticCurveTo(-0.008, -0.03, 0.006, -0.026);              // finger guard
       hd.lineTo(0.004, -0.014);
       hd.closePath();
@@ -337,16 +350,16 @@ BR.Models = (function () {
       // Steel liner peeking out between the scales
       const liner = new THREE.Mesh(ext(hd, 0.007, 0.0005), M.metal); liner.scale.set(1.03, 1.08, 1); liner.position.set(0.002, -0.001, 0); k.add(liner);
       // Pins
-      for (const [x, y] of [[-0.03, 0.012], [-0.075, 0.024], [-0.11, 0.033]]) {
+      for (const [x, y] of [[-0.025, 0.013], [-0.055, 0.027], [-0.083, 0.043]]) {
         const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 0.02, 8), M.blade); pin.rotation.x = Math.PI / 2; pin.position.set(x, y, 0); k.add(pin);
       }
       // Finger ring at the butt
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.0062, 10, 22), M.metal);
-      ring.position.set(-0.152, 0.036, 0); k.add(ring);
+      ring.position.set(-0.12, 0.066, 0); k.add(ring);
       k.rotation.y = Math.PI / 2;      // +x -> -z
       g.add(k);
       g.userData.blade = k;
-      hands(g, [0, 0.012, 0.07], null, null);
+      hands(g, [0, 0.02, 0.05], null, null);
       anchors(g, -0.15, 0, [0, -0.02, 0.12]);
       g.userData.flash.visible = false;
     },
@@ -588,8 +601,35 @@ BR.Models = (function () {
     return g;
   }
 
+  // Parachute: striped canopy + suspension lines. Origin = the wearer's shoulders.
+  function parachute(colorA, colorB) {
+    const g = new THREE.Group();
+    const geo = new THREE.SphereGeometry(2.3, 16, 5, 0, Math.PI * 2, 0, 1.15);
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
+    const a = new THREE.Color(colorA), b = new THREE.Color(colorB);
+    for (let i = 0; i < pos.count; i++) {
+      const ang = Math.atan2(pos.getZ(i), pos.getX(i)), c = Math.floor((ang + Math.PI) / (Math.PI / 4)) % 2 ? a : b;
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const dome = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    dome.scale.set(1, 0.55, 1); dome.position.y = 3.2;
+    g.add(dome);
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0x2a2a2a });
+    for (let i = 0; i < 6; i++) {
+      const ang = i / 6 * Math.PI * 2, top = new THREE.Vector3(Math.cos(ang) * 2.0, 3.6, Math.sin(ang) * 2.0), bot = new THREE.Vector3(Math.cos(ang) * 0.2, 0.1, Math.sin(ang) * 0.15);
+      const d = top.clone().sub(bot), len = d.length();
+      const l = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, len, 3), lineMat);
+      l.position.copy(bot).addScaledVector(d, 0.5);
+      l.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+      g.add(l);
+    }
+    return g;
+  }
+
   return {
     SKINS, TRACERS, CHARMS, BLUEPRINTS, GLOVES,
+    parachute,
     hand, gloveMats,
     merged,
     // A world-space weapon mesh (single draw call), barrel along -Z.

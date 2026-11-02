@@ -97,5 +97,6 @@ BR.Audio = {
   swish(hit) { this.burst(3000, 0.8, 0.14, 0.12, 0, 'bandpass'); if (hit) this.tone(220, 120, 0.1, 0.25, 'square'); },
   unsheathe() { this.burst(5000, 2, 0.25, 0.08, 0, 'bandpass'); this.tone(2400, 3600, 0.2, 0.04, 'sine'); },
   coin() { this.tone(988, 988, 0.08, 0.12, 'square'); setTimeout(() => this.tone(1319, 1319, 0.2, 0.12, 'square'), 80); },
+  chute() { this.burst(700, 0.5, 0.6, 0.35, 0, 'lowpass'); this.burst(2400, 1, 0.25, 0.1, 0, 'bandpass'); },
   reload() { this.tone(500, 300, 0.05, 0.08, 'square'); },
 };

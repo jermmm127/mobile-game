@@ -83,6 +83,9 @@ BR.Game = class Game {
     this.loot = new BR.Loot(this);
     this.loot.spawnFromWorld(this.world);
     this.zone = new BR.Zone(this, this.world);
+    this.playerChute = BR.Models.parachute(0xffb224, 0x1b1f27);
+    this.playerChute.visible = false;
+    this.scene.add(this.playerChute);
     this.actors = [];
     this.player = null;
     this.time = 0;
@@ -134,8 +137,10 @@ BR.Game = class Game {
   }
 
   // ------------------------------------------------------------------ match
-  startMatch() {
+  // opts.practice: no bots, no storm, spawn menu, respawn on death
+  startMatch(opts) {
     const S = this.settings, C = BR.CONFIG;
+    const practiceMode = !!(opts && opts.practice);
     this.buildScene(Math.floor(Math.random() * 1e9), false);
     this.diff = C.difficulty[S.difficulty] || C.difficulty.normal;
     this.result = null;
@@ -144,8 +149,17 @@ BR.Game = class Game {
     this.player.yaw = Math.atan2(this.player.pos.x, this.player.pos.z); // face map center
     this.player.pitch = -0.75;                                           // look down at the landing area
     this.actors.push(this.player);
-    const bots = Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
+    const bots = practiceMode ? 0 : Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
     this.practice = bots === 0;
+    document.body.classList.toggle('practice', this.practice);
+    if (practiceMode) {
+      // Start on the ground at a movement hub (or any named place)
+      const hub = this.world.pois.find(q => q.type === 'relay') || this.world.pois[0];
+      this.player.mover.dropping = false;
+      this.player.mover.pos.set(hub.x + 10, 0, hub.z + 10);
+      this.player.mover.pos.y = this.world.groundAt(hub.x + 10, hub.z + 10, 60);
+      this.player.pitch = 0;
+    }
     this.addBots(bots, this.diff);
     this.zone.mesh.visible = !this.practice;
     this.total = this.actors.length;
@@ -161,8 +175,71 @@ BR.Game = class Game {
     this.hud.show('end', false);
     this.hud.show('pause', false);
     this.hud.show('play', true);
-    this.hud.toast(this.practice ? 'Practice mode: no bots, no storm' : 'Skydive! Steer to a landing spot', 2600);
+    this.hud.toast(this.practice ? 'Practice mode: tap SPAWN for guns, items and bots' : 'Freefall! Tap JUMP to open your parachute', 2800);
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
+  }
+
+  // ---- practice spawn menu ---------------------------------------------------
+  // A point `dist` meters in front of the player, on the ground.
+  frontPoint(dist) {
+    const p = this.player, x = p.pos.x - Math.sin(p.yaw) * dist, z = p.pos.z - Math.cos(p.yaw) * dist;
+    const H = this.world.half - 4, cx = BR.util.clamp(x, -H, H), cz = BR.util.clamp(z, -H, H);
+    return { x: cx, y: this.world.groundAt(cx, cz, p.pos.y + 6), z: cz };
+  }
+
+  practiceSpawn(kind, arg) {
+    const p = this.player, C = BR.CONFIG;
+    if (kind === 'weapon') {
+      const def = C.weapons[arg];
+      const slot = p.cur < 2 ? p.cur : (!p.slots[0] ? 0 : !p.slots[1] ? 1 : 0);
+      p.slots[slot] = BR.Weapons.create(arg);
+      p.cur = slot;
+      p.ammo[def.ammo] = C.ammoCap[def.ammo];
+      this.hud.toast(def.name, 900);
+    } else if (kind === 'ammo') { for (const t in p.ammo) p.ammo[t] = C.ammoCap[t]; this.hud.toast('Ammo full', 900); }
+    else if (kind === 'heal') { p.health = C.actor.maxHealth; p.shield = C.actor.maxShield; this.hud.toast('Health + shield full', 900); }
+    else if (kind === 'item') { const q = this.frontPoint(3); this.loot.spawnKind(arg, q.x, q.y, q.z, Math.random); }
+    else if (kind === 'chest') { const q = this.frontPoint(4); this.loot.add({ kind: 'chest', tier: 2 }, q.x, q.y, q.z); }
+    else if (kind === 'bot') {
+      const q = this.frontPoint(arg === 'combat' ? 18 : 10);
+      const n = this.actors.length, col = new THREE.Color().setHSL(Math.random(), 0.55, 0.55).getHex();
+      const label = arg === 'combat' ? 'Combat bot' : arg === 'moving' ? 'Moving dummy' : 'Dummy';
+      const b = new BR.Actor(this, { id: n, name: label + ' ' + n, color: col });
+      b.mover.pos.set(q.x + (Math.random() - 0.5) * 3, q.y, q.z + (Math.random() - 0.5) * 3);
+      b.giveWeapon(arg === 'combat' ? 'rifle' : 'pistol');
+      b.ammo.heavy = b.ammo.light = 200;
+      b.yaw = Math.atan2(b.pos.x - p.pos.x, b.pos.z - p.pos.z);
+      b.brain = new BR.BotBrain(b, this, this.diff);
+      b.brain.state = 'roam';
+      b.brain.passive = arg !== 'combat';
+      b.brain.still = arg === 'dummy';
+      b.brain.landedT = 99;
+      this.scene.add(b.mesh);
+      this.actors.push(b);
+      this.total = this.actors.length;
+    } else if (kind === 'clearbots') {
+      for (const a of this.actors) if (a !== p && a.mesh) this.scene.remove(a.mesh);
+      this.actors = [p];
+    } else if (kind === 'skydive') {
+      p.mover.pos.y = C.match.dropHeight; p.mover.vel.set(0, 0, 0);
+      p.mover.dropping = true; p.mover.chute = false; p.pitch = -0.6;
+    } else if (kind === 'teleport') {
+      const q = this.world.pois[Math.floor(Math.random() * this.world.pois.length)];
+      p.mover.pos.set(q.x + 6, this.world.groundAt(q.x + 6, q.z + 6, 60), q.z + 6); p.mover.vel.set(0, 0, 0);
+      this.hud.toast(q.name, 1200);
+    }
+  }
+
+  openSpawnMenu() {
+    if (this.state !== 'playing' || !this.practice) return;
+    this.state = 'paused';
+    this.input.reset();
+    this.input.unlock();
+    this.hud.show('spawnmenu', true);
+  }
+  closeSpawnMenu() {
+    this.hud.show('spawnmenu', false);
+    if (this.state === 'paused') { this.state = 'playing'; this.input.reset(); this.last = performance.now(); }
   }
 
   aliveCount() { let n = 0; for (const a of this.actors) if (a.alive) n++; return n; }
@@ -255,6 +332,11 @@ BR.Game = class Game {
     else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
     else this.hud.prompt(null);
 
+    // Player parachute (look up to see it)
+    const pc = this.playerChute;
+    pc.visible = p.alive && p.mover.dropping && p.mover.chute;
+    if (pc.visible) { pc.position.set(p.pos.x, p.pos.y + 1.5, p.pos.z); pc.rotation.y = p.yaw; pc.rotation.z = Math.sin(this.time * 1.5) * 0.05; }
+
     // Grapple rope
     if (p.mover.grapple) this.fx.rope(this.muzzlePoint(p, this._v4), p.mover.grapple);
     else this.fx.rope(null);
@@ -270,7 +352,16 @@ BR.Game = class Game {
 
     // Match end
     if (this.state === 'playing') {
-      if (!p.alive) { this.state = 'dead'; this.endT = BR.CONFIG.match.endDelay; }
+      if (!p.alive && this.practice) {
+        // Practice: respawn where you fell after a moment
+        this.respawnT = (this.respawnT ?? 2) - dt;
+        if (this.respawnT <= 0) {
+          this.respawnT = undefined;
+          p.alive = true; p.health = BR.CONFIG.actor.maxHealth; p.shield = 0;
+          this.result = null;
+          this.hud.toast('Respawned', 900);
+        }
+      } else if (!p.alive) { this.state = 'dead'; this.endT = BR.CONFIG.match.endDelay; }
       else if (!this.practice && this.aliveCount() === 1) {
         this.state = 'won'; this.endT = 1.6;
         this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time };
@@ -330,6 +421,7 @@ BR.Game = class Game {
     }
     if (inp.consume('pause')) this.pause();
     if (inp.consume('map')) this.hud.toggleMap();
+    if (inp.consume('spawnmenu')) this.openSpawnMenu();
     p.ads = inp.ads && !!w && !w.def.melee && !p.mover.dropping;
     if (p.ads) this.vmr.inspectT = 0;
 
@@ -384,6 +476,7 @@ BR.Game = class Game {
     if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); this.vmr.onLand(m.landSpeed); }
     if (ev.slide) BR.Audio.slide();
     if (ev.wallrun) BR.Audio.wallrun();
+    if (ev.chute) { BR.Audio.chute(); this.hud.toast('Parachute deployed', 900); this.cam.kick = 0.25; }
     if (ev.pad) { BR.Audio.pad(); this.cam.shake = Math.max(this.cam.shake, 0.15); }
     if (ev.tech) { this.hud.tech(ev.tech); BR.Audio.tech(); }
   }

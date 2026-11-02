@@ -72,7 +72,7 @@
           m.rotation.set(0.15, 0.25, -0.5); m.scale.setScalar(1.35);
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
-          const P = new THREE.Vector3(0, 0.036, 0.152).applyMatrix4(m.matrix);
+          const P = new THREE.Vector3(0, 0.066, 0.12).applyMatrix4(m.matrix);   // ring centre
           const axis = new THREE.Vector3(1, 0, 0).applyQuaternion(m.quaternion).normalize();
           const spin = new THREE.Group();
           spin.position.copy(P); m.position.sub(P);
@@ -180,11 +180,11 @@
         const t = 1 - this.drawT / this.drawDur;
         if (def.melee) {
           // CS-style karambit deploy: snap into view, twirl twice around the ring, settle
-          const rise = smooth(t / 0.14), out = 1 - smooth((t - 0.7) / 0.3);
+          const rise = smooth(t / 0.08), out = 1 - smooth((t - 0.6) / 0.4);
           oy += -(1 - rise) * 0.16 + out * rise * 0.06;
           ox += -out * rise * 0.06; oz += -out * 0.14;
           orz += -out * 0.3; orx += out * 0.15;
-          spinAng = easeInOut((t - 0.08) / 0.72) * Math.PI * 4;
+          spinAng = easeInOut(t / 0.6) * Math.PI * 4;                       // starts right away
           const turns = Math.floor(spinAng / (Math.PI * 2) + 0.25);
           if (turns > this.spinSwish) { this.spinSwish = turns; BR.Audio.swish(false); }
         } else {

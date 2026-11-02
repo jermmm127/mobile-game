@@ -14,6 +14,7 @@ const ICON = {
   swap: '<svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
   fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   knife: '<svg viewBox="0 0 24 24"><path d="M4 20c2-1 4-1 6-3l9-11c1-1 1-2 0-3-3 2-7 6-10 9l-2 4"/><circle cx="5.5" cy="18.5" r="1.6"/></svg>',
+  spawn: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>',
   grapple: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7L6 18"/><path d="M6 18l-2 2M9 21l-3-3 3-3"/><circle cx="17" cy="7" r="2"/></svg>',
 };
 
@@ -40,6 +41,8 @@ BR.HUD = class HUD {
   <canvas id="view"></canvas>
   <div id="vignette"></div>
   <div id="zone-tint"></div>
+  <div id="speedvig"></div>
+  <div id="speedfx"></div>
   <div id="scope"><div class="scope-ring"></div></div>
   <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
@@ -53,7 +56,7 @@ BR.HUD = class HUD {
   </div>
   <button class="btn pause" data-act="pause" aria-label="Pause">${ICON.pause}</button>
   <div id="killfeed"></div>
-  <button class="btn mapbtn" data-act="map" aria-label="Map"><canvas id="minimap" width="220" height="220"></canvas></button>
+  <button class="btn mapbtn" data-act="map" aria-label="Minimap"><canvas id="minimap" width="220" height="220"></canvas></button>
   <div id="bigmap"><canvas id="bigmap-cv" width="720" height="720"></canvas><div class="bm-hint">Tap the minimap to close</div></div>
   <div id="loc"></div>
   <div id="fps"></div>
@@ -61,12 +64,10 @@ BR.HUD = class HUD {
   <div id="state-tag"></div>
   <div id="tech"></div>
 
+  <div class="slot s0" data-act="slot0" aria-label="Weapon slot 1"><span class="skey">1</span><span class="sname">—</span><span class="sammo"></span></div>
+  <div class="slot s1" data-act="slot1" aria-label="Weapon slot 2"><span class="skey">2</span><span class="sname">—</span><span class="sammo"></span></div>
+  <div class="slot s2 knife" data-act="slot2" aria-label="Karambit slot"><span class="skey">3</span><span class="sname">Karambit</span><span class="sammo">MELEE</span></div>
   <div id="bottom">
-    <div id="slots">
-      <div class="slot" data-act="slot0"><span class="skey">1</span><span class="sname">—</span><span class="sammo"></span></div>
-      <div class="slot" data-act="slot1"><span class="skey">2</span><span class="sname">—</span><span class="sammo"></span></div>
-      <div class="slot knife" data-act="slot2"><span class="skey">3</span><span class="sname">Karambit</span><span class="sammo">MELEE</span></div>
-    </div>
     <div id="ammo"><span id="mag" class="num">0</span><span class="sep">/</span><span id="reserve" class="num">0</span><div id="reload-bar"><i></i></div></div>
     <div id="vitals">
       <div class="bar shield"><i id="shield-fill"></i><span id="shield-txt">0</span></div>
@@ -74,7 +75,7 @@ BR.HUD = class HUD {
     </div>
   </div>
 
-  <button id="prompt" class="btn prompt hidden" data-act="interact">Swap</button>
+  <button id="prompt" class="btn prompt hidden" data-act="interact" aria-label="Pickup / open button">Swap</button>
 
   <div id="joy-base"><div id="joy-knob"></div></div>
   <button class="btn act firel touch-only" data-act="firel" aria-label="Fire">${ICON.fire}</button>
@@ -86,6 +87,7 @@ BR.HUD = class HUD {
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>AIM</span></button>
   <button class="btn act swap touch-only" data-act="swap" aria-label="Swap weapon">${ICON.swap}</button>
   <button class="btn act knife touch-only" data-act="knife" aria-label="Knife">${ICON.knife}<span>KNIFE</span></button>
+  <button class="btn act spawnbtn practice-only" data-act="spawnmenu" aria-label="Spawn menu">${ICON.spawn}<span>SPAWN</span></button>
 </div>
 
 <button id="fs-game" class="btn fs-btn" aria-label="Fullscreen">${ICON.fs}</button>
@@ -117,6 +119,7 @@ BR.HUD = class HUD {
     </div>
     <nav class="menu-nav">
       <button id="btn-play" class="mbtn big hot"><svg viewBox="0 0 24 24" class="play-ic"><path d="M8 5l11 7-11 7z"/></svg>Play</button>
+      <button id="btn-practice" class="mbtn">PRACTICE</button>
       <button id="btn-shop" class="mbtn">SHOP</button>
       <button id="btn-settings" class="mbtn">SETTINGS</button>
       <button id="btn-hud" class="mbtn">CUSTOMIZE HUD</button>
@@ -221,6 +224,36 @@ BR.HUD = class HUD {
   </div>
 </div>
 
+<div id="spawnmenu" class="overlay hidden">
+  <div class="panel metal wide spawn">
+    <div class="ptitle">SPAWN</div>
+    <div class="sp-sec">WEAPONS</div>
+    <div class="sp-grid" id="sp-weapons"></div>
+    <div class="sp-sec">ITEMS</div>
+    <div class="sp-grid">
+      <button class="mbtn sm" data-sp="ammo">FULL AMMO</button>
+      <button class="mbtn sm" data-sp="heal">FULL HEALTH + SHIELD</button>
+      <button class="mbtn sm" data-sp="item" data-arg="heal">MEDKIT</button>
+      <button class="mbtn sm" data-sp="item" data-arg="shield">SHIELD CELL</button>
+      <button class="mbtn sm" data-sp="item" data-arg="ammo">AMMO BOX</button>
+      <button class="mbtn sm" data-sp="chest">CHEST</button>
+    </div>
+    <div class="sp-sec">BOTS</div>
+    <div class="sp-grid">
+      <button class="mbtn sm" data-sp="bot" data-arg="dummy">DUMMY · STANDS STILL, NO SHOOTING</button>
+      <button class="mbtn sm" data-sp="bot" data-arg="moving">MOVING DUMMY · NO SHOOTING</button>
+      <button class="mbtn sm hot" data-sp="bot" data-arg="combat">COMBAT BOT · SHOOTS BACK</button>
+      <button class="mbtn sm" data-sp="clearbots">CLEAR ALL BOTS</button>
+    </div>
+    <div class="sp-sec">MOVEMENT</div>
+    <div class="sp-grid">
+      <button class="mbtn sm" data-sp="skydive">SKYDIVE FROM 110 M</button>
+      <button class="mbtn sm" data-sp="teleport">TELEPORT TO A LOCATION</button>
+    </div>
+    <button id="sp-close" class="mbtn hot">BACK TO PRACTICE</button>
+  </div>
+</div>
+
 <div id="pause" class="overlay hidden">
   <div class="panel metal">
     <div class="ptitle">PAUSED</div>
@@ -261,11 +294,11 @@ BR.HUD = class HUD {
       killfeed: $('killfeed'), minimap: $('minimap'), toast: $('toast'), fps: $('fps'),
       mag: $('mag'), reserve: $('reserve'), reloadBar: $('reload-bar'), reloadFill: $('reload-bar').firstElementChild,
       shieldFill: $('shield-fill'), healthFill: $('health-fill'), shieldTxt: $('shield-txt'), healthTxt: $('health-txt'),
-      slots: Array.from(document.querySelectorAll('#slots .slot')),
+      slots: Array.from(document.querySelectorAll('#play > .slot')),
       prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'),
       dmgDirs: $('dmg-dirs'), dmgNums: $('dmg-nums'), vignette: $('vignette'), zoneTint: $('zone-tint'),
-      stateTag: $('state-tag'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
-      grapBtn: document.querySelector('.btn.grapple'), crouchBtn: document.querySelector('.btn.crouch'),
+      stateTag: $('state-tag'), speedfx: $('speedfx'), speedvig: $('speedvig'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
+      grapBtn: document.querySelector('.btn.grapple'), crouchBtn: document.querySelector('.btn.crouch'), jumpBtn: document.querySelector('.btn.jump'),
     };
     this.cache = {};
     this.mm = this.el.minimap.getContext('2d');
@@ -351,6 +384,8 @@ BR.HUD = class HUD {
       el.classList.toggle('cooling', v > 0);
       el.style.setProperty('--cd', (v / BR.CONFIG.move.tech.superJumpCooldown * 360).toFixed(0) + 'deg');
     });
+    const jLbl = m.dropping ? (m.chute ? 'JUMP' : 'CHUTE') : 'JUMP';
+    this.set('jl', e.jumpBtn, jLbl, (el, v) => { el.querySelector('span').textContent = v; el.classList.toggle('on-toggle', v === 'CHUTE'); });
     const cLbl = m.sliding ? 'SLIDE' : m.crouched ? 'STAND' : m.speedH >= BR.CONFIG.move.runSpeed * BR.CONFIG.move.slideMinSpeed ? 'SLIDE' : 'CROUCH';
     this.set('cl', e.crouchBtn, cLbl, (el, v) => { el.querySelector('span').textContent = v; el.classList.toggle('on-toggle', m.crouched); });
 
@@ -372,8 +407,13 @@ BR.HUD = class HUD {
     this.set('vig', e.vignette, Math.round(hurt * 20), (el, v) => (el.style.opacity = Math.max(0, (v / 20) - 0.25)));
     this.set('zt2', e.zoneTint, p.alive && !game.practice && z.outside(p.pos), (el, v) => el.classList.toggle('on', v));
 
+    // Speed effects: lines + edge glow once you're well past running speed (freefall counts)
+    const v3 = Math.hypot(m.vel.x, m.vel.y * 0.8, m.vel.z);
+    const spdK = p.alive ? Math.round(BR.util.clamp((v3 - BR.CONFIG.move.runSpeed * 1.15) / 7, 0, 1) * 20) / 20 : 0;
+    this.set('spd', e.speedfx, spdK, (el, v) => { el.style.opacity = v; e.speedvig.style.opacity = v * 0.9; });
+
     // Movement state tag
-    const tag = m.dropping ? 'SKYDIVE' : m.grapple ? 'GRAPPLE' : m.wallRunning ? 'WALL-RUN' : m.sliding ? 'SLIDE' : '';
+    const tag = m.dropping ? (m.chute ? 'PARACHUTE' : 'FREEFALL') : m.grapple ? 'GRAPPLE' : m.wallRunning ? 'WALL-RUN' : m.sliding ? 'SLIDE' : '';
     this.set('tag', e.stateTag, tag, (el, v) => { el.textContent = v; el.classList.toggle('on', !!v); });
 
     this.updateNums(game, dt);

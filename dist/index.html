@@ -91,13 +91,24 @@ button { font: inherit; color: inherit; }
 #play { position: fixed; inset: 0; touch-action: none; overflow: hidden; --btn-alpha: 0.9; }
 #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #play > *:not(#view):not(.btn):not(.slot) { pointer-events: none; }
-#slots, #slots .slot { pointer-events: auto !important; }
+#play > .slot { pointer-events: auto !important; }
 body.in-menu #play > *:not(#view) { display: none !important; }
 body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 
 #vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(200, 20, 50, 0.6) 100%); transition: opacity 0.2s; }
 #zone-tint { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(138, 107, 255, 0.04) 30%, rgba(138, 107, 255, 0.42) 100%); transition: opacity 0.3s; }
 #zone-tint.on { opacity: 1; }
+/* Speed effects */
+#speedfx {
+  position: absolute; inset: -12%; opacity: 0; transition: opacity 0.18s linear;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255, 255, 255, 0) 0deg 3.1deg, rgba(235, 245, 255, 0.55) 3.3deg 3.55deg, rgba(255, 255, 255, 0) 3.8deg 6.9deg);
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.6) 52%, #000 75%);
+          mask: radial-gradient(circle at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.6) 52%, #000 75%);
+  animation: speedlines 0.24s steps(3) infinite;
+}
+@keyframes speedlines { 0% { transform: rotate(0deg) scale(1); } 33% { transform: rotate(1.4deg) scale(1.05); } 66% { transform: rotate(-1.1deg) scale(1.02); } }
+#speedvig { position: absolute; inset: 0; opacity: 0; transition: opacity 0.2s linear; background: radial-gradient(ellipse at center, transparent 50%, rgba(120, 190, 255, 0.28) 100%); }
+@media (prefers-reduced-motion: reduce) { #speedfx { animation: none; } }
 
 #scope { position: absolute; inset: 0; opacity: 0; }
 #scope.on { opacity: 1; }
@@ -212,17 +223,21 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 }
 
 /* bottom: weapons + vitals */
-#bottom { position: absolute; left: 50%; bottom: calc(10px + var(--sb)); transform: translateX(-50%); display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: end; }
-#slots { display: flex; gap: 5px; grid-column: 1; grid-row: 1; }
-.slot { position: relative; width: 86px; padding: 5px 9px 5px; display: flex; flex-direction: column; gap: 1px; cursor: pointer; background: var(--panel-hud); border: 1px solid var(--line); border-radius: 9px; }
+#bottom { position: absolute; left: 50%; bottom: calc(10px + var(--sb)); transform: translateX(-50%); display: flex; gap: 14px; align-items: flex-end; }
+/* weapon slots are independent (each one can be moved in the HUD editor) */
+#play > .slot { position: absolute; bottom: calc(52px + var(--sb)); }
+#play > .slot.s0 { left: calc(50% - 166px); }
+#play > .slot.s1 { left: calc(50% - 72px); }
+#play > .slot.s2 { left: calc(50% + 22px); }
+.slot { box-sizing: border-box; width: 90px; height: 50px; padding: 5px 9px 5px; display: flex; flex-direction: column; gap: 1px; cursor: pointer; background: var(--panel-hud); border: 1px solid var(--line); border-radius: 9px; }
 .slot .skey { position: absolute; right: 7px; top: 5px; font: 600 10px var(--ui); color: rgba(255, 255, 255, 0.3); }
 .slot .sname { font: 600 12px var(--ui); letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; }
 .slot .sammo { font: 600 13px var(--ui); color: var(--muted); font-variant-numeric: tabular-nums; }
-.slot.knife { width: 70px; }
+.slot.knife { width: 76px; }
 .slot.active { border-color: rgba(255, 178, 36, 0.75); background: rgba(40, 28, 8, 0.6); box-shadow: inset 0 -2px 0 var(--accent); }
 .slot.active .sammo { color: var(--accent); }
 .slot.empty { opacity: 0.45; }
-#ammo { grid-column: 2; grid-row: 1; display: flex; align-items: baseline; gap: 4px; position: relative; min-width: 84px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+#ammo { order: 2; display: flex; align-items: baseline; gap: 4px; position: relative; min-width: 84px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
 #mag { font: 700 34px/0.9 var(--display); color: #fff; }
 #ammo .sep { color: var(--muted); font-size: 18px; }
 #ammo.melee .sep { display: none; }
@@ -230,7 +245,7 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 #reload-bar { position: absolute; left: 0; right: 0; bottom: -6px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.15); opacity: 0; overflow: hidden; }
 #reload-bar.on { opacity: 1; }
 #reload-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }
-#vitals { grid-column: 1 / 3; grid-row: 2; display: flex; flex-direction: column; gap: 5px; width: 300px; }
+#vitals { order: 1; display: flex; flex-direction: column; gap: 5px; width: 300px; padding-bottom: 4px; }
 .bar { position: relative; height: 7px; margin-left: 34px; background: rgba(0, 0, 0, 0.45); border-radius: 99px; overflow: visible; }
 .bar i { position: absolute; inset: 0; border-radius: 99px; transform-origin: left; transition: transform 0.15s; }
 .bar.shield i { background: linear-gradient(90deg, #3a8de8, var(--shield)); box-shadow: 0 0 8px rgba(78, 168, 255, 0.45); }
@@ -277,7 +292,7 @@ body:not(.touch) .btn.prompt::after { content: '  · E'; }
 .btn.crouch.cooling { border-color: rgba(255, 255, 255, 0.18); }
 .btn.cdable.cooling::before { content: ''; position: absolute; inset: -1.5px; border-radius: 50%; pointer-events: none; background: conic-gradient(rgba(0, 0, 0, 0.55) var(--cd), transparent 0); }
 .btn.grapple.hooked { border-color: #8fe6ff; box-shadow: 0 0 18px rgba(80, 220, 255, 0.6); }
-.btn.act.user-hidden { display: none !important; }
+#play > [data-act].user-hidden { display: none !important; }
 .touch-only { display: none !important; }
 body.touch .touch-only { display: flex !important; }
 body.touch #joy-hint, body.touch #look-hint { display: block !important; }
@@ -294,7 +309,8 @@ body.in-menu .fs-btn, body.editing .fs-btn, body.standalone .fs-btn { display: n
 
 @media (max-width: 700px) {
   #vitals { width: 220px; }
-  .slot { width: 72px; } .slot.knife { width: 60px; }
+  .slot { width: 76px; height: 46px; } .slot.knife { width: 64px; }
+  #play > .slot.s0 { left: calc(50% - 118px); } #play > .slot.s1 { left: calc(50% - 38px); } #play > .slot.s2 { left: calc(50% + 42px); }
   #mag { font-size: 28px; }
   #topbar .pill .lbl { display: none; }
   body.touch #look-hint { display: none !important; }
@@ -306,7 +322,9 @@ body.in-menu .fs-btn, body.editing .fs-btn, body.standalone .fs-btn { display: n
 }
 @media (orientation: portrait) {
   #topbar { left: calc(102px + var(--sl)); transform: none; }
-  #bottom { top: calc(56px + var(--st)); bottom: auto; left: calc(10px + var(--sl)); transform: none; }
+  #bottom { top: calc(108px + var(--st)); bottom: auto; left: calc(10px + var(--sl)); transform: none; }
+  #play > .slot { top: calc(56px + var(--st)); bottom: auto; }
+  #play > .slot.s0 { left: calc(10px + var(--sl)); } #play > .slot.s1 { left: calc(90px + var(--sl)); } #play > .slot.s2 { left: calc(170px + var(--sl)); }
   #killfeed { top: calc(180px + var(--st)); }
   body.touch #look-hint, body.touch #joy-hint { display: none !important; }
 }
@@ -404,6 +422,16 @@ body.cut .film .cutflash { animation: cut 0.45s ease-out; }
   .mbtn { padding: 8px 16px; font-size: 12px; }
 }
 
+/* ------------------------------------------------------------ spawn menu */
+.panel.spawn { max-height: calc(100vh - 32px); overflow-y: auto; }
+.sp-sec { font: 600 11px var(--ui); letter-spacing: 0.2em; color: var(--muted); margin-top: 6px; }
+.sp-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-grid .mbtn.sm { font-size: 11px; }
+.sp-grid .mbtn.done { background: rgba(79, 220, 138, 0.25); border-color: var(--health); }
+.practice-only { display: none !important; }
+body.practice.touch .practice-only, body.practice .btn.spawnbtn { display: flex !important; }
+.btn.spawnbtn { width: 50px; height: 50px; left: calc(30px + var(--sl)); top: calc(64px + var(--st)); color: #4fdc8a; border-color: rgba(79, 220, 138, 0.7); }
+
 /* ----------------------------------------------------------------- account */
 .acct-chip {
   position: absolute; z-index: 2; top: calc(16px + var(--st)); right: calc(max(16px, calc(var(--sr) + 12px)) + 130px);
@@ -492,10 +520,12 @@ body.editing #editor { display: flex; }
 .ed-l { display: flex; align-items: center; gap: 8px; font: 600 11px var(--ui); letter-spacing: 0.12em; color: var(--muted); flex: 1; min-width: 150px; }
 .ed-l input { flex: 1; }
 body.editing .overlay { display: none !important; }
-body.editing #play > *:not(#view):not(.btn.act) { display: none !important; }
-body.editing #play > .btn.act:not(#view) { display: flex !important; cursor: grab; }
-body.editing #play > .btn.act.user-hidden:not(#view) { opacity: 0.3; outline: 2px dashed var(--muted); outline-offset: 2px; }
-body.editing #play > .btn.act.ed-sel:not(#view) { outline: 2px solid var(--accent); outline-offset: 4px; }
+body.editing #play > *:not(#view):not([data-act]) { display: none !important; }
+body.editing #play > [data-act]:not(#view) { display: flex !important; cursor: grab; }
+body.editing #play > .slot:not(#view) { flex-direction: column; }
+body.editing #prompt:empty::before { content: 'SWAP / OPEN'; }
+body.editing #play > [data-act].user-hidden:not(#view) { opacity: 0.3; outline: 2px dashed var(--muted); outline-offset: 2px; }
+body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--accent); outline-offset: 4px; }
 
 .fatal { padding: 24px max(16px, var(--sl)); max-width: 60ch; }
 
@@ -526,7 +556,7 @@ body.editing #play > .btn.act.ed-sel:not(#view) { outline: 2px solid var(--accen
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.5.0',
+  version: '0.6.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -614,9 +644,12 @@ BR.CONFIG = {
       wallChainCooldown: 0.12, // short cooldown after a wall-jump so you can catch the next wall
     },
 
-    dropFallSpeed: 16,      // skydive terminal velocity
-    dropGlideSpeed: 24,     // skydive horizontal steering speed (big map: cover ground)
+    dropFallSpeed: 18,      // freefall terminal velocity
+    dropGlideSpeed: 22,     // freefall horizontal steering speed (big map: cover ground)
     dropAccel: 10,
+    chuteFallSpeed: 5.5,    // parachute open: slow descent...
+    chuteGlideSpeed: 13,    // ...and gentler steering
+    chuteAutoHeight: 22,    // the chute opens by itself this high above the ground
   },
 
   camera: {
@@ -874,6 +907,7 @@ BR.Audio = {
   swish(hit) { this.burst(3000, 0.8, 0.14, 0.12, 0, 'bandpass'); if (hit) this.tone(220, 120, 0.1, 0.25, 'square'); },
   unsheathe() { this.burst(5000, 2, 0.25, 0.08, 0, 'bandpass'); this.tone(2400, 3600, 0.2, 0.04, 'sine'); },
   coin() { this.tone(988, 988, 0.08, 0.12, 'square'); setTimeout(() => this.tone(1319, 1319, 0.2, 0.12, 'square'), 80); },
+  chute() { this.burst(700, 0.5, 0.6, 0.35, 0, 'lowpass'); this.burst(2400, 1, 0.25, 0.1, 0, 'bandpass'); },
   reload() { this.tone(500, 300, 0.05, 0.08, 'square'); },
 };
 
@@ -1746,6 +1780,8 @@ function makeTileTexture(grass) {
 //   Crouch while running = slide. Crouch otherwise = toggle crouch.
 // The grapple is started from Actor.tryGrapple() (it needs the aim ray).
 // =============================================================================
+const U_lerp = (a, b, t) => a + (b - a) * t;
+
 BR.Mover = class Mover {
   constructor(world) {
     const A = BR.CONFIG.actor;
@@ -1773,6 +1809,8 @@ BR.Mover = class Mover {
     this.wallRunCd = 0;
     this.mantleTop = null;
     this.dropping = false;
+    this.chute = false;      // parachute open (skydive)
+    this.chuteAt = 0;        // optional custom auto-open height (bots vary it)
     this.grapple = null;     // { x, y, z, t } while hooked
     this.padHit = false;
     this.events = {};        // one-frame flags: jump, land, slide, wallrun, walljump, mantle, pad, grappleEnd, tech
@@ -1811,14 +1849,22 @@ BR.Mover = class Mover {
     if (wl > 1e-4) { wx /= wl; wz /= wl; }
 
     // ---- skydive ----------------------------------------------------------
+    // Freefall until you press Jump (or get close to the ground), then the parachute opens.
     if (this.dropping) {
-      const tx = wx * M.dropGlideSpeed * frac, tz = wz * M.dropGlideSpeed * frac;
-      const k = 1 - Math.exp(-M.dropAccel * 0.25 * dt);
+      if (!this.chute) {
+        const groundY = this.world.groundAt(this.pos.x, this.pos.z, this.pos.y);
+        if (inp.jump || this.pos.y - groundY < (this.chuteAt || M.chuteAutoHeight)) { this.chute = true; ev.chute = true; this.jumpBuf = 0; }
+      }
+      const glide = this.chute ? M.chuteGlideSpeed : M.dropGlideSpeed, fall = this.chute ? M.chuteFallSpeed : M.dropFallSpeed;
+      const tx = wx * glide * frac, tz = wz * glide * frac;
+      const k = 1 - Math.exp(-M.dropAccel * (this.chute ? 0.35 : 0.25) * dt);
       this.vel.x += (tx - this.vel.x) * k;
       this.vel.z += (tz - this.vel.z) * k;
-      this.vel.y = Math.max(this.vel.y - M.gravity * dt, -M.dropFallSpeed);
+      // opening the chute brakes hard, then you float down
+      if (this.chute && this.vel.y < -fall) this.vel.y = U_lerp(this.vel.y, -fall, 1 - Math.exp(-6 * dt));
+      else this.vel.y = Math.max(this.vel.y - M.gravity * dt, -fall);
       this.integrate(dt, false);
-      if (this.onGround) { this.dropping = false; ev.land = true; this.landSpeed = M.dropFallSpeed * 0.5; }
+      if (this.onGround) { this.dropping = false; this.chute = false; ev.land = true; this.landSpeed = this.vel.y < -8 ? 8 : 4; this.jumpBuf = 0; }
       return;
     }
 
@@ -2488,9 +2534,12 @@ BR.Models = (function () {
     metal: new THREE.MeshPhongMaterial({ color: 0x5b636d, specular: 0x9aa3ad, shininess: 50 }),
     grip: new THREE.MeshLambertMaterial({ color: 0x1a1c1f }),
     blade: new THREE.MeshPhongMaterial({ color: 0xc8d0d8, specular: 0xffffff, shininess: 120, side: THREE.DoubleSide }),
-    lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }),
+    lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false }),
     lensDark: new THREE.MeshPhongMaterial({ color: 0x102030, specular: 0x88ccff, shininess: 120 }),
-    reticle: new THREE.MeshBasicMaterial({ color: 0xff3040 }),
+    reticle: new THREE.MeshBasicMaterial({ color: 0xff2a3a }),
+    dotHalo: new THREE.MeshBasicMaterial({ color: 0xff2a3a, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }),
+    lensRed: new THREE.MeshBasicMaterial({ color: 0xffd2a0, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }),
+    scopeTube: new THREE.MeshPhongMaterial({ color: 0x1d2025, specular: 0x555a60, shininess: 40, side: THREE.DoubleSide }),
     sightDot: new THREE.MeshBasicMaterial({ color: 0xff8a1f }),
     shell: new THREE.MeshLambertMaterial({ color: 0xc8202a }),
     brass: new THREE.MeshPhongMaterial({ color: 0xc89b3c, specular: 0xffe2a0, shininess: 60 }),
@@ -2580,13 +2629,17 @@ BR.Models = (function () {
       k.box(0.012, 0.012, 0.18, 0.02, 0.02, 0.15, M.metal);       // stock rods
       k.box(0.012, 0.012, 0.18, -0.02, 0.02, 0.15, M.metal);
       k.box(0.05, 0.07, 0.015, 0, 0.0, 0.24, M.grip);             // butt plate
-      // open mini red dot: base + hoop, dot floating in the middle
-      k.box(0.03, 0.012, 0.05, 0, 0.1, -0.06, M.dark);
-      k.box(0.004, 0.034, 0.012, 0.016, 0.122, -0.075, M.dark);
-      k.box(0.004, 0.034, 0.012, -0.016, 0.122, -0.075, M.dark);
-      k.box(0.036, 0.004, 0.012, 0, 0.139, -0.075, M.dark);
-      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 8), M.reticle); rd.position.set(0, 0.122, -0.075); g.add(rd);
-      const ss = new THREE.Object3D(); ss.position.set(0, 0.122, -0.075); g.add(ss);
+      // Tube red dot: mount, open tube with rims, faint tinted lens, crisp dot + halo
+      k.box(0.026, 0.012, 0.042, 0, 0.1, -0.062, M.dark);
+      k.box(0.012, 0.012, 0.016, 0.02, 0.122, -0.066, M.dark);                         // windage turret
+      k.box(0.012, 0.012, 0.016, 0, 0.142, -0.066, M.dark);                            // elevation turret
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.046, 24, 1, true), M.scopeTube);
+      tube.rotation.x = Math.PI / 2; tube.position.set(0, 0.122, -0.07); g.add(tube);
+      for (const z of [-0.093, -0.047]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.0024, 6, 24), M.metal); r.position.set(0, 0.122, z); g.add(r); }
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.016, 24), M.lensRed); lens.position.set(0, 0.122, -0.092); g.add(lens);
+      const halo = new THREE.Mesh(new THREE.CircleGeometry(0.0042, 16), M.dotHalo); halo.position.set(0, 0.122, -0.0915); g.add(halo);
+      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0015, 12), M.reticle); rd.position.set(0, 0.122, -0.091); g.add(rd);
+      const ss = new THREE.Object3D(); ss.position.set(0, 0.122, -0.07); g.add(ss);
       g.userData.sight = ss; g.userData.sightDist = 0.36;
       anchors(g, -0.34, 0.035, [-0.04, -0.01, 0.03]);
     },
@@ -2623,17 +2676,23 @@ BR.Models = (function () {
       k.box(0.055, 0.08, 0.2, 0, 0.01, 0.23, S);                  // stock
       k.box(0.06, 0.1, 0.02, 0, -0.005, 0.33, M.grip);            // butt pad
       if (holo) {
-        // Holographic sight: open frame, tinted glass, glowing reticle
-        k.box(0.06, 0.03, 0.08, 0, 0.11, -0.08, M.dark);          // base
-        k.box(0.006, 0.065, 0.07, 0.03, 0.155, -0.08, M.dark);    // frame sides
-        k.box(0.006, 0.065, 0.07, -0.03, 0.155, -0.08, M.dark);
-        k.box(0.066, 0.006, 0.07, 0, 0.19, -0.08, M.dark);        // frame top
-        const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.054, 0.058), M.lens);
-        glass.position.set(0, 0.156, -0.1); g.add(glass);
-        const ret = new THREE.Mesh(new THREE.RingGeometry(0.006, 0.009, 16), M.reticle);
-        ret.position.set(0, 0.156, -0.099); g.add(ret);
-        const dot = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 8), M.reticle);
-        dot.position.set(0, 0.156, -0.099); g.add(dot);
+        // Holographic sight (EOTech-style): mount, battery body, hooded window,
+        // clean 65-MOA ring with ticks + centre dot, soft glow
+        k.box(0.05, 0.016, 0.1, 0, 0.104, -0.08, M.dark);                          // rail mount
+        k.box(0.064, 0.024, 0.07, 0, 0.124, -0.075, M.scopeTube);                 // body under the window
+        for (let i = 0; i < 3; i++) k.box(0.008, 0.006, 0.008, -0.034, 0.124, -0.058 - i * 0.014, M.metal);   // buttons
+        for (const x of [-0.031, 0.031]) k.box(0.005, 0.05, 0.078, x, 0.16, -0.08, M.scopeTube);       // hood sides
+        k.box(0.058, 0.005, 0.078, 0, 0.188, -0.08, M.scopeTube);                                      // hood top
+        for (const x of [-0.028, 0.028]) k.cyl(0.0055, 0.078, x, 0.185, -0.08, M.scopeTube, 'z', 8);   // rounded corners
+        k.box(0.064, 0.004, 0.004, 0, 0.135, -0.118, M.metal);                     // front window lip
+        const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.056, 0.05), M.lens);
+        glass.position.set(0, 0.16, -0.1); g.add(glass);
+        const ret = new THREE.Group(); ret.position.set(0, 0.156, -0.099); g.add(ret);
+        ret.add(new THREE.Mesh(new THREE.RingGeometry(0.0062, 0.0072, 48), M.reticle));
+        ret.add(new THREE.Mesh(new THREE.RingGeometry(0.0056, 0.0078, 48), M.dotHalo));
+        for (let i = 0; i < 4; i++) { const t = new THREE.Mesh(new THREE.PlaneGeometry(0.0009, 0.0022), M.reticle); const a2 = i * Math.PI / 2; t.position.set(Math.cos(a2) * 0.0081, Math.sin(a2) * 0.0081, 0); t.rotation.z = a2 + Math.PI / 2; ret.add(t); }
+        ret.add(new THREE.Mesh(new THREE.CircleGeometry(0.0011, 12), M.reticle));
+        const hh = new THREE.Mesh(new THREE.CircleGeometry(0.0026, 12), M.dotHalo); hh.position.z = -0.0002; ret.add(hh);
         const sight = new THREE.Object3D(); sight.position.set(0, 0.156, -0.1); g.add(sight);
         g.userData.sight = sight; g.userData.sightDist = 0.44;
       } else {
@@ -2698,9 +2757,9 @@ BR.Models = (function () {
       // Curved handle (skin material) with a guard bump
       const hd = new THREE.Shape();
       hd.moveTo(0.004, 0.016);
-      hd.quadraticCurveTo(-0.06, 0.03, -0.128, 0.046);                // top line curves up toward the ring
-      hd.lineTo(-0.134, 0.022);
-      hd.quadraticCurveTo(-0.07, 0.006, -0.022, -0.012);              // belly
+      hd.quadraticCurveTo(-0.045, 0.034, -0.098, 0.064);              // shorter handle, sweeping up hard toward the ring
+      hd.lineTo(-0.108, 0.042);
+      hd.quadraticCurveTo(-0.052, 0.006, -0.02, -0.012);              // curved belly
       hd.quadraticCurveTo(-0.008, -0.03, 0.006, -0.026);              // finger guard
       hd.lineTo(0.004, -0.014);
       hd.closePath();
@@ -2708,16 +2767,16 @@ BR.Models = (function () {
       // Steel liner peeking out between the scales
       const liner = new THREE.Mesh(ext(hd, 0.007, 0.0005), M.metal); liner.scale.set(1.03, 1.08, 1); liner.position.set(0.002, -0.001, 0); k.add(liner);
       // Pins
-      for (const [x, y] of [[-0.03, 0.012], [-0.075, 0.024], [-0.11, 0.033]]) {
+      for (const [x, y] of [[-0.025, 0.013], [-0.055, 0.027], [-0.083, 0.043]]) {
         const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 0.02, 8), M.blade); pin.rotation.x = Math.PI / 2; pin.position.set(x, y, 0); k.add(pin);
       }
       // Finger ring at the butt
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.0062, 10, 22), M.metal);
-      ring.position.set(-0.152, 0.036, 0); k.add(ring);
+      ring.position.set(-0.12, 0.066, 0); k.add(ring);
       k.rotation.y = Math.PI / 2;      // +x -> -z
       g.add(k);
       g.userData.blade = k;
-      hands(g, [0, 0.012, 0.07], null, null);
+      hands(g, [0, 0.02, 0.05], null, null);
       anchors(g, -0.15, 0, [0, -0.02, 0.12]);
       g.userData.flash.visible = false;
     },
@@ -2959,8 +3018,35 @@ BR.Models = (function () {
     return g;
   }
 
+  // Parachute: striped canopy + suspension lines. Origin = the wearer's shoulders.
+  function parachute(colorA, colorB) {
+    const g = new THREE.Group();
+    const geo = new THREE.SphereGeometry(2.3, 16, 5, 0, Math.PI * 2, 0, 1.15);
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
+    const a = new THREE.Color(colorA), b = new THREE.Color(colorB);
+    for (let i = 0; i < pos.count; i++) {
+      const ang = Math.atan2(pos.getZ(i), pos.getX(i)), c = Math.floor((ang + Math.PI) / (Math.PI / 4)) % 2 ? a : b;
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const dome = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    dome.scale.set(1, 0.55, 1); dome.position.y = 3.2;
+    g.add(dome);
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0x2a2a2a });
+    for (let i = 0; i < 6; i++) {
+      const ang = i / 6 * Math.PI * 2, top = new THREE.Vector3(Math.cos(ang) * 2.0, 3.6, Math.sin(ang) * 2.0), bot = new THREE.Vector3(Math.cos(ang) * 0.2, 0.1, Math.sin(ang) * 0.15);
+      const d = top.clone().sub(bot), len = d.length();
+      const l = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, len, 3), lineMat);
+      l.position.copy(bot).addScaledVector(d, 0.5);
+      l.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+      g.add(l);
+    }
+    return g;
+  }
+
   return {
     SKINS, TRACERS, CHARMS, BLUEPRINTS, GLOVES,
+    parachute,
     hand, gloveMats,
     merged,
     // A world-space weapon mesh (single draw call), barrel along -Z.
@@ -3073,7 +3159,7 @@ BR.Models = (function () {
           m.rotation.set(0.15, 0.25, -0.5); m.scale.setScalar(1.35);
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
-          const P = new THREE.Vector3(0, 0.036, 0.152).applyMatrix4(m.matrix);
+          const P = new THREE.Vector3(0, 0.066, 0.12).applyMatrix4(m.matrix);   // ring centre
           const axis = new THREE.Vector3(1, 0, 0).applyQuaternion(m.quaternion).normalize();
           const spin = new THREE.Group();
           spin.position.copy(P); m.position.sub(P);
@@ -3181,11 +3267,11 @@ BR.Models = (function () {
         const t = 1 - this.drawT / this.drawDur;
         if (def.melee) {
           // CS-style karambit deploy: snap into view, twirl twice around the ring, settle
-          const rise = smooth(t / 0.14), out = 1 - smooth((t - 0.7) / 0.3);
+          const rise = smooth(t / 0.08), out = 1 - smooth((t - 0.6) / 0.4);
           oy += -(1 - rise) * 0.16 + out * rise * 0.06;
           ox += -out * rise * 0.06; oz += -out * 0.14;
           orz += -out * 0.3; orx += out * 0.15;
-          spinAng = easeInOut((t - 0.08) / 0.72) * Math.PI * 4;
+          spinAng = easeInOut(t / 0.6) * Math.PI * 4;                       // starts right away
           const turns = Math.floor(spinAng / (Math.PI * 2) + 0.25);
           if (turns > this.spinSwish) { this.spinSwish = turns; BR.Audio.swish(false); }
         } else {
@@ -3502,45 +3588,71 @@ BR.Actor = class Actor {
 
   // ---------------------------------------------------------------- visuals
   buildMesh() {
+    // Hierarchy: body > hips, two legs pivoting at the hip, and an upper body
+    // (torso, head, pack, gun) pivoting at the waist — so poses read clearly.
     const S = sharedGeo();
     const g = new THREE.Group();
     const mat = new THREE.MeshLambertMaterial({ color: this.color });
     const body = new THREE.Group();
-    const torso = new THREE.Mesh(S.torso, mat); torso.position.y = 1.08;
-    const hips = new THREE.Mesh(S.hips, S.dark); hips.position.y = 0.72;
-    const l1 = new THREE.Mesh(S.leg, S.dark); l1.position.set(-0.15, 0.39, 0);
-    const l2 = new THREE.Mesh(S.leg, S.dark); l2.position.set(0.15, 0.39, 0);
-    const head = new THREE.Mesh(S.head, mat); head.position.y = 1.64;
-    const visor = new THREE.Mesh(S.visor, S.visorMat); visor.position.set(0, 1.66, -0.19);
-    const pack = new THREE.Mesh(S.pack, S.dark); pack.position.set(0, 1.1, 0.26);
-    const gun = new THREE.Group(); gun.position.set(0.26, 1.18, -0.2);   // holds the real weapon model
-    body.add(torso, hips, l1, l2, head, visor, pack, gun);
+    const hips = new THREE.Mesh(S.hips, S.dark); hips.position.y = 0.74;
+    const leg = x => { const p = new THREE.Group(); p.position.set(x, 0.8, 0); const m = new THREE.Mesh(S.leg, S.dark); m.position.y = -0.4; p.add(m); return p; };
+    const l1 = leg(-0.15), l2 = leg(0.15);
+    const upper = new THREE.Group(); upper.position.y = 0.78;
+    const torso = new THREE.Mesh(S.torso, mat); torso.position.y = 0.3;
+    const head = new THREE.Mesh(S.head, mat); head.position.y = 0.86;
+    const visor = new THREE.Mesh(S.visor, S.visorMat); visor.position.set(0, 0.88, -0.19);
+    const pack = new THREE.Mesh(S.pack, S.dark); pack.position.set(0, 0.32, 0.26);
+    const gun = new THREE.Group(); gun.position.set(0.26, 0.4, -0.2);   // holds the real weapon model
+    upper.add(torso, head, visor, pack, gun);
+    body.add(hips, l1, l2, upper);
     g.add(body);
-    g.userData = { body, l1, l2, gun, mat, t: 0 };
+    const chute = BR.Models.parachute(this.color, 0xf2f2f2);
+    chute.position.y = 1.5; chute.visible = false;
+    g.add(chute);
+    g.userData = { body, upper, l1, l2, gun, mat, chute, t: 0 };
     return g;
   }
 
   syncMesh(dt) {
-    const m = this.mover, u = this.mesh.userData;
+    const m = this.mover, u = this.mesh.userData, U = BR.util;
     this.mesh.position.copy(m.pos);
-    this.mesh.rotation.y = this.yaw;
     const sp = m.speedH;
-    u.t += dt * sp * 1.6;
-    const swing = m.onGround && !m.sliding ? Math.sin(u.t) * Math.min(0.7, sp * 0.08) : 0.3;
-    u.l1.rotation.x = swing; u.l2.rotation.x = -swing;
-    // Lean back while sliding, spread out while skydiving
-    const tilt = m.sliding ? 0.9 : m.dropping ? -1.2 : m.crouched ? 0.35 : 0;
-    u.body.rotation.x = BR.util.damp(u.body.rotation.x, tilt, 12, dt);
-    u.body.position.y = BR.util.damp(u.body.position.y, m.sliding ? -0.25 : m.crouched ? -0.45 : 0, 12, dt);
-    // Lean into wall-runs
-    u.body.rotation.z = BR.util.damp(u.body.rotation.z, m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : 0, 10, dt);
-    u.gun.rotation.x = -this.pitch * 0.6;
+    // While sliding the body faces where it's going and the upper body twists to keep aiming
+    const velYaw = Math.atan2(-m.vel.x, -m.vel.z);
+    const faceYaw = m.sliding && sp > 1 ? velYaw : this.yaw;
+    this.mesh.rotation.y = faceYaw;
+    u.upper.rotation.y = U.damp(u.upper.rotation.y, m.sliding ? U.clamp(U.wrapAngle(this.yaw - faceYaw), -1.1, 1.1) : 0, 14, dt);
+    u.t += dt * sp * 1.5;
+    let l1 = 0, l2 = 0, lean = 0, bodyY = 0, bodyX = 0;
+    if (m.dropping && !m.chute) {                 // freefall: flat, limbs spread
+      bodyX = -1.35; bodyY = 0.9; l1 = 0.35; l2 = 0.5; lean = -0.2;
+    } else if (m.dropping) {                      // under canopy: upright, legs dangling
+      const sw = Math.sin(performance.now() / 400) * 0.15; l1 = 0.2 + sw; l2 = 0.25 - sw;
+    } else if (m.sliding) {                       // clean slide: lead leg out straight, trail leg tucked, torso back
+      bodyY = -0.42; l1 = -1.4; l2 = -0.85; lean = 0.5;
+    } else if (m.crouched) {
+      bodyY = -0.32; l1 = -0.9; l2 = -0.5; lean = 0.25;
+    } else if (!m.onGround) {                     // jump: knees up a bit
+      l1 = -0.5; l2 = 0.2; lean = 0.05;
+    } else {                                      // run cycle
+      const a = Math.min(0.75, sp * 0.085);
+      l1 = Math.sin(u.t) * a; l2 = -Math.sin(u.t) * a; lean = Math.min(sp * 0.012, 0.12);
+    }
+    u.l1.rotation.x = U.damp(u.l1.rotation.x, l1, 16, dt);
+    u.l2.rotation.x = U.damp(u.l2.rotation.x, l2, 16, dt);
+    u.upper.rotation.x = U.damp(u.upper.rotation.x, lean, 12, dt);
+    u.body.rotation.x = U.damp(u.body.rotation.x, bodyX, 8, dt);
+    u.body.position.y = U.damp(u.body.position.y, bodyY, 12, dt);
+    u.body.rotation.z = U.damp(u.body.rotation.z, m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : m.sliding ? 0.12 : 0, 10, dt);
+    u.gun.rotation.x = -this.pitch * 0.6 - u.upper.rotation.x;
+    u.chute.visible = !!(m.dropping && m.chute);
+    if (u.chute.visible) u.chute.rotation.z = Math.sin(performance.now() / 700) * 0.06;
     // Show the gun this bot is actually holding
     const wid = this.weapon ? this.weapon.id : null;
     if (u.wid !== wid) {
       u.wid = wid;
       while (u.gun.children.length) u.gun.remove(u.gun.children[0]);
-      if (wid) { const m = BR.Models.worldWeapon(wid); m.scale.setScalar(wid === 'knife' ? 1.6 : 1.15); u.gun.add(m); }
+      if (wid) { const gm = BR.Models.worldWeapon(wid); gm.scale.setScalar(wid === 'knife' ? 1.6 : 1.15); u.gun.add(gm); }
     }
   }
 
@@ -3557,8 +3669,9 @@ BR.Actor = class Actor {
   // Ragdoll-lite: topple over
   dieVisual() {
     if (!this.mesh) return;
-    this.mesh.userData.body.rotation.x = -Math.PI / 2;
-    this.mesh.userData.body.position.y = 0.2;
+    const u = this.mesh.userData;
+    u.body.rotation.x = -Math.PI / 2; u.body.position.y = 0.2;
+    u.chute.visible = false;
   }
 };
 
@@ -3576,6 +3689,7 @@ const PREF_DIST = { knife: 1.5, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holo
 BR.BotBrain = class BotBrain {
   constructor(actor, game, diff) {
     this.a = actor;
+    actor.mover.chuteAt = 24 + Math.random() * 36;   // bots open their parachutes at different heights
     this.g = game;
     this.d = diff;
     this.state = 'drop';
@@ -3657,6 +3771,9 @@ BR.BotBrain = class BotBrain {
       if (w && w.mag < w.def.mag * 0.6) BR.Weapons.startReload(w, a);
     }
     this.unstick(dt);
+    // Practice-mode dummies: passive bots never shoot; still bots don't move either
+    if (this.passive) a.fireHeld = false;
+    if (this.still) { inp.mx = inp.mz = 0; inp.jump = inp.crouch = false; }
   }
 
   think() {
@@ -4517,6 +4634,7 @@ BR.Input = class Input {
       if (e.code === 'KeyG') this.press('grapple');
       if (e.code === 'KeyV') this.press('inspect');
       if (e.code === 'KeyX') this.press('knife');
+      if (e.code === 'KeyB') this.press('spawnmenu');
       if (e.code === 'Digit3') this.press('slot2');
       if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
       if (e.code === 'KeyR') this.press('reload');
@@ -4551,6 +4669,15 @@ BR.Input = class Input {
       if (this.locked || this.dragging) { this.lookDX += e.movementX * 0.4; this.lookDY += e.movementY * 0.4; }
     });
     this.root.addEventListener('contextmenu', e => e.preventDefault());
+    // Mouse clicks on on-screen buttons (pause, slots, spawn, pickup...) work on desktop too
+    this.root.addEventListener('click', e => {
+      if (this.usingTouch || this.editing) return;
+      const b = e.target.closest('[data-act]');
+      if (!b) return;
+      const act = b.dataset.act;
+      if (act === 'fire' || act === 'firel' || act === 'ads') return;
+      this.press(act);
+    });
     document.addEventListener('pointerlockchange', () => { this.locked = document.pointerLockElement === this.root; });
     window.addEventListener('wheel', e => { if (this.locked) this.press('swap'); }, { passive: true });
     window.addEventListener('blur', () => this.reset());
@@ -4577,7 +4704,8 @@ BR.Layout = class Layout {
     this.input = input;
     if (!settings.layout) settings.layout = { alpha: 0.85 };
     this.play = document.getElementById('play');
-    this.buttons = Array.from(this.play.querySelectorAll('.btn.act'));
+    // Everything tappable on the HUD: action buttons, weapon slots, pickup button, minimap, pause, spawn
+    this.buttons = Array.from(this.play.querySelectorAll(':scope > [data-act]'));
     this.sel = null;
     const $ = id => document.getElementById(id);
     this.ui = { bar: $('editor'), name: $('ed-sel'), size: $('ed-size'), hide: $('ed-hide'), alpha: $('ed-alpha') };
@@ -4585,6 +4713,10 @@ BR.Layout = class Layout {
     this.apply();
     window.addEventListener('resize', () => this.apply());
   }
+
+  // Round action buttons resize by diameter (px); everything else scales (percent).
+  round(b) { return b.classList.contains('act'); }
+  half(b, e) { return this.round(b) ? { w: e.s / 2, h: e.s / 2 } : { w: (e.w * e.s / 100) / 2, h: (e.h * e.s / 100) / 2 }; }
 
   orient() { return window.innerWidth >= window.innerHeight ? 'land' : 'port'; }
   table() { const L = this.settings.layout; return L[this.orient()] || (L[this.orient()] = {}); }
@@ -4596,13 +4728,20 @@ BR.Layout = class Layout {
     for (const b of this.buttons) {
       const e = t[b.dataset.act];
       if (e) {
-        Object.assign(b.style, {
-          left: `calc(${(e.x * 100).toFixed(3)}% - ${e.s / 2}px)`, top: `calc(${(e.y * 100).toFixed(3)}% - ${e.s / 2}px)`,
-          right: 'auto', bottom: 'auto', width: e.s + 'px', height: e.s + 'px',
-        });
+        if (this.round(b)) {
+          Object.assign(b.style, {
+            left: `calc(${(e.x * 100).toFixed(3)}% - ${e.s / 2}px)`, top: `calc(${(e.y * 100).toFixed(3)}% - ${e.s / 2}px)`,
+            right: 'auto', bottom: 'auto', width: e.s + 'px', height: e.s + 'px',
+          });
+        } else {
+          Object.assign(b.style, {
+            left: `calc(${(e.x * 100).toFixed(3)}% - ${e.w / 2}px)`, top: `calc(${(e.y * 100).toFixed(3)}% - ${e.h / 2}px)`,
+            right: 'auto', bottom: 'auto', transform: `scale(${e.s / 100})`, transformOrigin: '50% 50%',
+          });
+        }
         b.classList.toggle('user-hidden', !!e.hide);
       } else {
-        b.style.left = b.style.top = b.style.right = b.style.bottom = b.style.width = b.style.height = '';
+        b.style.left = b.style.top = b.style.right = b.style.bottom = b.style.width = b.style.height = b.style.transform = '';
         b.classList.remove('user-hidden');
       }
     }
@@ -4614,7 +4753,10 @@ BR.Layout = class Layout {
     for (const b of this.buttons) {
       if (t[b.dataset.act]) continue;
       const r = b.getBoundingClientRect();
-      t[b.dataset.act] = { x: (r.left + r.width / 2) / W, y: (r.top + r.height / 2) / H, s: Math.round(r.width) || 60, hide: false };
+      const e = { x: (r.left + r.width / 2) / W, y: (r.top + r.height / 2) / H, hide: false };
+      if (this.round(b)) e.s = Math.round(r.width) || 60;
+      else { e.s = 100; e.w = b.offsetWidth || r.width; e.h = b.offsetHeight || r.height; }
+      t[b.dataset.act] = e;
     }
   }
 
@@ -4645,6 +4787,8 @@ BR.Layout = class Layout {
     b.classList.add('ed-sel');
     const e = this.table()[b.dataset.act];
     this.ui.name.textContent = b.getAttribute('aria-label') + (b.dataset.act === 'firel' ? ' (2nd)' : '');
+    // round buttons: diameter in px; other elements: scale in %
+    this.ui.size.min = this.round(b) ? 36 : 50; this.ui.size.max = this.round(b) ? 140 : 200;
     this.ui.size.value = e.s;
     this.ui.hide.checked = !!e.hide;
   }
@@ -4665,9 +4809,9 @@ BR.Layout = class Layout {
         const d = this.drag;
         if (!d || d.id !== ev.pointerId || !this.input.editing) return;
         const e = this.table()[b.dataset.act];
-        const W = window.innerWidth, H = window.innerHeight, h = e.s / 2;
-        e.x = BR.util.clamp(ev.clientX - d.dx, h, W - h) / W;
-        e.y = BR.util.clamp(ev.clientY - d.dy, h, H - h) / H;
+        const W = window.innerWidth, H = window.innerHeight, hf = this.half(b, e);
+        e.x = BR.util.clamp(ev.clientX - d.dx, hf.w, W - hf.w) / W;
+        e.y = BR.util.clamp(ev.clientY - d.dy, hf.h, H - hf.h) / H;
         this.apply();
       });
       const end = ev => { if (this.drag && this.drag.id === ev.pointerId) { this.drag = null; this.save(); } };
@@ -5104,6 +5248,7 @@ const ICON = {
   swap: '<svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
   fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   knife: '<svg viewBox="0 0 24 24"><path d="M4 20c2-1 4-1 6-3l9-11c1-1 1-2 0-3-3 2-7 6-10 9l-2 4"/><circle cx="5.5" cy="18.5" r="1.6"/></svg>',
+  spawn: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>',
   grapple: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7L6 18"/><path d="M6 18l-2 2M9 21l-3-3 3-3"/><circle cx="17" cy="7" r="2"/></svg>',
 };
 
@@ -5130,6 +5275,8 @@ BR.HUD = class HUD {
   <canvas id="view"></canvas>
   <div id="vignette"></div>
   <div id="zone-tint"></div>
+  <div id="speedvig"></div>
+  <div id="speedfx"></div>
   <div id="scope"><div class="scope-ring"></div></div>
   <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
@@ -5143,7 +5290,7 @@ BR.HUD = class HUD {
   </div>
   <button class="btn pause" data-act="pause" aria-label="Pause">${ICON.pause}</button>
   <div id="killfeed"></div>
-  <button class="btn mapbtn" data-act="map" aria-label="Map"><canvas id="minimap" width="220" height="220"></canvas></button>
+  <button class="btn mapbtn" data-act="map" aria-label="Minimap"><canvas id="minimap" width="220" height="220"></canvas></button>
   <div id="bigmap"><canvas id="bigmap-cv" width="720" height="720"></canvas><div class="bm-hint">Tap the minimap to close</div></div>
   <div id="loc"></div>
   <div id="fps"></div>
@@ -5151,12 +5298,10 @@ BR.HUD = class HUD {
   <div id="state-tag"></div>
   <div id="tech"></div>
 
+  <div class="slot s0" data-act="slot0" aria-label="Weapon slot 1"><span class="skey">1</span><span class="sname">—</span><span class="sammo"></span></div>
+  <div class="slot s1" data-act="slot1" aria-label="Weapon slot 2"><span class="skey">2</span><span class="sname">—</span><span class="sammo"></span></div>
+  <div class="slot s2 knife" data-act="slot2" aria-label="Karambit slot"><span class="skey">3</span><span class="sname">Karambit</span><span class="sammo">MELEE</span></div>
   <div id="bottom">
-    <div id="slots">
-      <div class="slot" data-act="slot0"><span class="skey">1</span><span class="sname">—</span><span class="sammo"></span></div>
-      <div class="slot" data-act="slot1"><span class="skey">2</span><span class="sname">—</span><span class="sammo"></span></div>
-      <div class="slot knife" data-act="slot2"><span class="skey">3</span><span class="sname">Karambit</span><span class="sammo">MELEE</span></div>
-    </div>
     <div id="ammo"><span id="mag" class="num">0</span><span class="sep">/</span><span id="reserve" class="num">0</span><div id="reload-bar"><i></i></div></div>
     <div id="vitals">
       <div class="bar shield"><i id="shield-fill"></i><span id="shield-txt">0</span></div>
@@ -5164,7 +5309,7 @@ BR.HUD = class HUD {
     </div>
   </div>
 
-  <button id="prompt" class="btn prompt hidden" data-act="interact">Swap</button>
+  <button id="prompt" class="btn prompt hidden" data-act="interact" aria-label="Pickup / open button">Swap</button>
 
   <div id="joy-base"><div id="joy-knob"></div></div>
   <button class="btn act firel touch-only" data-act="firel" aria-label="Fire">${ICON.fire}</button>
@@ -5176,6 +5321,7 @@ BR.HUD = class HUD {
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>AIM</span></button>
   <button class="btn act swap touch-only" data-act="swap" aria-label="Swap weapon">${ICON.swap}</button>
   <button class="btn act knife touch-only" data-act="knife" aria-label="Knife">${ICON.knife}<span>KNIFE</span></button>
+  <button class="btn act spawnbtn practice-only" data-act="spawnmenu" aria-label="Spawn menu">${ICON.spawn}<span>SPAWN</span></button>
 </div>
 
 <button id="fs-game" class="btn fs-btn" aria-label="Fullscreen">${ICON.fs}</button>
@@ -5207,6 +5353,7 @@ BR.HUD = class HUD {
     </div>
     <nav class="menu-nav">
       <button id="btn-play" class="mbtn big hot"><svg viewBox="0 0 24 24" class="play-ic"><path d="M8 5l11 7-11 7z"/></svg>Play</button>
+      <button id="btn-practice" class="mbtn">PRACTICE</button>
       <button id="btn-shop" class="mbtn">SHOP</button>
       <button id="btn-settings" class="mbtn">SETTINGS</button>
       <button id="btn-hud" class="mbtn">CUSTOMIZE HUD</button>
@@ -5311,6 +5458,36 @@ BR.HUD = class HUD {
   </div>
 </div>
 
+<div id="spawnmenu" class="overlay hidden">
+  <div class="panel metal wide spawn">
+    <div class="ptitle">SPAWN</div>
+    <div class="sp-sec">WEAPONS</div>
+    <div class="sp-grid" id="sp-weapons"></div>
+    <div class="sp-sec">ITEMS</div>
+    <div class="sp-grid">
+      <button class="mbtn sm" data-sp="ammo">FULL AMMO</button>
+      <button class="mbtn sm" data-sp="heal">FULL HEALTH + SHIELD</button>
+      <button class="mbtn sm" data-sp="item" data-arg="heal">MEDKIT</button>
+      <button class="mbtn sm" data-sp="item" data-arg="shield">SHIELD CELL</button>
+      <button class="mbtn sm" data-sp="item" data-arg="ammo">AMMO BOX</button>
+      <button class="mbtn sm" data-sp="chest">CHEST</button>
+    </div>
+    <div class="sp-sec">BOTS</div>
+    <div class="sp-grid">
+      <button class="mbtn sm" data-sp="bot" data-arg="dummy">DUMMY · STANDS STILL, NO SHOOTING</button>
+      <button class="mbtn sm" data-sp="bot" data-arg="moving">MOVING DUMMY · NO SHOOTING</button>
+      <button class="mbtn sm hot" data-sp="bot" data-arg="combat">COMBAT BOT · SHOOTS BACK</button>
+      <button class="mbtn sm" data-sp="clearbots">CLEAR ALL BOTS</button>
+    </div>
+    <div class="sp-sec">MOVEMENT</div>
+    <div class="sp-grid">
+      <button class="mbtn sm" data-sp="skydive">SKYDIVE FROM 110 M</button>
+      <button class="mbtn sm" data-sp="teleport">TELEPORT TO A LOCATION</button>
+    </div>
+    <button id="sp-close" class="mbtn hot">BACK TO PRACTICE</button>
+  </div>
+</div>
+
 <div id="pause" class="overlay hidden">
   <div class="panel metal">
     <div class="ptitle">PAUSED</div>
@@ -5351,11 +5528,11 @@ BR.HUD = class HUD {
       killfeed: $('killfeed'), minimap: $('minimap'), toast: $('toast'), fps: $('fps'),
       mag: $('mag'), reserve: $('reserve'), reloadBar: $('reload-bar'), reloadFill: $('reload-bar').firstElementChild,
       shieldFill: $('shield-fill'), healthFill: $('health-fill'), shieldTxt: $('shield-txt'), healthTxt: $('health-txt'),
-      slots: Array.from(document.querySelectorAll('#slots .slot')),
+      slots: Array.from(document.querySelectorAll('#play > .slot')),
       prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'),
       dmgDirs: $('dmg-dirs'), dmgNums: $('dmg-nums'), vignette: $('vignette'), zoneTint: $('zone-tint'),
-      stateTag: $('state-tag'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
-      grapBtn: document.querySelector('.btn.grapple'), crouchBtn: document.querySelector('.btn.crouch'),
+      stateTag: $('state-tag'), speedfx: $('speedfx'), speedvig: $('speedvig'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
+      grapBtn: document.querySelector('.btn.grapple'), crouchBtn: document.querySelector('.btn.crouch'), jumpBtn: document.querySelector('.btn.jump'),
     };
     this.cache = {};
     this.mm = this.el.minimap.getContext('2d');
@@ -5441,6 +5618,8 @@ BR.HUD = class HUD {
       el.classList.toggle('cooling', v > 0);
       el.style.setProperty('--cd', (v / BR.CONFIG.move.tech.superJumpCooldown * 360).toFixed(0) + 'deg');
     });
+    const jLbl = m.dropping ? (m.chute ? 'JUMP' : 'CHUTE') : 'JUMP';
+    this.set('jl', e.jumpBtn, jLbl, (el, v) => { el.querySelector('span').textContent = v; el.classList.toggle('on-toggle', v === 'CHUTE'); });
     const cLbl = m.sliding ? 'SLIDE' : m.crouched ? 'STAND' : m.speedH >= BR.CONFIG.move.runSpeed * BR.CONFIG.move.slideMinSpeed ? 'SLIDE' : 'CROUCH';
     this.set('cl', e.crouchBtn, cLbl, (el, v) => { el.querySelector('span').textContent = v; el.classList.toggle('on-toggle', m.crouched); });
 
@@ -5462,8 +5641,13 @@ BR.HUD = class HUD {
     this.set('vig', e.vignette, Math.round(hurt * 20), (el, v) => (el.style.opacity = Math.max(0, (v / 20) - 0.25)));
     this.set('zt2', e.zoneTint, p.alive && !game.practice && z.outside(p.pos), (el, v) => el.classList.toggle('on', v));
 
+    // Speed effects: lines + edge glow once you're well past running speed (freefall counts)
+    const v3 = Math.hypot(m.vel.x, m.vel.y * 0.8, m.vel.z);
+    const spdK = p.alive ? Math.round(BR.util.clamp((v3 - BR.CONFIG.move.runSpeed * 1.15) / 7, 0, 1) * 20) / 20 : 0;
+    this.set('spd', e.speedfx, spdK, (el, v) => { el.style.opacity = v; e.speedvig.style.opacity = v * 0.9; });
+
     // Movement state tag
-    const tag = m.dropping ? 'SKYDIVE' : m.grapple ? 'GRAPPLE' : m.wallRunning ? 'WALL-RUN' : m.sliding ? 'SLIDE' : '';
+    const tag = m.dropping ? (m.chute ? 'PARACHUTE' : 'FREEFALL') : m.grapple ? 'GRAPPLE' : m.wallRunning ? 'WALL-RUN' : m.sliding ? 'SLIDE' : '';
     this.set('tag', e.stateTag, tag, (el, v) => { el.textContent = v; el.classList.toggle('on', !!v); });
 
     this.updateNums(game, dt);
@@ -5742,6 +5926,9 @@ BR.Game = class Game {
     this.loot = new BR.Loot(this);
     this.loot.spawnFromWorld(this.world);
     this.zone = new BR.Zone(this, this.world);
+    this.playerChute = BR.Models.parachute(0xffb224, 0x1b1f27);
+    this.playerChute.visible = false;
+    this.scene.add(this.playerChute);
     this.actors = [];
     this.player = null;
     this.time = 0;
@@ -5793,8 +5980,10 @@ BR.Game = class Game {
   }
 
   // ------------------------------------------------------------------ match
-  startMatch() {
+  // opts.practice: no bots, no storm, spawn menu, respawn on death
+  startMatch(opts) {
     const S = this.settings, C = BR.CONFIG;
+    const practiceMode = !!(opts && opts.practice);
     this.buildScene(Math.floor(Math.random() * 1e9), false);
     this.diff = C.difficulty[S.difficulty] || C.difficulty.normal;
     this.result = null;
@@ -5803,8 +5992,17 @@ BR.Game = class Game {
     this.player.yaw = Math.atan2(this.player.pos.x, this.player.pos.z); // face map center
     this.player.pitch = -0.75;                                           // look down at the landing area
     this.actors.push(this.player);
-    const bots = Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
+    const bots = practiceMode ? 0 : Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
     this.practice = bots === 0;
+    document.body.classList.toggle('practice', this.practice);
+    if (practiceMode) {
+      // Start on the ground at a movement hub (or any named place)
+      const hub = this.world.pois.find(q => q.type === 'relay') || this.world.pois[0];
+      this.player.mover.dropping = false;
+      this.player.mover.pos.set(hub.x + 10, 0, hub.z + 10);
+      this.player.mover.pos.y = this.world.groundAt(hub.x + 10, hub.z + 10, 60);
+      this.player.pitch = 0;
+    }
     this.addBots(bots, this.diff);
     this.zone.mesh.visible = !this.practice;
     this.total = this.actors.length;
@@ -5820,8 +6018,71 @@ BR.Game = class Game {
     this.hud.show('end', false);
     this.hud.show('pause', false);
     this.hud.show('play', true);
-    this.hud.toast(this.practice ? 'Practice mode: no bots, no storm' : 'Skydive! Steer to a landing spot', 2600);
+    this.hud.toast(this.practice ? 'Practice mode: tap SPAWN for guns, items and bots' : 'Freefall! Tap JUMP to open your parachute', 2800);
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
+  }
+
+  // ---- practice spawn menu ---------------------------------------------------
+  // A point `dist` meters in front of the player, on the ground.
+  frontPoint(dist) {
+    const p = this.player, x = p.pos.x - Math.sin(p.yaw) * dist, z = p.pos.z - Math.cos(p.yaw) * dist;
+    const H = this.world.half - 4, cx = BR.util.clamp(x, -H, H), cz = BR.util.clamp(z, -H, H);
+    return { x: cx, y: this.world.groundAt(cx, cz, p.pos.y + 6), z: cz };
+  }
+
+  practiceSpawn(kind, arg) {
+    const p = this.player, C = BR.CONFIG;
+    if (kind === 'weapon') {
+      const def = C.weapons[arg];
+      const slot = p.cur < 2 ? p.cur : (!p.slots[0] ? 0 : !p.slots[1] ? 1 : 0);
+      p.slots[slot] = BR.Weapons.create(arg);
+      p.cur = slot;
+      p.ammo[def.ammo] = C.ammoCap[def.ammo];
+      this.hud.toast(def.name, 900);
+    } else if (kind === 'ammo') { for (const t in p.ammo) p.ammo[t] = C.ammoCap[t]; this.hud.toast('Ammo full', 900); }
+    else if (kind === 'heal') { p.health = C.actor.maxHealth; p.shield = C.actor.maxShield; this.hud.toast('Health + shield full', 900); }
+    else if (kind === 'item') { const q = this.frontPoint(3); this.loot.spawnKind(arg, q.x, q.y, q.z, Math.random); }
+    else if (kind === 'chest') { const q = this.frontPoint(4); this.loot.add({ kind: 'chest', tier: 2 }, q.x, q.y, q.z); }
+    else if (kind === 'bot') {
+      const q = this.frontPoint(arg === 'combat' ? 18 : 10);
+      const n = this.actors.length, col = new THREE.Color().setHSL(Math.random(), 0.55, 0.55).getHex();
+      const label = arg === 'combat' ? 'Combat bot' : arg === 'moving' ? 'Moving dummy' : 'Dummy';
+      const b = new BR.Actor(this, { id: n, name: label + ' ' + n, color: col });
+      b.mover.pos.set(q.x + (Math.random() - 0.5) * 3, q.y, q.z + (Math.random() - 0.5) * 3);
+      b.giveWeapon(arg === 'combat' ? 'rifle' : 'pistol');
+      b.ammo.heavy = b.ammo.light = 200;
+      b.yaw = Math.atan2(b.pos.x - p.pos.x, b.pos.z - p.pos.z);
+      b.brain = new BR.BotBrain(b, this, this.diff);
+      b.brain.state = 'roam';
+      b.brain.passive = arg !== 'combat';
+      b.brain.still = arg === 'dummy';
+      b.brain.landedT = 99;
+      this.scene.add(b.mesh);
+      this.actors.push(b);
+      this.total = this.actors.length;
+    } else if (kind === 'clearbots') {
+      for (const a of this.actors) if (a !== p && a.mesh) this.scene.remove(a.mesh);
+      this.actors = [p];
+    } else if (kind === 'skydive') {
+      p.mover.pos.y = C.match.dropHeight; p.mover.vel.set(0, 0, 0);
+      p.mover.dropping = true; p.mover.chute = false; p.pitch = -0.6;
+    } else if (kind === 'teleport') {
+      const q = this.world.pois[Math.floor(Math.random() * this.world.pois.length)];
+      p.mover.pos.set(q.x + 6, this.world.groundAt(q.x + 6, q.z + 6, 60), q.z + 6); p.mover.vel.set(0, 0, 0);
+      this.hud.toast(q.name, 1200);
+    }
+  }
+
+  openSpawnMenu() {
+    if (this.state !== 'playing' || !this.practice) return;
+    this.state = 'paused';
+    this.input.reset();
+    this.input.unlock();
+    this.hud.show('spawnmenu', true);
+  }
+  closeSpawnMenu() {
+    this.hud.show('spawnmenu', false);
+    if (this.state === 'paused') { this.state = 'playing'; this.input.reset(); this.last = performance.now(); }
   }
 
   aliveCount() { let n = 0; for (const a of this.actors) if (a.alive) n++; return n; }
@@ -5914,6 +6175,11 @@ BR.Game = class Game {
     else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
     else this.hud.prompt(null);
 
+    // Player parachute (look up to see it)
+    const pc = this.playerChute;
+    pc.visible = p.alive && p.mover.dropping && p.mover.chute;
+    if (pc.visible) { pc.position.set(p.pos.x, p.pos.y + 1.5, p.pos.z); pc.rotation.y = p.yaw; pc.rotation.z = Math.sin(this.time * 1.5) * 0.05; }
+
     // Grapple rope
     if (p.mover.grapple) this.fx.rope(this.muzzlePoint(p, this._v4), p.mover.grapple);
     else this.fx.rope(null);
@@ -5929,7 +6195,16 @@ BR.Game = class Game {
 
     // Match end
     if (this.state === 'playing') {
-      if (!p.alive) { this.state = 'dead'; this.endT = BR.CONFIG.match.endDelay; }
+      if (!p.alive && this.practice) {
+        // Practice: respawn where you fell after a moment
+        this.respawnT = (this.respawnT ?? 2) - dt;
+        if (this.respawnT <= 0) {
+          this.respawnT = undefined;
+          p.alive = true; p.health = BR.CONFIG.actor.maxHealth; p.shield = 0;
+          this.result = null;
+          this.hud.toast('Respawned', 900);
+        }
+      } else if (!p.alive) { this.state = 'dead'; this.endT = BR.CONFIG.match.endDelay; }
       else if (!this.practice && this.aliveCount() === 1) {
         this.state = 'won'; this.endT = 1.6;
         this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time };
@@ -5989,6 +6264,7 @@ BR.Game = class Game {
     }
     if (inp.consume('pause')) this.pause();
     if (inp.consume('map')) this.hud.toggleMap();
+    if (inp.consume('spawnmenu')) this.openSpawnMenu();
     p.ads = inp.ads && !!w && !w.def.melee && !p.mover.dropping;
     if (p.ads) this.vmr.inspectT = 0;
 
@@ -6043,6 +6319,7 @@ BR.Game = class Game {
     if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); this.vmr.onLand(m.landSpeed); }
     if (ev.slide) BR.Audio.slide();
     if (ev.wallrun) BR.Audio.wallrun();
+    if (ev.chute) { BR.Audio.chute(); this.hud.toast('Parachute deployed', 900); this.cam.kick = 0.25; }
     if (ev.pad) { BR.Audio.pad(); this.cam.shake = Math.max(this.cam.shake, 0.15); }
     if (ev.tech) { this.hud.tech(ev.tech); BR.Audio.tech(); }
   }
@@ -6536,6 +6813,19 @@ BR.Game = class Game {
 
   // ---- match flow ------------------------------------------------------------
   const play = () => { BR.Audio.init(); tryFullscreen(); game.startMatch(); };
+  const practice = () => { BR.Audio.init(); tryFullscreen(); game.startMatch({ practice: true }); };
+  $('btn-practice').addEventListener('click', practice);
+  // spawn menu
+  $('sp-weapons').innerHTML = Object.keys(BR.CONFIG.weapons).filter(id => id !== 'knife')
+    .map(id => `<button class="mbtn sm" data-sp="weapon" data-arg="${id}">${BR.CONFIG.weapons[id].name.toUpperCase()}</button>`).join('');
+  $('spawnmenu').addEventListener('click', e => {
+    const b = e.target.closest('[data-sp]');
+    if (!b) return;
+    game.practiceSpawn(b.dataset.sp, b.dataset.arg);
+    BR.Audio.pickup();
+    b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);
+  });
+  $('sp-close').addEventListener('click', () => game.closeSpawnMenu());
   $('btn-play').addEventListener('click', play);
   $('btn-again').addEventListener('click', play);
   $('btn-menu').addEventListener('click', () => game.toMenu());

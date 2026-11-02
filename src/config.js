@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.5.0',
+  version: '0.6.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -95,9 +95,12 @@ BR.CONFIG = {
       wallChainCooldown: 0.12, // short cooldown after a wall-jump so you can catch the next wall
     },
 
-    dropFallSpeed: 16,      // skydive terminal velocity
-    dropGlideSpeed: 24,     // skydive horizontal steering speed (big map: cover ground)
+    dropFallSpeed: 18,      // freefall terminal velocity
+    dropGlideSpeed: 22,     // freefall horizontal steering speed (big map: cover ground)
     dropAccel: 10,
+    chuteFallSpeed: 5.5,    // parachute open: slow descent...
+    chuteGlideSpeed: 13,    // ...and gentler steering
+    chuteAutoHeight: 22,    // the chute opens by itself this high above the ground
   },
 
   camera: {
