@@ -148,6 +148,11 @@ BR.CONFIG = {
   // SHA-256 of the private dev code. Redeeming that code on an account gives it
   // infinite coins on THIS device. Offline only: once the game has a server, the
   // server decides who is a dev and this check should be removed (see accounts.js).
+  // Built-in accounts that exist on every device. Only a salted SHA-256 of the
+  // password is stored. dev: infinite coins + every shop item unlocked.
+  seedAccounts: [
+    { name: 'jermmm', salt: 'b275785f07d6d05b4bf1e6a734075234', hash: '279c7e735ac93532a6f4af6fbddefe13336a6ebc1232f8687ab94329ad33d20a', dev: true },
+  ],
   devCodeHash: '89799be69c532868209a761cbdcfbb642286502c419d77f5583bb8fd46e5db2a',
 
   // ---- Coins (saved per account) -------------------------------------------

@@ -25,7 +25,13 @@ BR.Accounts = {
 
   load() {
     const d = BR.util.load(this.KEY, null) || {};
-    this.db = { users: d.users || {}, current: d.current && d.users && d.users[d.current] ? d.current : null };
+    this.db = { users: d.users || {}, current: null };
+    // Built-in accounts (CONFIG.seedAccounts) exist everywhere; local ones can't replace them
+    for (const s of BR.CONFIG.seedAccounts || []) {
+      for (const k of Object.keys(this.db.users)) if (k.toLowerCase() === s.name.toLowerCase() && k !== s.name) delete this.db.users[k];
+      this.db.users[s.name] = { salt: s.salt, hash: s.hash, seeded: true };
+    }
+    if (d.current && this.db.users[d.current]) this.db.current = d.current;
     return this;
   },
   save() { BR.util.save(this.KEY, this.db); },
@@ -60,14 +66,21 @@ BR.Accounts = {
 
   logOut() { this.db.current = null; this.save(); },
 
+  // Is the signed-in account a built-in dev account?
+  isSeededDev() {
+    const c = this.db.current;
+    return !!c && (BR.CONFIG.seedAccounts || []).some(s => s.dev && s.name === c);
+  },
+
   // Returns {ok, msg}. On success the current account's profile becomes dev.
   async redeem(code) {
     if (!this.db.current) return { ok: false, msg: 'Sign in to an account first' };
     const h = await BR.sha256.hex((code || '').trim().toUpperCase());
     if (h !== BR.CONFIG.devCodeHash) return { ok: false, msg: 'That code isn’t valid' };
     BR.Profile.data.dev = true;
+    BR.Profile.grantAll();
     BR.Profile.save();
-    return { ok: true, msg: 'Dev access unlocked: infinite coins' };
+    return { ok: true, msg: 'Dev access unlocked: infinite coins + every item' };
   },
 };
 

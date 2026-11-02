@@ -667,6 +667,11 @@ BR.CONFIG = {
   // SHA-256 of the private dev code. Redeeming that code on an account gives it
   // infinite coins on THIS device. Offline only: once the game has a server, the
   // server decides who is a dev and this check should be removed (see accounts.js).
+  // Built-in accounts that exist on every device. Only a salted SHA-256 of the
+  // password is stored. dev: infinite coins + every shop item unlocked.
+  seedAccounts: [
+    { name: 'jermmm', salt: 'b275785f07d6d05b4bf1e6a734075234', hash: '279c7e735ac93532a6f4af6fbddefe13336a6ebc1232f8687ab94329ad33d20a', dev: true },
+  ],
   devCodeHash: '89799be69c532868209a761cbdcfbb642286502c419d77f5583bb8fd46e5db2a',
 
   // ---- Coins (saved per account) -------------------------------------------
@@ -4752,7 +4757,13 @@ BR.Accounts = {
 
   load() {
     const d = BR.util.load(this.KEY, null) || {};
-    this.db = { users: d.users || {}, current: d.current && d.users && d.users[d.current] ? d.current : null };
+    this.db = { users: d.users || {}, current: null };
+    // Built-in accounts (CONFIG.seedAccounts) exist everywhere; local ones can't replace them
+    for (const s of BR.CONFIG.seedAccounts || []) {
+      for (const k of Object.keys(this.db.users)) if (k.toLowerCase() === s.name.toLowerCase() && k !== s.name) delete this.db.users[k];
+      this.db.users[s.name] = { salt: s.salt, hash: s.hash, seeded: true };
+    }
+    if (d.current && this.db.users[d.current]) this.db.current = d.current;
     return this;
   },
   save() { BR.util.save(this.KEY, this.db); },
@@ -4787,14 +4798,21 @@ BR.Accounts = {
 
   logOut() { this.db.current = null; this.save(); },
 
+  // Is the signed-in account a built-in dev account?
+  isSeededDev() {
+    const c = this.db.current;
+    return !!c && (BR.CONFIG.seedAccounts || []).some(s => s.dev && s.name === c);
+  },
+
   // Returns {ok, msg}. On success the current account's profile becomes dev.
   async redeem(code) {
     if (!this.db.current) return { ok: false, msg: 'Sign in to an account first' };
     const h = await BR.sha256.hex((code || '').trim().toUpperCase());
     if (h !== BR.CONFIG.devCodeHash) return { ok: false, msg: 'That code isn’t valid' };
     BR.Profile.data.dev = true;
+    BR.Profile.grantAll();
     BR.Profile.save();
-    return { ok: true, msg: 'Dev access unlocked: infinite coins' };
+    return { ok: true, msg: 'Dev access unlocked: infinite coins + every item' };
   },
 };
 
@@ -4872,7 +4890,17 @@ BR.Profile = {
     };
     this.data.equip.blueprints = Object.assign({}, (d.equip && d.equip.blueprints) || {});
     for (const k of ['gloves', 'blueprints']) if (!this.data.owned[k]) this.data.owned[k] = k === 'gloves' ? ['default'] : [];
+    // Dev accounts: infinite coins and everything unlocked (including items added later)
+    if (BR.Accounts && BR.Accounts.isSeededDev()) this.data.dev = true;
+    if (this.data.dev) this.grantAll();
     return this.data;
+  },
+  grantAll() {
+    const M = BR.Models, o = this.data.owned;
+    const add = (cat, ids) => { for (const id of ids) if (!o[cat].includes(id)) o[cat].push(id); };
+    add('skins', Object.keys(M.SKINS)); add('tracers', Object.keys(M.TRACERS));
+    add('charms', Object.keys(M.CHARMS)); add('gloves', Object.keys(M.GLOVES));
+    for (const w in M.BLUEPRINTS) add('blueprints', Object.keys(M.BLUEPRINTS[w]).map(b => w + ':' + b));
   },
   save() { BR.util.save(this.KEY, this.data); },
   // Blueprint ids are "weapon:blueprint" (e.g. "rifle:vandal"); every weapon owns "default".

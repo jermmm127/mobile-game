@@ -22,7 +22,17 @@ BR.Profile = {
     };
     this.data.equip.blueprints = Object.assign({}, (d.equip && d.equip.blueprints) || {});
     for (const k of ['gloves', 'blueprints']) if (!this.data.owned[k]) this.data.owned[k] = k === 'gloves' ? ['default'] : [];
+    // Dev accounts: infinite coins and everything unlocked (including items added later)
+    if (BR.Accounts && BR.Accounts.isSeededDev()) this.data.dev = true;
+    if (this.data.dev) this.grantAll();
     return this.data;
+  },
+  grantAll() {
+    const M = BR.Models, o = this.data.owned;
+    const add = (cat, ids) => { for (const id of ids) if (!o[cat].includes(id)) o[cat].push(id); };
+    add('skins', Object.keys(M.SKINS)); add('tracers', Object.keys(M.TRACERS));
+    add('charms', Object.keys(M.CHARMS)); add('gloves', Object.keys(M.GLOVES));
+    for (const w in M.BLUEPRINTS) add('blueprints', Object.keys(M.BLUEPRINTS[w]).map(b => w + ':' + b));
   },
   save() { BR.util.save(this.KEY, this.data); },
   // Blueprint ids are "weapon:blueprint" (e.g. "rifle:vandal"); every weapon owns "default".
