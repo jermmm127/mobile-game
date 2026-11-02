@@ -4,8 +4,9 @@
 // state object the game reads each frame.
 //
 // Touch: left 42% of the screen = floating joystick, the rest = look.
-// Buttons carry data-act="fire|jump|slide|reload|ads|swap|interact|pause".
+// Buttons carry data-act="fire|firel|jump|crouch|grapple|reload|ads|swap|interact|pause".
 // Dragging a finger that started on FIRE also aims (like real mobile shooters).
+// The 2nd fire button (firel) only fires: dragging it never moves the camera.
 // =============================================================================
 BR.Input = class Input {
   constructor(root) {
@@ -14,7 +15,7 @@ BR.Input = class Input {
     this.lookDX = 0; this.lookDY = 0;
     this.fire = false;
     this.ads = false;
-    this.pressed = {};       // one-shot actions: jump, slide, reload, swap, interact, pause, slot0, slot1
+    this.pressed = {};       // one-shot actions: jump, crouch, grapple, reload, swap, inspect, interact, pause, slot0-2
     this.touches = {};
     this.keys = {};
     this.usingTouch = false;
@@ -31,7 +32,7 @@ BR.Input = class Input {
   consumeLook() { const d = [this.lookDX, this.lookDY]; this.lookDX = 0; this.lookDY = 0; return d; }
   reset() {
     this.moveX = this.moveY = this.lookDX = this.lookDY = 0;
-    this.fire = false; this.fireTouches = 0; this.mouseFire = false; this.jumpHeld = false;
+    this.fire = false; this.fireTouches = 0; this.mouseFire = false;
     this.pressed = {}; this.touches = {}; this.keys = {};
     this.joy.active = false;
     this.joy.base.classList.remove('on');
@@ -58,12 +59,12 @@ BR.Input = class Input {
       const btn = t.target.closest && t.target.closest('[data-act]');
       if (btn) {
         const act = btn.dataset.act;
-        const role = { type: 'btn', act, btn, x: t.clientX, y: t.clientY, look: act === 'fire' || act === 'firel' };
+        const role = { type: 'btn', act, btn, x: t.clientX, y: t.clientY, look: act === 'fire' };
         this.touches[t.identifier] = role;
         btn.classList.add('on');
         if (act === 'fire' || act === 'firel') { this.fireTouches++; this.fire = true; }
         else if (act === 'ads') this.ads = !this.ads;
-        else if (act === 'jump') { this.press('jump'); this.jumpHeld = true; }
+
         else this.press(act);
         continue;
       }
@@ -125,7 +126,6 @@ BR.Input = class Input {
         this.joy.base.classList.remove('on');
       } else if (r.type === 'btn') {
         r.btn.classList.remove('on');
-        if (r.act === 'jump') this.jumpHeld = false;
         if (r.act === 'fire' || r.act === 'firel') {
           this.fireTouches = Math.max(0, this.fireTouches - 1);
           this.fire = this.fireTouches > 0 || this.mouseFire;
@@ -149,8 +149,11 @@ BR.Input = class Input {
       this.usingTouch = false;
       BR.Audio.init();
       if (map[e.code]) { this.keys[map[e.code]] = true; upd(); }
-      if (e.code === 'Space') { this.press('jump'); this.jumpHeld = true; e.preventDefault(); }
-      if (e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'ControlLeft') this.press('slide');
+      if (e.code === 'Space') { this.press('jump'); e.preventDefault(); }
+      if (e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'ControlLeft') this.press('crouch');
+      if (e.code === 'KeyG') this.press('grapple');
+      if (e.code === 'KeyV') this.press('inspect');
+      if (e.code === 'Digit3') this.press('slot2');
       if (e.code === 'KeyR') this.press('reload');
       if (e.code === 'KeyE' || e.code === 'KeyF') this.press('interact');
       if (e.code === 'KeyQ') this.press('swap');
@@ -159,7 +162,6 @@ BR.Input = class Input {
       if (e.code === 'Escape' || e.code === 'KeyP') this.press('pause');
     });
     window.addEventListener('keyup', e => {
-      if (e.code === 'Space') this.jumpHeld = false;
       if (map[e.code]) { this.keys[map[e.code]] = false; upd(); }
     });
     this.root.addEventListener('mousedown', e => {
@@ -170,6 +172,7 @@ BR.Input = class Input {
       }
       if (e.button === 0) { this.mouseFire = true; this.fire = true; }
       if (e.button === 2) this.ads = true;
+      if (e.button === 1) { this.press('grapple'); e.preventDefault(); }
       this.dragging = true;
     });
     window.addEventListener('mouseup', e => {

@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.2.0',
+  version: '0.3.0',
 
   map: {
     size: 340,          // square map edge length (m)
@@ -15,11 +15,12 @@ BR.CONFIG = {
   },
 
   match: {
-    defaultBots: 19,    // 19 bots + you = 20 players
-    dropHeight: 75,     // everyone skydives in from this height
-    endDelay: 2.4,      // seconds between your death/win and the results screen
+    defaultBots: 19,     // 19 bots + you = 20 players. 0 bots = practice mode
+    dropHeight: 75,      // everyone skydives in from this height
+    endDelay: 2.4,       // seconds between your death/win and the results screen
     botLootPhase: 80,    // seconds until bots engage at full sight range
     botVsBotDamage: 0.4, // pacing: bots hurt each other less so the lobby doesn't empty in 30s
+    demoBots: 14,        // bots in the menu's live "trailer" match
   },
 
   actor: {
@@ -28,49 +29,63 @@ BR.CONFIG = {
     radius: 0.38,       // collision half-width
     standHeight: 1.8,
     slideHeight: 1.05,
+    crouchHeight: 1.2,
     eyeFromTop: 0.14,
   },
 
   // ---- Movement (shared by player AND bots) --------------------------------
   move: {
-    runSpeed: 8.2,          // top ground speed from input alone
+    runSpeed: 7.4,          // top ground speed from input alone
+    crouchSpeed: 3.4,
     accelGround: 12,
     friction: 8,
     stopSpeed: 3,
     accelAir: 10,           // Quake-style air accel: steer & strafe, keeps momentum
-    maxSpeed: 22,           // hard cap on horizontal speed
+    maxSpeed: 20,           // hard cap on horizontal speed
 
     gravity: 24,
-    jumpSpeed: 8.4,         // ~1.45 m jump apex
+    jumpSpeed: 8.2,         // ~1.4 m jump apex
     coyoteTime: 0.12,       // can still jump this long after walking off a ledge
-    jumpBuffer: 0.14,       // jump pressed slightly early still fires on landing
+    jumpBuffer: 0.08,       // jump pressed slightly early still fires on landing
 
     stepHeight: 0.55,       // auto step up stairs / curbs
     vaultHeight: 1.25,      // auto vault obstacles from the ground while moving forward
     mantleHeight: 1.75,     // grab & climb ledges this far above your feet while airborne
 
-    slideBoost: 5,
-    slideMaxSpeed: 17,
+    slideMinSpeed: 0.8,     // fraction of runSpeed you need before Crouch becomes a slide
+    slideBoost: 4.5,
+    slideMaxSpeed: 15.5,
     slideFriction: 0.45,
-    slideSteer: 10,
-    slideEndSpeed: 4.5,
+    slideEndSpeed: 4.2,
     slideMaxTime: 1.1,
     slideCooldown: 0.75,
-    slideQueueTime: 0.35,   // press slide in the air -> slide on landing
+    slideQueueTime: 0.35,   // press crouch in the air -> slide on landing
 
-    wallRunMinSpeed: 5.0,
+    wallRunMinSpeed: 4.6,
     wallRunGravityScale: 0.15,
     wallRunMaxFall: 1.5,
     wallRunMaxTime: 1.4,
     wallRunStartLift: 2.5,
     wallRunEnterVy: 5,      // must be past the fast part of a jump before a wall-run catches
-    wallRunSpeedSustain: 9, // wall-running keeps you at least this fast
+    wallRunSpeedSustain: 8.2,
     wallJumpOut: 7,
     wallJumpUp: 8,
 
+    grapple: {
+      range: 48,            // how far the hook reaches
+      pull: 40,             // pull acceleration (m/s²)
+      maxSpeed: 23,         // top speed while reeling in
+      maxTime: 1.6,         // auto-release after this long
+      gravityScale: 0.3,
+      cooldown: 5,          // seconds, starts when the hook releases
+      releaseHop: 4,        // jump while hooked: let go with an upward kick
+    },
+    padSpeed: 17,           // jump pads launch you up at this speed
+
     // Intentional "bugs" — movement tech with a skill ceiling. Set a window to 0 to disable one.
     tech: {
-      slideHopWindow: 0.15,   // slide this soon after landing: no cooldown, speed cap rises to maxSpeed
+      bhopWindow: 0.07,       // jump within this long after landing keeps ALL your speed (timed, no auto-hop)
+      slideHopWindow: 0.15,   // crouch this soon after landing: slide with no cooldown, cap rises to maxSpeed
       superJumpWindow: 0.12,  // jump this soon after starting a slide: bigger jump
       superJumpMult: 1.4,
       mantleBoostWindow: 0.25, // jump while mantling: launch forward
@@ -79,50 +94,56 @@ BR.CONFIG = {
     },
 
     dropFallSpeed: 16,      // skydive terminal velocity
-    dropGlideSpeed: 18,     // skydive horizontal steering speed
+    dropGlideSpeed: 17,     // skydive horizontal steering speed
     dropAccel: 10,
   },
 
   camera: {
-    fov: 80,
+    fov: 80,                // default; players change it in Settings
     fovSpeedBoost: 12,      // extra FOV at high speed
     near: 0.05,
-    far: 420,
+    far: 520,
     wallRunRoll: 0.12,
   },
 
   look: {
     touch: 0.0058,          // radians per CSS pixel at sensitivity 1.0
-    mouse: 0.0022,
     adsMult: 0.65,          // extra look slowdown while aiming down sights
     aimAssist: 0.35,        // touch only: 0 = off. Pull + slowdown near targets
   },
 
-  ammoCap: { light: 210, heavy: 120, shells: 40 },
-  ammoPickup: { light: 30, heavy: 20, shells: 8 },
+  ammoCap: { light: 210, heavy: 150, shells: 48 },
+  ammoPickup: { light: 30, heavy: 24, shells: 10 },
 
   // ---- Weapons -------------------------------------------------------------
-  // dmg per pellet, rpm, mag size, reload seconds, spread (radians, hip fire),
-  // range = full damage distance (falls to 55% at 2x range), tier = loot rarity
+  // dmg per pellet, rpm, mag size, reload seconds (per shell if shellReload),
+  // spread (radians, hip fire), range = full damage distance (falls to 55% at 2x),
+  // tier = loot rarity, knockback = self-push when airborne / aimed at your feet
   weapons: {
-    pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x9aa4b1, len: 0.28 },
-    smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 850, mag: 30, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.004, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.006, zoom: 1.3, tier: 1, color: 0x58c4dd, len: 0.42 },
-    shotgun: { name: 'Shotgun', ammo: 'shells', dmg: 11, pellets: 9, rpm: 72,  mag: 5,  reload: 2.3, spread: 0.075, ads: 0.75, bloom: 0, bloomMax: 0,       range: 22,  head: 1.5, recoil: 0.045, zoom: 1.2, tier: 1, color: 0xd98c45, len: 0.55, knockback: 9 },
-    rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 30, reload: 2.0, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.009, zoom: 1.6, tier: 2, color: 0x7fbf63, len: 0.6 },
-    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0,       range: 400, head: 2.2, recoil: 0.06,  zoom: 4.0, tier: 3, color: 0xb98be8, len: 0.8, scope: true, knockback: 4 },
+    knife:   { name: 'Karambit', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.08 },
+    pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x8e96a3 },
+    smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 850, mag: 30, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.004, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.006, zoom: 1.3, tier: 1, color: 0x3fa6c4 },
+    // Wide horizontal pellet line (tightens when aiming), shell-by-shell reload you can cancel by firing
+    shotgun: { name: 'Breacher', ammo: 'shells', dmg: 13, pellets: 8, pattern: 'line', rpm: 80, mag: 6, reload: 0.42, shellReload: true, spread: 0.10, ads: 0.6, bloom: 0, bloomMax: 0, range: 20, head: 1.4, recoil: 0.05, zoom: 1.15, tier: 1, color: 0xc7772f, knockback: 13 },
+    rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 45, reload: 2.4, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.009, zoom: 1.5, tier: 2, color: 0x5f8f4a, suppressed: true },
+    holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, zoom: 1.75, tier: 2, color: 0x4b5566, suppressed: true, holo: true },
+    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x7d5aa8, scope: true, knockback: 4 },
   },
 
   // Loot rolls by spot tier. Weights are relative.
   loot: {
     tables: [
-      { pistol: 22, smg: 16, shotgun: 12, rifle: 8, sniper: 1, ammo: 45, heal: 16, shield: 12 },    // tier 0: open ground
-      { pistol: 8, smg: 18, shotgun: 16, rifle: 18, sniper: 4, ammo: 40, heal: 18, shield: 16 },    // tier 1: inside buildings
-      { smg: 10, shotgun: 12, rifle: 24, sniper: 14, ammo: 30, heal: 16, shield: 22 },              // tier 2: roofs / towers
+      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, sniper: 1, ammo: 45, heal: 16, shield: 12 },     // tier 0: open ground
+      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, sniper: 4, ammo: 40, heal: 18, shield: 16 },   // tier 1: inside buildings
+      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, sniper: 14, ammo: 30, heal: 16, shield: 22 },             // tier 2: roofs / towers
     ],
     healAmount: 50,
     shieldAmount: 50,
     pickupRadius: 1.6,
   },
+
+  // ---- Coins (saved per device) -------------------------------------------
+  coins: { start: 150, perKill: 25, win: 150, top5: 60, top10: 25, perDamage: 0.05 },
 
   // ---- Zone (the shrinking safe circle) ------------------------------------
   // radius = target radius at the end of that phase. dps = damage/second outside.
@@ -139,15 +160,15 @@ BR.CONFIG = {
 
   // ---- Bots ----------------------------------------------------------------
   difficulty: {
-    easy:   { reaction: 0.8,  aimError: 1.0,  settle: 1.6, turnRate: 4.0, playerDamageMult: 0.55, viewDist: 55, fov: 1.7, burst: [0.2, 0.5],  pause: [0.5, 1.0], jumpiness: 0.15 },
+    easy:   { reaction: 1.1,  aimError: 1.5,  settle: 2.2, turnRate: 3.0, playerDamageMult: 0.35, viewDist: 45, fov: 1.5, burst: [0.15, 0.35], pause: [0.8, 1.6], jumpiness: 0.1 },
     normal: { reaction: 0.55, aimError: 0.7,  settle: 1.2, turnRate: 6.0, playerDamageMult: 0.65, viewDist: 70, fov: 1.9, burst: [0.3, 0.7],  pause: [0.35, 0.8], jumpiness: 0.35 },
     hard:   { reaction: 0.3,  aimError: 0.4,  settle: 0.7, turnRate: 9.0, playerDamageMult: 1.0,  viewDist: 90, fov: 2.1, burst: [0.4, 0.9],  pause: [0.2, 0.5], jumpiness: 0.6 },
   },
 
   graphics: {
-    low:    { pixelRatio: 0.75, fogFar: 170 },   // pixelRatio is capped by the device's own
-    medium: { pixelRatio: 1.25, fogFar: 230 },
-    high:   { pixelRatio: 2.0, fogFar: 300 },
+    low:    { pixelRatio: 0.75, fogFar: 170, detail: 0.4 },   // pixelRatio is capped by the device's own
+    medium: { pixelRatio: 1.25, fogFar: 230, detail: 0.8 },
+    high:   { pixelRatio: 2.0,  fogFar: 300, detail: 1.0 },
   },
 
   botNames: [

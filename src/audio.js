@@ -69,11 +69,12 @@ BR.Audio = {
     o.onended = () => { this.voices--; };
   },
 
-  shot(id, dist, pan) {
+  shot(id, dist, pan, suppressed) {
     const near = 1 / (1 + dist / 18);
     const v = id === 'sniper' ? 0.9 : id === 'shotgun' ? 0.8 : id === 'rifle' ? 0.55 : id === 'smg' ? 0.38 : 0.45;
     const freq = (id === 'sniper' ? 2600 : id === 'shotgun' ? 1600 : id === 'smg' ? 4200 : 3200) * (0.4 + 0.6 * near);
     const dur = id === 'sniper' ? 0.45 : id === 'shotgun' ? 0.32 : 0.14;
+    if (suppressed) { this.burst(freq * 0.35, 1.2, dur * 0.8, v * near * 0.45, pan); return; }
     this.burst(freq, 0.8, dur, v * near, pan);
     if (dist < 8) this.tone(160, 45, dur * 0.8, v * 0.5 * near, 'sine');
   },
@@ -90,5 +91,11 @@ BR.Audio = {
   zone() { this.tone(220, 180, 0.6, 0.18, 'sawtooth'); },
   tech() { this.tone(700, 1400, 0.12, 0.12, 'triangle'); this.tone(1050, 2100, 0.16, 0.08, 'sine'); },
   chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
+  grapple() { this.tone(300, 1200, 0.12, 0.14, 'sawtooth'); this.burst(2400, 0.6, 0.15, 0.08, 0, 'bandpass'); },
+  pad() { this.tone(200, 900, 0.3, 0.2, 'square'); },
+  blast() { this.burst(500, 0.6, 0.5, 0.5); this.tone(90, 35, 0.35, 0.45, 'sine'); },
+  swish(hit) { this.burst(3000, 0.8, 0.14, 0.12, 0, 'bandpass'); if (hit) this.tone(220, 120, 0.1, 0.25, 'square'); },
+  unsheathe() { this.burst(5000, 2, 0.25, 0.08, 0, 'bandpass'); this.tone(2400, 3600, 0.2, 0.04, 'sine'); },
+  coin() { this.tone(988, 988, 0.08, 0.12, 'square'); setTimeout(() => this.tone(1319, 1319, 0.2, 0.12, 'square'), 80); },
   reload() { this.tone(500, 300, 0.05, 0.08, 'square'); },
 };

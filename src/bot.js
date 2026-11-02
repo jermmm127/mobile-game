@@ -5,7 +5,7 @@
 //
 // States: drop -> loot / roam / zone -> fight
 // =============================================================================
-const PREF_DIST = { pistol: 14, smg: 10, shotgun: 6, rifle: 24, sniper: 55 };
+const PREF_DIST = { knife: 1.5, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holoar: 30, sniper: 55 };
 
 BR.BotBrain = class BotBrain {
   constructor(actor, game, diff) {
@@ -132,8 +132,9 @@ BR.BotBrain = class BotBrain {
     if (this.target) {
       const dist = a.pos.distanceTo(this.target.pos);
       let bi = a.cur, bs = -1;
+      bi = 2; bs = -1; // karambit only if no gun has ammo
       a.slots.forEach((w, i) => {
-        if (!w || (w.mag === 0 && a.ammo[w.def.ammo] === 0)) return;
+        if (!w || w.def.melee || (w.mag === 0 && a.ammo[w.def.ammo] === 0)) return;
         const pd = PREF_DIST[w.id];
         const s = 100 - Math.abs(dist - pd) * (w.id === 'sniper' ? 0.8 : 2) + w.def.tier * 5;
         if (s > bs) { bs = s; bi = i; }
@@ -194,13 +195,13 @@ BR.BotBrain = class BotBrain {
     this.moveJumpT -= dt;
     if (this.moveJumpT <= 0) {
       this.moveJumpT = 1.2 + Math.random() * 3;
-      if (Math.random() < d.jumpiness) { if (Math.random() < 0.5) a.input.jump = true; else a.input.slide = true; }
+      if (Math.random() < d.jumpiness) { if (Math.random() < 0.5) a.input.jump = true; else a.input.crouch = true; }
     }
 
     // Trigger discipline: bursts and pauses
     if (!w) return;
     const visible = g.time - this.targetSeenT < 0.3;
-    if (w.mag === 0) { BR.Weapons.startReload(w, a); return; }
+    if (!w.def.melee && w.mag === 0) { BR.Weapons.startReload(w, a); return; }
     if (this.burstT > 0) {
       this.burstT -= dt;
       if (this.burstT <= 0) this.pauseT = BR.util.rand(Math.random, d.pause[0], d.pause[1]);
@@ -253,7 +254,7 @@ BR.BotBrain = class BotBrain {
     this.moveJumpT -= dt;
     if (this.moveJumpT <= 0 && dist > 15) {
       this.moveJumpT = 2 + Math.random() * 4;
-      if (Math.random() < this.d.jumpiness) a.input.slide = true;
+      if (Math.random() < this.d.jumpiness && a.mover.speedH > 6) a.input.crouch = true;
     }
   }
 

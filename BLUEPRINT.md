@@ -11,27 +11,29 @@ This doc explains how the prototype is built, where to tune it, and where new fe
 
 | Area | What it does now |
 |---|---|
-| **Match flow** | Menu → skydive from 75 m → loot → fight → shrinking zone → results screen (placement, kills, damage, time). |
-| **Players** | You + 5–29 bots (default 19). Bots use the *same* movement and weapons as you. |
-| **Movement** | Run, jump (coyote time + jump buffer), slide (speed boost, chain into a slide-jump), wall-run, wall-jump, mantle ledges up to 1.75 m, auto-vault obstacles up to 1.25 m, auto step-up stairs, Quake-style air control that keeps momentum, skydive steering. |
-| **Weapons** | Pistol, SMG, Shotgun, Rifle, Sniper (scoped). Hitscan, spread + bloom, headshots, damage falloff, recoil, reload, 2 weapon slots, 3 ammo types. |
-| **Loot** | Ground loot in 3 tiers (open field < buildings < roofs/towers). A guaranteed gun on every building floor, plus guns on roof tops, rock tops, and on top of wall-run lanes (reach them with movement tech). **Chests** (≈40 per map: in buildings, on roofs, towers, plateaus, stacked containers, town plazas) burst into a gun one tier above the spot plus ammo and heal/shield items. Players tap **Open** (E); bots open them by walking into them. Ammo, heals and shields are picked up automatically. Weapons fill empty slots automatically; when both slots are full you get a Swap button. Dead players drop everything. |
+| **Match flow** | Menu → skydive from 75 m → loot → fight → shrinking zone → results screen (placement, kills, damage, time, coins earned). |
+| **Menu** | A live bot match plays behind the menu, filmed by a cinematic camera that cuts between chase, orbit, side, low and fly-over shots of whoever is fighting, behind letterbox bars, scanlines and film grain. Chrome pixel logo, beveled buttons, coin counter. (`Game.updateDemo`) |
+| **Players** | You + 0–29 bots (default 19). **0 bots = practice mode**: no storm, no win condition, no coins. Bots use the *same* movement and weapons as you. |
+| **Movement** | Run, jump (coyote time + jump buffer), **one Crouch/Slide button** (slide only when running; omni-directional, locked direction while sliding; crouch toggle otherwise), wall-run, wall-jump, mantle ledges up to 1.75 m, auto-vault up to 1.25 m, auto step-up stairs, **grapple** (5 s cooldown), **jump pads**, Quake-style air control, skydive steering. |
+| **Weapons** | **Karambit** (always carried: slash, lunge, backstab, pull-out + inspect animations, +8% move speed), Pistol, SMG, **Breacher** shotgun (8-pellet horizontal line, shell-by-shell reload you can cancel by firing, strong blast jump), **Rifle** and **Holo AR** (both suppressed with drum mags; Holo AR has a holographic sight that lines up when aiming), scoped Sniper. Hitscan, spread + bloom, headshots, falloff, recoil, 3 ammo types. Suppressed guns are quieter and bots hear them from less than half as far. |
+| **Weapon models** | Detailed placeholder models built from primitives in `src/models.js` (rails, vents, suppressors, drum mags, scopes, holo frame + glowing reticle, curved karambit blade with finger ring). Each model exposes `muzzle`, `charm`, `flash` (and `sight`) anchors so real assets can replace them later. |
+| **Coins + shop** | Earn coins per kill, damage, top-10 / top-5 / win (`CONFIG.coins`). Spend them in the Shop on **gun skins** (9: carbon, arctic, tiger, crimson, neon, pixel, galaxy, gold, chrome), **tracers** (6 colors + rainbow) and **gun charms** (dice, coin, skull, star, crystal, puzzle cube; they swing with your movement). Live 3D preview. Saved per device (`src/shop.js`). |
+| **Loot** | 3 tiers (open field < buildings < roofs/towers). A guaranteed gun on every building floor, plus guns on roofs, rock tops, wall-run lane tops and pillar-maze tops. **Chests** (≈45 per map) burst into a gun one tier above the spot plus gear. Ammo, heals and shields auto-pickup; weapons fill empty slots or offer a Swap button. Dead players drop everything. |
 | **Zone** | 6 phases. Next circle shown on the minimap. Damage ignores shields and ramps 1 → 15 HP/s. |
-| **Map** | Procedural, new seed every match: 6 towns (enterable 1–2 floor buildings with stairs, windows you can vault through, climbable roofs), wall-run lanes, spiral jump towers, plateaus, containers, crates, rocks, trees. |
-| **Bots** | Easy/Normal/Hard. Loot early, hunt later, follow the zone, hear gunfire, react to damage, strafe, jump and slide in fights, pick a weapon by range, swap to better loot, get unstuck. |
-| **Mobile controls** | Floating joystick (left), drag-to-look (right), drag *on* the Fire button to aim while shooting, second Fire button on the left, Jump / Slide / Reload / Aim / Swap buttons, tap weapon slots to switch. Optional aim assist and auto-fire. |
-| **HUD editor** | Menu or pause → *Customize HUD*: drag any action button, resize it, hide it, set overall button opacity. Saved separately for landscape and portrait, as fractions of the screen so a layout works on any phone size. Built for claw setups. (`src/layout.js`) |
-| **Fullscreen** | Button in the menu and in-game. On iPhone Safari (no page fullscreen API) it explains *Share → Add to Home Screen*, which launches fullscreen. |
+| **Map** | Procedural, new seed every match: 6 towns (1–2 floor buildings with stairs, vaultable windows, rooftop parapets, trim, lamp posts, a jump pad on each town edge), **parkour courses** (rising platforms + a wall-run wall + a summit chest), **pillar mazes** for wall chains, ~30 jump pads, wall-run lanes, spiral towers, plateaus, fences. Visuals: gradient sky dome + sun, mountain ring, clouds, two-tone trees, bushes, grass tufts (density follows Graphics), painted grass/dirt ground with dirt roads between towns, fake ambient occlusion on walls. |
+| **Bots** | Easy/Normal/Hard (Easy is much gentler now). Loot early, hunt later, follow the zone, hear gunfire, react to damage, strafe, jump and slide in fights, pick a weapon by range, fall back to the karambit when out of ammo, swap to better loot, get unstuck. |
+| **Mobile controls** | Floating joystick (left), drag-to-look (right), drag *on* the Fire button to aim while shooting, a second Fire button that only fires (dragging it never turns the camera), Jump / Crouch-Slide / Hook / Reload / Aim / Swap buttons, 3 weapon slots (tap the held one to inspect). Optional aim assist and auto-fire. |
+| **HUD editor** | Menu or pause → *Customize HUD*: drag, resize or hide any action button and set button opacity. Saved separately for landscape and portrait. Built for claw setups. (`src/layout.js`) |
+| **Fullscreen** | Button in the menu and in-game. On iPhone Safari it explains *Share → Add to Home Screen*, which launches fullscreen. |
 | **Movement tech** | Deliberate "bugs" with a skill ceiling. See section 5b. |
-| **Desktop controls** | WASD, mouse look (pointer lock, or drag-to-look in embeds), Space, Shift/C, R, 1/2/Q, E, Esc. |
-| **Feel** | Speed-based FOV, wall-run camera roll, landing dip, head bob, gun sway/kick/reload animation, hitmarkers, damage numbers, directional damage arcs, kill feed, synthesized sound effects (no audio files). |
-| **Settings** | Difficulty, player count, look speed, graphics (render scale + fog distance), volume, aim assist, auto-fire, FPS counter. Saved per device. |
-
+| **Desktop controls** | WASD, mouse look, Space jump, Shift/C crouch-slide, G or middle-click grapple, R, 1/2/3/Q, V inspect, E, Esc. |
+| **Look** | Old-school arena-shooter UI: beveled gunmetal panels, pixel + terminal fonts (Silkscreen, VT323), amber highlights, segmented health/shield bars. |
+| **Settings** | Bot skill, bot count (0–29), look speed, **FOV (60–110)**, graphics, volume, aim assist, auto-fire, FPS counter. Saved per device. |
 ---
 
 ## 2. How to playtest
 
-**On your phone (fastest):** open the Artifact link Claude published. Hold the phone sideways and tap **Drop in**.
+**On your phone (fastest):** open the Artifact link Claude published. Hold the phone sideways and tap **Play**.
 
 **Locally:** any static file server works:
 ```bash
@@ -67,6 +69,8 @@ src/
   zone.js       BR.Zone: shrinking circle + damage
   effects.js    pooled tracers, impacts, muzzle flashes
   input.js      touch + keyboard/mouse -> one input state
+  models.js     weapon models, skins, charms, tracer colors
+  shop.js       coin profile + shop UI
   layout.js     HUD button editor + fullscreen helper
   hud.js        builds all DOM (menu, HUD, buttons), updates only on change
   game.js       BR.Game: renderer, match lifecycle, main loop, camera, viewmodel, combat hooks
@@ -75,7 +79,7 @@ src/
 tools/smoke-test.js   headless regression test
 ```
 
-**Script order matters** (see `index.html`): config → util → audio → world → movement → weapons → actors → bot → loot → zone → effects → input → layout → hud → game → main. If you add a file, add it to **both** `index.html` and `play.html`.
+**Script order matters** (see `index.html`): config → util → audio → world → movement → weapons → models → actors → bot → loot → zone → effects → input → layout → shop → hud → game → main. If you add a file, add it to **both** `index.html` and `play.html`.
 
 ### The one big idea: everything is an axis-aligned box
 
@@ -141,12 +145,14 @@ All of these live in `BR.Mover` (`src/movement.js`, search `TECH`) and are tuned
 
 | Tech | How to do it | Why it works |
 |---|---|---|
-| **Bunny hop** | Hold Jump | Jumping on the landing frame skips ground friction, so speed from slides and wall-jumps carries over. Air strafing adds a little more. |
-| **Slide-hop** | Slide → Jump → press Slide in the air → repeat | A slide that starts within `slideHopWindow` of landing ignores the slide cooldown and its speed cap, so each chain stacks up to `maxSpeed` (22 m/s). |
+| **Bunny hop** | Press Jump right as you land (holding does nothing) | A jump within `bhopWindow` of landing (or buffered just before) restores the speed you had at touchdown. Mistime it and ground friction keeps what it took. |
+| **Slide-hop** | Slide → Jump → press Crouch in the air → repeat | A slide that starts within `slideHopWindow` of landing ignores the slide cooldown and its speed cap, so each chain stacks up to `maxSpeed` (20 m/s). |
 | **Super jump** | Tap Jump right as a slide starts | Jumping within `superJumpWindow` of a slide start multiplies jump speed by `superJumpMult`. |
-| **Wall chain** | Wall-jump onto a *different* wall | A new wall resets the wall-run timer. Each bounce gains height, so you can climb wall-run lanes. |
+| **Wall chain** | Wall-jump onto a *different* wall | A new wall resets the wall-run timer. Each bounce gains height (pillar mazes and wall-run lanes are built for this). |
 | **Mantle boost** | Tap Jump while climbing a ledge | Launches you up and forward at run speed + `mantleBoost` once you clear the edge. |
-| **Shotgun jump** | Shoot the shotgun at your feet or mid-air | Weapons with `knockback` push you opposite your aim when airborne or aiming down. The sniper does a smaller recoil jump. |
+| **Shotgun jump** | Fire the Breacher at your feet, or mid-air | Aimed down: a vertical launch of up to ~5 m plus a shove. Mid-air: blasts you away from your aim ("AIR BLAST"). Blast ring + screen shake. The sniper does a smaller version. |
+| **Grapple slingshot** | Grapple, then Jump before you arrive | Letting go early keeps the full reel-in speed plus a hop. Arriving normally tames the speed so you land on the roof. |
+| **Launch** | Land on a cyan jump pad | `padSpeed` straight up, horizontal speed kept, so chain it with a slide for distance. |
 
 To add another: put the trigger in `Mover.update`, set `ev.tech = 'NAME'`, add its numbers to `CONFIG.move.tech`, and add a check to `tools/smoke-test.js`.
 

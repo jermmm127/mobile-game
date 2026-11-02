@@ -12,6 +12,7 @@ const PAL = {
   containers: [0xd0643b, 0x3f78b5, 0xb8433f, 0x4f9a6a, 0xd9a441],
   crate: 0xa77b4f, rock: 0x8d8f8a, trunk: 0x6b4a2f, leaves: 0x4f7d3c,
   parkour: 0xf2a33a, parkourAlt: 0x2f3b4a, cover: 0x9d9a90, tower: 0x5f6f86,
+  pad: 0x2fe0ff, padBase: 0x2a3340, trim: 0x5b5048, lamp: 0x30343a, lampGlow: 0xffe9a8, fence: 0x8a6a48, pillar: 0x7c86a0,
 };
 
 BR.World = class World {
@@ -31,6 +32,7 @@ BR.World = class World {
     this.chestSpots = [];  // {x,y,z,tier}
     this.trees = [];       // {x,z,h,s}
     this.occupied = [];    // rects used during generation to avoid overlaps
+    this.decor = [];       // visual-only boxes (trims, frames): rendered, never collided
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
     this.generate();
@@ -43,6 +45,7 @@ BR.World = class World {
     if (z0 > z1) { const t = z0; z0 = z1; z1 = t; }
     if (x1 - x0 < 1e-3 || y1 - y0 < 1e-3 || z1 - z0 < 1e-3) return null;
     const b = { x0, y0, z0, x1, y1, z1, color, stamp: 0, tag: opt && opt.tag };
+    if (opt && opt.decor) { this.decor.push(b); return b; }
     this.boxes.push(b);
     const c = this.cellRange(x0, z0, x1, z1);
     for (let cz = c[1]; cz <= c[3]; cz++)
@@ -165,6 +168,10 @@ BR.World = class World {
     for (let i = 0; i < 2; i++) this.placeRandom(34, 34, (x, z) => this.mesa(x, z));
     for (let i = 0; i < 4; i++) this.placeRandom(14, 14, (x, z) => this.tower(x, z));
     for (let i = 0; i < 7; i++) this.placeRandom(18, 18, (x, z) => this.wallRunLane(x, z));
+    // Movement playgrounds
+    for (let i = 0; i < 5; i++) this.placeRandom(34, 34, (x, z) => this.parkourCourse(x, z));
+    for (let i = 0; i < 3; i++) this.placeRandom(18, 18, (x, z) => this.pillarMaze(x, z));
+    for (let i = 0; i < 22; i++) this.placeRandom(4, 4, (x, z) => this.jumpPad(x, z));
 
     // Scatter
     for (let i = 0; i < 26; i++) this.placeRandom(8, 8, (x, z) => this.container(x, z));
@@ -172,6 +179,7 @@ BR.World = class World {
     for (let i = 0; i < 50; i++) this.placeRandom(7, 7, (x, z) => this.rock(x, z));
     for (let i = 0; i < 40; i++) this.placeRandom(7, 7, (x, z) => this.coverWall(x, z));
     for (let i = 0; i < 160; i++) this.placeRandom(2, 2, (x, z) => this.tree(x, z));
+    for (let i = 0; i < 18; i++) this.placeRandom(12, 3, (x, z) => this.fence(x, z));
 
     // Open-field loot so nobody is empty-handed for long
     for (let i = 0; i < 70; i++) {
@@ -200,6 +208,10 @@ BR.World = class World {
     const x0 = cx - w / 2, z0 = cz - d / 2;
     if (!this.free(x0, z0, x0 + w, z0 + d, 4)) return;
     this.claim(x0, z0, x0 + w, z0 + d);
+    // Street furniture on the town edge: a jump pad to reach the roofs + lamp posts
+    this.jumpPad(x0 - 2.6, cz);
+    this.lampPost(x0 - 1.2, z0 + 2); this.lampPost(x0 + w + 1.2, z0 + d - 2);
+    this.lampPost(x0 + w / 2, z0 - 1.2); this.lampPost(x0 + w / 2, z0 + d + 1.2);
     for (let i = 0; i < nx; i++) {
       for (let j = 0; j < nz; j++) {
         const lx = x0 + i * lot + lot / 2, lz = z0 + j * lot + lot / 2;
@@ -284,8 +296,19 @@ BR.World = class World {
       this.addBox(ix0, y0, hz1, hx1, y1, iz1, PAL.floor);
       if (hz0 > iz0) this.addBox(ix0, y0, iz0, hx1, y1, hz0, PAL.floor);
     }
-    // Roof
+    // Roof + low parapet (cover on rooftops, step-able)
     this.addBox(x0 - 0.2, H, z0 - 0.2, x1 + 0.2, H + 0.3, z1 + 0.2, PAL.roof);
+    const pt = 0.25, ph = H + 0.8;
+    this.addBox(x0 - 0.2, H + 0.3, z0 - 0.2, x1 + 0.2, ph, z0 + pt - 0.2, PAL.trim);
+    this.addBox(x0 - 0.2, H + 0.3, z1 - pt + 0.2, x1 + 0.2, ph, z1 + 0.2, PAL.trim);
+    this.addBox(x0 - 0.2, H + 0.3, z0 + pt - 0.2, x0 + pt - 0.2, ph, z1 - pt + 0.2, PAL.trim);
+    this.addBox(x1 - pt + 0.2, H + 0.3, z0 + pt - 0.2, x1 + 0.2, ph, z1 - pt + 0.2, PAL.trim);
+    // Decorative trim bands between floors + a base course (visual only)
+    for (let f = 1; f < floors; f++) {
+      const y = f * fh;
+      this.addBox(x0 - 0.08, y - 0.12, z0 - 0.08, x1 + 0.08, y + 0.08, z1 + 0.08, PAL.trim, { decor: true });
+    }
+    this.addBox(x0 - 0.06, 0, z0 - 0.06, x1 + 0.06, 0.35, z1 + 0.06, PAL.trim, { decor: true });
     // Loot: a guaranteed gun on every floor (in a corner, clear of the stairs),
     // extra items, and sometimes a chest inside or on the roof.
     const cx0 = x0 + t + 1.7, cx1 = x1 - t - 0.9, cz0 = z0 + t + 0.9, cz1 = z1 - t - 0.9;
@@ -422,10 +445,70 @@ BR.World = class World {
     this.chestSpots.push({ x: x - 5, y: Hh, z: z + 5, tier: 2 });
   }
 
+  // Jump pad: land on it to get launched (tag 'pad' is read by the Mover).
+  jumpPad(x, z) {
+    this.addBox(x - 1.4, 0, z - 1.4, x + 1.4, 0.15, z + 1.4, PAL.padBase);
+    this.addBox(x - 1.0, 0.15, z - 1.0, x + 1.0, 0.3, z + 1.0, PAL.pad, { tag: 'pad' });
+    this.pads = this.pads || [];
+    this.pads.push({ x, z });
+  }
+
+  // A run of floating platforms that climb, with a wall-run wall over the big gap.
+  parkourCourse(x, z) {
+    const R = this.rand, alongX = R() < 0.5;
+    const P = (a, b, y0, y1, half) => alongX
+      ? this.addBox(x + a - half, y0, z + b - half, x + a + half, y1, z + b + half, PAL.parkour)
+      : this.addBox(x + b - half, y0, z + a - half, x + b + half, y1, z + a + half, PAL.parkour);
+    this.jumpPad(alongX ? x - 14 : x, alongX ? z : z - 14);
+    let a = -10, y = 1.2;
+    for (let i = 0; i < 6; i++) {
+      const side = (i % 2 ? 1 : -1) * 1.2;
+      P(a, side, y - 0.35, y, 1.1);
+      a += 3.6 + R() * 0.6;
+      y += i === 3 ? 0 : 1.1;
+    }
+    // wall-run wall across the last gap
+    if (alongX) this.addBox(x + a - 7, 2.5, z + 3.2, x + a - 1, 7.5, z + 3.8, PAL.parkourAlt);
+    else this.addBox(x + 3.2, 2.5, z + a - 7, x + 3.8, 7.5, z + a - 1, PAL.parkourAlt);
+    P(a + 1, 0, y - 0.4, y, 2.2);  // summit
+    const sx = alongX ? x + a + 1 : x, sz = alongX ? z : z + a + 1;
+    this.chestSpots.push({ x: sx, y, z: sz, tier: 2 });
+  }
+
+  // Grid of tall pillars: wall-chain playground with loot on the tallest one.
+  pillarMaze(x, z) {
+    const R = this.rand;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const h = i === 0 && j === 0 ? 9 : 4.5 + R() * 3;
+      this.addBox(x + i * 5.2 - 0.9, 0, z + j * 5.2 - 0.9, x + i * 5.2 + 0.9, h, z + j * 5.2 + 0.9, PAL.pillar);
+    }
+    this.lootSpots.push({ x, y: 9, z, tier: 2, force: 'weapon' });
+    this.jumpPad(x + 7.8, z);
+  }
+
+  fence(x, z) {
+    const R = this.rand, L = 10, alongX = R() < 0.5;
+    for (let i = 0; i <= 5; i++) {
+      const o = -L / 2 + i * L / 5;
+      if (alongX) this.addBox(x + o - 0.08, 0, z - 0.08, x + o + 0.08, 1.1, z + 0.08, PAL.fence);
+      else this.addBox(x - 0.08, 0, z + o - 0.08, x + 0.08, 1.1, z + o + 0.08, PAL.fence);
+    }
+    for (const y of [0.45, 0.9]) {
+      if (alongX) this.addBox(x - L / 2, y, z - 0.04, x + L / 2, y + 0.1, z + 0.04, PAL.fence);
+      else this.addBox(x - 0.04, y, z - L / 2, x + 0.04, y + 0.1, z + L / 2, PAL.fence);
+    }
+  }
+
+  lampPost(x, z) {
+    this.addBox(x - 0.1, 0, z - 0.1, x + 0.1, 4.2, z + 0.1, PAL.lamp);
+    this.addBox(x - 0.1, 4.0, z - 0.1, x + 0.9, 4.15, z + 0.1, PAL.lamp, { decor: true });
+    this.addBox(x + 0.55, 3.8, z - 0.18, x + 0.95, 4.0, z + 0.18, PAL.lampGlow, { decor: true });
+  }
+
   // ---------------------------------------------------------------- render
-  buildMeshes(scene) {
+  buildMeshes(scene, detail) {
     const tex = makeTileTexture();
-    const vis = this.boxes;
+    const vis = this.boxes.concat(this.decor);
     const count = vis.length;
     const pos = new Float32Array(count * 24 * 3);
     const nor = new Float32Array(count * 24 * 3);
@@ -445,7 +528,10 @@ BR.World = class World {
         const p = P[k];
         pos[v * 3] = p[0]; pos[v * 3 + 1] = p[1]; pos[v * 3 + 2] = p[2];
         nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
-        col[v * 3] = c.r * shade; col[v * 3 + 1] = c.g * shade; col[v * 3 + 2] = c.b * shade;
+        // Fake ambient occlusion: darken side walls where they meet the ground
+        const ao = ny === 0 && p[1] < 0.05 ? 0.62 : ny === 0 && p[1] === aoY0 ? 0.85 : 1;
+        const sh = shade * ao;
+        col[v * 3] = c.r * sh; col[v * 3 + 1] = c.g * sh; col[v * 3 + 2] = c.b * sh;
         const u = uvf(p);
         uv[v * 2] = u[0] * S; uv[v * 2 + 1] = u[1] * S;
         v++;
@@ -456,7 +542,9 @@ BR.World = class World {
     };
     const uvXZ = p => [p[0], p[2]], uvZY = p => [p[2], p[1]], uvXY = p => [p[0], p[1]];
     const jitter = this.rand;
+    let aoY0 = 0;
     for (const b of vis) {
+      aoY0 = b.y0;
       c.setHex(b.color);
       const j = 0.94 + jitter() * 0.12;
       c.r *= j; c.g *= j; c.b *= j;
@@ -480,30 +568,121 @@ BR.World = class World {
     mesh.matrixAutoUpdate = false;
     scene.add(mesh);
 
-    // Ground
+    this.buildGround(scene);
+    this.buildScenery(scene, detail === undefined ? 1 : detail);
+    return mesh;
+  }
+
+  // Ground with painted grass/dirt variation (vertex colors) under a tiled detail texture.
+  buildGround(scene) {
     const gt = makeTileTexture(true);
     gt.repeat.set(this.size / 5, this.size / 5);
-    const groundMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(this.size + 12, this.size + 12),
-      new THREE.MeshLambertMaterial({ color: PAL.ground, map: gt })
-    );
-    groundMesh.rotation.x = -Math.PI / 2;
-    scene.add(groundMesh);
+    const segs = 110, S = this.size + 12;
+    const geo = new THREE.PlaneGeometry(S, S, segs, segs);
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
+    const grass = new THREE.Color(0x7d9a5a), grass2 = new THREE.Color(0x6a8a4a), dry = new THREE.Color(0xa4a35e), dirt = new THREE.Color(0x9c8460);
+    const c = new THREE.Color();
+    const towns = this.towns || [];
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = -pos.getY(i); // plane is rotated -90° about X
+      const n = Math.sin(x * 0.05) * Math.cos(z * 0.043) + Math.sin(x * 0.13 + z * 0.09) * 0.5;
+      c.copy(grass).lerp(grass2, BR.util.clamp(n * 0.5 + 0.5, 0, 1));
+      c.lerp(dry, BR.util.clamp(Math.sin(x * 0.021 + 1) * Math.sin(z * 0.017) * 1.2 - 0.3, 0, 0.6));
+      // dirt plazas in towns + dirt roads linking them
+      for (let t = 0; t < towns.length; t++) {
+        const T = towns[t], d = Math.hypot(x - T.x, z - T.z);
+        if (d < 34) c.lerp(dirt, BR.util.clamp((34 - d) / 12, 0, 0.85));
+        const U2 = towns[(t + 1) % towns.length];
+        const ex = U2.x - T.x, ez = U2.z - T.z, L2 = ex * ex + ez * ez;
+        const k = BR.util.clamp(((x - T.x) * ex + (z - T.z) * ez) / L2, 0, 1);
+        const rd = Math.hypot(x - (T.x + ex * k), z - (T.z + ez * k));
+        if (rd < 4) c.lerp(dirt, (4 - rd) / 4 * 0.75);
+      }
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const ground = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, map: gt }));
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+  }
 
-    // Tree canopies (visual only — bullets pass through leaves)
-    const cg = new THREE.IcosahedronGeometry(1, 0);
-    const cm = new THREE.MeshLambertMaterial({ color: PAL.leaves });
-    const inst = new THREE.InstancedMesh(cg, cm, this.trees.length);
+  // Sky dome, far mountains, clouds, tree canopies, bushes and grass tufts. All visual.
+  buildScenery(scene, detail) {
+    const R = BR.util.rng(this.seed + 5), H = this.half;
+    // Sky dome with a vertical gradient + sun
+    const skyG = new THREE.SphereGeometry(480, 24, 12);
+    const sp = skyG.attributes.position, sc = new Float32Array(sp.count * 3);
+    const top = new THREE.Color(0x3d7cc9), hor = new THREE.Color(0xcfe3f0), c = new THREE.Color();
+    for (let i = 0; i < sp.count; i++) {
+      const k = BR.util.clamp(sp.getY(i) / 480, 0, 1);
+      c.copy(hor).lerp(top, Math.pow(k, 0.6));
+      sc[i * 3] = c.r; sc[i * 3 + 1] = c.g; sc[i * 3 + 2] = c.b;
+    }
+    skyG.setAttribute('color', new THREE.BufferAttribute(sc, 3));
+    const sky = new THREE.Mesh(skyG, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+    sky.renderOrder = -10;
+    scene.add(sky);
+    this.sky = sky;
+    const sun = new THREE.Mesh(new THREE.CircleGeometry(16, 20), new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false }));
+    sun.position.set(220, 300, 160); sun.lookAt(0, 0, 0);
+    scene.add(sun);
+
+    // Mountain ring beyond the map edge
+    const mg = new THREE.ConeGeometry(1, 1, 5);
+    const mtn = new THREE.InstancedMesh(mg, new THREE.MeshLambertMaterial({ color: 0x6f7f8c, flatShading: true }), 26);
     const o = new THREE.Object3D();
-    this.trees.forEach((t, i) => {
-      o.position.set(t.x, t.h + t.s * 0.4, t.z);
-      o.scale.set(t.s, t.s * 1.25, t.s);
-      o.rotation.y = i;
-      o.updateMatrix();
-      inst.setMatrixAt(i, o.matrix);
-    });
-    scene.add(inst);
-    return mesh;
+    for (let i = 0; i < 26; i++) {
+      const a = i / 26 * Math.PI * 2 + R() * 0.2, r = H + 70 + R() * 60;
+      o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+      const hgt = 50 + R() * 70, wid = 45 + R() * 40;
+      o.scale.set(wid, hgt, wid); o.position.y = hgt / 2 - 2; o.rotation.y = R() * 6;
+      o.updateMatrix(); mtn.setMatrixAt(i, o.matrix);
+    }
+    scene.add(mtn);
+
+    // Clouds
+    const cl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x8a9aaa, flatShading: true }), 18);
+    for (let i = 0; i < 18; i++) {
+      o.position.set((R() * 2 - 1) * 420, 110 + R() * 50, (R() * 2 - 1) * 420);
+      o.scale.set(20 + R() * 30, 5 + R() * 5, 12 + R() * 16); o.rotation.set(0, R() * 6, 0);
+      o.updateMatrix(); cl.setMatrixAt(i, o.matrix);
+    }
+    scene.add(cl);
+
+    // Tree canopies: two stacked blobs per tree, two greens
+    const cg = new THREE.IcosahedronGeometry(1, 0);
+    const greens = [0x4f7d3c, 0x3f6b33];
+    for (let gi = 0; gi < 2; gi++) {
+      const inst = new THREE.InstancedMesh(cg, new THREE.MeshLambertMaterial({ color: greens[gi], flatShading: true }), this.trees.length);
+      this.trees.forEach((t, i) => {
+        const s = gi ? t.s * 0.7 : t.s;
+        o.position.set(t.x + (gi ? 0.3 : 0), t.h + t.s * (gi ? 1.2 : 0.4), t.z);
+        o.scale.set(s, s * 1.2, s); o.rotation.set(0, i + gi, 0);
+        o.updateMatrix(); inst.setMatrixAt(i, o.matrix);
+      });
+      scene.add(inst);
+    }
+
+    // Bushes + grass tufts scattered on open ground (count scales with Graphics)
+    const nB = Math.floor(260 * detail), nG = Math.floor(2400 * detail);
+    const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x55803e, flatShading: true }), nB);
+    const tuft = new THREE.InstancedMesh(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
+    let bi = 0, gi = 0;
+    for (let tries = 0; tries < (nB + nG) * 2 && (bi < nB || gi < nG); tries++) {
+      const x = (R() * 2 - 1) * (H - 4), z = (R() * 2 - 1) * (H - 4);
+      if (!this.free(x - 0.6, z - 0.6, x + 0.6, z + 0.6, 0)) continue;
+      if (bi < nB && R() < 0.12) {
+        const s = 0.5 + R() * 0.7;
+        o.position.set(x, s * 0.5, z); o.scale.set(s * 1.3, s, s * 1.3); o.rotation.set(0, R() * 6, 0);
+        o.updateMatrix(); bush.setMatrixAt(bi++, o.matrix);
+      } else if (gi < nG) {
+        const s = 0.25 + R() * 0.35;
+        o.position.set(x, s * 0.5, z); o.scale.set(1, s, 1); o.rotation.set((R() - 0.5) * 0.4, R() * 6, 0);
+        o.updateMatrix(); tuft.setMatrixAt(gi++, o.matrix);
+      }
+    }
+    bush.count = bi; tuft.count = gi;
+    scene.add(bush, tuft);
   }
 
   // Top-down picture of the map for the minimap.

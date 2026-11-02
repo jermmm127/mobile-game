@@ -1,12 +1,14 @@
 'use strict';
 // =============================================================================
 // MOVER — the character controller. Player and bots both use this, so every
-// movement trick (slide, wall-run, wall-jump, mantle, vault, skydive) works the
-// same for everyone.
+// movement trick (slide, crouch, wall-run, wall-jump, mantle, vault, grapple,
+// jump pads, skydive) works the same for everyone.
 //
-// Input each frame: { mx, mz, jump, slide }
+// Input each frame: { mx, mz, jump, crouch, speedMult }
 //   mx/mz: strafe / forward in [-1, 1] relative to `yaw`
-//   jump/slide: true on the frame the button was pressed
+//   jump/crouch: true on the frame the button was pressed
+//   Crouch while running = slide. Crouch otherwise = toggle crouch.
+// The grapple is started from Actor.tryGrapple() (it needs the aim ray).
 // =============================================================================
 BR.Mover = class Mover {
   constructor(world) {
@@ -22,9 +24,11 @@ BR.Mover = class Mover {
     this.coyote = 0;
     this.jumpBuf = 0;
     this.sliding = false;
+    this.crouched = false;
     this.slideT = 0;
     this.slideCd = 0;
     this.slideQueue = 0;
+    this.slideDir = { x: 0, z: 0 };
     this.wallN = { x: 0, z: 0 };
     this.wallContactT = 9;
     this.wallTall = false;
@@ -33,15 +37,18 @@ BR.Mover = class Mover {
     this.wallRunCd = 0;
     this.mantleTop = null;
     this.dropping = false;
-    this.events = {};    // one-frame flags: jump, land, slide, wallrun, walljump, mantle
+    this.grapple = null;     // { x, y, z, t } while hooked
+    this.padHit = false;
+    this.events = {};        // one-frame flags: jump, land, slide, wallrun, walljump, mantle, pad, grappleEnd, tech
     this.landSpeed = 0;
     // movement-tech bookkeeping
     this.sinceLand = 9;      // seconds on the ground since the last landing
-    this.hopChain = 0;       // consecutive bunny hops
-    this.wallKey = '';       // which wall we last wall-ran on
-    this.wallPlane = 0;      // coordinate of the last wall surface we touched
-    this.wallChain = 0;      // consecutive walls in one air-time
-    this.mantleT = 0;        // window to mantle-boost
+    this.landVel = { x: 0, z: 0 }; // horizontal velocity at the moment we landed (bhop restores it)
+    this.hopChain = 0;
+    this.wallKey = '';
+    this.wallPlane = 0;
+    this.wallChain = 0;
+    this.mantleT = 0;
     this.pendingBoost = null;
     this._tmp = [];
   }
@@ -54,11 +61,9 @@ BR.Mover = class Mover {
     for (const k in ev) ev[k] = false;
     this.slideCd -= dt; this.wallRunCd -= dt; this.coyote -= dt; this.jumpBuf -= dt;
     this.slideQueue -= dt; this.wallContactT += dt; this.mantleT -= dt;
-    this.sinceLand = this.onGround ? this.sinceLand + dt : 0; // time spent on the ground since landing
+    this.sinceLand = this.onGround ? this.sinceLand + dt : 0;
     if (inp.jump) this.jumpBuf = M.jumpBuffer;
-    // TECH auto-hop: holding jump re-jumps the instant you land (no friction frame)
-    if (inp.jumpHeld && this.onGround) this.jumpBuf = M.jumpBuffer;
-    if (inp.slide && !this.onGround && !this.dropping) this.slideQueue = M.slideQueueTime;
+    const run = M.runSpeed * (inp.speedMult || 1);
 
     // wish direction in world space. forward = (-sin yaw, -cos yaw)
     const sy = Math.sin(yaw), cy = Math.cos(yaw);
@@ -80,51 +85,62 @@ BR.Mover = class Mover {
       return;
     }
 
-    // ---- slide --------------------------------------------------------------
+    // ---- crouch / slide (one button) ---------------------------------------
     const hs = this.speedH;
-    const wantSlide = inp.slide || (this.slideQueue > 0 && this.onGround);
-    // TECH slide-hop: a slide that starts within a few frames of landing ignores the
-    // cooldown and the normal speed cap, so slide -> jump -> slide chains keep stacking.
-    const landSlide = this.onGround && this.sinceLand < M.tech.slideHopWindow && hs > M.runSpeed;
-    if (wantSlide && (this.slideCd <= 0 || landSlide) && !this.sliding && (this.onGround || this.coyote > 0) && (hs > 2 || frac > 0.3)) {
-      this.sliding = true; this.slideT = 0; this.slideCd = M.slideCooldown; this.slideQueue = 0;
-      let dx = this.vel.x, dz = this.vel.z;
-      if (hs < 0.5) { dx = wx; dz = wz; } else { dx /= hs; dz /= hs; }
-      const cap = landSlide ? M.maxSpeed : M.slideMaxSpeed;
-      const ns = Math.min(Math.max(hs, M.runSpeed) + M.slideBoost, cap);
-      if (landSlide && ns > M.slideMaxSpeed - 0.5) ev.tech = 'SLIDE-HOP';
-      this.vel.x = dx * ns; this.vel.z = dz * ns;
-      ev.slide = true;
+    // TECH slide-hop: crouch within a few frames of landing -> no cooldown, higher cap
+    const landSlide = this.onGround && this.sinceLand < M.tech.slideHopWindow && hs > run;
+    const running = hs >= run * M.slideMinSpeed && frac > 0.3;
+    const queued = this.slideQueue > 0 && this.onGround && hs >= run * M.slideMinSpeed;
+    if (inp.crouch || queued) {
+      if (this.sliding) {                          // tap again: stop the slide
+        if (inp.crouch) { this.sliding = false; this.crouched = false; }
+      } else if ((this.onGround || this.coyote > 0) && (running || queued || landSlide) && (this.slideCd <= 0 || landSlide)) {
+        this.startSlide(hs, wx, wz, frac, landSlide, run);
+      } else if (!this.onGround && inp.crouch) {
+        this.slideQueue = M.slideQueueTime;        // slide when we land
+      } else if (this.onGround && inp.crouch) {
+        this.crouched = !this.crouched;            // not running: plain crouch toggle
+      }
     }
     if (this.sliding) {
       this.slideT += dt;
       if (this.onGround && (this.speedH < M.slideEndSpeed || this.slideT > M.slideMaxTime)) this.sliding = false;
     }
 
-    // ---- jump / wall-jump ---------------------------------------------------
+    // ---- jump / wall-jump / grapple release ---------------------------------
     let jumped = false;
-    if (this.jumpBuf > 0) {
+    if (this.jumpBuf > 0 && this.grapple) {
+      this.vel.y = Math.max(this.vel.y, 0) + M.grapple.releaseHop;
+      this.releaseGrapple();
+      this.jumpBuf = 0;
+      jumped = true; ev.jump = true;
+    } else if (this.jumpBuf > 0) {
       if (this.onGround || this.coyote > 0) {
         this.vel.y = M.jumpSpeed;
+        this.crouched = false;
+        // TECH bunny hop: a jump timed within bhopWindow of landing gives back the
+        // speed ground friction just took. Mistime it and the friction sticks.
+        if (this.onGround && this.sinceLand <= M.tech.bhopWindow) {
+          const lv = this.landVel, ls = Math.hypot(lv.x, lv.z);
+          if (ls > this.speedH) { this.vel.x = lv.x; this.vel.z = lv.z; }
+          if (ls > run + 1) {
+            this.hopChain++;
+            if (this.hopChain >= 2) ev.tech = 'BHOP x' + this.hopChain;
+          }
+        } else this.hopChain = 0;
         // TECH super jump: jump in the first instant of a slide
         if (this.sliding && this.slideT < M.tech.superJumpWindow) {
           this.vel.y = M.jumpSpeed * M.tech.superJumpMult;
           this.vel.x *= 1.08; this.vel.z *= 1.08;
           ev.tech = 'SUPER JUMP';
         }
-        // TECH bunny hop: jumping on the landing frame skips ground friction entirely
-        if (this.sinceLand < 0.06 && this.speedH > M.runSpeed + 1) {
-          this.hopChain++;
-          if (this.hopChain >= 2 && !ev.tech) ev.tech = 'BHOP x' + this.hopChain;
-        } else this.hopChain = 0;
         this.onGround = false; this.coyote = 0; this.jumpBuf = 0;
         this.sliding = false;
         jumped = true; ev.jump = true;
       } else if (this.mantleT > 0) {
         // TECH mantle boost: jump while climbing a ledge to launch off it
-        const fx = -this.wallN.x, fz = -this.wallN.z;
         this.vel.y = M.jumpSpeed * 1.15;
-        this.pendingBoost = { x: fx, z: fz, t: 0.5 }; // applied once we clear the ledge
+        this.pendingBoost = { x: -this.wallN.x, z: -this.wallN.z, t: 0.5 };
         this.mantleT = 0; this.jumpBuf = 0;
         jumped = true; ev.jump = true; ev.tech = 'MANTLE BOOST';
       } else if (this.wallRunning || (this.wallContactT < 0.18 && this.wallTall)) {
@@ -140,16 +156,20 @@ BR.Mover = class Mover {
     }
 
     // ---- horizontal acceleration -------------------------------------------
-    if (this.onGround && !jumped) {
+    const crouchy = this.crouched && !this.sliding;
+    if (this.grapple) {
+      this.updateGrapple(dt);
+      this.accelerate(wx, wz, run * frac, M.accelAir, dt);
+    } else if (this.onGround && !jumped) {
       if (this.sliding) {
+        // Slides are locked to their starting direction: friction only, no steering
         this.friction(M.slideFriction, dt);
-        this.accelerate(wx, wz, M.runSpeed * 0.5 * frac, M.slideSteer, dt);
       } else {
         this.friction(M.friction, dt);
-        this.accelerate(wx, wz, M.runSpeed * frac, M.accelGround, dt);
+        this.accelerate(wx, wz, (crouchy ? M.crouchSpeed : run) * frac, M.accelGround, dt);
       }
     } else {
-      this.accelerate(wx, wz, M.runSpeed * frac, M.accelAir, dt);
+      this.accelerate(wx, wz, run * frac, M.accelAir, dt);
     }
 
     // ---- wall-run stick -----------------------------------------------------
@@ -159,9 +179,8 @@ BR.Mover = class Mover {
       const vn = this.vel.x * n.x + this.vel.z * n.z;
       this.vel.x -= n.x * (vn + 1.5);
       this.vel.z -= n.z * (vn + 1.5);
-      // keep running speed along the wall
       const along = { x: -n.z, z: n.x };
-      let va = this.vel.x * along.x + this.vel.z * along.z;
+      const va = this.vel.x * along.x + this.vel.z * along.z;
       if (Math.abs(va) < M.wallRunSpeedSustain) {
         const sign = va >= 0 ? 1 : -1;
         const add = (M.wallRunSpeedSustain - Math.abs(va)) * Math.min(1, 6 * dt);
@@ -170,16 +189,17 @@ BR.Mover = class Mover {
     }
 
     // ---- gravity ------------------------------------------------------------
-    const g = M.gravity * (this.wallRunning ? M.wallRunGravityScale : 1);
-    this.vel.y -= g * dt;
+    const gScale = this.grapple ? M.grapple.gravityScale : this.wallRunning ? M.wallRunGravityScale : 1;
+    this.vel.y -= M.gravity * gScale * dt;
     if (this.wallRunning && this.vel.y < -M.wallRunMaxFall) this.vel.y = -M.wallRunMaxFall;
 
-    // speed cap
-    const sp = this.speedH;
-    if (sp > M.maxSpeed) { this.vel.x *= M.maxSpeed / sp; this.vel.z *= M.maxSpeed / sp; }
+    // speed cap (the grapple has its own)
+    const sp = this.speedH, cap = this.grapple ? M.grapple.maxSpeed : M.maxSpeed;
+    if (sp > cap) { this.vel.x *= cap / sp; this.vel.z *= cap / sp; }
 
-    // ---- crouch height (slide) ---------------------------------------------
-    const targetH = this.sliding ? BR.CONFIG.actor.slideHeight : this.standH;
+    // ---- body height --------------------------------------------------------
+    const A = BR.CONFIG.actor;
+    const targetH = this.sliding ? A.slideHeight : this.crouched ? A.crouchHeight : this.standH;
     if (targetH < this.h) this.h = targetH;
     else if (targetH > this.h) {
       const p = this.pos, r = this.r;
@@ -187,20 +207,27 @@ BR.Mover = class Mover {
     }
 
     // ---- move + collide -----------------------------------------------------
-    this.mantleWish = inp.mz > 0.3;
+    this.mantleWish = inp.mz > 0.3 || !!this.grapple;
     this.integrate(dt, jumped);
+
+    // ---- jump pad -----------------------------------------------------------
+    if (this.padHit) {
+      this.padHit = false;
+      this.vel.y = M.padSpeed;
+      this.onGround = false;
+      this.sliding = false;
+      ev.pad = true; ev.tech = 'LAUNCH';
+    }
 
     if (this.pendingBoost) {
       const b = this.pendingBoost;
       b.t -= dt;
       if (this.wallContactT > 0) {
-        // launch forward at run speed + boost, whatever speed the climb left us with
         const cur = this.vel.x * b.x + this.vel.z * b.z;
-        const add = Math.max(cur, M.runSpeed) + M.tech.mantleBoost - cur;
+        const add = Math.max(cur, run) + M.tech.mantleBoost - cur;
         this.vel.x += b.x * add; this.vel.z += b.z * add;
         this.pendingBoost = null;
-      }
-      else if (b.t <= 0) this.pendingBoost = null;
+      } else if (b.t <= 0) this.pendingBoost = null;
     }
 
     // ---- mantle / vault -----------------------------------------------------
@@ -211,15 +238,16 @@ BR.Mover = class Mover {
       this.vel.x -= this.wallN.x * 2.5; this.vel.z -= this.wallN.z * 2.5;
       this.mantleTop = null;
       this.sliding = false;
+      this.crouched = false;
+      if (this.grapple) this.releaseGrapple(true);
     }
 
     // ---- wall-run state -----------------------------------------------------
     const fwd = inp.mz > 0.3;
-    const canRun = !this.onGround && this.wallContactT < (this.wallRunning ? 0.06 : 0.2) && this.wallTall && this.wallRunCd <= 0 &&
+    const canRun = !this.grapple && !this.onGround && this.wallContactT < (this.wallRunning ? 0.06 : 0.2) && this.wallTall && this.wallRunCd <= 0 &&
       this.wallRunT < M.wallRunMaxTime && fwd && this.speedH >= M.wallRunMinSpeed &&
       (this.wallRunning || this.vel.y < M.wallRunEnterVy);
     if (canRun) {
-      // Entering a wall-run resets vertical speed to a small lift: a gentle arc, not a wall climb
       if (!this.wallRunning) {
         this.vel.y = M.wallRunStartLift; ev.wallrun = true;
         // TECH wall chain: a *different* wall refreshes your wall-run timer
@@ -232,6 +260,59 @@ BR.Mover = class Mover {
       this.wallRunCd = 0.25;
     }
     if (this.onGround) { this.wallRunT = 0; this.wallChain = 0; this.wallKey = ''; }
+  }
+
+  startSlide(hs, wx, wz, frac, landSlide, run) {
+    const M = BR.CONFIG.move;
+    this.sliding = true; this.crouched = false; this.slideT = 0; this.slideCd = M.slideCooldown; this.slideQueue = 0;
+    // Omni-slide: go where the stick points (sideways and backwards too), else along velocity
+    let dx, dz;
+    if (frac > 0.3) { dx = wx; dz = wz; } else { dx = this.vel.x / (hs || 1); dz = this.vel.z / (hs || 1); }
+    const cap = landSlide ? M.maxSpeed : M.slideMaxSpeed;
+    const ns = Math.min(Math.max(hs, run) + M.slideBoost, cap);
+    this.vel.x = dx * ns; this.vel.z = dz * ns;
+    this.slideDir.x = dx; this.slideDir.z = dz;
+    this.events.slide = true;
+    if (landSlide && ns > M.slideMaxSpeed - 0.5) this.events.tech = 'SLIDE-HOP';
+  }
+
+  // ---- grapple ---------------------------------------------------------------
+  startGrapple(x, y, z) {
+    this.grapple = { x, y, z, t: 0 };
+    this.sliding = false; this.crouched = false; this.wallRunning = false;
+    this.onGround = false;
+    if (this.vel.y < 2) this.vel.y = 2;
+    this.events.grapple = true;
+  }
+
+  // auto = the hook reached its point (vs. the player jumping off early)
+  releaseGrapple(auto) {
+    if (!this.grapple) return;
+    if (auto) {
+      // Arriving: tame the launch so you land on the roof instead of flying past it,
+      // and add a little hop so you crest the ledge. Jumping off early keeps all momentum.
+      // enough upward speed to get the ledge within mantle reach, but no more
+      const climb = Math.sqrt(2 * BR.CONFIG.move.gravity * Math.max(0, this.grapple.y - this.pos.y - 1.1));
+      this.vel.y = Math.min(this.vel.y, Math.max(6, climb));
+      const s = this.speedH;
+      if (s > 9) { this.vel.x *= 9 / s; this.vel.z *= 9 / s; }
+      if (this.grapple.y > this.pos.y + 0.5 && this.vel.y < 5) this.vel.y = 5;
+    }
+    this.grapple = null;
+    this.events.grappleEnd = true;
+  }
+
+  updateGrapple(dt) {
+    const G = BR.CONFIG.move.grapple, g = this.grapple;
+    g.t += dt;
+    const dx = g.x - this.pos.x, dy = g.y - (this.pos.y + 0.6), dz = g.z - this.pos.z;
+    const d = Math.hypot(dx, dy, dz);
+    if (d < 1.6 || g.t > G.maxTime) { this.releaseGrapple(true); return; }
+    this.vel.x += dx / d * G.pull * dt;
+    this.vel.y += dy / d * G.pull * dt;
+    this.vel.z += dz / d * G.pull * dt;
+    const s = this.vel.length();
+    if (s > G.maxSpeed) this.vel.multiplyScalar(G.maxSpeed / s);
   }
 
   friction(f, dt) {
@@ -262,6 +343,7 @@ BR.Mover = class Mover {
     const sdt = dt / steps;
     this.wasGround = this.onGround;
     const wasGround = this.onGround;
+    const preX = v.x, preZ = v.z;
     this.onGround = false;
     for (let i = 0; i < steps; i++) {
       this.moveAxis('x', v.x * sdt);
@@ -277,7 +359,11 @@ BR.Mover = class Mover {
       if (top > -Infinity) { p.y = top; v.y = 0; this.onGround = true; }
     }
     if (wasGround && !this.onGround && !jumped) this.coyote = M.coyoteTime;
-    if (!wasGround && this.onGround) { this.events.land = true; }
+    if (!wasGround && this.onGround) {
+      this.events.land = true;
+      this.landVel.x = preX; this.landVel.z = preZ;
+      if (this.grapple) this.releaseGrapple();
+    }
   }
 
   clearAt(x, y, z, h) {
@@ -295,10 +381,11 @@ BR.Mover = class Mover {
 
     if (axis === 'y') {
       if (d < 0) {
-        let top = -Infinity;
-        for (const b of list) if (b.y1 > top) top = b.y1;
+        let top = -Infinity, pad = false;
+        for (const b of list) { if (b.y1 > top) top = b.y1; if (b.tag === 'pad') pad = true; }
         if (this.vel.y < 0) this.landSpeed = -this.vel.y;
         p.y = top; this.vel.y = 0; this.onGround = true;
+        if (pad) this.padHit = true;
       } else {
         let bot = Infinity;
         for (const b of list) if (b.y0 < bot) bot = b.y0;

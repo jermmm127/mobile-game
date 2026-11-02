@@ -171,9 +171,9 @@ BR.Loot = class Loot {
       if (took) { this.game.onPickup(actor, it); this.remove(it); }
     }
     if (swapCandidate && !actor.isPlayer) {
-      const worst = Math.min(...actor.slots.map(s => s.def.tier));
+      const worst = Math.min(...actor.guns().map(s => s.def.tier));
       if (C.weapons[swapCandidate.wid].tier > worst) {
-        const i = actor.slots.findIndex(s => s.def.tier === worst);
+        const i = actor.guns().findIndex(s => s.def.tier === worst);
         actor.cur = i;
         this.swap(actor, swapCandidate);
       }
@@ -219,6 +219,8 @@ BR.Loot = class Loot {
   // Drop the held weapon and take this one.
   swap(actor, item) {
     if (item.taken) return;
+    // Holding the karambit: replace gun slot 0 (or fill an empty one)
+    if (actor.cur === 2) actor.cur = actor.slots[0] && !actor.slots[1] ? 1 : 0;
     const old = actor.weapon;
     if (old) this.add({ kind: 'weapon', wid: old.id, mag: old.mag, reserve: 0 }, actor.pos.x, actor.pos.y, actor.pos.z);
     actor.slots[actor.cur] = BR.Weapons.create(item.wid, item.mag);
@@ -232,9 +234,9 @@ BR.Loot = class Loot {
   findWanted(actor, radius) {
     const C = BR.CONFIG;
     let best = null, bestD = radius;
-    const empty = actor.slots.some(s => !s);
-    const worst = empty ? -1 : Math.min(...actor.slots.map(s => s.def.tier));
-    const heldAmmo = new Set(actor.slots.filter(Boolean).map(s => s.def.ammo));
+    const empty = actor.guns().some(s => !s);
+    const worst = empty ? -1 : Math.min(...actor.guns().map(s => s.def.tier));
+    const heldAmmo = new Set(actor.guns().filter(Boolean).map(s => s.def.ammo));
     for (const it of this.items) {
       if (Math.abs(it.pos.y - actor.pos.y) > 2.5) continue; // bots have no pathfinding: skip roofs
       const d = actor.pos.distanceTo(it.pos);
@@ -255,7 +257,7 @@ BR.Loot = class Loot {
     const p = actor.pos;
     let k = 0;
     const spot = () => { const a = k++ * 2.1; return [p.x + Math.cos(a) * 0.9, p.y, p.z + Math.sin(a) * 0.9]; };
-    for (const w of actor.slots) if (w) this.add({ kind: 'weapon', wid: w.id, mag: w.mag, reserve: 0 }, ...spot());
+    for (const w of actor.guns()) if (w) this.add({ kind: 'weapon', wid: w.id, mag: w.mag, reserve: 0 }, ...spot());
     for (const t in actor.ammo) if (actor.ammo[t] > 0) this.add({ kind: 'ammo', ammoType: t, amount: actor.ammo[t] }, ...spot());
     if (actor.shield > 0 || Math.random() < 0.5) this.add({ kind: 'shield', amount: BR.CONFIG.loot.shieldAmount }, ...spot());
   }

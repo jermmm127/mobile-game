@@ -27,45 +27,74 @@ const server = http.createServer((req, res) => {
   await page.waitForFunction(() => window.BR && BR.game);
 
   const mech = await page.evaluate(() => {
-    const w = new BR.World(1);
-    w.boxes = []; w.cells = w.cells.map(() => []);
-    w.addBox(-50, 0, -3.6, 50, 5, -3, 0);   // tall wall
-    w.addBox(20, 0, 5, 22, 1.6, 15, 0);     // ledge
-    w.addBox(-22, 0, 5, -20, 1.2, 15, 0);   // crate
-    const m = new BR.Mover(w), dt = 1 / 60;
-    const step = (n, inp, yaw) => { for (let i = 0; i < n; i++) m.update(dt, Object.assign({ mx: 0, mz: 0, jump: false, slide: false }, inp), yaw); };
-    const yawFor = (dx, dz) => Math.atan2(-dx, -dz);
-    const r = {};
-    m.pos.set(0, 0, 8); step(90, { mz: 1 }, yawFor(1, 0)); r.run = m.speedH;
-    step(1, { mz: 1, slide: true }, yawFor(1, 0)); r.slide = m.speedH;
-    m.pos.set(30, 0, -2); m.vel.set(0, 0, 0); step(40, { mz: 1 }, yawFor(-1, -0.25)); step(1, { mz: 1, jump: true }, yawFor(-1, -0.25));
-    let wr = 0; for (let i = 0; i < 180 && !m.onGround; i++) { step(1, { mz: 1 }, yawFor(-1, -0.25)); if (m.wallRunning) wr++; }
-    r.wallRunSec = wr / 60;
-    m.pos.set(16, 0, 10); m.vel.set(0, 0, 0);
-    let j = false, my = 0; for (let i = 0; i < 200; i++) { const now = !j && m.pos.x > 18.6; if (now) j = true; step(1, { mz: 1, jump: now }, yawFor(1, 0)); if (m.onGround) my = Math.max(my, m.pos.y); }
-    r.mantleY = my; // highest ground stood on
-    m.pos.set(-26, 0, 10); m.vel.set(0, 0, 0);
-    let top = 0; for (let i = 0; i < 120; i++) { step(1, { mz: 1 }, yawFor(1, 0)); top = Math.max(top, m.pos.y); }
-    r.vaultTop = top;
-    // movement tech
-    const go = (mv, n, inp, yaw) => { for (let i = 0; i < n; i++) mv.update(dt, Object.assign({ mx: 0, mz: 0, jump: false, slide: false, jumpHeld: false }, inp), yaw); };
-    const flat = new BR.World(1); flat.boxes = []; flat.cells = flat.cells.map(() => []);
-    let t = new BR.Mover(flat); go(t, 90, { mz: 1 }, yawFor(1, 0)); go(t, 1, { mz: 1, slide: true }, yawFor(1, 0)); go(t, 1, { mz: 1, jump: true }, yawFor(1, 0));
-    let apex = 0; for (let i = 0; i < 60; i++) { go(t, 1, { mz: 1 }, yawFor(1, 0)); apex = Math.max(apex, t.pos.y); }
-    r.superJumpApex = apex;
-    t = new BR.Mover(flat); go(t, 90, { mz: 1 }, yawFor(1, 0)); go(t, 1, { mz: 1, slide: true }, yawFor(1, 0));
-    go(t, 240, { mz: 1, jumpHeld: true }, yawFor(1, 0)); r.bhopSpeed = t.speedH;
-    const lane = new BR.World(1); lane.boxes = []; lane.cells = lane.cells.map(() => []);
-    lane.addBox(-80, 0, -3.6, 80, 6, -3, 0); lane.addBox(-80, 0, 3, 80, 6, 3.6, 0);
-    t = new BR.Mover(lane); t.pos.set(60, 0, -2.5);
+    const dt = 1 / 60, yawFor = (dx, dz) => Math.atan2(-dx, -dz);
+    const mkWorld = boxes => { const w = new BR.World(1); w.boxes = []; w.cells = w.cells.map(() => []); boxes.forEach(b => w.addBox(...b)); return w; };
+    const go = (m, n, inp, yaw) => { for (let i = 0; i < n; i++) m.update(dt, Object.assign({ mx: 0, mz: 0, jump: false, crouch: false }, typeof inp === 'function' ? inp(i) : inp), yaw); };
+    const run = BR.CONFIG.move.runSpeed, r = {};
+    const E = yawFor(1, 0);
+    const flat = mkWorld([]);
+    let m = new BR.Mover(flat); go(m, 90, { mz: 1 }, E); r.run = m.speedH;
+    go(m, 1, { mz: 1, crouch: true }, E); r.slide = m.speedH;
+    // omni-slide: running forward, push the stick sideways and slide -> goes sideways, can't steer after
+    m = new BR.Mover(flat); go(m, 90, { mz: 1 }, E); go(m, 1, { mx: 1, mz: 0.2, crouch: true }, E);
+    const d0 = Math.atan2(m.vel.z, m.vel.x); go(m, 20, { mx: -1 }, E);
+    r.slideSideways = Math.abs(m.vel.z) > Math.abs(m.vel.x); r.slideSteerDrift = Math.abs(Math.atan2(m.vel.z, m.vel.x) - d0);
+    // crouch when not running
+    m = new BR.Mover(flat); go(m, 30, {}, E); go(m, 1, { crouch: true }, E); go(m, 10, {}, E); r.crouchH = m.h;
+    // super jump
+    m = new BR.Mover(flat); go(m, 90, { mz: 1 }, E); go(m, 1, { mz: 1, crouch: true }, E); go(m, 1, { mz: 1, jump: true }, E);
+    let apex = 0; for (let i = 0; i < 70; i++) { go(m, 1, { mz: 1 }, E); apex = Math.max(apex, m.pos.y); } r.superJumpApex = apex;
+    // bunny hop: timed jumps on landing keep slide speed; holding jump does nothing; late jumps lose it
+    const hop = mode => {
+      const t = new BR.Mover(flat); go(t, 90, { mz: 1 }, E); go(t, 1, { mz: 1, crouch: true }, E); go(t, 1, { mz: 1, jump: true }, E);
+      let late = 0;
+      for (let i = 0; i < 300; i++) {
+        let j = false;
+        if (mode === 'timed') j = t.onGround || (t.vel.y < 0 && t.pos.y < 0.15);
+        if (mode === 'held') j = false;                         // holding = no new presses
+        if (mode === 'late') { if (t.onGround) late++; else late = 0; j = late === 9; }
+        go(t, 1, { mz: 1, jump: j }, E);
+      }
+      return t.speedH;
+    };
+    r.bhopTimed = hop('timed'); r.bhopHeld = hop('held'); r.bhopLate = hop('late');
+    // wall chain
+    const lane = mkWorld([[-80, 0, -3.6, 80, 6, -3, 0], [-80, 0, 3, 80, 6, 3.6, 0]]);
+    m = new BR.Mover(lane); m.pos.set(60, 0, -2.5);
     let yw = yawFor(-1, -0.3), air = 0;
-    go(t, 30, { mz: 1 }, yw); go(t, 1, { mz: 1, jump: true }, yw);
-    for (let i = 0; i < 600 && !t.onGround; i++) { const j = t.wallRunning && t.wallRunT > 0.5; if (j) yw = yawFor(-1, t.wallN.z * 0.6); go(t, 1, { mz: 1, jump: j }, yw); air++; }
+    go(m, 30, { mz: 1 }, yw); go(m, 1, { mz: 1, jump: true }, yw);
+    for (let i = 0; i < 600 && !m.onGround; i++) { const j = m.wallRunning && m.wallRunT > 0.5; if (j) yw = yawFor(-1, m.wallN.z * 0.6); go(m, 1, { mz: 1, jump: j }, yw); air++; }
     r.wallChainAir = air / 60;
+    // ledges
+    const led = mkWorld([[20, 0, 5, 22, 1.6, 15, 0], [-22, 0, 5, -20, 1.2, 15, 0]]);
+    m = new BR.Mover(led); m.pos.set(16, 0, 10);
+    let jd = false, my = 0; for (let i = 0; i < 200; i++) { const now = !jd && m.pos.x > 18.6; if (now) jd = true; go(m, 1, { mz: 1, jump: now }, E); if (m.onGround) my = Math.max(my, m.pos.y); }
+    r.mantleY = my;
+    m = new BR.Mover(led); m.pos.set(-26, 0, 10); let top = 0; for (let i = 0; i < 120; i++) { go(m, 1, { mz: 1 }, E); top = Math.max(top, m.pos.y); } r.vaultTop = top;
+    // jump pad
+    const padW = mkWorld([]); padW.addBox(-1, 0, -1, 1, 0.3, 1, 0, { tag: 'pad' });
+    m = new BR.Mover(padW); m.pos.set(0, 2, 0); let py = 0; for (let i = 0; i < 120; i++) { go(m, 1, {}, E); py = Math.max(py, m.pos.y); } r.padApex = py;
+    // grapple onto a 10m tower top edge
+    const tw = mkWorld([[10, 0, -3, 16, 10, 3, 0]]);
+    m = new BR.Mover(tw); go(m, 10, {}, E); m.startGrapple(10, 9.9, 0);
+    let gy = 0; for (let i = 0; i < 180; i++) { go(m, 1, { mz: 1 }, E); if (m.onGround) gy = Math.max(gy, m.pos.y); } r.grappleTop = gy;
     return r;
   });
-
+  // Shotgun jump + karambit + chests on a real match
   await page.evaluate(() => BR.game.startMatch());
+  const combat = await page.evaluate(() => {
+    const g = BR.game, p = g.player, r = {};
+    g.actors.forEach(a => { if (a !== p) a.alive = false; });
+    p.mover.dropping = false; p.mover.pos.set(0, 30, 0); p.mover.vel.set(0, 0, 0);
+    for (let i = 0; i < 90; i++) g.update(1 / 30);
+    p.slots[1] = BR.Weapons.create('shotgun'); p.cur = 1; p.pitch = -1.45;
+    const y0 = p.pos.y; BR.Weapons.tryFire(g, p);
+    let peak = y0; for (let i = 0; i < 60; i++) { p.mover.update(1 / 60, { mx: 0, mz: 0 }, p.yaw); peak = Math.max(peak, p.pos.y); }
+    r.shotgunJump = peak - y0;
+    r.spawnSlots = p.slots.map(s => s && s.id);
+    return r;
+  });
+  await page.evaluate(() => { BR.game.settings.bots = 19; BR.game.startMatch(); });
   const match = await page.evaluate(() => {
     const g = BR.game;
     g.player.takeDamage = () => false;           // idle player can't die, so the bots finish the match
@@ -75,19 +104,28 @@ const server = http.createServer((req, res) => {
     return { seconds: n / 30, alive: g.aliveCount(), msPerStep: (performance.now() - t0) / n };
   });
 
+  const run = 7.4;
   const checks = [
-    ['run speed ~8.2', Math.abs(mech.run - 8.2) < 0.3],
-    ['slide boosts speed', mech.slide > 11],
-    ['wall-run lasts > 0.8s', mech.wallRunSec > 0.8],
+    ['run speed matches config', Math.abs(mech.run - run) < 0.3],
+    ['crouch while running slides with a boost', mech.slide > run + 3],
+    ['omni-slide goes where the stick points', mech.slideSideways],
+    ['slides cannot be steered', mech.slideSteerDrift < 0.05],
+    ['crouch when not running lowers you', mech.crouchH < 1.4],
+    ['super jump beats a normal jump (1.4m)', mech.superJumpApex > 2.2],
+    ['timed bunny hops keep speed', mech.bhopTimed > run + 3],
+    ['holding jump does NOT bunny hop', mech.bhopHeld < run + 0.5],
+    ['late jumps lose speed', mech.bhopLate < mech.bhopTimed - 2],
+    ['wall chain keeps you airborne > 3s', mech.wallChainAir > 3],
     ['mantle climbs a 1.6m ledge', mech.mantleY >= 1.59],
     ['vault climbs a 1.2m crate', mech.vaultTop >= 1.19],
-    ['super jump beats a normal jump (1.45m)', mech.superJumpApex > 2.2],
-    ['holding jump bunny-hops and keeps speed', mech.bhopSpeed > 11],
-    ['wall chain keeps you airborne > 3s', mech.wallChainAir > 3],
+    ['jump pad launches > 5m', mech.padApex > 5],
+    ['grapple pulls you onto a 10m roof', mech.grappleTop >= 9.9],
+    ['shotgun jump launches > 2.5m', combat.shotgunJump > 2.5],
+    ['you spawn with a pistol + karambit', combat.spawnSlots[0] === 'pistol' && combat.spawnSlots[2] === 'knife'],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ mech, match, errors }, null, 1));
+  console.log(JSON.stringify({ mech, combat, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

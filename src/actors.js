@@ -34,8 +34,10 @@ BR.Actor = class Actor {
     this.health = A.maxHealth;
     this.shield = 0;
     this.alive = true;
-    this.slots = [null, null];
-    this.cur = 0;
+    this.slots = [null, null, BR.Weapons.create('knife')]; // 2 guns + the karambit you always carry
+    this.cur = 2;
+    this.grappleCd = 0;
+    this.lunge = null;
     this.ammo = { light: 0, heavy: 0, shells: 0 };
     this.kills = 0;
     this.damageDealt = 0;
@@ -44,7 +46,7 @@ BR.Actor = class Actor {
     this.lastAttacker = null;
     this.lastHurtT = -99;
     this.deathT = 0;
-    this.input = { mx: 0, mz: 0, jump: false, slide: false };
+    this.input = { mx: 0, mz: 0, jump: false, crouch: false, speedMult: 1 };
     this.brain = null;
     this.pickupT = Math.random() * 0.1;
     this.mesh = this.isPlayer ? null : this.buildMesh();
@@ -63,20 +65,34 @@ BR.Actor = class Actor {
     return out.set(-Math.sin(this.yaw) * cp, Math.sin(this.pitch), -Math.cos(this.yaw) * cp);
   }
 
-  // Put a weapon in an empty slot. Returns the slot index or -1.
+  // The two gun slots (index 0 and 1). Slot 2 is always the karambit.
+  guns() { return this.slots.slice(0, 2); }
+
+  // Put a gun in an empty gun slot and switch to it. Returns the slot index or -1.
   giveWeapon(id, mag) {
     for (let i = 0; i < 2; i++) {
       if (!this.slots[i]) {
         this.slots[i] = BR.Weapons.create(id, mag);
-        if (!this.slots[this.cur]) this.cur = i;
-        if (this.isPlayer || !this.slots[this.cur]) this.cur = i;
+        this.switchTo(i);
         return i;
       }
     }
     return -1;
   }
 
-  hasWeapon(id) { return this.slots.some(s => s && s.id === id); }
+  hasWeapon(id) { return this.guns().some(s => s && s.id === id); }
+
+  // Fire the grapple along the aim. Returns true if it hooked something.
+  tryGrapple() {
+    const G = BR.CONFIG.move.grapple, m = this.mover;
+    if (this.grappleCd > 0 || m.grapple || m.dropping) return false;
+    const e = this.eye(this._ge || (this._ge = new THREE.Vector3()));
+    const d = this.aimDir(this._gd || (this._gd = new THREE.Vector3()));
+    const h = this.game.world.raycast(e.x, e.y, e.z, d.x, d.y, d.z, G.range);
+    if (!h.box || h.box.ground || h.t >= G.range) return false;
+    m.startGrapple(e.x + d.x * h.t, e.y + d.y * h.t, e.z + d.z * h.t);
+    return true;
+  }
 
   switchTo(i) {
     if (i === this.cur || !this.slots[i]) return false;
@@ -90,9 +106,21 @@ BR.Actor = class Actor {
 
   update(dt) {
     if (!this.alive) return;
+    const w = this.weapon;
+    this.input.speedMult = w && w.def.speedMult ? w.def.speedMult : 1;
+    const hooked = !!this.mover.grapple;
     this.mover.update(dt, this.input, this.yaw);
+    if (hooked && !this.mover.grapple) this.grappleCd = BR.CONFIG.move.grapple.cooldown;
+    if (!this.mover.grapple && this.grappleCd > 0) this.grappleCd -= dt;
     this.input.jump = false;
-    this.input.slide = false;
+    this.input.crouch = false;
+    // Karambit lunge: land the hit once we're close enough
+    if (this.lunge) {
+      const L = this.lunge, t = L.target;
+      L.t -= dt;
+      if (!t.alive || L.t <= 0) this.lunge = null;
+      else if (t.pos.distanceTo(this.pos) < this.slots[2].def.range) { BR.Weapons.meleeHit(this.game, this, t, this.slots[2]); this.lunge = null; }
+    }
     if (this.recoil > 0) {
       const k = Math.min(this.recoil, this.recoil * 14 * dt + 0.0005);
       this.pitch = Math.min(1.45, this.pitch + k);
@@ -158,9 +186,9 @@ BR.Actor = class Actor {
     const swing = m.onGround && !m.sliding ? Math.sin(u.t) * Math.min(0.7, sp * 0.08) : 0.3;
     u.l1.rotation.x = swing; u.l2.rotation.x = -swing;
     // Lean back while sliding, spread out while skydiving
-    const tilt = m.sliding ? 0.9 : m.dropping ? -1.2 : 0;
+    const tilt = m.sliding ? 0.9 : m.dropping ? -1.2 : m.crouched ? 0.35 : 0;
     u.body.rotation.x = BR.util.damp(u.body.rotation.x, tilt, 12, dt);
-    u.body.position.y = BR.util.damp(u.body.position.y, m.sliding ? -0.25 : 0, 12, dt);
+    u.body.position.y = BR.util.damp(u.body.position.y, m.sliding ? -0.25 : m.crouched ? -0.45 : 0, 12, dt);
     // Lean into wall-runs
     u.body.rotation.z = BR.util.damp(u.body.rotation.z, m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : 0, 10, dt);
     u.gun.rotation.x = -this.pitch * 0.6;
