@@ -47,6 +47,8 @@ BR.BotBrain = class BotBrain {
 
   // Called by the game when this bot is shot or hears gunfire.
   onDamaged(attacker) {
+    // Hurt bots pop a stim (same cooldown + rules as the player); dummies don't
+    if (!this.passive && this.a.health < 65 && Math.random() < 0.6) this.a.tryStim();
     if (attacker && attacker !== this.a && attacker.alive && (!this.target || !this.canSee(this.target))) {
       this.target = attacker;
       this.targetSeenT = this.g.time;

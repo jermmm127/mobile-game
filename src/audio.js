@@ -93,6 +93,7 @@ BR.Audio = {
   tech() { this.tone(700, 1400, 0.12, 0.12, 'triangle'); this.tone(1050, 2100, 0.16, 0.08, 'sine'); },
   chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
   grapple() { this.tone(300, 1200, 0.12, 0.14, 'sawtooth'); this.burst(2400, 0.6, 0.15, 0.08, 0, 'bandpass'); },
+  stim() { this.burst(6000, 1.5, 0.18, 0.15, 0, 'highpass'); this.tone(500, 1400, 0.18, 0.12, 'sine'); setTimeout(() => this.tone(1400, 1800, 0.12, 0.06, 'sine'), 120); },
   pad() { this.tone(200, 900, 0.3, 0.2, 'square'); },
   blast() { this.burst(500, 0.6, 0.5, 0.5); this.tone(90, 35, 0.35, 0.45, 'sine'); },
   swish(hit) { this.burst(3000, 0.8, 0.14, 0.12, 0, 'bandpass'); if (hit) this.tone(220, 120, 0.1, 0.25, 'square'); },

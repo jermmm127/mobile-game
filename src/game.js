@@ -57,11 +57,23 @@ BR.Game = class Game {
     this.resize();
   }
 
+  // Saturation: a CSS filter on the 3D canvas only (HUD stays untouched)
+  applyColor() {
+    const sat = this.settings.saturation ?? 1, c = this.renderer.domElement;
+    const f = Math.abs(sat - 1) < 0.01 ? '' : `saturate(${sat})`;
+    if (c.style.filter !== f) c.style.filter = f;
+  }
+
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h, false);
-    for (const c of [this.camera, this.shopCam]) { if (!c) continue; c.aspect = w / h; c.updateProjectionMatrix(); }
-    if (this.vmr) this.vmr.resize(w, h);
+    // Stretched res: squeeze the camera's aspect so the picture is stretched wide
+    // (like 4:3 stretched on a 16:9 screen). 0 = native, 1 = very stretched.
+    const st = 1 + (this.settings.stretch || 0) * 0.6;
+    if (this.camera) { this.camera.aspect = w / h / st; this.camera.updateProjectionMatrix(); }
+    if (this.shopCam) { this.shopCam.aspect = w / h; this.shopCam.updateProjectionMatrix(); }
+    if (this.vmr) this.vmr.resize(w / st, h);
+    this.applyColor();
     this.vmScale = w < h ? 0.6 : 1;
   }
 
@@ -407,6 +419,7 @@ BR.Game = class Game {
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
     if (inp.consume('crouch')) p.input.crouch = true;
+    if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
     if (inp.consume('grapple')) { if (p.tryGrapple()) BR.Audio.grapple(); else BR.Audio.click(); }
     if (inp.consume('reload') && BR.Weapons.startReload(w, p)) BR.Audio.reload();
     const sw = i => { if (i === p.cur) this.startInspect(); else if (p.switchTo(i)) inp.ads = false; };

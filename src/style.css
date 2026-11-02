@@ -271,6 +271,12 @@ body:not(.touch) .btn.prompt::after { content: '  · E'; }
 .btn.ads { width: 56px; height: 56px; right: calc(128px + var(--sr)); bottom: calc(152px + var(--sb)); }
 .btn.swap { width: 50px; height: 50px; right: calc(46px + var(--sr)); bottom: calc(214px + var(--sb)); }
 .btn.knife { width: 50px; height: 50px; right: calc(104px + var(--sr)); bottom: calc(222px + var(--sb)); }
+.btn.stim { width: 52px; height: 52px; right: calc(194px + var(--sr)); bottom: calc(86px + var(--sb)); color: #7dffb0; }
+.btn.stim .cd { position: absolute; inset: 0; display: grid; place-items: center; font: 700 18px var(--ui); font-style: normal; color: #fff; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.btn.stim.cooling { color: rgba(125, 255, 176, 0.35); }
+.btn.stim.active { border-color: #7dffb0; box-shadow: 0 0 18px rgba(80, 255, 150, 0.55); }
+#stimfx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(60, 255, 140, 0.3) 100%); }
 .btn.grapple .cd { position: absolute; inset: 0; display: grid; place-items: center; font: 700 20px var(--ui); font-style: normal; color: #fff; text-shadow: 0 1px 3px #000; pointer-events: none; }
 .btn.grapple.cooling { color: rgba(143, 230, 255, 0.35); }
 .btn.crouch.cooling { border-color: rgba(255, 255, 255, 0.18); }

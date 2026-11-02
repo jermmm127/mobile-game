@@ -76,6 +76,7 @@ BR.Actor = class Actor {
     this.slots = [null, null, BR.Weapons.create('knife')]; // 2 guns + the karambit you always carry
     this.cur = 2;
     this.grappleCd = 0;
+    this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0;
     this.lunge = null;
     this.ammo = { light: 0, heavy: 0, shells: 0 };
     this.kills = 0;
@@ -121,6 +122,17 @@ BR.Actor = class Actor {
 
   hasWeapon(id) { return this.guns().some(s => s && s.id === id); }
 
+  // Stim shot: speed boost + heal ticks. Returns true if it was used.
+  tryStim() {
+    const C = BR.CONFIG.stim;
+    if (!this.alive || this.stimCd > 0 || this.mover.dropping) return false;
+    this.stimCd = C.cooldown;
+    this.stimT = C.speedTime;
+    this.stimHealT = C.healTime;
+    this.stimAcc = 0;
+    return true;
+  }
+
   // Fire the grapple along the aim. Returns true if it hooked something.
   tryGrapple() {
     const G = BR.CONFIG.move.grapple, m = this.mover;
@@ -151,6 +163,16 @@ BR.Actor = class Actor {
     if (!this.alive) return;
     const w = this.weapon;
     this.input.speedMult = w && w.def.speedMult ? w.def.speedMult : 1;
+    // Stim: boost + heal 10 ticks a second
+    const SC = BR.CONFIG.stim;
+    if (this.stimCd > 0) this.stimCd = Math.max(0, this.stimCd - dt);
+    if (this.stimT > 0) { this.stimT = Math.max(0, this.stimT - dt); this.input.speedMult *= SC.speedMult; }
+    if (this.stimHealT > 0) {
+      const t = Math.min(dt, this.stimHealT);
+      this.stimHealT -= dt;
+      this.stimAcc += t * SC.tickRate;
+      while (this.stimAcc >= 1) { this.stimAcc -= 1; this.health = Math.min(BR.CONFIG.actor.maxHealth, this.health + SC.healPerTick); }
+    }
     const hooked = !!this.mover.grapple;
     this.mover.update(dt, this.input, this.yaw);
     if (hooked && !this.mover.grapple) this.grappleCd = BR.CONFIG.move.grapple.cooldown;

@@ -32,10 +32,11 @@ This doc explains how the prototype is built, where to tune it, and where new fe
 | **Mobile controls** | Floating joystick (left), drag-to-look (right), drag *on* the Fire button to aim while shooting, a second Fire button that only fires (dragging it never turns the camera), Jump / Crouch-Slide / Hook / Reload / Aim / Swap / Knife buttons (Knife jumps to the karambit and back), 3 weapon slots (tap the held one to inspect). Optional aim assist and auto-fire. |
 | **HUD editor** | Menu or pause → *Customize HUD*: drag, resize or hide every HUD control: action buttons, each weapon slot, the pickup/open button, minimap, pause and spawn. Set button opacity. Saved separately for landscape and portrait. Built for claw setups. (`src/layout.js`) |
 | **Fullscreen** | Button in the menu and in-game. On iPhone Safari it explains *Share → Add to Home Screen*, which launches fullscreen. |
+| **Stim shot** | HUD **STIM** button (or F). Every 4 s: +30% run speed for 3 s and heals 1 HP per tick at 10 ticks/s for 5 s (50 HP). The button shows a cooldown sweep and glows green while boosted, with a green screen-edge tint. Bots stim when hurt. Tuning: `CONFIG.stim`; logic: `Actor.tryStim` / `Actor.update`. |
 | **Movement tech** | Deliberate "bugs" with a skill ceiling. See section 5b. |
 | **Desktop controls** | WASD, mouse look, Space jump, Shift/C crouch-slide, G or middle-click grapple, R, 1/2/3/Q, V inspect, E, Esc. |
 | **Look** | Clean modern UI: dark frosted-glass panels, hairline borders, soft radii, Saira condensed type, one amber accent, slim health/shield bars, round translucent touch buttons. |
-| **Settings** | Bot skill, bot count (0–29), look speed, **aim smoothing**, **FOV (60–110)**, graphics, volume, aim assist, auto-fire, FPS counter. Saved per device. |
+| **Settings** | Bot skill, bot count (0–29), look speed, **aim smoothing**, **stretched res** (0–100%: squeezes the camera aspect so the picture stretches wider, like 4:3 stretched; at 100% a 16:9 phone looks like ≈1.35:1 stretched), **saturation** (0–200%, a filter on the 3D view only), **FOV (60–110)**, graphics, volume, aim assist, auto-fire, FPS counter. Saved per device. |
 ---
 
 ## 2. How to playtest

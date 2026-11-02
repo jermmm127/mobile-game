@@ -158,7 +158,8 @@ BR.Input = class Input {
       if (e.code === 'Digit3') this.press('slot2');
       if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
       if (e.code === 'KeyR') this.press('reload');
-      if (e.code === 'KeyE' || e.code === 'KeyF') this.press('interact');
+      if (e.code === 'KeyE') this.press('interact');
+      if (e.code === 'KeyF') this.press('stim');
       if (e.code === 'KeyQ') this.press('swap');
       if (e.code === 'Digit1') this.press('slot0');
       if (e.code === 'Digit2') this.press('slot1');

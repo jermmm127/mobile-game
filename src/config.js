@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.7.0',
+  version: '0.8.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -22,6 +22,16 @@ BR.CONFIG = {
     botLootPhase: 80,    // seconds until bots engage at full sight range
     botVsBotDamage: 0.4, // pacing: bots hurt each other less so the lobby doesn't empty in 30s
     demoBots: 16,        // bots in the menu's live "trailer" match
+  },
+
+  // Stim shot: HUD button / F key. Speed boost + heal over time.
+  stim: {
+    cooldown: 4,        // seconds between stims
+    speedTime: 3,       // movement boost duration
+    speedMult: 1.3,     // run speed x this while boosted
+    healTime: 5,        // heal-over-time duration
+    tickRate: 10,       // heal ticks per second
+    healPerTick: 1,     // HP per tick (10 HP/s, 50 HP per stim)
   },
 
   actor: {

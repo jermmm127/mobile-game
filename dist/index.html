@@ -287,6 +287,12 @@ body:not(.touch) .btn.prompt::after { content: '  · E'; }
 .btn.ads { width: 56px; height: 56px; right: calc(128px + var(--sr)); bottom: calc(152px + var(--sb)); }
 .btn.swap { width: 50px; height: 50px; right: calc(46px + var(--sr)); bottom: calc(214px + var(--sb)); }
 .btn.knife { width: 50px; height: 50px; right: calc(104px + var(--sr)); bottom: calc(222px + var(--sb)); }
+.btn.stim { width: 52px; height: 52px; right: calc(194px + var(--sr)); bottom: calc(86px + var(--sb)); color: #7dffb0; }
+.btn.stim .cd { position: absolute; inset: 0; display: grid; place-items: center; font: 700 18px var(--ui); font-style: normal; color: #fff; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.btn.stim.cooling { color: rgba(125, 255, 176, 0.35); }
+.btn.stim.active { border-color: #7dffb0; box-shadow: 0 0 18px rgba(80, 255, 150, 0.55); }
+#stimfx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(60, 255, 140, 0.3) 100%); }
 .btn.grapple .cd { position: absolute; inset: 0; display: grid; place-items: center; font: 700 20px var(--ui); font-style: normal; color: #fff; text-shadow: 0 1px 3px #000; pointer-events: none; }
 .btn.grapple.cooling { color: rgba(143, 230, 255, 0.35); }
 .btn.crouch.cooling { border-color: rgba(255, 255, 255, 0.18); }
@@ -569,7 +575,7 @@ body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--acc
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.7.0',
+  version: '0.8.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -584,6 +590,16 @@ BR.CONFIG = {
     botLootPhase: 80,    // seconds until bots engage at full sight range
     botVsBotDamage: 0.4, // pacing: bots hurt each other less so the lobby doesn't empty in 30s
     demoBots: 16,        // bots in the menu's live "trailer" match
+  },
+
+  // Stim shot: HUD button / F key. Speed boost + heal over time.
+  stim: {
+    cooldown: 4,        // seconds between stims
+    speedTime: 3,       // movement boost duration
+    speedMult: 1.3,     // run speed x this while boosted
+    healTime: 5,        // heal-over-time duration
+    tickRate: 10,       // heal ticks per second
+    healPerTick: 1,     // HP per tick (10 HP/s, 50 HP per stim)
   },
 
   actor: {
@@ -918,6 +934,7 @@ BR.Audio = {
   tech() { this.tone(700, 1400, 0.12, 0.12, 'triangle'); this.tone(1050, 2100, 0.16, 0.08, 'sine'); },
   chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
   grapple() { this.tone(300, 1200, 0.12, 0.14, 'sawtooth'); this.burst(2400, 0.6, 0.15, 0.08, 0, 'bandpass'); },
+  stim() { this.burst(6000, 1.5, 0.18, 0.15, 0, 'highpass'); this.tone(500, 1400, 0.18, 0.12, 'sine'); setTimeout(() => this.tone(1400, 1800, 0.12, 0.06, 'sine'), 120); },
   pad() { this.tone(200, 900, 0.3, 0.2, 'square'); },
   blast() { this.burst(500, 0.6, 0.5, 0.5); this.tone(90, 35, 0.35, 0.45, 'sine'); },
   swish(hit) { this.burst(3000, 0.8, 0.14, 0.12, 0, 'bandpass'); if (hit) this.tone(220, 120, 0.1, 0.25, 'square'); },
@@ -3558,6 +3575,7 @@ BR.Actor = class Actor {
     this.slots = [null, null, BR.Weapons.create('knife')]; // 2 guns + the karambit you always carry
     this.cur = 2;
     this.grappleCd = 0;
+    this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0;
     this.lunge = null;
     this.ammo = { light: 0, heavy: 0, shells: 0 };
     this.kills = 0;
@@ -3603,6 +3621,17 @@ BR.Actor = class Actor {
 
   hasWeapon(id) { return this.guns().some(s => s && s.id === id); }
 
+  // Stim shot: speed boost + heal ticks. Returns true if it was used.
+  tryStim() {
+    const C = BR.CONFIG.stim;
+    if (!this.alive || this.stimCd > 0 || this.mover.dropping) return false;
+    this.stimCd = C.cooldown;
+    this.stimT = C.speedTime;
+    this.stimHealT = C.healTime;
+    this.stimAcc = 0;
+    return true;
+  }
+
   // Fire the grapple along the aim. Returns true if it hooked something.
   tryGrapple() {
     const G = BR.CONFIG.move.grapple, m = this.mover;
@@ -3633,6 +3662,16 @@ BR.Actor = class Actor {
     if (!this.alive) return;
     const w = this.weapon;
     this.input.speedMult = w && w.def.speedMult ? w.def.speedMult : 1;
+    // Stim: boost + heal 10 ticks a second
+    const SC = BR.CONFIG.stim;
+    if (this.stimCd > 0) this.stimCd = Math.max(0, this.stimCd - dt);
+    if (this.stimT > 0) { this.stimT = Math.max(0, this.stimT - dt); this.input.speedMult *= SC.speedMult; }
+    if (this.stimHealT > 0) {
+      const t = Math.min(dt, this.stimHealT);
+      this.stimHealT -= dt;
+      this.stimAcc += t * SC.tickRate;
+      while (this.stimAcc >= 1) { this.stimAcc -= 1; this.health = Math.min(BR.CONFIG.actor.maxHealth, this.health + SC.healPerTick); }
+    }
     const hooked = !!this.mover.grapple;
     this.mover.update(dt, this.input, this.yaw);
     if (hooked && !this.mover.grapple) this.grappleCd = BR.CONFIG.move.grapple.cooldown;
@@ -3881,6 +3920,8 @@ BR.BotBrain = class BotBrain {
 
   // Called by the game when this bot is shot or hears gunfire.
   onDamaged(attacker) {
+    // Hurt bots pop a stim (same cooldown + rules as the player); dummies don't
+    if (!this.passive && this.a.health < 65 && Math.random() < 0.6) this.a.tryStim();
     if (attacker && attacker !== this.a && attacker.alive && (!this.target || !this.canSee(this.target))) {
       this.target = attacker;
       this.targetSeenT = this.g.time;
@@ -4806,7 +4847,8 @@ BR.Input = class Input {
       if (e.code === 'Digit3') this.press('slot2');
       if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
       if (e.code === 'KeyR') this.press('reload');
-      if (e.code === 'KeyE' || e.code === 'KeyF') this.press('interact');
+      if (e.code === 'KeyE') this.press('interact');
+      if (e.code === 'KeyF') this.press('stim');
       if (e.code === 'KeyQ') this.press('swap');
       if (e.code === 'Digit1') this.press('slot0');
       if (e.code === 'Digit2') this.press('slot1');
@@ -5417,12 +5459,13 @@ const ICON = {
   fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   knife: '<svg viewBox="0 0 24 24"><path d="M4 20c2-1 4-1 6-3l9-11c1-1 1-2 0-3-3 2-7 6-10 9l-2 4"/><circle cx="5.5" cy="18.5" r="1.6"/></svg>',
   spawn: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>',
+  stim: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7l-9 9-3 1 1-3 9-9"/><path d="M12 9l3 3M4 20l2-2"/></svg>',
   grapple: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7L6 18"/><path d="M6 18l-2 2M9 21l-3-3 3-3"/><circle cx="17" cy="7" r="2"/></svg>',
 };
 
 const HELP = `
   <p><b>PHONE:</b> left thumb drags to move. Right side drags to look. Hold FIRE and drag it to aim while shooting. The second fire button only shoots. Tap a weapon slot to switch; tap the slot you're holding to inspect.</p>
-  <p><b>KEYBOARD:</b> WASD move · Mouse look · Click fire · Right-click aim · Space jump · Shift/C crouch/slide · G or middle-click grapple · R reload · 1/2/3 or Q switch · V inspect · E open/swap · Esc pause</p>
+  <p><b>KEYBOARD:</b> F stim · WASD move · Mouse look · Click fire · Right-click aim · Space jump · Shift/C crouch/slide · G or middle-click grapple · R reload · 1/2/3 or Q switch · V inspect · E open/swap · Esc pause</p>
   <p><b>CROUCH / SLIDE:</b> one button. Tap it while running to slide in the direction you're moving (forward, sideways or backward). You can look around but not steer mid-slide. Tap it while walking or standing to crouch.</p>
   <p><b>GRAPPLE:</b> fires where you aim. Reels you in fast; let go by jumping or reaching a ledge. 5 second cooldown.</p>
   <p><b>CHESTS & PADS:</b> gold chests give a better gun plus gear. Cyan pads launch you into the air.</p>`;
@@ -5445,6 +5488,7 @@ BR.HUD = class HUD {
   <div id="zone-tint"></div>
   <div id="speedvig"></div>
   <div id="speedfx"></div>
+  <div id="stimfx"></div>
   <div id="scope"><div class="scope-ring"></div></div>
   <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
@@ -5485,6 +5529,7 @@ BR.HUD = class HUD {
   <button class="btn act jump touch-only" data-act="jump" aria-label="Jump">${ICON.jump}<span>JUMP</span></button>
   <button class="btn act crouch cdable touch-only" data-act="crouch" aria-label="Crouch / Slide">${ICON.crouch}<span>CROUCH</span></button>
   <button class="btn act grapple cdable touch-only" data-act="grapple" aria-label="Grapple">${ICON.grapple}<span>HOOK</span><em class="cd"></em></button>
+  <button class="btn act stim cdable touch-only" data-act="stim" aria-label="Stim">${ICON.stim}<span>STIM</span><em class="cd"></em></button>
   <button class="btn act reload touch-only" data-act="reload" aria-label="Reload">${ICON.reload}</button>
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>AIM</span></button>
   <button class="btn act swap touch-only" data-act="swap" aria-label="Swap weapon">${ICON.swap}</button>
@@ -5541,6 +5586,8 @@ BR.HUD = class HUD {
       <div class="row"><label for="set-bots">BOTS</label><input id="set-bots" type="range" min="0" max="29" step="1"><output id="out-bots"></output></div>
       <div class="row"><label for="set-sens">LOOK SPEED</label><input id="set-sens" type="range" min="0.3" max="3" step="0.05"><output id="out-sens"></output></div>
       <div class="row"><label for="set-smooth">AIM SMOOTHING</label><input id="set-smooth" type="range" min="0" max="1" step="0.05"><output id="out-smooth"></output></div>
+      <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="1" step="0.05"><output id="out-stretch"></output></div>
+      <div class="row"><label for="set-sat">SATURATION</label><input id="set-sat" type="range" min="0" max="2" step="0.05"><output id="out-sat"></output></div>
       <div class="row"><label for="set-fov">FOV</label><input id="set-fov" type="range" min="60" max="110" step="1"><output id="out-fov"></output></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
         <button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
@@ -5713,7 +5760,7 @@ BR.HUD = class HUD {
       prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'),
       dmgDirs: $('dmg-dirs'), dmgNums: $('dmg-nums'), vignette: $('vignette'), zoneTint: $('zone-tint'),
       stateTag: $('state-tag'), speedfx: $('speedfx'), speedvig: $('speedvig'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
-      grapBtn: document.querySelector('.btn.grapple'), crouchBtn: document.querySelector('.btn.crouch'), jumpBtn: document.querySelector('.btn.jump'),
+      grapBtn: document.querySelector('.btn.grapple'), stimBtn: document.querySelector('.btn.stim'), stimfx: $('stimfx'), crouchBtn: document.querySelector('.btn.crouch'), jumpBtn: document.querySelector('.btn.jump'),
     };
     this.cache = {};
     this.mm = this.el.minimap.getContext('2d');
@@ -5792,6 +5839,16 @@ BR.HUD = class HUD {
       el.style.setProperty('--cd', v > 0 ? (v / G.cooldown * 360).toFixed(0) + 'deg' : '0deg');
       el.querySelector('.cd').textContent = v > 0 ? Math.ceil(v) : '';
     });
+    // Stim cooldown sweep + boost glow
+    const SC = BR.CONFIG.stim;
+    const scd = Math.ceil(p.stimCd * 10) / 10;
+    this.set('scd', e.stimBtn, scd, (el, v) => {
+      el.classList.toggle('cooling', v > 0);
+      el.style.setProperty('--cd', v > 0 ? (v / SC.cooldown * 360).toFixed(0) + 'deg' : '0deg');
+      el.querySelector('.cd').textContent = v > 0 ? Math.ceil(v) : '';
+    });
+    const boost = p.alive && p.stimT > 0 ? Math.round(Math.min(1, p.stimT / 0.4) * 10) / 10 : 0;
+    this.set('stimfx', e.stimfx, boost, (el, v) => { el.style.opacity = v; e.stimBtn.classList.toggle('active', v > 0); });
     const m = p.mover;
     // Super jump cooldown sweep on the crouch/slide button
     const sj = Math.max(0, Math.ceil(m.superCd * 10) / 10);
@@ -6081,11 +6138,23 @@ BR.Game = class Game {
     this.resize();
   }
 
+  // Saturation: a CSS filter on the 3D canvas only (HUD stays untouched)
+  applyColor() {
+    const sat = this.settings.saturation ?? 1, c = this.renderer.domElement;
+    const f = Math.abs(sat - 1) < 0.01 ? '' : `saturate(${sat})`;
+    if (c.style.filter !== f) c.style.filter = f;
+  }
+
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h, false);
-    for (const c of [this.camera, this.shopCam]) { if (!c) continue; c.aspect = w / h; c.updateProjectionMatrix(); }
-    if (this.vmr) this.vmr.resize(w, h);
+    // Stretched res: squeeze the camera's aspect so the picture is stretched wide
+    // (like 4:3 stretched on a 16:9 screen). 0 = native, 1 = very stretched.
+    const st = 1 + (this.settings.stretch || 0) * 0.6;
+    if (this.camera) { this.camera.aspect = w / h / st; this.camera.updateProjectionMatrix(); }
+    if (this.shopCam) { this.shopCam.aspect = w / h; this.shopCam.updateProjectionMatrix(); }
+    if (this.vmr) this.vmr.resize(w / st, h);
+    this.applyColor();
     this.vmScale = w < h ? 0.6 : 1;
   }
 
@@ -6431,6 +6500,7 @@ BR.Game = class Game {
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
     if (inp.consume('crouch')) p.input.crouch = true;
+    if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
     if (inp.consume('grapple')) { if (p.tryGrapple()) BR.Audio.grapple(); else BR.Audio.click(); }
     if (inp.consume('reload') && BR.Weapons.startReload(w, p)) BR.Audio.reload();
     const sw = i => { if (i === p.cur) this.startInspect(); else if (p.switchTo(i)) inp.ads = false; };
@@ -6839,7 +6909,7 @@ BR.Game = class Game {
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, aimSmooth: 0.3, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, aimSmooth: 0.3, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
@@ -6901,6 +6971,8 @@ BR.Game = class Game {
   range('set-bots', 'bots', v => v === 0 ? 'NONE' : v + '');
   range('set-sens', 'sens', v => v.toFixed(2) + '×');
   range('set-fov', 'fov', v => v + '°');
+  range('set-stretch', 'stretch', v => v === 0 ? 'OFF' : Math.round(v * 100) + '%', () => game.resize());
+  range('set-sat', 'saturation', v => Math.round(v * 100) + '%', () => game.applyColor());
   range('set-smooth', 'aimSmooth', v => v === 0 ? 'OFF' : Math.round(v * 100) + '%');
   range('set-vol', 'volume', v => Math.round(v * 100) + '%', () => BR.Audio.setVolume(settings.volume));
   check('set-assist', 'assist');

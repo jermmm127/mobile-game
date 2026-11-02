@@ -15,12 +15,13 @@ const ICON = {
   fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   knife: '<svg viewBox="0 0 24 24"><path d="M4 20c2-1 4-1 6-3l9-11c1-1 1-2 0-3-3 2-7 6-10 9l-2 4"/><circle cx="5.5" cy="18.5" r="1.6"/></svg>',
   spawn: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>',
+  stim: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7l-9 9-3 1 1-3 9-9"/><path d="M12 9l3 3M4 20l2-2"/></svg>',
   grapple: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7L6 18"/><path d="M6 18l-2 2M9 21l-3-3 3-3"/><circle cx="17" cy="7" r="2"/></svg>',
 };
 
 const HELP = `
   <p><b>PHONE:</b> left thumb drags to move. Right side drags to look. Hold FIRE and drag it to aim while shooting. The second fire button only shoots. Tap a weapon slot to switch; tap the slot you're holding to inspect.</p>
-  <p><b>KEYBOARD:</b> WASD move · Mouse look · Click fire · Right-click aim · Space jump · Shift/C crouch/slide · G or middle-click grapple · R reload · 1/2/3 or Q switch · V inspect · E open/swap · Esc pause</p>
+  <p><b>KEYBOARD:</b> F stim · WASD move · Mouse look · Click fire · Right-click aim · Space jump · Shift/C crouch/slide · G or middle-click grapple · R reload · 1/2/3 or Q switch · V inspect · E open/swap · Esc pause</p>
   <p><b>CROUCH / SLIDE:</b> one button. Tap it while running to slide in the direction you're moving (forward, sideways or backward). You can look around but not steer mid-slide. Tap it while walking or standing to crouch.</p>
   <p><b>GRAPPLE:</b> fires where you aim. Reels you in fast; let go by jumping or reaching a ledge. 5 second cooldown.</p>
   <p><b>CHESTS & PADS:</b> gold chests give a better gun plus gear. Cyan pads launch you into the air.</p>`;
@@ -43,6 +44,7 @@ BR.HUD = class HUD {
   <div id="zone-tint"></div>
   <div id="speedvig"></div>
   <div id="speedfx"></div>
+  <div id="stimfx"></div>
   <div id="scope"><div class="scope-ring"></div></div>
   <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
@@ -83,6 +85,7 @@ BR.HUD = class HUD {
   <button class="btn act jump touch-only" data-act="jump" aria-label="Jump">${ICON.jump}<span>JUMP</span></button>
   <button class="btn act crouch cdable touch-only" data-act="crouch" aria-label="Crouch / Slide">${ICON.crouch}<span>CROUCH</span></button>
   <button class="btn act grapple cdable touch-only" data-act="grapple" aria-label="Grapple">${ICON.grapple}<span>HOOK</span><em class="cd"></em></button>
+  <button class="btn act stim cdable touch-only" data-act="stim" aria-label="Stim">${ICON.stim}<span>STIM</span><em class="cd"></em></button>
   <button class="btn act reload touch-only" data-act="reload" aria-label="Reload">${ICON.reload}</button>
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>AIM</span></button>
   <button class="btn act swap touch-only" data-act="swap" aria-label="Swap weapon">${ICON.swap}</button>
@@ -139,6 +142,8 @@ BR.HUD = class HUD {
       <div class="row"><label for="set-bots">BOTS</label><input id="set-bots" type="range" min="0" max="29" step="1"><output id="out-bots"></output></div>
       <div class="row"><label for="set-sens">LOOK SPEED</label><input id="set-sens" type="range" min="0.3" max="3" step="0.05"><output id="out-sens"></output></div>
       <div class="row"><label for="set-smooth">AIM SMOOTHING</label><input id="set-smooth" type="range" min="0" max="1" step="0.05"><output id="out-smooth"></output></div>
+      <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="1" step="0.05"><output id="out-stretch"></output></div>
+      <div class="row"><label for="set-sat">SATURATION</label><input id="set-sat" type="range" min="0" max="2" step="0.05"><output id="out-sat"></output></div>
       <div class="row"><label for="set-fov">FOV</label><input id="set-fov" type="range" min="60" max="110" step="1"><output id="out-fov"></output></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
         <button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
@@ -311,7 +316,7 @@ BR.HUD = class HUD {
       prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'),
       dmgDirs: $('dmg-dirs'), dmgNums: $('dmg-nums'), vignette: $('vignette'), zoneTint: $('zone-tint'),
       stateTag: $('state-tag'), speedfx: $('speedfx'), speedvig: $('speedvig'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
-      grapBtn: document.querySelector('.btn.grapple'), crouchBtn: document.querySelector('.btn.crouch'), jumpBtn: document.querySelector('.btn.jump'),
+      grapBtn: document.querySelector('.btn.grapple'), stimBtn: document.querySelector('.btn.stim'), stimfx: $('stimfx'), crouchBtn: document.querySelector('.btn.crouch'), jumpBtn: document.querySelector('.btn.jump'),
     };
     this.cache = {};
     this.mm = this.el.minimap.getContext('2d');
@@ -390,6 +395,16 @@ BR.HUD = class HUD {
       el.style.setProperty('--cd', v > 0 ? (v / G.cooldown * 360).toFixed(0) + 'deg' : '0deg');
       el.querySelector('.cd').textContent = v > 0 ? Math.ceil(v) : '';
     });
+    // Stim cooldown sweep + boost glow
+    const SC = BR.CONFIG.stim;
+    const scd = Math.ceil(p.stimCd * 10) / 10;
+    this.set('scd', e.stimBtn, scd, (el, v) => {
+      el.classList.toggle('cooling', v > 0);
+      el.style.setProperty('--cd', v > 0 ? (v / SC.cooldown * 360).toFixed(0) + 'deg' : '0deg');
+      el.querySelector('.cd').textContent = v > 0 ? Math.ceil(v) : '';
+    });
+    const boost = p.alive && p.stimT > 0 ? Math.round(Math.min(1, p.stimT / 0.4) * 10) / 10 : 0;
+    this.set('stimfx', e.stimfx, boost, (el, v) => { el.style.opacity = v; e.stimBtn.classList.toggle('active', v > 0); });
     const m = p.mover;
     // Super jump cooldown sweep on the crouch/slide button
     const sj = Math.max(0, Math.ceil(m.superCd * 10) / 10);

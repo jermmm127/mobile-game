@@ -3,7 +3,7 @@
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, aimSmooth: 0.3, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, aimSmooth: 0.3, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
@@ -65,6 +65,8 @@
   range('set-bots', 'bots', v => v === 0 ? 'NONE' : v + '');
   range('set-sens', 'sens', v => v.toFixed(2) + '×');
   range('set-fov', 'fov', v => v + '°');
+  range('set-stretch', 'stretch', v => v === 0 ? 'OFF' : Math.round(v * 100) + '%', () => game.resize());
+  range('set-sat', 'saturation', v => Math.round(v * 100) + '%', () => game.applyColor());
   range('set-smooth', 'aimSmooth', v => v === 0 ? 'OFF' : Math.round(v * 100) + '%');
   range('set-vol', 'volume', v => Math.round(v * 100) + '%', () => BR.Audio.setVolume(settings.volume));
   check('set-assist', 'assist');

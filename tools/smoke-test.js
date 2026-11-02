@@ -205,7 +205,21 @@ const server = http.createServer((req, res) => {
     for (let i = 0; i < 90; i++) { const y0 = ba.yaw; bb.lookToward(e0.x + 10, e0.y, e0.z, 1 / 60); steps.push(Math.abs(ba.yaw - y0)); }
     r.botAim = { first: steps[0], peak: Math.max(...steps), cap: bb.d.turnRate / 60, err: Math.abs(BR.util.wrapAngle(ba.yaw + Math.PI / 2)) };
     g.practiceSpawn('clearbots');
-    r.editable = ['slot0', 'slot1', 'slot2', 'interact', 'map', 'pause', 'fire', 'jump', 'knife', 'spawnmenu'].every(k => keys.includes(k));
+    // stim: 4s cooldown, 3s speed boost, heals 10 ticks/s for 5s
+    P.health = 20; P.stimCd = 0;
+    const used = P.tryStim(), again = P.tryStim();
+    P.mover.vel.set(0, 0, 0); P.mover.onGround = true; P.mover.sliding = false; P.mover.crouched = false; P.input.mx = 0; P.input.mz = 1;
+    let vBoost = 0; for (let i = 0; i < 60; i++) { P.update(1 / 60); P.input.mz = 1; vBoost = P.mover.speedH; }
+    const hp1 = P.health;              // after 1 s: ~+10
+    for (let i = 0; i < 60 * 5; i++) { P.update(1 / 60); P.input.mz = 1; }
+    const hpEnd = P.health, cdBack = P.stimCd === 0, vAfter = P.mover.speedH;
+    r.stim = { used, again, vBoost, vAfter, hp1, hpEnd, cdBack, ready: P.tryStim(), hudBtn: !!document.querySelector('#play > .btn.stim[data-act="stim"]') };
+    // stretched res + saturation
+    const asp0 = g.camera.aspect; g.settings.stretch = 1; g.resize(); const asp1 = g.camera.aspect;
+    g.settings.saturation = 1.6; g.applyColor(); const filt = g.renderer.domElement.style.filter;
+    g.settings.stretch = 0; g.settings.saturation = 1; g.resize();
+    r.video = { asp0, asp1, filt, reset: g.renderer.domElement.style.filter === '' && Math.abs(g.camera.aspect - asp0) < 1e-6 };
+    r.editable = ['slot0', 'slot1', 'slot2', 'interact', 'map', 'pause', 'fire', 'jump', 'knife', 'spawnmenu', 'stim'].every(k => keys.includes(k));
     return r;
   });
   const loadMs = await page.evaluate(() => { const t = performance.now(); BR.game.startMatch(); return performance.now() - t; });
@@ -233,7 +247,7 @@ const server = http.createServer((req, res) => {
     return { seconds: n / 30, alive: g.aliveCount(), msPerStep: (performance.now() - t0) / n };
   });
 
-  const run = 7.4;
+  const run = 7.4, BR_RUN = run;
   const checks = [
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
     ['crouch while running slides with a boost', mech.slide > run + 3],
@@ -277,6 +291,8 @@ const server = http.createServer((req, res) => {
     ['every HUD element is editable (slots, pickup, map, pause...)', extra.editable],
     ['hunting rifle is accurate from the hip, even moving/airborne', extra.hunter.hunterAir < extra.hunter.sniperStill * 0.5 && extra.hunter.hunterAir < extra.hunter.hunterStill * 2 && extra.hunter.light],
     ['bot aim eases in and respects its turn rate', extra.botAim.first < extra.botAim.peak * 0.5 && extra.botAim.peak <= extra.botAim.cap + 1e-6 && extra.botAim.err < 0.02],
+    ['stim: 4s cooldown, speed boost, heals 10/s for 5s', extra.stim.used && !extra.stim.again && extra.stim.vBoost > BR_RUN * 1.2 && extra.stim.vAfter < BR_RUN * 1.05 && extra.stim.hp1 >= 29 && extra.stim.hp1 <= 31 && extra.stim.hpEnd === 70 && extra.stim.cdBack && extra.stim.ready && extra.stim.hudBtn],
+    ['stretched res widens the picture; saturation filters the 3D view', extra.video.asp1 < extra.video.asp0 / 1.5 && /saturate\(1\.6\)/.test(extra.video.filt) && extra.video.reset],
     ['dying ends your match (no respawn)', death.state === 'end' && !death.alive && death.endShown],
     ['queue screen finds a new match', queue.shown && queue.stillEnded && queue.state === 'playing' && queue.alive && queue.hidden && /QUEUE/.test(death.btn)],
     ['bots finish a match', match.alive === 1],
