@@ -31,7 +31,7 @@ BR.Input = class Input {
   consumeLook() { const d = [this.lookDX, this.lookDY]; this.lookDX = 0; this.lookDY = 0; return d; }
   reset() {
     this.moveX = this.moveY = this.lookDX = this.lookDY = 0;
-    this.fire = false; this.fireTouches = 0; this.mouseFire = false;
+    this.fire = false; this.fireTouches = 0; this.mouseFire = false; this.jumpHeld = false;
     this.pressed = {}; this.touches = {}; this.keys = {};
     this.joy.active = false;
     this.joy.base.classList.remove('on');
@@ -50,6 +50,7 @@ BR.Input = class Input {
 
   onStart(e) {
     e.preventDefault();
+    if (this.editing) return; // the HUD layout editor owns touches
     this.usingTouch = true;
     BR.Audio.init();
     const W = window.innerWidth;
@@ -62,6 +63,7 @@ BR.Input = class Input {
         btn.classList.add('on');
         if (act === 'fire' || act === 'firel') { this.fireTouches++; this.fire = true; }
         else if (act === 'ads') this.ads = !this.ads;
+        else if (act === 'jump') { this.press('jump'); this.jumpHeld = true; }
         else this.press(act);
         continue;
       }
@@ -80,6 +82,7 @@ BR.Input = class Input {
 
   onMove(e) {
     e.preventDefault();
+    if (this.editing) return;
     for (const t of e.changedTouches) {
       const r = this.touches[t.identifier];
       if (!r) continue;
@@ -122,6 +125,7 @@ BR.Input = class Input {
         this.joy.base.classList.remove('on');
       } else if (r.type === 'btn') {
         r.btn.classList.remove('on');
+        if (r.act === 'jump') this.jumpHeld = false;
         if (r.act === 'fire' || r.act === 'firel') {
           this.fireTouches = Math.max(0, this.fireTouches - 1);
           this.fire = this.fireTouches > 0 || this.mouseFire;
@@ -145,7 +149,7 @@ BR.Input = class Input {
       this.usingTouch = false;
       BR.Audio.init();
       if (map[e.code]) { this.keys[map[e.code]] = true; upd(); }
-      if (e.code === 'Space') { this.press('jump'); e.preventDefault(); }
+      if (e.code === 'Space') { this.press('jump'); this.jumpHeld = true; e.preventDefault(); }
       if (e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'ControlLeft') this.press('slide');
       if (e.code === 'KeyR') this.press('reload');
       if (e.code === 'KeyE' || e.code === 'KeyF') this.press('interact');
@@ -155,10 +159,11 @@ BR.Input = class Input {
       if (e.code === 'Escape' || e.code === 'KeyP') this.press('pause');
     });
     window.addEventListener('keyup', e => {
+      if (e.code === 'Space') this.jumpHeld = false;
       if (map[e.code]) { this.keys[map[e.code]] = false; upd(); }
     });
     this.root.addEventListener('mousedown', e => {
-      if (this.usingTouch || e.target.closest('[data-act]')) return;
+      if (this.usingTouch || this.editing || e.target.closest('[data-act]')) return;
       BR.Audio.init();
       if (!this.locked && this.root.requestPointerLock) {
         try { const p = this.root.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed here */ }

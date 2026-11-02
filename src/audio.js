@@ -88,5 +88,7 @@ BR.Audio = {
   slide() { this.burst(1800, 0.6, 0.35, 0.09, 0, 'bandpass'); },
   wallrun() { this.burst(1200, 0.5, 0.25, 0.06, 0, 'bandpass'); },
   zone() { this.tone(220, 180, 0.6, 0.18, 'sawtooth'); },
+  tech() { this.tone(700, 1400, 0.12, 0.12, 'triangle'); this.tone(1050, 2100, 0.16, 0.08, 'sine'); },
+  chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
   reload() { this.tone(500, 300, 0.05, 0.08, 'square'); },
 };

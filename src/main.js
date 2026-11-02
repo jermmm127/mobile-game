@@ -54,15 +54,23 @@
   check('set-auto', 'autoFire');
   check('set-fps', 'showFps');
 
+  // Fullscreen: menu button + in-game button. iPhone gets the Home Screen tip.
+  const fsTip = () => $('fs-tip').classList.remove('hidden');
+  const toggleFs = () => BR.Fullscreen.toggle(fsTip);
   const tryFullscreen = () => {
-    try {
-      const el = document.documentElement;
-      if (!document.fullscreenElement && el.requestFullscreen && window.matchMedia('(pointer: coarse)').matches) {
-        const p = el.requestFullscreen({ navigationUI: 'hide' });
-        if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* optional */ } }).catch(() => {});
-      }
-    } catch (e) { /* embeds may block fullscreen — the game works without it */ }
+    // Quietly try on Drop in (Android/iPad); never nag here.
+    if (!BR.Fullscreen.el() && BR.Fullscreen.supported() && window.matchMedia('(pointer: coarse)').matches) BR.Fullscreen.toggle(() => {});
   };
+  $('btn-fs').addEventListener('click', toggleFs);
+  $('fs-game').addEventListener('click', toggleFs);
+  $('fs-tip-ok').addEventListener('click', () => $('fs-tip').classList.add('hidden'));
+  if (BR.Fullscreen.standalone()) { document.body.classList.add('standalone'); $('btn-fs').classList.add('hidden'); }
+
+  // HUD layout editor (menu + pause menu)
+  const layout = new BR.Layout(settings, save, game.input);
+  BR.layout = layout;
+  $('btn-hud').addEventListener('click', () => layout.open());
+  $('btn-hud2').addEventListener('click', () => layout.open());
 
   const play = () => { BR.Audio.init(); tryFullscreen(); game.startMatch(); };
   $('btn-play').addEventListener('click', play);

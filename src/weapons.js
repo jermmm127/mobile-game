@@ -92,6 +92,12 @@ BR.Weapons = {
     }
     hits.forEach((h, victim) => game.applyDamage(victim, actor, h.dmg, h.head, h, w.id));
 
+    // TECH shotgun jump: big guns push you backwards when airborne (or aimed at your feet)
+    const mv = actor.mover;
+    if (d.knockback && (!mv.onGround || dir.y < -0.6)) {
+      mv.vel.addScaledVector(dir, -d.knockback);
+      if (dir.y < -0.3) { mv.onGround = false; mv.events.tech = d.pellets > 1 ? 'SHOTGUN JUMP' : 'RECOIL JUMP'; }
+    }
     w.bloom = Math.min(d.bloomMax, w.bloom + d.bloom);
     if (actor.isPlayer) {
       actor.recoil += d.recoil * (actor.ads ? 0.6 : 1);

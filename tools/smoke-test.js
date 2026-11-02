@@ -47,6 +47,21 @@ const server = http.createServer((req, res) => {
     m.pos.set(-26, 0, 10); m.vel.set(0, 0, 0);
     let top = 0; for (let i = 0; i < 120; i++) { step(1, { mz: 1 }, yawFor(1, 0)); top = Math.max(top, m.pos.y); }
     r.vaultTop = top;
+    // movement tech
+    const go = (mv, n, inp, yaw) => { for (let i = 0; i < n; i++) mv.update(dt, Object.assign({ mx: 0, mz: 0, jump: false, slide: false, jumpHeld: false }, inp), yaw); };
+    const flat = new BR.World(1); flat.boxes = []; flat.cells = flat.cells.map(() => []);
+    let t = new BR.Mover(flat); go(t, 90, { mz: 1 }, yawFor(1, 0)); go(t, 1, { mz: 1, slide: true }, yawFor(1, 0)); go(t, 1, { mz: 1, jump: true }, yawFor(1, 0));
+    let apex = 0; for (let i = 0; i < 60; i++) { go(t, 1, { mz: 1 }, yawFor(1, 0)); apex = Math.max(apex, t.pos.y); }
+    r.superJumpApex = apex;
+    t = new BR.Mover(flat); go(t, 90, { mz: 1 }, yawFor(1, 0)); go(t, 1, { mz: 1, slide: true }, yawFor(1, 0));
+    go(t, 240, { mz: 1, jumpHeld: true }, yawFor(1, 0)); r.bhopSpeed = t.speedH;
+    const lane = new BR.World(1); lane.boxes = []; lane.cells = lane.cells.map(() => []);
+    lane.addBox(-80, 0, -3.6, 80, 6, -3, 0); lane.addBox(-80, 0, 3, 80, 6, 3.6, 0);
+    t = new BR.Mover(lane); t.pos.set(60, 0, -2.5);
+    let yw = yawFor(-1, -0.3), air = 0;
+    go(t, 30, { mz: 1 }, yw); go(t, 1, { mz: 1, jump: true }, yw);
+    for (let i = 0; i < 600 && !t.onGround; i++) { const j = t.wallRunning && t.wallRunT > 0.5; if (j) yw = yawFor(-1, t.wallN.z * 0.6); go(t, 1, { mz: 1, jump: j }, yw); air++; }
+    r.wallChainAir = air / 60;
     return r;
   });
 
@@ -66,6 +81,9 @@ const server = http.createServer((req, res) => {
     ['wall-run lasts > 0.8s', mech.wallRunSec > 0.8],
     ['mantle climbs a 1.6m ledge', mech.mantleY >= 1.59],
     ['vault climbs a 1.2m crate', mech.vaultTop >= 1.19],
+    ['super jump beats a normal jump (1.45m)', mech.superJumpApex > 2.2],
+    ['holding jump bunny-hops and keeps speed', mech.bhopSpeed > 11],
+    ['wall chain keeps you airborne > 3s', mech.wallChainAir > 3],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];

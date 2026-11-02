@@ -35,6 +35,14 @@ BR.Mover = class Mover {
     this.dropping = false;
     this.events = {};    // one-frame flags: jump, land, slide, wallrun, walljump, mantle
     this.landSpeed = 0;
+    // movement-tech bookkeeping
+    this.sinceLand = 9;      // seconds on the ground since the last landing
+    this.hopChain = 0;       // consecutive bunny hops
+    this.wallKey = '';       // which wall we last wall-ran on
+    this.wallPlane = 0;      // coordinate of the last wall surface we touched
+    this.wallChain = 0;      // consecutive walls in one air-time
+    this.mantleT = 0;        // window to mantle-boost
+    this.pendingBoost = null;
     this._tmp = [];
   }
 
@@ -45,8 +53,11 @@ BR.Mover = class Mover {
     const ev = this.events;
     for (const k in ev) ev[k] = false;
     this.slideCd -= dt; this.wallRunCd -= dt; this.coyote -= dt; this.jumpBuf -= dt;
-    this.slideQueue -= dt; this.wallContactT += dt;
+    this.slideQueue -= dt; this.wallContactT += dt; this.mantleT -= dt;
+    this.sinceLand = this.onGround ? this.sinceLand + dt : 0; // time spent on the ground since landing
     if (inp.jump) this.jumpBuf = M.jumpBuffer;
+    // TECH auto-hop: holding jump re-jumps the instant you land (no friction frame)
+    if (inp.jumpHeld && this.onGround) this.jumpBuf = M.jumpBuffer;
     if (inp.slide && !this.onGround && !this.dropping) this.slideQueue = M.slideQueueTime;
 
     // wish direction in world space. forward = (-sin yaw, -cos yaw)
@@ -72,11 +83,16 @@ BR.Mover = class Mover {
     // ---- slide --------------------------------------------------------------
     const hs = this.speedH;
     const wantSlide = inp.slide || (this.slideQueue > 0 && this.onGround);
-    if (wantSlide && this.slideCd <= 0 && !this.sliding && (this.onGround || this.coyote > 0) && (hs > 2 || frac > 0.3)) {
+    // TECH slide-hop: a slide that starts within a few frames of landing ignores the
+    // cooldown and the normal speed cap, so slide -> jump -> slide chains keep stacking.
+    const landSlide = this.onGround && this.sinceLand < M.tech.slideHopWindow && hs > M.runSpeed;
+    if (wantSlide && (this.slideCd <= 0 || landSlide) && !this.sliding && (this.onGround || this.coyote > 0) && (hs > 2 || frac > 0.3)) {
       this.sliding = true; this.slideT = 0; this.slideCd = M.slideCooldown; this.slideQueue = 0;
       let dx = this.vel.x, dz = this.vel.z;
       if (hs < 0.5) { dx = wx; dz = wz; } else { dx /= hs; dz /= hs; }
-      const ns = Math.min(Math.max(hs, M.runSpeed) + M.slideBoost, M.slideMaxSpeed);
+      const cap = landSlide ? M.maxSpeed : M.slideMaxSpeed;
+      const ns = Math.min(Math.max(hs, M.runSpeed) + M.slideBoost, cap);
+      if (landSlide && ns > M.slideMaxSpeed - 0.5) ev.tech = 'SLIDE-HOP';
       this.vel.x = dx * ns; this.vel.z = dz * ns;
       ev.slide = true;
     }
@@ -90,16 +106,36 @@ BR.Mover = class Mover {
     if (this.jumpBuf > 0) {
       if (this.onGround || this.coyote > 0) {
         this.vel.y = M.jumpSpeed;
+        // TECH super jump: jump in the first instant of a slide
+        if (this.sliding && this.slideT < M.tech.superJumpWindow) {
+          this.vel.y = M.jumpSpeed * M.tech.superJumpMult;
+          this.vel.x *= 1.08; this.vel.z *= 1.08;
+          ev.tech = 'SUPER JUMP';
+        }
+        // TECH bunny hop: jumping on the landing frame skips ground friction entirely
+        if (this.sinceLand < 0.06 && this.speedH > M.runSpeed + 1) {
+          this.hopChain++;
+          if (this.hopChain >= 2 && !ev.tech) ev.tech = 'BHOP x' + this.hopChain;
+        } else this.hopChain = 0;
         this.onGround = false; this.coyote = 0; this.jumpBuf = 0;
         this.sliding = false;
         jumped = true; ev.jump = true;
+      } else if (this.mantleT > 0) {
+        // TECH mantle boost: jump while climbing a ledge to launch off it
+        const fx = -this.wallN.x, fz = -this.wallN.z;
+        this.vel.y = M.jumpSpeed * 1.15;
+        this.pendingBoost = { x: fx, z: fz, t: 0.5 }; // applied once we clear the ledge
+        this.mantleT = 0; this.jumpBuf = 0;
+        jumped = true; ev.jump = true; ev.tech = 'MANTLE BOOST';
       } else if (this.wallRunning || (this.wallContactT < 0.18 && this.wallTall)) {
         const n = this.wallN;
         this.vel.x += n.x * M.wallJumpOut + wx * 2;
         this.vel.z += n.z * M.wallJumpOut + wz * 2;
         this.vel.y = M.wallJumpUp;
-        this.wallRunning = false; this.wallRunCd = 0.3; this.jumpBuf = 0;
+        this.wallRunning = false; this.wallRunCd = M.tech.wallChainCooldown; this.jumpBuf = 0;
+        this.wallContactT = 9; // forget this wall: only a fresh touch starts the next wall-run
         jumped = true; ev.walljump = true;
+        if (this.wallChain >= 2) ev.tech = 'WALL CHAIN x' + this.wallChain;
       }
     }
 
@@ -154,11 +190,24 @@ BR.Mover = class Mover {
     this.mantleWish = inp.mz > 0.3;
     this.integrate(dt, jumped);
 
+    if (this.pendingBoost) {
+      const b = this.pendingBoost;
+      b.t -= dt;
+      if (this.wallContactT > 0) {
+        // launch forward at run speed + boost, whatever speed the climb left us with
+        const cur = this.vel.x * b.x + this.vel.z * b.z;
+        const add = Math.max(cur, M.runSpeed) + M.tech.mantleBoost - cur;
+        this.vel.x += b.x * add; this.vel.z += b.z * add;
+        this.pendingBoost = null;
+      }
+      else if (b.t <= 0) this.pendingBoost = null;
+    }
+
     // ---- mantle / vault -----------------------------------------------------
     if (this.mantleTop !== null) {
       const need = this.mantleTop - this.pos.y + 0.15;
       const v = Math.sqrt(2 * M.gravity * Math.max(need, 0.1));
-      if (this.vel.y < v) { this.vel.y = v; ev.mantle = true; }
+      if (this.vel.y < v) { this.vel.y = v; ev.mantle = true; this.mantleT = M.tech.mantleBoostWindow; }
       this.vel.x -= this.wallN.x * 2.5; this.vel.z -= this.wallN.z * 2.5;
       this.mantleTop = null;
       this.sliding = false;
@@ -171,13 +220,18 @@ BR.Mover = class Mover {
       (this.wallRunning || this.vel.y < M.wallRunEnterVy);
     if (canRun) {
       // Entering a wall-run resets vertical speed to a small lift: a gentle arc, not a wall climb
-      if (!this.wallRunning) { this.vel.y = M.wallRunStartLift; ev.wallrun = true; }
+      if (!this.wallRunning) {
+        this.vel.y = M.wallRunStartLift; ev.wallrun = true;
+        // TECH wall chain: a *different* wall refreshes your wall-run timer
+        const key = this.wallN.x + ',' + this.wallN.z + ',' + this.wallPlane.toFixed(1);
+        if (key !== this.wallKey) { this.wallRunT = 0; this.wallChain++; this.wallKey = key; }
+      }
       this.wallRunning = true;
     } else if (this.wallRunning) {
       this.wallRunning = false;
       this.wallRunCd = 0.25;
     }
-    if (this.onGround) this.wallRunT = 0;
+    if (this.onGround) { this.wallRunT = 0; this.wallChain = 0; this.wallKey = ''; }
   }
 
   friction(f, dt) {
@@ -271,6 +325,7 @@ BR.Mover = class Mover {
 
     // push out
     p[axis] = d > 0 ? edge - r - 1e-3 : edge + r + 1e-3;
+    this.wallPlane = edge;
     this.vel[axis] = 0;
     this.wallN.x = axis === 'x' ? (d > 0 ? -1 : 1) : 0;
     this.wallN.z = axis === 'z' ? (d > 0 ? -1 : 1) : 0;

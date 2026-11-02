@@ -208,7 +208,9 @@ BR.Game = class Game {
         if (a === p) this.swapItem = s;
       }
     }
-    if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
+    this.chest = p.alive && !p.mover.dropping ? this.loot.nearestChest(p, 2.2) : null;
+    if (this.chest) this.hud.prompt('Open chest');
+    else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
     else this.hud.prompt(null);
 
     // Zone
@@ -270,13 +272,17 @@ BR.Game = class Game {
     p.input.mx = inp.moveX;
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
+    p.input.jumpHeld = inp.jumpHeld;
     if (inp.consume('slide')) p.input.slide = true;
     if (inp.consume('reload') && BR.Weapons.startReload(w, p)) BR.Audio.reload();
     const sw = i => { if (p.switchTo(i)) { inp.ads = false; this.cam.switchT = 0.25; } };
     if (inp.consume('swap')) sw(1 - p.cur);
     if (inp.consume('slot0')) sw(0);
     if (inp.consume('slot1')) sw(1);
-    if (inp.consume('interact') && this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; this.cam.switchT = 0.25; }
+    if (inp.consume('interact')) {
+      if (this.chest && !this.chest.taken) { this.loot.openChest(p, this.chest); this.chest = null; }
+      else if (this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; this.cam.switchT = 0.25; }
+    }
     if (inp.consume('pause')) this.pause();
     p.ads = inp.ads && !!w && !p.mover.dropping;
 
@@ -324,6 +330,13 @@ BR.Game = class Game {
     if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); }
     if (ev.slide) BR.Audio.slide();
     if (ev.wallrun) BR.Audio.wallrun();
+    if (ev.tech) { this.hud.tech(ev.tech); BR.Audio.tech(); }
+  }
+
+  onChestOpened(actor, chest) {
+    const d = Math.hypot(actor.pos.x - this.camera.position.x, actor.pos.z - this.camera.position.z);
+    if (d < 40) BR.Audio.chest(d);
+    if (actor === this.player) this.hud.toast('Chest opened', 900);
   }
 
   // ----------------------------------------------------------------- combat

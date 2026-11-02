@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Velocity">
 <meta name="theme-color" content="#0d1420">
 <title>Velocity Royale</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -318,6 +320,60 @@ body.touch #joy-hint, body.touch #look-hint { display: block !important; }
   #toast, #hitmarker.on, .kf { transition: none; animation: none; }
 }
 
+/* ------------------------------------------------- movement tech callout */
+#tech {
+  position: absolute; top: calc(50% + 52px); left: 50%; transform: translateX(-50%);
+  font: 700 italic 20px var(--display); letter-spacing: 0.06em; color: #fff; opacity: 0;
+  text-shadow: 0 0 12px rgba(255, 181, 71, 0.9), 0 2px 2px rgba(0, 0, 0, 0.6); white-space: nowrap;
+}
+#tech.on { animation: tech 1.1s ease-out forwards; }
+@keyframes tech {
+  0% { opacity: 0; transform: translateX(-50%) scale(1.5); }
+  12% { opacity: 1; transform: translateX(-50%) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+}
+
+/* --------------------------------------------- customizable action buttons */
+#play { --btn-alpha: 0.85; }
+.btn.act { opacity: var(--btn-alpha); }
+.btn.act.on { opacity: 1; }
+.btn.swap { width: 50px; height: 50px; right: calc(46px + var(--sr)); bottom: calc(214px + var(--sb)); }
+.btn.act.user-hidden { display: none !important; }
+.btn.act svg { pointer-events: none; }
+
+/* fullscreen button (outside #play so it can use a real click) */
+.fs-btn {
+  position: fixed; z-index: 6; top: calc(8px + var(--st)); left: calc(54px + var(--sl)); width: 38px; height: 38px;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 4px; display: grid; place-items: center; color: var(--text);
+}
+body.in-menu .fs-btn, body.editing .fs-btn, body.standalone .fs-btn { display: none; }
+@media (orientation: portrait) {
+  #topbar { left: calc(102px + var(--sl)); }
+}
+.menu-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ghost.sm, .cta.sm { padding: 8px 16px; font-size: 14px; }
+.tip { margin: 0 0 8px; font-size: 15px; line-height: 1.45; color: #d6dfec; text-align: left; }
+
+/* ------------------------------------------------------------- HUD editor */
+#editor {
+  display: none; position: fixed; z-index: 30; top: calc(8px + var(--st)); left: 50%; transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px)); padding: 10px 14px; flex-direction: column; gap: 8px;
+  background: rgba(13, 20, 32, 0.92); border: 1px solid var(--amber); border-radius: 6px; touch-action: manipulation;
+}
+body.editing #editor { display: flex; }
+#editor.bottom { top: auto; bottom: calc(8px + var(--sb)); }
+.ed-title { font: 600 12px var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber); }
+.ed-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.ed-name { font: 700 16px var(--display); min-width: 90px; }
+.ed-l { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; flex: 1; min-width: 150px; }
+.ed-l input { flex: 1; accent-color: var(--amber); }
+body.editing .overlay { display: none !important; }
+body.editing #play > *:not(#view):not(.btn.act) { display: none !important; }
+body.editing #play > .btn.act:not(#view) { display: flex !important; cursor: grab; }
+body.editing #play > .btn.act.user-hidden:not(#view) { opacity: 0.3; outline: 2px dashed var(--muted); }
+body.editing #play > .btn.act.ed-sel:not(#view) { outline: 3px solid var(--amber); outline-offset: 3px; }
+
 </style>
 </head>
 <body>
@@ -341,7 +397,7 @@ body.touch #joy-hint, body.touch #look-hint { display: block !important; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.1.0',
+  version: '0.2.0',
 
   map: {
     size: 340,          // square map edge length (m)
@@ -402,6 +458,16 @@ BR.CONFIG = {
     wallJumpOut: 7,
     wallJumpUp: 8,
 
+    // Intentional "bugs" — movement tech with a skill ceiling. Set a window to 0 to disable one.
+    tech: {
+      slideHopWindow: 0.15,   // slide this soon after landing: no cooldown, speed cap rises to maxSpeed
+      superJumpWindow: 0.12,  // jump this soon after starting a slide: bigger jump
+      superJumpMult: 1.4,
+      mantleBoostWindow: 0.25, // jump while mantling: launch forward
+      mantleBoost: 6,
+      wallChainCooldown: 0.12, // short cooldown after a wall-jump so you can catch the next wall
+    },
+
     dropFallSpeed: 16,      // skydive terminal velocity
     dropGlideSpeed: 18,     // skydive horizontal steering speed
     dropAccel: 10,
@@ -431,9 +497,9 @@ BR.CONFIG = {
   weapons: {
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x9aa4b1, len: 0.28 },
     smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 850, mag: 30, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.004, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.006, zoom: 1.3, tier: 1, color: 0x58c4dd, len: 0.42 },
-    shotgun: { name: 'Shotgun', ammo: 'shells', dmg: 11, pellets: 9, rpm: 72,  mag: 5,  reload: 2.3, spread: 0.075, ads: 0.75, bloom: 0, bloomMax: 0,       range: 22,  head: 1.5, recoil: 0.045, zoom: 1.2, tier: 1, color: 0xd98c45, len: 0.55 },
+    shotgun: { name: 'Shotgun', ammo: 'shells', dmg: 11, pellets: 9, rpm: 72,  mag: 5,  reload: 2.3, spread: 0.075, ads: 0.75, bloom: 0, bloomMax: 0,       range: 22,  head: 1.5, recoil: 0.045, zoom: 1.2, tier: 1, color: 0xd98c45, len: 0.55, knockback: 9 },
     rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 30, reload: 2.0, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.009, zoom: 1.6, tier: 2, color: 0x7fbf63, len: 0.6 },
-    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0,       range: 400, head: 2.2, recoil: 0.06,  zoom: 4.0, tier: 3, color: 0xb98be8, len: 0.8, scope: true },
+    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0,       range: 400, head: 2.2, recoil: 0.06,  zoom: 4.0, tier: 3, color: 0xb98be8, len: 0.8, scope: true, knockback: 4 },
   },
 
   // Loot rolls by spot tier. Weights are relative.
@@ -636,6 +702,8 @@ BR.Audio = {
   slide() { this.burst(1800, 0.6, 0.35, 0.09, 0, 'bandpass'); },
   wallrun() { this.burst(1200, 0.5, 0.25, 0.06, 0, 'bandpass'); },
   zone() { this.tone(220, 180, 0.6, 0.18, 'sawtooth'); },
+  tech() { this.tone(700, 1400, 0.12, 0.12, 'triangle'); this.tone(1050, 2100, 0.16, 0.08, 'sine'); },
+  chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
   reload() { this.tone(500, 300, 0.05, 0.08, 'square'); },
 };
 
@@ -670,7 +738,8 @@ BR.World = class World {
     this.stamp = 1;
     this.seed = seed;
     this.rand = BR.util.rng(seed);
-    this.lootSpots = [];   // {x,y,z,tier}
+    this.lootSpots = [];   // {x,y,z,tier,force?}  force:'weapon' guarantees a gun
+    this.chestSpots = [];  // {x,y,z,tier}
     this.trees = [];       // {x,z,h,s}
     this.occupied = [];    // rects used during generation to avoid overlaps
     this.hit = { t: 0, box: null };
@@ -853,7 +922,7 @@ BR.World = class World {
           // plaza: crates + cover
           this.crateStack(lx + U.rand(R, -3, 3), lz + U.rand(R, -3, 3));
           this.coverWall(lx + U.rand(R, -4, 4), lz + U.rand(R, -4, 4));
-          this.lootSpots.push({ x: lx, y: 0, z: lz, tier: 1 });
+          this.chestSpots.push({ x: lx, y: 0, z: lz, tier: 1 });
         }
       }
     }
@@ -925,12 +994,26 @@ BR.World = class World {
       this.addBox(hx1, y0, iz0, ix1, y1, iz1, PAL.floor);
       this.addBox(ix0, y0, hz1, hx1, y1, iz1, PAL.floor);
       if (hz0 > iz0) this.addBox(ix0, y0, iz0, hx1, y1, hz0, PAL.floor);
-      this.lootSpots.push({ x: cx + 1.5, y: fh, z: cz + U.rand(R, -2, 2), tier: 1 });
     }
     // Roof
     this.addBox(x0 - 0.2, H, z0 - 0.2, x1 + 0.2, H + 0.3, z1 + 0.2, PAL.roof);
-    this.lootSpots.push({ x: cx + U.rand(R, -2, 2), y: 0.1, z: cz + U.rand(R, -2, 2), tier: 1 });
-    if (R() < 0.5) this.lootSpots.push({ x: cx + U.rand(R, -2, 2), y: H + 0.3, z: cz + U.rand(R, -2, 2), tier: 2 });
+    // Loot: a guaranteed gun on every floor (in a corner, clear of the stairs),
+    // extra items, and sometimes a chest inside or on the roof.
+    const cx0 = x0 + t + 1.7, cx1 = x1 - t - 0.9, cz0 = z0 + t + 0.9, cz1 = z1 - t - 0.9;
+    const corner = () => [R() < 0.5 ? cx0 : cx1, R() < 0.5 ? cz0 : cz1];
+    for (let f = 0; f < floors; f++) {
+      const y = f === 0 ? 0.1 : f * fh;
+      const [ax, az] = corner();
+      this.lootSpots.push({ x: ax, y, z: az, tier: 1, force: 'weapon' });
+      this.lootSpots.push({ x: cx + U.rand(R, -1.5, 1.5), y, z: cz + U.rand(R, -1.5, 1.5), tier: 1 });
+      if (R() < 0.5) { const [bx, bz] = corner(); this.lootSpots.push({ x: bx, y, z: bz, tier: 1 }); }
+    }
+    if (R() < 0.45) {
+      const f = Math.floor(R() * floors), [qx, qz] = corner();
+      this.chestSpots.push({ x: qx, y: f === 0 ? 0.1 : f * fh, z: qz, tier: 1 });
+    }
+    if (R() < 0.3) this.chestSpots.push({ x: cx, y: H + 0.3, z: cz, tier: 2 });
+    else if (R() < 0.6) this.lootSpots.push({ x: cx + U.rand(R, -2, 2), y: H + 0.3, z: cz + U.rand(R, -2, 2), tier: 2, force: 'weapon' });
 
     // Crates against an outside wall so roofs are reachable by climbing
     const side = Math.floor(R() * 4);
@@ -955,7 +1038,7 @@ BR.World = class World {
       const c2 = U.pick(PAL.containers, R);
       if (along) this.addBox(x - L / 2 + 0.5, Hh, z - W / 2, x + L / 2 - 0.5, Hh * 2, z + W / 2, c2);
       else this.addBox(x - W / 2, Hh, z - L / 2 + 0.5, x + W / 2, Hh * 2, z + L / 2 - 0.5, c2);
-      this.lootSpots.push({ x, y: Hh * 2, z, tier: 2 });
+      this.chestSpots.push({ x, y: Hh * 2, z, tier: 2 });
     }
     this.lootSpots.push({ x: x + (along ? 0 : 2.2), y: 0, z: z + (along ? 2.2 : 0), tier: 0 });
   }
@@ -972,6 +1055,7 @@ BR.World = class World {
     const R = this.rand, U = BR.util;
     const w = U.rand(R, 2, 6), d = U.rand(R, 2, 6), h = U.rand(R, 0.9, 3.2);
     this.addBox(x - w / 2, 0, z - d / 2, x + w / 2, h, z + d / 2, PAL.rock);
+    if (h > 2 && R() < 0.35) this.lootSpots.push({ x, y: h, z, tier: 1, force: 'weapon' }); // gun on a rock top
     if (R() < 0.5) {
       const w2 = w * 0.6, d2 = d * 0.6;
       this.addBox(x - w2 / 2 + 0.4, h, z - d2 / 2, x + w2 / 2 + 0.4, h + U.rand(R, 0.5, 1.2), z + d2 / 2, PAL.rock);
@@ -1002,7 +1086,11 @@ BR.World = class World {
       if (alongX) this.addBox(x - L / 2, 0, z + o - T / 2, x + L / 2, H, z + o + T / 2, s < 0 ? PAL.parkour : PAL.parkourAlt);
       else this.addBox(x + o - T / 2, 0, z - L / 2, x + o + T / 2, H, z + L / 2, s < 0 ? PAL.parkour : PAL.parkourAlt);
     }
-    this.lootSpots.push({ x, y: 0, z, tier: 1 });
+    this.lootSpots.push({ x, y: 0, z, tier: 1, force: 'weapon' });
+    // A high-tier gun on top of the first wall: reach it with a wall chain or mantle boost
+    const o = -(gap / 2 + T / 2);
+    if (alongX) this.lootSpots.push({ x: x + (R() - 0.5) * 8, y: H, z: z + o, tier: 2, force: 'weapon' });
+    else this.lootSpots.push({ x: x + o, y: H, z: z + (R() - 0.5) * 8, tier: 2, force: 'weapon' });
   }
 
   // Spiral of floating platforms around a pillar. High-tier loot on top.
@@ -1017,7 +1105,7 @@ BR.World = class World {
     const top = steps * 1.1 + 0.1;
     this.addBox(x - 2.4, top, z - 2.4, x + 2.4, top + 0.3, z + 2.4, PAL.tower);
     this.lootSpots.push({ x, y: top + 0.3, z, tier: 2 });
-    this.lootSpots.push({ x: x + 1.2, y: top + 0.3, z: z + 1.2, tier: 2 });
+    this.chestSpots.push({ x: x + 1.2, y: top + 0.3, z: z + 1.2, tier: 2 });
   }
 
   // Raised plateau with stairs: a high-ground fight spot.
@@ -1041,7 +1129,8 @@ BR.World = class World {
       b.y0 += Hh; b.y1 += Hh;
     }
     this.lootSpots.push({ x, y: Hh, z, tier: 2 });
-    this.lootSpots.push({ x: x + 6, y: Hh, z: z - 6, tier: 1 });
+    this.lootSpots.push({ x: x + 6, y: Hh, z: z - 6, tier: 1, force: 'weapon' });
+    this.chestSpots.push({ x: x - 5, y: Hh, z: z + 5, tier: 2 });
   }
 
   // ---------------------------------------------------------------- render
@@ -1207,6 +1296,14 @@ BR.Mover = class Mover {
     this.dropping = false;
     this.events = {};    // one-frame flags: jump, land, slide, wallrun, walljump, mantle
     this.landSpeed = 0;
+    // movement-tech bookkeeping
+    this.sinceLand = 9;      // seconds on the ground since the last landing
+    this.hopChain = 0;       // consecutive bunny hops
+    this.wallKey = '';       // which wall we last wall-ran on
+    this.wallPlane = 0;      // coordinate of the last wall surface we touched
+    this.wallChain = 0;      // consecutive walls in one air-time
+    this.mantleT = 0;        // window to mantle-boost
+    this.pendingBoost = null;
     this._tmp = [];
   }
 
@@ -1217,8 +1314,11 @@ BR.Mover = class Mover {
     const ev = this.events;
     for (const k in ev) ev[k] = false;
     this.slideCd -= dt; this.wallRunCd -= dt; this.coyote -= dt; this.jumpBuf -= dt;
-    this.slideQueue -= dt; this.wallContactT += dt;
+    this.slideQueue -= dt; this.wallContactT += dt; this.mantleT -= dt;
+    this.sinceLand = this.onGround ? this.sinceLand + dt : 0; // time spent on the ground since landing
     if (inp.jump) this.jumpBuf = M.jumpBuffer;
+    // TECH auto-hop: holding jump re-jumps the instant you land (no friction frame)
+    if (inp.jumpHeld && this.onGround) this.jumpBuf = M.jumpBuffer;
     if (inp.slide && !this.onGround && !this.dropping) this.slideQueue = M.slideQueueTime;
 
     // wish direction in world space. forward = (-sin yaw, -cos yaw)
@@ -1244,11 +1344,16 @@ BR.Mover = class Mover {
     // ---- slide --------------------------------------------------------------
     const hs = this.speedH;
     const wantSlide = inp.slide || (this.slideQueue > 0 && this.onGround);
-    if (wantSlide && this.slideCd <= 0 && !this.sliding && (this.onGround || this.coyote > 0) && (hs > 2 || frac > 0.3)) {
+    // TECH slide-hop: a slide that starts within a few frames of landing ignores the
+    // cooldown and the normal speed cap, so slide -> jump -> slide chains keep stacking.
+    const landSlide = this.onGround && this.sinceLand < M.tech.slideHopWindow && hs > M.runSpeed;
+    if (wantSlide && (this.slideCd <= 0 || landSlide) && !this.sliding && (this.onGround || this.coyote > 0) && (hs > 2 || frac > 0.3)) {
       this.sliding = true; this.slideT = 0; this.slideCd = M.slideCooldown; this.slideQueue = 0;
       let dx = this.vel.x, dz = this.vel.z;
       if (hs < 0.5) { dx = wx; dz = wz; } else { dx /= hs; dz /= hs; }
-      const ns = Math.min(Math.max(hs, M.runSpeed) + M.slideBoost, M.slideMaxSpeed);
+      const cap = landSlide ? M.maxSpeed : M.slideMaxSpeed;
+      const ns = Math.min(Math.max(hs, M.runSpeed) + M.slideBoost, cap);
+      if (landSlide && ns > M.slideMaxSpeed - 0.5) ev.tech = 'SLIDE-HOP';
       this.vel.x = dx * ns; this.vel.z = dz * ns;
       ev.slide = true;
     }
@@ -1262,16 +1367,36 @@ BR.Mover = class Mover {
     if (this.jumpBuf > 0) {
       if (this.onGround || this.coyote > 0) {
         this.vel.y = M.jumpSpeed;
+        // TECH super jump: jump in the first instant of a slide
+        if (this.sliding && this.slideT < M.tech.superJumpWindow) {
+          this.vel.y = M.jumpSpeed * M.tech.superJumpMult;
+          this.vel.x *= 1.08; this.vel.z *= 1.08;
+          ev.tech = 'SUPER JUMP';
+        }
+        // TECH bunny hop: jumping on the landing frame skips ground friction entirely
+        if (this.sinceLand < 0.06 && this.speedH > M.runSpeed + 1) {
+          this.hopChain++;
+          if (this.hopChain >= 2 && !ev.tech) ev.tech = 'BHOP x' + this.hopChain;
+        } else this.hopChain = 0;
         this.onGround = false; this.coyote = 0; this.jumpBuf = 0;
         this.sliding = false;
         jumped = true; ev.jump = true;
+      } else if (this.mantleT > 0) {
+        // TECH mantle boost: jump while climbing a ledge to launch off it
+        const fx = -this.wallN.x, fz = -this.wallN.z;
+        this.vel.y = M.jumpSpeed * 1.15;
+        this.pendingBoost = { x: fx, z: fz, t: 0.5 }; // applied once we clear the ledge
+        this.mantleT = 0; this.jumpBuf = 0;
+        jumped = true; ev.jump = true; ev.tech = 'MANTLE BOOST';
       } else if (this.wallRunning || (this.wallContactT < 0.18 && this.wallTall)) {
         const n = this.wallN;
         this.vel.x += n.x * M.wallJumpOut + wx * 2;
         this.vel.z += n.z * M.wallJumpOut + wz * 2;
         this.vel.y = M.wallJumpUp;
-        this.wallRunning = false; this.wallRunCd = 0.3; this.jumpBuf = 0;
+        this.wallRunning = false; this.wallRunCd = M.tech.wallChainCooldown; this.jumpBuf = 0;
+        this.wallContactT = 9; // forget this wall: only a fresh touch starts the next wall-run
         jumped = true; ev.walljump = true;
+        if (this.wallChain >= 2) ev.tech = 'WALL CHAIN x' + this.wallChain;
       }
     }
 
@@ -1326,11 +1451,24 @@ BR.Mover = class Mover {
     this.mantleWish = inp.mz > 0.3;
     this.integrate(dt, jumped);
 
+    if (this.pendingBoost) {
+      const b = this.pendingBoost;
+      b.t -= dt;
+      if (this.wallContactT > 0) {
+        // launch forward at run speed + boost, whatever speed the climb left us with
+        const cur = this.vel.x * b.x + this.vel.z * b.z;
+        const add = Math.max(cur, M.runSpeed) + M.tech.mantleBoost - cur;
+        this.vel.x += b.x * add; this.vel.z += b.z * add;
+        this.pendingBoost = null;
+      }
+      else if (b.t <= 0) this.pendingBoost = null;
+    }
+
     // ---- mantle / vault -----------------------------------------------------
     if (this.mantleTop !== null) {
       const need = this.mantleTop - this.pos.y + 0.15;
       const v = Math.sqrt(2 * M.gravity * Math.max(need, 0.1));
-      if (this.vel.y < v) { this.vel.y = v; ev.mantle = true; }
+      if (this.vel.y < v) { this.vel.y = v; ev.mantle = true; this.mantleT = M.tech.mantleBoostWindow; }
       this.vel.x -= this.wallN.x * 2.5; this.vel.z -= this.wallN.z * 2.5;
       this.mantleTop = null;
       this.sliding = false;
@@ -1343,13 +1481,18 @@ BR.Mover = class Mover {
       (this.wallRunning || this.vel.y < M.wallRunEnterVy);
     if (canRun) {
       // Entering a wall-run resets vertical speed to a small lift: a gentle arc, not a wall climb
-      if (!this.wallRunning) { this.vel.y = M.wallRunStartLift; ev.wallrun = true; }
+      if (!this.wallRunning) {
+        this.vel.y = M.wallRunStartLift; ev.wallrun = true;
+        // TECH wall chain: a *different* wall refreshes your wall-run timer
+        const key = this.wallN.x + ',' + this.wallN.z + ',' + this.wallPlane.toFixed(1);
+        if (key !== this.wallKey) { this.wallRunT = 0; this.wallChain++; this.wallKey = key; }
+      }
       this.wallRunning = true;
     } else if (this.wallRunning) {
       this.wallRunning = false;
       this.wallRunCd = 0.25;
     }
-    if (this.onGround) this.wallRunT = 0;
+    if (this.onGround) { this.wallRunT = 0; this.wallChain = 0; this.wallKey = ''; }
   }
 
   friction(f, dt) {
@@ -1443,6 +1586,7 @@ BR.Mover = class Mover {
 
     // push out
     p[axis] = d > 0 ? edge - r - 1e-3 : edge + r + 1e-3;
+    this.wallPlane = edge;
     this.vel[axis] = 0;
     this.wallN.x = axis === 'x' ? (d > 0 ? -1 : 1) : 0;
     this.wallN.z = axis === 'z' ? (d > 0 ? -1 : 1) : 0;
@@ -1556,6 +1700,12 @@ BR.Weapons = {
     }
     hits.forEach((h, victim) => game.applyDamage(victim, actor, h.dmg, h.head, h, w.id));
 
+    // TECH shotgun jump: big guns push you backwards when airborne (or aimed at your feet)
+    const mv = actor.mover;
+    if (d.knockback && (!mv.onGround || dir.y < -0.6)) {
+      mv.vel.addScaledVector(dir, -d.knockback);
+      if (dir.y < -0.3) { mv.onGround = false; mv.events.tech = d.pellets > 1 ? 'SHOTGUN JUMP' : 'RECOIL JUMP'; }
+    }
     w.bloom = Math.min(d.bloomMax, w.bloom + d.bloom);
     if (actor.isPlayer) {
       actor.recoil += d.recoil * (actor.ads ? 0.6 : 1);
@@ -2066,6 +2216,9 @@ BR.Loot = class Loot {
       cross: new THREE.BoxGeometry(0.44, 0.12, 0.44),
       shield: new THREE.CylinderGeometry(0.2, 0.2, 0.5, 8),
       ring: new THREE.RingGeometry(0.45, 0.6, 20),
+      chest: new THREE.BoxGeometry(0.95, 0.5, 0.6),
+      lid: new THREE.BoxGeometry(0.99, 0.18, 0.64),
+      band: new THREE.BoxGeometry(0.16, 0.7, 0.66),
     };
     this.mats = {};
     const mat = (k, c, basic) => (this.mats[k] = this.mats[k] || (basic ? new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.75, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.25 })));
@@ -2074,14 +2227,22 @@ BR.Loot = class Loot {
 
   spawnFromWorld(world) {
     const R = world.rand, U = BR.util, L = BR.CONFIG.loot;
+    for (const c of world.chestSpots) this.add({ kind: 'chest', tier: c.tier }, c.x, c.y, c.z);
     for (const s of world.lootSpots) {
-      const n = s.tier >= 1 && R() < 0.5 ? 2 : 1;
+      const n = s.force ? 1 : s.tier >= 1 && R() < 0.5 ? 2 : 1;
       for (let i = 0; i < n; i++) {
-        const kind = U.weighted(L.tables[Math.min(s.tier, L.tables.length - 1)], R);
+        const table = L.tables[Math.min(s.tier, L.tables.length - 1)];
+        const kind = U.weighted(s.force === 'weapon' ? this.weaponTable(table) : table, R);
         const x = s.x + (i ? U.rand(R, -1, 1) : 0), z = s.z + (i ? U.rand(R, -1, 1) : 0);
         this.spawnKind(kind, x, s.y, z, R);
       }
     }
+  }
+
+  weaponTable(table) {
+    const t = {};
+    for (const k in table) if (BR.CONFIG.weapons[k]) t[k] = table[k];
+    return t;
   }
 
   spawnKind(kind, x, y, z, R) {
@@ -2102,7 +2263,7 @@ BR.Loot = class Loot {
     const item = Object.assign({ id: this.nextId++, taken: false, phase: Math.random() * 6 }, data);
     item.pos = new THREE.Vector3(x, y, z);
     item.mesh = this.buildMesh(item);
-    item.mesh.position.set(x, y + 0.45, z);
+    item.mesh.position.set(x, item.kind === 'chest' ? y : y + 0.45, z);
     this.game.scene.add(item.mesh);
     this.items.push(item);
     return item;
@@ -2120,6 +2281,18 @@ BR.Loot = class Loot {
       const ring = new THREE.Mesh(G.ring, this.mat('ring' + def.tier, TIER_COLORS[def.tier], true));
       ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4;
       g.add(ring);
+      g.userData.ring = ring;
+    } else if (item.kind === 'chest') {
+      const wood = this.mat('chest', 0x8a5a2b), gold = this.mat('gold', 0xffc04a);
+      const base = new THREE.Mesh(G.chest, wood); base.position.y = 0.25;
+      const lid = new THREE.Mesh(G.lid, wood); lid.position.y = 0.59;
+      const b1 = new THREE.Mesh(G.band, gold); b1.position.set(-0.28, 0.35, 0);
+      const b2 = new THREE.Mesh(G.band, gold); b2.position.set(0.28, 0.35, 0);
+      const ring = new THREE.Mesh(G.ring, this.mat('ring3', 0xffb547, true));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; ring.scale.setScalar(1.5);
+      g.add(base, lid, b1, b2, ring);
+      g.rotation.y = item.id * 1.7;
+      g.userData.lid = lid;
       g.userData.ring = ring;
     } else if (item.kind === 'ammo') {
       g.add(new THREE.Mesh(G.ammo, this.mat('a_' + item.ammoType, AMMO_COLORS[item.ammoType])));
@@ -2147,6 +2320,7 @@ BR.Loot = class Loot {
     for (const it of this.items) {
       if (doCull) it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 70 && Math.abs(it.pos.z - viewer.z) < 70;
       if (!it.mesh.visible) continue;
+      if (it.kind === 'chest') { it.mesh.userData.ring.material.opacity = 0.45 + Math.sin(t * 4) * 0.3; continue; }
       it.mesh.rotation.y = t * 1.4 + it.phase;
       it.mesh.position.y = it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;
       if (it.mesh.userData.ring) it.mesh.userData.ring.rotation.z = -it.mesh.rotation.y;
@@ -2166,6 +2340,10 @@ BR.Loot = class Loot {
       const d = Math.hypot(dx, dz);
       if (d > R) continue;
       let took = false;
+      if (it.kind === 'chest') {
+        if (!actor.isPlayer) this.openChest(actor, it); // bots pop chests by walking into them
+        continue;
+      }
       if (it.kind === 'ammo') {
         const cap = C.ammoCap[it.ammoType];
         if (actor.ammo[it.ammoType] < cap) { actor.ammo[it.ammoType] = Math.min(cap, actor.ammo[it.ammoType] + it.amount); took = true; }
@@ -2198,6 +2376,40 @@ BR.Loot = class Loot {
     return swapCandidate;
   }
 
+  nearestChest(actor, radius) {
+    let best = null, bd = radius;
+    for (const it of this.items) {
+      if (it.kind !== 'chest') continue;
+      const dy = it.pos.y - actor.pos.y;
+      if (dy > 1.5 || dy < -1.2) continue;
+      const d = Math.hypot(it.pos.x - actor.pos.x, it.pos.z - actor.pos.z);
+      if (d < bd) { best = it; bd = d; }
+    }
+    return best;
+  }
+
+  // Burst a chest into a guaranteed gun (one tier better than the spot) + gear.
+  openChest(actor, chest) {
+    if (chest.taken) return;
+    const C = BR.CONFIG, U = BR.util, R = Math.random;
+    const tier = Math.min(chest.tier + 1, C.loot.tables.length - 1);
+    const wid = U.weighted(this.weaponTable(C.loot.tables[tier]), R);
+    const def = C.weapons[wid];
+    const p = chest.pos, out = [];
+    out.push({ kind: 'weapon', wid, mag: def.mag, reserve: def.mag });
+    out.push({ kind: 'ammo', ammoType: def.ammo, amount: C.ammoPickup[def.ammo] * 2 });
+    out.push(R() < 0.5 ? { kind: 'shield', amount: C.loot.shieldAmount } : { kind: 'heal', amount: C.loot.healAmount });
+    if (R() < 0.6) out.push({ kind: 'shield', amount: C.loot.shieldAmount });
+    // Spread items in front of the chest, toward the opener
+    const ang0 = Math.atan2(actor.pos.z - p.z, actor.pos.x - p.x);
+    out.forEach((d, i) => {
+      const a = ang0 + (i - (out.length - 1) / 2) * 0.7;
+      this.add(d, p.x + Math.cos(a) * 1.0, p.y, p.z + Math.sin(a) * 1.0);
+    });
+    this.game.onChestOpened(actor, chest);
+    this.remove(chest);
+  }
+
   // Drop the held weapon and take this one.
   swap(actor, item) {
     if (item.taken) return;
@@ -2218,11 +2430,12 @@ BR.Loot = class Loot {
     const worst = empty ? -1 : Math.min(...actor.slots.map(s => s.def.tier));
     const heldAmmo = new Set(actor.slots.filter(Boolean).map(s => s.def.ammo));
     for (const it of this.items) {
-      if (it.pos.y > 12) continue;
+      if (Math.abs(it.pos.y - actor.pos.y) > 2.5) continue; // bots have no pathfinding: skip roofs
       const d = actor.pos.distanceTo(it.pos);
       if (d >= bestD) continue;
       let want = false;
-      if (it.kind === 'weapon') want = !actor.hasWeapon(it.wid) && C.weapons[it.wid].tier > worst;
+      if (it.kind === 'chest') want = true;
+      else if (it.kind === 'weapon') want = !actor.hasWeapon(it.wid) && C.weapons[it.wid].tier > worst;
       else if (it.kind === 'ammo') want = heldAmmo.has(it.ammoType) && actor.ammo[it.ammoType] < C.ammoCap[it.ammoType] * 0.5;
       else if (it.kind === 'heal') want = actor.health < 75;
       else if (it.kind === 'shield') want = actor.shield < 75;
@@ -2446,7 +2659,7 @@ BR.Input = class Input {
   consumeLook() { const d = [this.lookDX, this.lookDY]; this.lookDX = 0; this.lookDY = 0; return d; }
   reset() {
     this.moveX = this.moveY = this.lookDX = this.lookDY = 0;
-    this.fire = false; this.fireTouches = 0; this.mouseFire = false;
+    this.fire = false; this.fireTouches = 0; this.mouseFire = false; this.jumpHeld = false;
     this.pressed = {}; this.touches = {}; this.keys = {};
     this.joy.active = false;
     this.joy.base.classList.remove('on');
@@ -2465,6 +2678,7 @@ BR.Input = class Input {
 
   onStart(e) {
     e.preventDefault();
+    if (this.editing) return; // the HUD layout editor owns touches
     this.usingTouch = true;
     BR.Audio.init();
     const W = window.innerWidth;
@@ -2477,6 +2691,7 @@ BR.Input = class Input {
         btn.classList.add('on');
         if (act === 'fire' || act === 'firel') { this.fireTouches++; this.fire = true; }
         else if (act === 'ads') this.ads = !this.ads;
+        else if (act === 'jump') { this.press('jump'); this.jumpHeld = true; }
         else this.press(act);
         continue;
       }
@@ -2495,6 +2710,7 @@ BR.Input = class Input {
 
   onMove(e) {
     e.preventDefault();
+    if (this.editing) return;
     for (const t of e.changedTouches) {
       const r = this.touches[t.identifier];
       if (!r) continue;
@@ -2537,6 +2753,7 @@ BR.Input = class Input {
         this.joy.base.classList.remove('on');
       } else if (r.type === 'btn') {
         r.btn.classList.remove('on');
+        if (r.act === 'jump') this.jumpHeld = false;
         if (r.act === 'fire' || r.act === 'firel') {
           this.fireTouches = Math.max(0, this.fireTouches - 1);
           this.fire = this.fireTouches > 0 || this.mouseFire;
@@ -2560,7 +2777,7 @@ BR.Input = class Input {
       this.usingTouch = false;
       BR.Audio.init();
       if (map[e.code]) { this.keys[map[e.code]] = true; upd(); }
-      if (e.code === 'Space') { this.press('jump'); e.preventDefault(); }
+      if (e.code === 'Space') { this.press('jump'); this.jumpHeld = true; e.preventDefault(); }
       if (e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'ControlLeft') this.press('slide');
       if (e.code === 'KeyR') this.press('reload');
       if (e.code === 'KeyE' || e.code === 'KeyF') this.press('interact');
@@ -2570,10 +2787,11 @@ BR.Input = class Input {
       if (e.code === 'Escape' || e.code === 'KeyP') this.press('pause');
     });
     window.addEventListener('keyup', e => {
+      if (e.code === 'Space') this.jumpHeld = false;
       if (map[e.code]) { this.keys[map[e.code]] = false; upd(); }
     });
     this.root.addEventListener('mousedown', e => {
-      if (this.usingTouch || e.target.closest('[data-act]')) return;
+      if (this.usingTouch || this.editing || e.target.closest('[data-act]')) return;
       BR.Audio.init();
       if (!this.locked && this.root.requestPointerLock) {
         try { const p = this.root.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed here */ }
@@ -2607,6 +2825,173 @@ BR.Input = class Input {
 <script>
 'use strict';
 // =============================================================================
+// LAYOUT EDITOR — drag / resize / hide the touch buttons (claw setups etc.).
+// Layouts are saved per orientation (landscape / portrait) as fractions of the
+// screen, so they survive different phone sizes.
+//   settings.layout = { alpha: 0.85, land: { fire: {x, y, s, hide} }, port: {...} }
+// =============================================================================
+BR.Layout = class Layout {
+  constructor(settings, save, input) {
+    this.settings = settings;
+    this.save = save;
+    this.input = input;
+    if (!settings.layout) settings.layout = { alpha: 0.85 };
+    this.play = document.getElementById('play');
+    this.buttons = Array.from(this.play.querySelectorAll('.btn.act'));
+    this.sel = null;
+    const $ = id => document.getElementById(id);
+    this.ui = { bar: $('editor'), name: $('ed-sel'), size: $('ed-size'), hide: $('ed-hide'), alpha: $('ed-alpha') };
+    this.bind();
+    this.apply();
+    window.addEventListener('resize', () => this.apply());
+  }
+
+  orient() { return window.innerWidth >= window.innerHeight ? 'land' : 'port'; }
+  table() { const L = this.settings.layout; return L[this.orient()] || (L[this.orient()] = {}); }
+
+  // Push saved positions onto the buttons (or clear back to the CSS defaults).
+  apply() {
+    const t = this.settings.layout[this.orient()] || {};
+    this.play.style.setProperty('--btn-alpha', this.settings.layout.alpha ?? 0.85);
+    for (const b of this.buttons) {
+      const e = t[b.dataset.act];
+      if (e) {
+        Object.assign(b.style, {
+          left: `calc(${(e.x * 100).toFixed(3)}% - ${e.s / 2}px)`, top: `calc(${(e.y * 100).toFixed(3)}% - ${e.s / 2}px)`,
+          right: 'auto', bottom: 'auto', width: e.s + 'px', height: e.s + 'px',
+        });
+        b.classList.toggle('user-hidden', !!e.hide);
+      } else {
+        b.style.left = b.style.top = b.style.right = b.style.bottom = b.style.width = b.style.height = '';
+        b.classList.remove('user-hidden');
+      }
+    }
+  }
+
+  // Freeze every button's current on-screen rect into the table.
+  capture() {
+    const t = this.table(), W = window.innerWidth, H = window.innerHeight;
+    for (const b of this.buttons) {
+      if (t[b.dataset.act]) continue;
+      const r = b.getBoundingClientRect();
+      t[b.dataset.act] = { x: (r.left + r.width / 2) / W, y: (r.top + r.height / 2) / H, s: Math.round(r.width) || 60, hide: false };
+    }
+  }
+
+  open(onDone) {
+    this.onDone = onDone;
+    this.input.editing = true;
+    this.input.reset();
+    document.body.classList.add('editing');
+    this.capture();
+    this.apply();
+    this.ui.alpha.value = this.settings.layout.alpha ?? 0.85;
+    this.select(this.buttons.find(b => b.dataset.act === 'fire'));
+  }
+
+  close() {
+    this.input.editing = false;
+    document.body.classList.remove('editing');
+    if (this.sel) this.sel.classList.remove('ed-sel');
+    this.sel = null;
+    this.save();
+    if (this.onDone) this.onDone();
+  }
+
+  select(b) {
+    if (this.sel) this.sel.classList.remove('ed-sel');
+    this.sel = b;
+    if (!b) return;
+    b.classList.add('ed-sel');
+    const e = this.table()[b.dataset.act];
+    this.ui.name.textContent = b.getAttribute('aria-label') + (b.dataset.act === 'firel' ? ' (2nd)' : '');
+    this.ui.size.value = e.s;
+    this.ui.hide.checked = !!e.hide;
+  }
+
+  bind() {
+    const ui = this.ui;
+    for (const b of this.buttons) {
+      b.addEventListener('pointerdown', ev => {
+        if (!this.input.editing) return;
+        ev.preventDefault();
+        this.select(b);
+        const e = this.table()[b.dataset.act];
+        const W = window.innerWidth, H = window.innerHeight;
+        this.drag = { id: ev.pointerId, dx: ev.clientX - e.x * W, dy: ev.clientY - e.y * H, b };
+        try { b.setPointerCapture(ev.pointerId); } catch (err) { /* ignore */ }
+      });
+      b.addEventListener('pointermove', ev => {
+        const d = this.drag;
+        if (!d || d.id !== ev.pointerId || !this.input.editing) return;
+        const e = this.table()[b.dataset.act];
+        const W = window.innerWidth, H = window.innerHeight, h = e.s / 2;
+        e.x = BR.util.clamp(ev.clientX - d.dx, h, W - h) / W;
+        e.y = BR.util.clamp(ev.clientY - d.dy, h, H - h) / H;
+        this.apply();
+      });
+      const end = ev => { if (this.drag && this.drag.id === ev.pointerId) { this.drag = null; this.save(); } };
+      b.addEventListener('pointerup', end);
+      b.addEventListener('pointercancel', end);
+    }
+    ui.size.addEventListener('input', () => {
+      if (!this.sel) return;
+      this.table()[this.sel.dataset.act].s = parseInt(ui.size.value, 10);
+      this.apply(); this.save();
+    });
+    ui.hide.addEventListener('change', () => {
+      if (!this.sel) return;
+      this.table()[this.sel.dataset.act].hide = ui.hide.checked;
+      this.apply(); this.save();
+    });
+    ui.alpha.addEventListener('input', () => {
+      this.settings.layout.alpha = parseFloat(ui.alpha.value);
+      this.apply(); this.save();
+    });
+    document.getElementById('ed-reset').addEventListener('click', () => {
+      delete this.settings.layout[this.orient()];
+      this.settings.layout.alpha = 0.85;
+      ui.alpha.value = 0.85;
+      this.apply();     // back to CSS defaults…
+      this.capture();   // …then capture them so editing continues
+      this.apply();
+      this.select(this.sel);
+      this.save();
+    });
+    document.getElementById('ed-done').addEventListener('click', () => this.close());
+    // Let people put buttons where the panel sits (claw layouts use the top edge)
+    document.getElementById('ed-flip').addEventListener('click', () => ui.bar.classList.toggle('bottom'));
+  }
+};
+
+// Fullscreen helper. iPhone Safari has no fullscreen API for pages, so there we
+// explain the Home Screen route instead (which does run fullscreen).
+BR.Fullscreen = {
+  el() { return document.fullscreenElement || document.webkitFullscreenElement || null; },
+  supported() {
+    const d = document.documentElement;
+    return !!(d.requestFullscreen || d.webkitRequestFullscreen) && document.fullscreenEnabled !== false && document.webkitFullscreenEnabled !== false;
+  },
+  standalone() { return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches; },
+  toggle(onFail) {
+    try {
+      if (this.el()) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        return;
+      }
+      if (!this.supported()) { onFail(); return; }
+      const d = document.documentElement;
+      const p = (d.requestFullscreen || d.webkitRequestFullscreen).call(d, { navigationUI: 'hide' });
+      const lock = () => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) { /* optional */ } };
+      if (p && p.then) p.then(lock).catch(onFail); else lock();
+    } catch (e) { onFail(); }
+  },
+};
+
+</script>
+<script>
+'use strict';
+// =============================================================================
 // HUD — builds all DOM (menus, HUD, touch buttons) and updates it.
 // Only touches the DOM when a value actually changed.
 // =============================================================================
@@ -2617,6 +3002,8 @@ const ICON = {
   reload: '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg>',
   ads: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg>',
   pause: '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>',
+  swap: '<svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
+  fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
 };
 
 BR.HUD = class HUD {
@@ -2643,6 +3030,7 @@ BR.HUD = class HUD {
   <div id="fps"></div>
   <div id="toast"></div>
   <div id="state-tag"></div>
+  <div id="tech"></div>
 
   <div id="bottom">
     <div id="slots">
@@ -2667,6 +3055,32 @@ BR.HUD = class HUD {
   <button class="btn act slide touch-only" data-act="slide" aria-label="Slide">${ICON.slide}<span>Slide</span></button>
   <button class="btn act reload touch-only" data-act="reload" aria-label="Reload">${ICON.reload}</button>
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>Aim</span></button>
+  <button class="btn act swap touch-only" data-act="swap" aria-label="Swap weapon">${ICON.swap}</button>
+</div>
+
+<button id="fs-game" class="btn fs-btn" aria-label="Fullscreen">${ICON.fs}</button>
+
+<div id="editor">
+  <div class="ed-title">Drag buttons to move them. Tap one to resize or hide it.</div>
+  <div class="ed-row">
+    <span id="ed-sel" class="ed-name">Fire</span>
+    <label class="ed-l">Size <input id="ed-size" type="range" min="36" max="140" step="2"></label>
+    <label class="tg"><input id="ed-hide" type="checkbox"> Hide</label>
+  </div>
+  <div class="ed-row">
+    <label class="ed-l">Opacity <input id="ed-alpha" type="range" min="0.15" max="1" step="0.05"></label>
+    <button id="ed-flip" class="ghost sm">Move panel</button>
+    <button id="ed-reset" class="ghost sm">Reset</button>
+    <button id="ed-done" class="cta sm">Done</button>
+  </div>
+</div>
+
+<div id="fs-tip" class="overlay hidden">
+  <div class="panel">
+    <h2>Fullscreen on iPhone</h2>
+    <p class="tip">Safari on iPhone doesn't let web pages go fullscreen. To play fullscreen, tap the <b>Share</b> button, choose <b>Add to Home Screen</b>, and open the game from its new Home Screen icon.</p>
+    <button id="fs-tip-ok" class="cta">Got it</button>
+  </div>
 </div>
 
 <div id="menu" class="overlay">
@@ -2675,7 +3089,11 @@ BR.HUD = class HUD {
       <div class="eyebrow">Prototype ${BR.CONFIG.version} · offline</div>
       <h1>Velocity<br>Royale</h1>
       <p class="tag">Drop in. Slide, wall-run, out-move ${BR.CONFIG.match.defaultBots} bots. Last one standing wins.</p>
-      <button id="btn-play" class="cta">Drop in</button>
+      <div class="menu-actions">
+        <button id="btn-play" class="cta">Drop in</button>
+        <button id="btn-fs" class="ghost">Fullscreen</button>
+        <button id="btn-hud" class="ghost">Customize HUD</button>
+      </div>
       <div id="rotate-hint">Turn your phone sideways for the best view.</div>
     </div>
     <div class="settings">
@@ -2696,6 +3114,16 @@ BR.HUD = class HUD {
         <p><b>Phone:</b> left thumb drags to move. Right side drags to look. Hold <b>Fire</b> and drag it to aim while shooting. Tap a weapon slot to switch.</p>
         <p><b>Keyboard:</b> WASD move · Mouse look · Click fire · Right-click aim · Space jump · Shift/C slide · R reload · 1/2 or Q switch · E swap pickup · Esc pause</p>
         <p><b>Movement:</b> Slide while running for a speed boost, then jump out of it to keep it. Jump at a tall wall while holding forward to wall-run, and jump again to kick off. Run into ledges to vault or climb them.</p>
+        <p><b>Chests:</b> gold boxes in buildings, on roofs and towers. Walk up and tap <b>Open</b> (E) for a guaranteed gun plus gear.</p>
+      </details>
+      <details class="help">
+        <summary>Movement tech</summary>
+        <p><b>Bunny hop:</b> hold Jump. You re-jump the instant you land with no slowdown. Steer while airborne to build speed.</p>
+        <p><b>Slide-hop:</b> slide, jump, press Slide in the air, and you slide again on landing with no cooldown. Each chain stacks speed past the normal cap.</p>
+        <p><b>Super jump:</b> tap Jump right as a slide starts for a 40% higher jump.</p>
+        <p><b>Wall chain:</b> wall-jump onto a <i>different</i> wall and your wall-run timer refreshes. Bounce up the wall-run lanes forever.</p>
+        <p><b>Mantle boost:</b> tap Jump while climbing a ledge to launch forward off it.</p>
+        <p><b>Shotgun jump:</b> shoot the shotgun at your feet (or mid-air) to blast yourself the other way. The sniper does a smaller version.</p>
       </details>
     </div>
   </div>
@@ -2705,6 +3133,7 @@ BR.HUD = class HUD {
   <div class="panel">
     <h2>Paused</h2>
     <button id="btn-resume" class="cta">Resume</button>
+    <button id="btn-hud2" class="ghost">Customize HUD</button>
     <button id="btn-quit" class="ghost">Leave match</button>
   </div>
 </div>
@@ -2733,7 +3162,7 @@ BR.HUD = class HUD {
       slots: Array.from(document.querySelectorAll('#slots .slot')),
       prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'),
       dmgDirs: $('dmg-dirs'), dmgNums: $('dmg-nums'), vignette: $('vignette'), zoneTint: $('zone-tint'),
-      stateTag: $('state-tag'), adsBtn: document.querySelector('.btn.ads'),
+      stateTag: $('state-tag'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
     };
     this.cache = {};
     this.mm = this.el.minimap.getContext('2d');
@@ -2853,6 +3282,15 @@ BR.HUD = class HUD {
     h.className = '';
     void h.offsetWidth;
     h.className = 'on' + (head ? ' head' : '') + (kill ? ' kill' : '');
+  }
+
+  // Movement-tech callout under the crosshair
+  tech(text) {
+    const t = this.el.tech;
+    t.textContent = text;
+    t.className = '';
+    void t.offsetWidth;
+    t.className = 'on';
   }
 
   prompt(text) {
@@ -3178,7 +3616,9 @@ BR.Game = class Game {
         if (a === p) this.swapItem = s;
       }
     }
-    if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
+    this.chest = p.alive && !p.mover.dropping ? this.loot.nearestChest(p, 2.2) : null;
+    if (this.chest) this.hud.prompt('Open chest');
+    else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
     else this.hud.prompt(null);
 
     // Zone
@@ -3240,13 +3680,17 @@ BR.Game = class Game {
     p.input.mx = inp.moveX;
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
+    p.input.jumpHeld = inp.jumpHeld;
     if (inp.consume('slide')) p.input.slide = true;
     if (inp.consume('reload') && BR.Weapons.startReload(w, p)) BR.Audio.reload();
     const sw = i => { if (p.switchTo(i)) { inp.ads = false; this.cam.switchT = 0.25; } };
     if (inp.consume('swap')) sw(1 - p.cur);
     if (inp.consume('slot0')) sw(0);
     if (inp.consume('slot1')) sw(1);
-    if (inp.consume('interact') && this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; this.cam.switchT = 0.25; }
+    if (inp.consume('interact')) {
+      if (this.chest && !this.chest.taken) { this.loot.openChest(p, this.chest); this.chest = null; }
+      else if (this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; this.cam.switchT = 0.25; }
+    }
     if (inp.consume('pause')) this.pause();
     p.ads = inp.ads && !!w && !p.mover.dropping;
 
@@ -3294,6 +3738,13 @@ BR.Game = class Game {
     if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); }
     if (ev.slide) BR.Audio.slide();
     if (ev.wallrun) BR.Audio.wallrun();
+    if (ev.tech) { this.hud.tech(ev.tech); BR.Audio.tech(); }
+  }
+
+  onChestOpened(actor, chest) {
+    const d = Math.hypot(actor.pos.x - this.camera.position.x, actor.pos.z - this.camera.position.z);
+    if (d < 40) BR.Audio.chest(d);
+    if (actor === this.player) this.hud.toast('Chest opened', 900);
   }
 
   // ----------------------------------------------------------------- combat
@@ -3601,15 +4052,23 @@ BR.Game = class Game {
   check('set-auto', 'autoFire');
   check('set-fps', 'showFps');
 
+  // Fullscreen: menu button + in-game button. iPhone gets the Home Screen tip.
+  const fsTip = () => $('fs-tip').classList.remove('hidden');
+  const toggleFs = () => BR.Fullscreen.toggle(fsTip);
   const tryFullscreen = () => {
-    try {
-      const el = document.documentElement;
-      if (!document.fullscreenElement && el.requestFullscreen && window.matchMedia('(pointer: coarse)').matches) {
-        const p = el.requestFullscreen({ navigationUI: 'hide' });
-        if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* optional */ } }).catch(() => {});
-      }
-    } catch (e) { /* embeds may block fullscreen — the game works without it */ }
+    // Quietly try on Drop in (Android/iPad); never nag here.
+    if (!BR.Fullscreen.el() && BR.Fullscreen.supported() && window.matchMedia('(pointer: coarse)').matches) BR.Fullscreen.toggle(() => {});
   };
+  $('btn-fs').addEventListener('click', toggleFs);
+  $('fs-game').addEventListener('click', toggleFs);
+  $('fs-tip-ok').addEventListener('click', () => $('fs-tip').classList.add('hidden'));
+  if (BR.Fullscreen.standalone()) { document.body.classList.add('standalone'); $('btn-fs').classList.add('hidden'); }
+
+  // HUD layout editor (menu + pause menu)
+  const layout = new BR.Layout(settings, save, game.input);
+  BR.layout = layout;
+  $('btn-hud').addEventListener('click', () => layout.open());
+  $('btn-hud2').addEventListener('click', () => layout.open());
 
   const play = () => { BR.Audio.init(); tryFullscreen(); game.startMatch(); };
   $('btn-play').addEventListener('click', play);

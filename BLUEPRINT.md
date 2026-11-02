@@ -15,11 +15,14 @@ This doc explains how the prototype is built, where to tune it, and where new fe
 | **Players** | You + 5–29 bots (default 19). Bots use the *same* movement and weapons as you. |
 | **Movement** | Run, jump (coyote time + jump buffer), slide (speed boost, chain into a slide-jump), wall-run, wall-jump, mantle ledges up to 1.75 m, auto-vault obstacles up to 1.25 m, auto step-up stairs, Quake-style air control that keeps momentum, skydive steering. |
 | **Weapons** | Pistol, SMG, Shotgun, Rifle, Sniper (scoped). Hitscan, spread + bloom, headshots, damage falloff, recoil, reload, 2 weapon slots, 3 ammo types. |
-| **Loot** | Ground loot in 3 tiers (open field < buildings < roofs/towers). Ammo, heals and shields are picked up automatically. Weapons fill empty slots automatically; when both slots are full you get a Swap button. Dead players drop everything. |
+| **Loot** | Ground loot in 3 tiers (open field < buildings < roofs/towers). A guaranteed gun on every building floor, plus guns on roof tops, rock tops, and on top of wall-run lanes (reach them with movement tech). **Chests** (≈40 per map: in buildings, on roofs, towers, plateaus, stacked containers, town plazas) burst into a gun one tier above the spot plus ammo and heal/shield items. Players tap **Open** (E); bots open them by walking into them. Ammo, heals and shields are picked up automatically. Weapons fill empty slots automatically; when both slots are full you get a Swap button. Dead players drop everything. |
 | **Zone** | 6 phases. Next circle shown on the minimap. Damage ignores shields and ramps 1 → 15 HP/s. |
 | **Map** | Procedural, new seed every match: 6 towns (enterable 1–2 floor buildings with stairs, windows you can vault through, climbable roofs), wall-run lanes, spiral jump towers, plateaus, containers, crates, rocks, trees. |
 | **Bots** | Easy/Normal/Hard. Loot early, hunt later, follow the zone, hear gunfire, react to damage, strafe, jump and slide in fights, pick a weapon by range, swap to better loot, get unstuck. |
-| **Mobile controls** | Floating joystick (left), drag-to-look (right), drag *on* the Fire button to aim while shooting, second Fire button on the left, Jump / Slide / Reload / Aim buttons, tap weapon slots to switch. Optional aim assist and auto-fire. |
+| **Mobile controls** | Floating joystick (left), drag-to-look (right), drag *on* the Fire button to aim while shooting, second Fire button on the left, Jump / Slide / Reload / Aim / Swap buttons, tap weapon slots to switch. Optional aim assist and auto-fire. |
+| **HUD editor** | Menu or pause → *Customize HUD*: drag any action button, resize it, hide it, set overall button opacity. Saved separately for landscape and portrait, as fractions of the screen so a layout works on any phone size. Built for claw setups. (`src/layout.js`) |
+| **Fullscreen** | Button in the menu and in-game. On iPhone Safari (no page fullscreen API) it explains *Share → Add to Home Screen*, which launches fullscreen. |
+| **Movement tech** | Deliberate "bugs" with a skill ceiling. See section 5b. |
 | **Desktop controls** | WASD, mouse look (pointer lock, or drag-to-look in embeds), Space, Shift/C, R, 1/2/Q, E, Esc. |
 | **Feel** | Speed-based FOV, wall-run camera roll, landing dip, head bob, gun sway/kick/reload animation, hitmarkers, damage numbers, directional damage arcs, kill feed, synthesized sound effects (no audio files). |
 | **Settings** | Difficulty, player count, look speed, graphics (render scale + fog distance), volume, aim assist, auto-fire, FPS counter. Saved per device. |
@@ -64,6 +67,7 @@ src/
   zone.js       BR.Zone: shrinking circle + damage
   effects.js    pooled tracers, impacts, muzzle flashes
   input.js      touch + keyboard/mouse -> one input state
+  layout.js     HUD button editor + fullscreen helper
   hud.js        builds all DOM (menu, HUD, buttons), updates only on change
   game.js       BR.Game: renderer, match lifecycle, main loop, camera, viewmodel, combat hooks
   main.js       boot + settings wiring
@@ -71,7 +75,7 @@ src/
 tools/smoke-test.js   headless regression test
 ```
 
-**Script order matters** (see `index.html`): config → util → audio → world → movement → weapons → actors → bot → loot → zone → effects → input → hud → game → main. If you add a file, add it to **both** `index.html` and `play.html`.
+**Script order matters** (see `index.html`): config → util → audio → world → movement → weapons → actors → bot → loot → zone → effects → input → layout → hud → game → main. If you add a file, add it to **both** `index.html` and `play.html`.
 
 ### The one big idea: everything is an axis-aligned box
 
@@ -131,6 +135,21 @@ Pick the closest hook:
 
 ---
 
+## 5b. Movement tech (intentional exploits)
+
+All of these live in `BR.Mover` (`src/movement.js`, search `TECH`) and are tuned in `CONFIG.move.tech`. Each one raises `mover.events.tech`, which flashes a callout under the crosshair. Bots get the same physics but don't use the tricks on purpose.
+
+| Tech | How to do it | Why it works |
+|---|---|---|
+| **Bunny hop** | Hold Jump | Jumping on the landing frame skips ground friction, so speed from slides and wall-jumps carries over. Air strafing adds a little more. |
+| **Slide-hop** | Slide → Jump → press Slide in the air → repeat | A slide that starts within `slideHopWindow` of landing ignores the slide cooldown and its speed cap, so each chain stacks up to `maxSpeed` (22 m/s). |
+| **Super jump** | Tap Jump right as a slide starts | Jumping within `superJumpWindow` of a slide start multiplies jump speed by `superJumpMult`. |
+| **Wall chain** | Wall-jump onto a *different* wall | A new wall resets the wall-run timer. Each bounce gains height, so you can climb wall-run lanes. |
+| **Mantle boost** | Tap Jump while climbing a ledge | Launches you up and forward at run speed + `mantleBoost` once you clear the edge. |
+| **Shotgun jump** | Shoot the shotgun at your feet or mid-air | Weapons with `knockback` push you opposite your aim when airborne or aiming down. The sniper does a smaller recoil jump. |
+
+To add another: put the trigger in `Mover.update`, set `ev.tech = 'NAME'`, add its numbers to `CONFIG.move.tech`, and add a check to `tools/smoke-test.js`.
+
 ## 6. Known limitations / next steps
 
 - **Bots:** no pathfinding. They steer straight, jump at walls and detour when stuck, so they can get trapped inside buildings. Next: waypoint graph per town + door nodes.
@@ -139,7 +158,8 @@ Pick the closest hook:
 - **No spectate mode** after death; the camera orbits your body.
 - **No progression, cosmetics, or persistence** beyond settings.
 - **Performance:** tested in headless Chromium (≈0.1 ms per simulation step for 20 players). On older phones, use Graphics: Low and fewer players.
-- **iOS Safari** doesn't allow true fullscreen for web pages. Add the page to the home screen for a fuller screen.
+- **iOS Safari** doesn't allow true fullscreen for web pages. *Add to Home Screen* runs it fullscreen (the fullscreen button explains this).
+- **Bots** skip loot and chests more than 2.5 m above them (no pathfinding), so roof and tower loot is player-only for now.
 - **Audio** is synthesized placeholders; swap in real samples later via `BR.Audio`.
 
 ---

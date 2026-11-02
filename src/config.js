@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.1.0',
+  version: '0.2.0',
 
   map: {
     size: 340,          // square map edge length (m)
@@ -68,6 +68,16 @@ BR.CONFIG = {
     wallJumpOut: 7,
     wallJumpUp: 8,
 
+    // Intentional "bugs" — movement tech with a skill ceiling. Set a window to 0 to disable one.
+    tech: {
+      slideHopWindow: 0.15,   // slide this soon after landing: no cooldown, speed cap rises to maxSpeed
+      superJumpWindow: 0.12,  // jump this soon after starting a slide: bigger jump
+      superJumpMult: 1.4,
+      mantleBoostWindow: 0.25, // jump while mantling: launch forward
+      mantleBoost: 6,
+      wallChainCooldown: 0.12, // short cooldown after a wall-jump so you can catch the next wall
+    },
+
     dropFallSpeed: 16,      // skydive terminal velocity
     dropGlideSpeed: 18,     // skydive horizontal steering speed
     dropAccel: 10,
@@ -97,9 +107,9 @@ BR.CONFIG = {
   weapons: {
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x9aa4b1, len: 0.28 },
     smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 850, mag: 30, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.004, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.006, zoom: 1.3, tier: 1, color: 0x58c4dd, len: 0.42 },
-    shotgun: { name: 'Shotgun', ammo: 'shells', dmg: 11, pellets: 9, rpm: 72,  mag: 5,  reload: 2.3, spread: 0.075, ads: 0.75, bloom: 0, bloomMax: 0,       range: 22,  head: 1.5, recoil: 0.045, zoom: 1.2, tier: 1, color: 0xd98c45, len: 0.55 },
+    shotgun: { name: 'Shotgun', ammo: 'shells', dmg: 11, pellets: 9, rpm: 72,  mag: 5,  reload: 2.3, spread: 0.075, ads: 0.75, bloom: 0, bloomMax: 0,       range: 22,  head: 1.5, recoil: 0.045, zoom: 1.2, tier: 1, color: 0xd98c45, len: 0.55, knockback: 9 },
     rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 30, reload: 2.0, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.009, zoom: 1.6, tier: 2, color: 0x7fbf63, len: 0.6 },
-    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0,       range: 400, head: 2.2, recoil: 0.06,  zoom: 4.0, tier: 3, color: 0xb98be8, len: 0.8, scope: true },
+    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0,       range: 400, head: 2.2, recoil: 0.06,  zoom: 4.0, tier: 3, color: 0xb98be8, len: 0.8, scope: true, knockback: 4 },
   },
 
   // Loot rolls by spot tier. Weights are relative.

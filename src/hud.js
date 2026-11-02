@@ -10,6 +10,8 @@ const ICON = {
   reload: '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg>',
   ads: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg>',
   pause: '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>',
+  swap: '<svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
+  fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
 };
 
 BR.HUD = class HUD {
@@ -36,6 +38,7 @@ BR.HUD = class HUD {
   <div id="fps"></div>
   <div id="toast"></div>
   <div id="state-tag"></div>
+  <div id="tech"></div>
 
   <div id="bottom">
     <div id="slots">
@@ -60,6 +63,32 @@ BR.HUD = class HUD {
   <button class="btn act slide touch-only" data-act="slide" aria-label="Slide">${ICON.slide}<span>Slide</span></button>
   <button class="btn act reload touch-only" data-act="reload" aria-label="Reload">${ICON.reload}</button>
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>Aim</span></button>
+  <button class="btn act swap touch-only" data-act="swap" aria-label="Swap weapon">${ICON.swap}</button>
+</div>
+
+<button id="fs-game" class="btn fs-btn" aria-label="Fullscreen">${ICON.fs}</button>
+
+<div id="editor">
+  <div class="ed-title">Drag buttons to move them. Tap one to resize or hide it.</div>
+  <div class="ed-row">
+    <span id="ed-sel" class="ed-name">Fire</span>
+    <label class="ed-l">Size <input id="ed-size" type="range" min="36" max="140" step="2"></label>
+    <label class="tg"><input id="ed-hide" type="checkbox"> Hide</label>
+  </div>
+  <div class="ed-row">
+    <label class="ed-l">Opacity <input id="ed-alpha" type="range" min="0.15" max="1" step="0.05"></label>
+    <button id="ed-flip" class="ghost sm">Move panel</button>
+    <button id="ed-reset" class="ghost sm">Reset</button>
+    <button id="ed-done" class="cta sm">Done</button>
+  </div>
+</div>
+
+<div id="fs-tip" class="overlay hidden">
+  <div class="panel">
+    <h2>Fullscreen on iPhone</h2>
+    <p class="tip">Safari on iPhone doesn't let web pages go fullscreen. To play fullscreen, tap the <b>Share</b> button, choose <b>Add to Home Screen</b>, and open the game from its new Home Screen icon.</p>
+    <button id="fs-tip-ok" class="cta">Got it</button>
+  </div>
 </div>
 
 <div id="menu" class="overlay">
@@ -68,7 +97,11 @@ BR.HUD = class HUD {
       <div class="eyebrow">Prototype ${BR.CONFIG.version} · offline</div>
       <h1>Velocity<br>Royale</h1>
       <p class="tag">Drop in. Slide, wall-run, out-move ${BR.CONFIG.match.defaultBots} bots. Last one standing wins.</p>
-      <button id="btn-play" class="cta">Drop in</button>
+      <div class="menu-actions">
+        <button id="btn-play" class="cta">Drop in</button>
+        <button id="btn-fs" class="ghost">Fullscreen</button>
+        <button id="btn-hud" class="ghost">Customize HUD</button>
+      </div>
       <div id="rotate-hint">Turn your phone sideways for the best view.</div>
     </div>
     <div class="settings">
@@ -89,6 +122,16 @@ BR.HUD = class HUD {
         <p><b>Phone:</b> left thumb drags to move. Right side drags to look. Hold <b>Fire</b> and drag it to aim while shooting. Tap a weapon slot to switch.</p>
         <p><b>Keyboard:</b> WASD move · Mouse look · Click fire · Right-click aim · Space jump · Shift/C slide · R reload · 1/2 or Q switch · E swap pickup · Esc pause</p>
         <p><b>Movement:</b> Slide while running for a speed boost, then jump out of it to keep it. Jump at a tall wall while holding forward to wall-run, and jump again to kick off. Run into ledges to vault or climb them.</p>
+        <p><b>Chests:</b> gold boxes in buildings, on roofs and towers. Walk up and tap <b>Open</b> (E) for a guaranteed gun plus gear.</p>
+      </details>
+      <details class="help">
+        <summary>Movement tech</summary>
+        <p><b>Bunny hop:</b> hold Jump. You re-jump the instant you land with no slowdown. Steer while airborne to build speed.</p>
+        <p><b>Slide-hop:</b> slide, jump, press Slide in the air, and you slide again on landing with no cooldown. Each chain stacks speed past the normal cap.</p>
+        <p><b>Super jump:</b> tap Jump right as a slide starts for a 40% higher jump.</p>
+        <p><b>Wall chain:</b> wall-jump onto a <i>different</i> wall and your wall-run timer refreshes. Bounce up the wall-run lanes forever.</p>
+        <p><b>Mantle boost:</b> tap Jump while climbing a ledge to launch forward off it.</p>
+        <p><b>Shotgun jump:</b> shoot the shotgun at your feet (or mid-air) to blast yourself the other way. The sniper does a smaller version.</p>
       </details>
     </div>
   </div>
@@ -98,6 +141,7 @@ BR.HUD = class HUD {
   <div class="panel">
     <h2>Paused</h2>
     <button id="btn-resume" class="cta">Resume</button>
+    <button id="btn-hud2" class="ghost">Customize HUD</button>
     <button id="btn-quit" class="ghost">Leave match</button>
   </div>
 </div>
@@ -126,7 +170,7 @@ BR.HUD = class HUD {
       slots: Array.from(document.querySelectorAll('#slots .slot')),
       prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'),
       dmgDirs: $('dmg-dirs'), dmgNums: $('dmg-nums'), vignette: $('vignette'), zoneTint: $('zone-tint'),
-      stateTag: $('state-tag'), adsBtn: document.querySelector('.btn.ads'),
+      stateTag: $('state-tag'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
     };
     this.cache = {};
     this.mm = this.el.minimap.getContext('2d');
@@ -246,6 +290,15 @@ BR.HUD = class HUD {
     h.className = '';
     void h.offsetWidth;
     h.className = 'on' + (head ? ' head' : '') + (kill ? ' kill' : '');
+  }
+
+  // Movement-tech callout under the crosshair
+  tech(text) {
+    const t = this.el.tech;
+    t.textContent = text;
+    t.className = '';
+    void t.offsetWidth;
+    t.className = 'on';
   }
 
   prompt(text) {

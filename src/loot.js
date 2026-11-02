@@ -22,6 +22,9 @@ BR.Loot = class Loot {
       cross: new THREE.BoxGeometry(0.44, 0.12, 0.44),
       shield: new THREE.CylinderGeometry(0.2, 0.2, 0.5, 8),
       ring: new THREE.RingGeometry(0.45, 0.6, 20),
+      chest: new THREE.BoxGeometry(0.95, 0.5, 0.6),
+      lid: new THREE.BoxGeometry(0.99, 0.18, 0.64),
+      band: new THREE.BoxGeometry(0.16, 0.7, 0.66),
     };
     this.mats = {};
     const mat = (k, c, basic) => (this.mats[k] = this.mats[k] || (basic ? new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.75, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.25 })));
@@ -30,14 +33,22 @@ BR.Loot = class Loot {
 
   spawnFromWorld(world) {
     const R = world.rand, U = BR.util, L = BR.CONFIG.loot;
+    for (const c of world.chestSpots) this.add({ kind: 'chest', tier: c.tier }, c.x, c.y, c.z);
     for (const s of world.lootSpots) {
-      const n = s.tier >= 1 && R() < 0.5 ? 2 : 1;
+      const n = s.force ? 1 : s.tier >= 1 && R() < 0.5 ? 2 : 1;
       for (let i = 0; i < n; i++) {
-        const kind = U.weighted(L.tables[Math.min(s.tier, L.tables.length - 1)], R);
+        const table = L.tables[Math.min(s.tier, L.tables.length - 1)];
+        const kind = U.weighted(s.force === 'weapon' ? this.weaponTable(table) : table, R);
         const x = s.x + (i ? U.rand(R, -1, 1) : 0), z = s.z + (i ? U.rand(R, -1, 1) : 0);
         this.spawnKind(kind, x, s.y, z, R);
       }
     }
+  }
+
+  weaponTable(table) {
+    const t = {};
+    for (const k in table) if (BR.CONFIG.weapons[k]) t[k] = table[k];
+    return t;
   }
 
   spawnKind(kind, x, y, z, R) {
@@ -58,7 +69,7 @@ BR.Loot = class Loot {
     const item = Object.assign({ id: this.nextId++, taken: false, phase: Math.random() * 6 }, data);
     item.pos = new THREE.Vector3(x, y, z);
     item.mesh = this.buildMesh(item);
-    item.mesh.position.set(x, y + 0.45, z);
+    item.mesh.position.set(x, item.kind === 'chest' ? y : y + 0.45, z);
     this.game.scene.add(item.mesh);
     this.items.push(item);
     return item;
@@ -76,6 +87,18 @@ BR.Loot = class Loot {
       const ring = new THREE.Mesh(G.ring, this.mat('ring' + def.tier, TIER_COLORS[def.tier], true));
       ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4;
       g.add(ring);
+      g.userData.ring = ring;
+    } else if (item.kind === 'chest') {
+      const wood = this.mat('chest', 0x8a5a2b), gold = this.mat('gold', 0xffc04a);
+      const base = new THREE.Mesh(G.chest, wood); base.position.y = 0.25;
+      const lid = new THREE.Mesh(G.lid, wood); lid.position.y = 0.59;
+      const b1 = new THREE.Mesh(G.band, gold); b1.position.set(-0.28, 0.35, 0);
+      const b2 = new THREE.Mesh(G.band, gold); b2.position.set(0.28, 0.35, 0);
+      const ring = new THREE.Mesh(G.ring, this.mat('ring3', 0xffb547, true));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; ring.scale.setScalar(1.5);
+      g.add(base, lid, b1, b2, ring);
+      g.rotation.y = item.id * 1.7;
+      g.userData.lid = lid;
       g.userData.ring = ring;
     } else if (item.kind === 'ammo') {
       g.add(new THREE.Mesh(G.ammo, this.mat('a_' + item.ammoType, AMMO_COLORS[item.ammoType])));
@@ -103,6 +126,7 @@ BR.Loot = class Loot {
     for (const it of this.items) {
       if (doCull) it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 70 && Math.abs(it.pos.z - viewer.z) < 70;
       if (!it.mesh.visible) continue;
+      if (it.kind === 'chest') { it.mesh.userData.ring.material.opacity = 0.45 + Math.sin(t * 4) * 0.3; continue; }
       it.mesh.rotation.y = t * 1.4 + it.phase;
       it.mesh.position.y = it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;
       if (it.mesh.userData.ring) it.mesh.userData.ring.rotation.z = -it.mesh.rotation.y;
@@ -122,6 +146,10 @@ BR.Loot = class Loot {
       const d = Math.hypot(dx, dz);
       if (d > R) continue;
       let took = false;
+      if (it.kind === 'chest') {
+        if (!actor.isPlayer) this.openChest(actor, it); // bots pop chests by walking into them
+        continue;
+      }
       if (it.kind === 'ammo') {
         const cap = C.ammoCap[it.ammoType];
         if (actor.ammo[it.ammoType] < cap) { actor.ammo[it.ammoType] = Math.min(cap, actor.ammo[it.ammoType] + it.amount); took = true; }
@@ -154,6 +182,40 @@ BR.Loot = class Loot {
     return swapCandidate;
   }
 
+  nearestChest(actor, radius) {
+    let best = null, bd = radius;
+    for (const it of this.items) {
+      if (it.kind !== 'chest') continue;
+      const dy = it.pos.y - actor.pos.y;
+      if (dy > 1.5 || dy < -1.2) continue;
+      const d = Math.hypot(it.pos.x - actor.pos.x, it.pos.z - actor.pos.z);
+      if (d < bd) { best = it; bd = d; }
+    }
+    return best;
+  }
+
+  // Burst a chest into a guaranteed gun (one tier better than the spot) + gear.
+  openChest(actor, chest) {
+    if (chest.taken) return;
+    const C = BR.CONFIG, U = BR.util, R = Math.random;
+    const tier = Math.min(chest.tier + 1, C.loot.tables.length - 1);
+    const wid = U.weighted(this.weaponTable(C.loot.tables[tier]), R);
+    const def = C.weapons[wid];
+    const p = chest.pos, out = [];
+    out.push({ kind: 'weapon', wid, mag: def.mag, reserve: def.mag });
+    out.push({ kind: 'ammo', ammoType: def.ammo, amount: C.ammoPickup[def.ammo] * 2 });
+    out.push(R() < 0.5 ? { kind: 'shield', amount: C.loot.shieldAmount } : { kind: 'heal', amount: C.loot.healAmount });
+    if (R() < 0.6) out.push({ kind: 'shield', amount: C.loot.shieldAmount });
+    // Spread items in front of the chest, toward the opener
+    const ang0 = Math.atan2(actor.pos.z - p.z, actor.pos.x - p.x);
+    out.forEach((d, i) => {
+      const a = ang0 + (i - (out.length - 1) / 2) * 0.7;
+      this.add(d, p.x + Math.cos(a) * 1.0, p.y, p.z + Math.sin(a) * 1.0);
+    });
+    this.game.onChestOpened(actor, chest);
+    this.remove(chest);
+  }
+
   // Drop the held weapon and take this one.
   swap(actor, item) {
     if (item.taken) return;
@@ -174,11 +236,12 @@ BR.Loot = class Loot {
     const worst = empty ? -1 : Math.min(...actor.slots.map(s => s.def.tier));
     const heldAmmo = new Set(actor.slots.filter(Boolean).map(s => s.def.ammo));
     for (const it of this.items) {
-      if (it.pos.y > 12) continue;
+      if (Math.abs(it.pos.y - actor.pos.y) > 2.5) continue; // bots have no pathfinding: skip roofs
       const d = actor.pos.distanceTo(it.pos);
       if (d >= bestD) continue;
       let want = false;
-      if (it.kind === 'weapon') want = !actor.hasWeapon(it.wid) && C.weapons[it.wid].tier > worst;
+      if (it.kind === 'chest') want = true;
+      else if (it.kind === 'weapon') want = !actor.hasWeapon(it.wid) && C.weapons[it.wid].tier > worst;
       else if (it.kind === 'ammo') want = heldAmmo.has(it.ammoType) && actor.ammo[it.ammoType] < C.ammoCap[it.ammoType] * 0.5;
       else if (it.kind === 'heal') want = actor.health < 75;
       else if (it.kind === 'shield') want = actor.shield < 75;

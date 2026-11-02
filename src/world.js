@@ -27,7 +27,8 @@ BR.World = class World {
     this.stamp = 1;
     this.seed = seed;
     this.rand = BR.util.rng(seed);
-    this.lootSpots = [];   // {x,y,z,tier}
+    this.lootSpots = [];   // {x,y,z,tier,force?}  force:'weapon' guarantees a gun
+    this.chestSpots = [];  // {x,y,z,tier}
     this.trees = [];       // {x,z,h,s}
     this.occupied = [];    // rects used during generation to avoid overlaps
     this.hit = { t: 0, box: null };
@@ -210,7 +211,7 @@ BR.World = class World {
           // plaza: crates + cover
           this.crateStack(lx + U.rand(R, -3, 3), lz + U.rand(R, -3, 3));
           this.coverWall(lx + U.rand(R, -4, 4), lz + U.rand(R, -4, 4));
-          this.lootSpots.push({ x: lx, y: 0, z: lz, tier: 1 });
+          this.chestSpots.push({ x: lx, y: 0, z: lz, tier: 1 });
         }
       }
     }
@@ -282,12 +283,26 @@ BR.World = class World {
       this.addBox(hx1, y0, iz0, ix1, y1, iz1, PAL.floor);
       this.addBox(ix0, y0, hz1, hx1, y1, iz1, PAL.floor);
       if (hz0 > iz0) this.addBox(ix0, y0, iz0, hx1, y1, hz0, PAL.floor);
-      this.lootSpots.push({ x: cx + 1.5, y: fh, z: cz + U.rand(R, -2, 2), tier: 1 });
     }
     // Roof
     this.addBox(x0 - 0.2, H, z0 - 0.2, x1 + 0.2, H + 0.3, z1 + 0.2, PAL.roof);
-    this.lootSpots.push({ x: cx + U.rand(R, -2, 2), y: 0.1, z: cz + U.rand(R, -2, 2), tier: 1 });
-    if (R() < 0.5) this.lootSpots.push({ x: cx + U.rand(R, -2, 2), y: H + 0.3, z: cz + U.rand(R, -2, 2), tier: 2 });
+    // Loot: a guaranteed gun on every floor (in a corner, clear of the stairs),
+    // extra items, and sometimes a chest inside or on the roof.
+    const cx0 = x0 + t + 1.7, cx1 = x1 - t - 0.9, cz0 = z0 + t + 0.9, cz1 = z1 - t - 0.9;
+    const corner = () => [R() < 0.5 ? cx0 : cx1, R() < 0.5 ? cz0 : cz1];
+    for (let f = 0; f < floors; f++) {
+      const y = f === 0 ? 0.1 : f * fh;
+      const [ax, az] = corner();
+      this.lootSpots.push({ x: ax, y, z: az, tier: 1, force: 'weapon' });
+      this.lootSpots.push({ x: cx + U.rand(R, -1.5, 1.5), y, z: cz + U.rand(R, -1.5, 1.5), tier: 1 });
+      if (R() < 0.5) { const [bx, bz] = corner(); this.lootSpots.push({ x: bx, y, z: bz, tier: 1 }); }
+    }
+    if (R() < 0.45) {
+      const f = Math.floor(R() * floors), [qx, qz] = corner();
+      this.chestSpots.push({ x: qx, y: f === 0 ? 0.1 : f * fh, z: qz, tier: 1 });
+    }
+    if (R() < 0.3) this.chestSpots.push({ x: cx, y: H + 0.3, z: cz, tier: 2 });
+    else if (R() < 0.6) this.lootSpots.push({ x: cx + U.rand(R, -2, 2), y: H + 0.3, z: cz + U.rand(R, -2, 2), tier: 2, force: 'weapon' });
 
     // Crates against an outside wall so roofs are reachable by climbing
     const side = Math.floor(R() * 4);
@@ -312,7 +327,7 @@ BR.World = class World {
       const c2 = U.pick(PAL.containers, R);
       if (along) this.addBox(x - L / 2 + 0.5, Hh, z - W / 2, x + L / 2 - 0.5, Hh * 2, z + W / 2, c2);
       else this.addBox(x - W / 2, Hh, z - L / 2 + 0.5, x + W / 2, Hh * 2, z + L / 2 - 0.5, c2);
-      this.lootSpots.push({ x, y: Hh * 2, z, tier: 2 });
+      this.chestSpots.push({ x, y: Hh * 2, z, tier: 2 });
     }
     this.lootSpots.push({ x: x + (along ? 0 : 2.2), y: 0, z: z + (along ? 2.2 : 0), tier: 0 });
   }
@@ -329,6 +344,7 @@ BR.World = class World {
     const R = this.rand, U = BR.util;
     const w = U.rand(R, 2, 6), d = U.rand(R, 2, 6), h = U.rand(R, 0.9, 3.2);
     this.addBox(x - w / 2, 0, z - d / 2, x + w / 2, h, z + d / 2, PAL.rock);
+    if (h > 2 && R() < 0.35) this.lootSpots.push({ x, y: h, z, tier: 1, force: 'weapon' }); // gun on a rock top
     if (R() < 0.5) {
       const w2 = w * 0.6, d2 = d * 0.6;
       this.addBox(x - w2 / 2 + 0.4, h, z - d2 / 2, x + w2 / 2 + 0.4, h + U.rand(R, 0.5, 1.2), z + d2 / 2, PAL.rock);
@@ -359,7 +375,11 @@ BR.World = class World {
       if (alongX) this.addBox(x - L / 2, 0, z + o - T / 2, x + L / 2, H, z + o + T / 2, s < 0 ? PAL.parkour : PAL.parkourAlt);
       else this.addBox(x + o - T / 2, 0, z - L / 2, x + o + T / 2, H, z + L / 2, s < 0 ? PAL.parkour : PAL.parkourAlt);
     }
-    this.lootSpots.push({ x, y: 0, z, tier: 1 });
+    this.lootSpots.push({ x, y: 0, z, tier: 1, force: 'weapon' });
+    // A high-tier gun on top of the first wall: reach it with a wall chain or mantle boost
+    const o = -(gap / 2 + T / 2);
+    if (alongX) this.lootSpots.push({ x: x + (R() - 0.5) * 8, y: H, z: z + o, tier: 2, force: 'weapon' });
+    else this.lootSpots.push({ x: x + o, y: H, z: z + (R() - 0.5) * 8, tier: 2, force: 'weapon' });
   }
 
   // Spiral of floating platforms around a pillar. High-tier loot on top.
@@ -374,7 +394,7 @@ BR.World = class World {
     const top = steps * 1.1 + 0.1;
     this.addBox(x - 2.4, top, z - 2.4, x + 2.4, top + 0.3, z + 2.4, PAL.tower);
     this.lootSpots.push({ x, y: top + 0.3, z, tier: 2 });
-    this.lootSpots.push({ x: x + 1.2, y: top + 0.3, z: z + 1.2, tier: 2 });
+    this.chestSpots.push({ x: x + 1.2, y: top + 0.3, z: z + 1.2, tier: 2 });
   }
 
   // Raised plateau with stairs: a high-ground fight spot.
@@ -398,7 +418,8 @@ BR.World = class World {
       b.y0 += Hh; b.y1 += Hh;
     }
     this.lootSpots.push({ x, y: Hh, z, tier: 2 });
-    this.lootSpots.push({ x: x + 6, y: Hh, z: z - 6, tier: 1 });
+    this.lootSpots.push({ x: x + 6, y: Hh, z: z - 6, tier: 1, force: 'weapon' });
+    this.chestSpots.push({ x: x - 5, y: Hh, z: z + 5, tier: 2 });
   }
 
   // ---------------------------------------------------------------- render
