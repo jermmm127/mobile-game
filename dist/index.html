@@ -580,7 +580,7 @@ body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--acc
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.9.3',
+  version: '0.9.4',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -3664,13 +3664,12 @@ BR.Models = (function () {
         if (id === 'knife') {
           // Reverse grip: handle upright in the fist (ring on top by the index finger), blade
           // hanging below it with the hooked tip sweeping forward and up.
-          // Built from screen directions: the blade (model -Z) hangs down, its hook (model -Y)
-          // curls in toward the screen centre and up, and the flat of the blade faces you.
-          const Bd = new THREE.Vector3(-0.38, -0.9, -0.2).normalize();
-          const Cd = new THREE.Vector3(-1, 0.25, 0); Cd.addScaledVector(Bd, -Cd.dot(Bd)).normalize();
-          const Zm = Bd.clone().negate(), Ym = Cd.clone().negate(), Xm = new THREE.Vector3().crossVectors(Ym, Zm);
-          m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(Xm, Ym, Zm));
-          m.scale.setScalar(1.35);
+          // CS-style idle: handle across the fist (ring on the inner side by the index finger),
+          // blade out the outer side sweeping up-right with the hook curving up, flat facing you.
+          // model Z (handle -> ring) -> left, model -Y (hook) -> up, model X -> toward the camera's -Z
+          m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, -1, 0), new THREE.Vector3(-1, 0, 0)));
+          m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.15, 0.3, 0.3, 'YXZ')));
+          m.scale.setScalar(0.95);
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
           const P = new THREE.Vector3(0, 0.066, 0.12).applyMatrix4(m.matrix);   // ring centre
@@ -3697,6 +3696,10 @@ BR.Models = (function () {
         return { hand, fore };
       };
       this.arms = { R: mk(false), L: mk(true) };
+      // Backhand fists for the karambit idle (mirrored gloves so the thumbs sit toward the centre)
+      if (this.knifeHands) this.scene.remove(this.knifeHands.R, this.knifeHands.L);
+      const kh = left => { const h = BR.Models.hand(eq.gloves || 'default', left); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; };
+      this.knifeHands = { R: kh(true), L: kh(false) };
       // Wrist grapple launcher (child of the left hand: aims where the fingers point)
       const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
       const orange = new THREE.MeshLambertMaterial({ color: 0xffa31a, emissive: 0x552200 });
@@ -3741,7 +3744,7 @@ BR.Models = (function () {
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.def.melee ? 2.4 : 2.1; }
 
-    hide() { this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -3777,7 +3780,7 @@ BR.Models = (function () {
       const sprinting = m.onGround && !m.sliding && sp > run * 0.92 && !p.ads && !p.fireHeld && !reloading && this.drawT <= 0 && this.inspectT <= 0;
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
-      if (def.melee) { hx = 0.13 * s; hy = -0.035; hz = -0.38; }   // karambit up in view: fist + hanging blade
+      if (def.melee) { hx = 0.11 * s; hy = -0.075; hz = -0.4; }      // karambit low in the right of the view, like CS
       if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) - sg.z; }
       const A = this.adsW, nA = 1 - A * 0.85;
       // Bob: figure-eight while moving on the ground
@@ -3974,28 +3977,25 @@ BR.Models = (function () {
       // right hand on the grip (palm against the grip's right side, fingers wrapping the front)
       let gp = model.localToWorld(this._v.copy(ud.grip));
       const spin = holder.userData.spin;
+      const KH = this.knifeHands, H = spin ? KH.R : R.hand;     // karambit uses the backhand-fist gloves
+      R.hand.visible = KH.R.visible = KH.L.visible = false;
       if (spin) {
-        // Karambit. At rest the fist wraps the curved handle (index finger toward the
-        // ring); while it twirls, the hand opens to the ring and the index finger stays in it.
-        const ringPos = spin.obj.getWorldPosition(this._kv1 || (this._kv1 = new THREE.Vector3())).add(this._v2.set(0.01, -0.035, 0.02));
-        const ringQ = holder.getWorldQuaternion(this._kq1 || (this._kq1 = new THREE.Quaternion()))
-          .multiply(this._qKn || (this._qKn = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.4, 0.3, -0.6))))
-          .multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
-        // handle centre line in model space: guard (0,0,0) -> ring end (0,0.055,0.1)
-        const a = model.localToWorld(this._kv2 || (this._kv2 = new THREE.Vector3())).set(0, 0, 0); model.localToWorld(a.set(0, 0.004, 0.004));
+        // Karambit: a backhand fist round the handle, index finger by the ring. The hand
+        // stays put during twirls and the knife spins round the ring at the index finger.
+        const sq = this._ksq || (this._ksq = new THREE.Quaternion());
+        sq.copy(spin.obj.quaternion); spin.obj.quaternion.identity(); spin.obj.updateMatrixWorld(true);
+        const a = model.localToWorld((this._kv2 || (this._kv2 = new THREE.Vector3())).set(0, 0.004, 0.004));
         const b = model.localToWorld((this._kv3 || (this._kv3 = new THREE.Vector3())).set(0, 0.055, 0.1));
-        const X = (this._kx || (this._kx = new THREE.Vector3())).subVectors(b, a).normalize();
-        // wrist (+Z of the hand) points back down toward the elbow, so the forearm stays low
-        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.6, -0.75, 0.1).normalize();   // forearm comes up from the lower right
+        spin.obj.quaternion.copy(sq); spin.obj.updateMatrixWorld(true);
+        // mirrored glove (thumb on -X): -X points at the ring, wrist down toward you, back of hand up
+        const X = (this._kx || (this._kx = new THREE.Vector3())).subVectors(a, b).normalize();
+        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.35, -0.9, -0.15).normalize();
         Z.addScaledVector(X, -Z.dot(X)).normalize();
         const Y = (this._ky || (this._ky = new THREE.Vector3())).crossVectors(Z, X);
         const gripQ = (this._kq2 || (this._kq2 = new THREE.Quaternion())).setFromRotationMatrix((this._km || (this._km = new THREE.Matrix4())).makeBasis(X, Y, Z));
-        // fist centre (where the handle sits, under the curled fingers) in hand space
         const fist = this._v2.set(0, -0.026, -0.05).multiplyScalar(1.3).applyQuaternion(gripQ);
-        const gripPos = a.lerp(b, 0.5).sub(fist);
-        const sa = spin.ang || 0, w = Math.pow(U.clamp((Math.cos(sa) - 0.2) / 0.8, 0, 1), 2) * (sa > 0.05 ? 1 : 1);
-        R.hand.position.copy(ringPos).lerp(gripPos, w);
-        R.hand.quaternion.copy(ringQ).slerp(gripQ, w);
+        H.position.copy(a.lerp(b, 0.5)).sub(fist);
+        H.quaternion.copy(gripQ);
       } else {
         R.hand.position.copy(gp);
         R.hand.quaternion.copy(wq).multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
@@ -4015,13 +4015,25 @@ BR.Models = (function () {
           R.hand.quaternion.slerp(bq, rightTarget.w);
         }
       }
-      R.hand.visible = true;
-      const elbowR = spin ? this._v2.set(0.4 * s, -0.58, -0.22) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
-      this.limb(R.fore, R.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), elbowR);
+      H.visible = true;
+      const elbowR = spin ? this._v2.set(0.3 * s, -0.7, -0.45) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
+      this.limb(R.fore, H.localToWorld(new THREE.Vector3(0, 0, spin ? 0.075 : 0.05)), elbowR, spin ? 0.72 : 1);
       // left hand on the foregrip / mag / charging handle
       const lt = leftTarget || ud.fore;
       const special = this.specialLeft();          // grapple / stim pose (or null)
       this.launcher.visible = false; this.injector.visible = false;
+      if (spin && !(special && special.w > 0.05)) {
+        // empty left fist, mirroring the knife hand (like CS)
+        L.hand.visible = false;
+        const P = this.pos;                    // follows bob/sway/landing, not the knife's slashes
+        KH.L.position.set(-P.x.v - 0.1 * s, P.y.v - 0.05, P.z.v + 0.02);
+        const LX = this._sx.set(0.9, -0.35, 0.2).normalize(), LZ = this._sz.set(-0.35, -0.9, -0.15).normalize();
+        LZ.addScaledVector(LX, -LZ.dot(LX)).normalize();
+        KH.L.quaternion.setFromRotationMatrix(this._sm.makeBasis(LX, this._sy.crossVectors(LZ, LX), LZ));
+        KH.L.visible = true;
+        this.limb(L.fore, KH.L.localToWorld(new THREE.Vector3(0, 0, 0.075)), this._sv.set(-0.3 * s, -0.7, -0.45), 0.72);
+        return;
+      }
       if ((!lt || leftHidden) && !special) { L.hand.visible = L.fore.visible = false; return; }
       if (lt && !leftHidden) {
         const lp = model.localToWorld(this._v.copy(lt));
@@ -4117,13 +4129,13 @@ BR.Models = (function () {
     onGrapple() { this.grapT = 0.3; }
     onStim() { this.stimT = this.stimDur = 0.95; this.lastStimK = 0; }
 
-    limb(mesh, a, b) {
+    limb(mesh, a, b, thick) {
       const d = this._d || (this._d = new THREE.Vector3());
       d.subVectors(b, a);
       const len = d.length();
       mesh.position.copy(a).addScaledVector(d, 0.5);
       mesh.quaternion.setFromUnitVectors(this._up || (this._up = new THREE.Vector3(0, 1, 0)), d.normalize());
-      mesh.scale.set(1, len, 1);
+      mesh.scale.set(thick || 1, len, thick || 1);
       mesh.visible = true;
     }
   };

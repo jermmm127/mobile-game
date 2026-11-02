@@ -130,13 +130,14 @@ const server = http.createServer((req, res) => {
     p.cur = 2; v.update(1 / 60, 0, 0); let maxSpin = 0;
     for (let i = 0; i < 70; i++) { v.update(1 / 60, 0, 0); const q = v.models.knife.userData.spin.obj.quaternion; maxSpin = Math.max(maxSpin, 2 * Math.acos(Math.min(1, Math.abs(q.w)))); }
     r.knifeSpin = maxSpin;
-    r.armsVisible = v.arms.R.hand.visible && v.arms.R.fore.visible;
+    // karambit is held in the backhand-fist gloves (right holds the knife, left is an empty fist)
+    r.armsVisible = v.knifeHands.R.visible && v.knifeHands.L.visible && v.arms.R.fore.visible && v.arms.L.fore.visible;
     p.slots[0] = BR.Weapons.create('rifle', 2); p.ammo.heavy = 90; p.cur = 0;
     for (let i = 0; i < 60; i++) v.update(1 / 60, 0, 0);
     BR.Weapons.startReload(p.weapon, p); let magDrop = 0;
     while (p.weapon.reloadT > 0) { BR.Weapons.update(p.weapon, 1 / 60, p); v.update(1 / 60, 0, 0); magDrop = Math.min(magDrop, v.models.rifle.userData.model.userData.mag.position.y); }
     r.magDrop = magDrop; r.reloaded = p.weapon.mag === 45;
-    r.leftHandOnGun = v.arms.L.hand.visible;
+    r.leftHandOnGun = v.arms.L.hand.visible && v.arms.R.hand.visible && !v.knifeHands.R.visible;
     // knife button toggles knife <-> last gun
     g.input.press('knife'); g.controlPlayer(1 / 60); const onKnife = p.cur === 2;
     g.input.press('knife'); g.controlPlayer(1 / 60); r.knifeButton = onKnife && p.cur === 0;
