@@ -271,6 +271,7 @@ body:not(.touch) .btn.prompt::after { content: '  · E'; }
 .btn.reload { width: 46px; height: 46px; right: calc(132px + var(--sr)); bottom: calc(92px + var(--sb)); }
 .btn.ads { width: 56px; height: 56px; right: calc(128px + var(--sr)); bottom: calc(152px + var(--sb)); }
 .btn.swap { width: 50px; height: 50px; right: calc(46px + var(--sr)); bottom: calc(214px + var(--sb)); }
+.btn.knife { width: 50px; height: 50px; right: calc(104px + var(--sr)); bottom: calc(222px + var(--sb)); }
 .btn.grapple .cd { position: absolute; inset: 0; display: grid; place-items: center; font: 700 20px var(--ui); font-style: normal; color: #fff; text-shadow: 0 1px 3px #000; pointer-events: none; }
 .btn.grapple.cooling { color: rgba(143, 230, 255, 0.35); }
 .btn.crouch.cooling { border-color: rgba(255, 255, 255, 0.18); }
@@ -447,8 +448,17 @@ body.shopping #menu { display: none; }
 }
 .card:hover { background: rgba(255, 255, 255, 0.07); }
 .card .sw { display: grid; place-items: center; width: 100%; height: 30px; border-radius: 7px; font-style: normal; color: var(--accent); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
-.card .sw.tr { height: 4px; margin: 13px 0; border-radius: 4px; box-shadow: 0 0 10px currentColor; }
+.card .sw.tr { margin: 13px 0; border-radius: 4px; }
 .card .sw.ch { background: rgba(0, 0, 0, 0.3); font-size: 15px; }
+.card .sw.tr { height: 5px; box-shadow: 0 0 8px 2px var(--c), 0 0 20px 4px var(--c); }
+.card .sw.bp { height: 34px; background: linear-gradient(120deg, var(--a) 0 55%, var(--b) 55% 78%, var(--g) 78% 82%, var(--b) 82%); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 12px -2px var(--g); }
+.card .sw.gl { background: radial-gradient(circle at 40% 40%, var(--c), var(--p)); font-size: 16px; filter: saturate(1.2); }
+.card .rar { font: 700 9px var(--ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--r); }
+.card.legend { background: linear-gradient(160deg, rgba(255, 178, 36, 0.12), rgba(255, 255, 255, 0.02) 60%); border-color: rgba(255, 178, 36, 0.35); }
+#shop-tabs button { font-size: 10px; letter-spacing: 0.06em; padding: 7px 2px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chips button { flex: none; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(255, 255, 255, 0.04); color: var(--muted); font: 600 12px var(--ui); cursor: pointer; }
+.chips button.sel { color: var(--accent-ink); background: var(--accent); border-color: transparent; }
 .card .cn { font: 600 13px var(--ui); color: var(--text); }
 .card .cp { font: 600 13px var(--ui); color: var(--accent); display: flex; align-items: center; }
 .card.eq .cp { color: var(--health); }
@@ -516,7 +526,7 @@ body.editing #play > .btn.act.ed-sel:not(#view) { outline: 2px solid var(--accen
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.4.0',
+  version: '0.5.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -633,11 +643,11 @@ BR.CONFIG = {
   weapons: {
     knife:   { name: 'Karambit', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.08 },
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x8e96a3 },
-    smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 850, mag: 30, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.004, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.006, zoom: 1.3, tier: 1, color: 0x3fa6c4 },
+    smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 850, mag: 30, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.004, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.006, recoilH: 0.008, zoom: 1.3, tier: 1, color: 0x3fa6c4 },
     // Wide horizontal pellet line (tightens when aiming), shell-by-shell reload you can cancel by firing
     shotgun: { name: 'Breacher', ammo: 'shells', dmg: 13, pellets: 8, pattern: 'line', rpm: 80, mag: 6, reload: 0.42, shellReload: true, spread: 0.10, ads: 0.6, bloom: 0, bloomMax: 0, range: 20, head: 1.4, recoil: 0.05, zoom: 1.15, tier: 1, color: 0xc7772f, knockback: 13 },
-    rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 45, reload: 2.4, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.009, zoom: 1.5, tier: 2, color: 0x5f8f4a, suppressed: true },
-    holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, zoom: 1.75, tier: 2, color: 0x4b5566, suppressed: true, holo: true },
+    rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 45, reload: 2.4, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.009, recoilH: 0.011, zoom: 1.5, tier: 2, color: 0x5f8f4a, suppressed: true },
+    holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, recoilH: 0.009, zoom: 1.75, tier: 2, color: 0x4b5566, suppressed: true, holo: true },
     sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x7d5aa8, scope: true, knockback: 4 },
   },
 
@@ -2294,8 +2304,14 @@ BR.Weapons = {
     }
     w.bloom = Math.min(d.bloomMax, w.bloom + d.bloom);
     if (actor.isPlayer) {
-      actor.recoil += d.recoil * (actor.ads ? 0.6 : 1);
-      actor.yaw += (Math.random() - 0.5) * d.recoil * 0.4;
+      // Random recoil: vertical kick varies shot to shot; automatic rifles also wander
+      // sideways on a random walk, so sprays need control. Aiming tames it.
+      const ads = actor.ads ? 0.6 : 1;
+      actor.recoil += d.recoil * (0.75 + Math.random() * 0.5) * ads;
+      if (d.recoilH) {
+        actor.recoilDrift = BR.util.clamp((actor.recoilDrift || 0) * 0.85 + (Math.random() - 0.5) * 0.9, -1, 1);
+        actor.yaw += (actor.recoilDrift * 0.7 + (Math.random() - 0.5) * 0.6) * d.recoilH * ads;
+      } else actor.yaw += (Math.random() - 0.5) * d.recoil * 0.4;
     }
     game.onShot(actor, w);
     return true;
@@ -2427,12 +2443,14 @@ BR.Models = (function () {
     chrome:  { name: 'Chrome', price: 900, swatch: '#e8eef4' },
   };
   const TRACERS = {
-    default: { name: 'Standard', price: 0, color: 0xfff1c4 },
-    red:     { name: 'Hot Red', price: 100, color: 0xff3344 },
-    green:   { name: 'Toxic Green', price: 120, color: 0x5cff5c },
-    cyan:    { name: 'Ion Blue', price: 150, color: 0x33e6ff },
-    purple:  { name: 'Void Purple', price: 200, color: 0xb04dff },
-    gold:    { name: 'Gold', price: 300, color: 0xffc400 },
+    default: { name: 'Standard', price: 0, color: 0xffe9a8 },
+    red:     { name: 'Hot Red', price: 100, color: 0xff1f3d },
+    green:   { name: 'Toxic Green', price: 120, color: 0x39ff14 },
+    cyan:    { name: 'Ion Blue', price: 150, color: 0x00e5ff },
+    orange:  { name: 'Blaze', price: 150, color: 0xff7b00 },
+    pink:    { name: 'Hyper Pink', price: 200, color: 0xff2bd6 },
+    purple:  { name: 'Void Purple', price: 200, color: 0xb026ff },
+    gold:    { name: 'Gold', price: 300, color: 0xffcc00 },
     rainbow: { name: 'Rainbow', price: 500, color: -1 },
   };
   const CHARMS = {
@@ -2505,6 +2523,21 @@ BR.Models = (function () {
     g.userData.sight = s; g.userData.sightDist = 0.3;
   }
 
+  // Group some meshes as the detachable magazine (animated during reloads).
+  function magGroup(g, meshes) {
+    const grp = new THREE.Group();
+    g.add(grp);
+    for (const m of meshes) grp.attach(m);
+    g.userData.mag = grp;
+    return grp;
+  }
+  // Where the hands go (model space): right hand on the grip, left hand on the foregrip
+  function hands(g, grip, fore, charge) {
+    g.userData.grip = new THREE.Vector3(...grip);
+    g.userData.fore = fore ? new THREE.Vector3(...fore) : null;
+    g.userData.charge = charge ? new THREE.Vector3(...charge) : null;
+  }
+
   function anchors(g, muzzleZ, muzzleY, charmPos) {
     const muzzle = new THREE.Object3D(); muzzle.position.set(0, muzzleY, muzzleZ); g.add(muzzle);
     const charm = new THREE.Object3D(); charm.position.set(charmPos[0], charmPos[1], charmPos[2]); g.add(charm);
@@ -2524,7 +2557,9 @@ BR.Models = (function () {
       k.box(0.008, 0.012, 0.06, 0, -0.012, -0.03, M.dark);        // trigger guard bottom
       k.box(0.006, 0.03, 0.006, 0, -0.005, -0.03, M.metal);       // trigger
       k.cyl(0.011, 0.03, 0, 0.045, -0.18, M.metal, 'z');          // barrel tip
+      magGroup(g, [k.box(0.034, 0.11, 0.04, 0, -0.065, 0.025, M.dark, 0.22), k.box(0.044, 0.014, 0.052, 0, -0.127, 0.039, M.grip, 0.22)]);
       irons(g, M, 0.088, 0.035, -0.16, false);
+      hands(g, [0, -0.07, 0.03], [-0.012, -0.095, 0.0], [0, 0.05, 0.02]);
       anchors(g, -0.2, 0.045, [-0.03, 0.0, 0.04]);
     },
     smg(g, S, M) {
@@ -2533,7 +2568,8 @@ BR.Models = (function () {
       k.box(0.065, 0.02, 0.26, 0, 0.08, -0.08, M.dark);           // top rail
       for (let i = 0; i < 6; i++) k.box(0.067, 0.008, 0.012, 0, 0.093, -0.19 + i * 0.04, M.metal);
       k.cyl(0.016, 0.12, 0, 0.035, -0.28, M.metal, 'z');          // barrel
-      k.box(0.035, 0.18, 0.045, 0, -0.08, -0.12, M.dark);         // long mag
+      magGroup(g, [k.box(0.035, 0.18, 0.045, 0, -0.08, -0.12, M.dark)]); // long mag
+      hands(g, [0, -0.07, 0.03], [0, -0.07, -0.21], [0.035, 0.05, -0.02]);
       k.box(0.04, 0.11, 0.05, 0, -0.06, 0.03, M.grip, 0.2);       // grip
       k.box(0.03, 0.09, 0.035, 0, -0.04, -0.21, M.grip);          // foregrip
       k.box(0.012, 0.012, 0.18, 0.02, 0.02, 0.15, M.metal);       // stock rods
@@ -2560,10 +2596,13 @@ BR.Models = (function () {
       k.box(0.045, 0.12, 0.055, 0, -0.07, 0.04, M.grip, 0.25);    // grip
       k.box(0.06, 0.08, 0.22, 0, 0.0, 0.2, S);                    // stock
       for (let i = 0; i < 3; i++) k.cyl(0.011, 0.05, 0.042, 0.02 - i * 0.026, -0.02, M.shell, 'z', 8); // side-saddle shells
+      hands(g, [0, -0.075, 0.04], [0, -0.045, -0.33], null);
+      g.userData.port = new THREE.Vector3(0, -0.03, -0.06);       // shells go in here
       irons(g, M, 0.1, 0.0, -0.52, false);
       anchors(g, -0.58, 0.055, [-0.05, -0.02, 0.06]);
     },
-    rifle(g, S, M, holo) {
+    rifle(g, S, M, opts) {
+      const holo = opts && opts.holo;
       const k = kit(g);
       k.box(0.06, 0.085, 0.34, 0, 0.03, -0.05, S);                // receiver
       k.box(0.064, 0.022, 0.42, 0, 0.083, -0.1, M.dark);          // top rail
@@ -2572,8 +2611,8 @@ BR.Models = (function () {
       for (let i = 0; i < 5; i++) k.box(0.072, 0.018, 0.03, 0, 0.035, -0.25 - i * 0.045, M.metal); // vents
       k.cyl(0.03, 0.26, 0, 0.035, -0.6, M.grip, 'z', 12);         // SUPPRESSOR
       k.cyl(0.031, 0.02, 0, 0.035, -0.5, M.metal, 'z', 12);
-      k.cyl(0.055, 0.06, 0, -0.07, -0.08, M.dark, 'x', 16);       // DRUM MAG
-      k.cyl(0.03, 0.065, 0, -0.07, -0.08, M.metal, 'x', 10);
+      magGroup(g, [k.cyl(0.055, 0.06, 0, -0.07, -0.08, M.dark, 'x', 16), k.cyl(0.03, 0.065, 0, -0.07, -0.08, M.metal, 'x', 10)]); // DRUM MAG
+      hands(g, [0, -0.07, 0.06], [0, -0.005, -0.34], [0.04, 0.05, 0.04]);
       k.box(0.03, 0.05, 0.04, 0, -0.02, -0.08, M.dark);           // mag well
       k.box(0.042, 0.12, 0.05, 0, -0.06, 0.06, M.grip, 0.25);     // grip
       k.box(0.055, 0.08, 0.2, 0, 0.01, 0.23, S);                  // stock
@@ -2597,7 +2636,7 @@ BR.Models = (function () {
       }
       anchors(g, -0.74, 0.035, [-0.04, -0.01, 0.1]);
     },
-    holoar(g, S, M) { BUILD.rifle(g, S, M, true); },
+    holoar(g, S, M) { BUILD.rifle(g, S, M, { holo: true }); },
     sniper(g, S, M) {
       const k = kit(g);
       k.box(0.06, 0.08, 0.36, 0, 0.03, -0.04, S);                 // receiver
@@ -2609,7 +2648,8 @@ BR.Models = (function () {
       k.cyl(0.04, 0.003, 0, 0.13, -0.271, M.lensDark, 'z', 14);   // lens
       k.box(0.02, 0.05, 0.02, 0, 0.085, -0.13, M.dark); k.box(0.02, 0.05, 0.02, 0, 0.085, 0.02, M.dark); // rings
       k.cyl(0.008, 0.06, 0.05, 0.05, 0.08, M.metal, 'x');         // bolt handle
-      k.box(0.035, 0.08, 0.06, 0, -0.06, -0.06, M.dark);          // mag
+      magGroup(g, [k.box(0.035, 0.08, 0.06, 0, -0.06, -0.06, M.dark)]); // mag
+      hands(g, [0, -0.07, 0.1], [0, 0.0, -0.32], [0.05, 0.05, 0.08]);
       k.box(0.042, 0.12, 0.05, 0, -0.06, 0.1, M.grip, 0.25);      // grip
       k.box(0.06, 0.09, 0.26, 0, 0.0, 0.3, S);                    // stock
       k.box(0.05, 0.03, 0.12, 0, 0.06, 0.28, S);                  // cheek rest
@@ -2617,7 +2657,7 @@ BR.Models = (function () {
       const l2 = k.box(0.01, 0.16, 0.01, -0.02, -0.05, -0.5, M.dark); l2.rotation.z = -0.25;
       anchors(g, -0.9, 0.04, [-0.04, -0.01, 0.14]);
     },
-    knife(g, S, M) {
+    knife(g, S, M, opts) {
       // Karambit, CS-style: a curved "banana" handle with a large finger ring at the
       // butt, a finger guard, and a deeply hooked claw blade with spine notches.
       // Built in the blade plane (x = forward, y = up), then turned so +x points down -Z.
@@ -2635,18 +2675,20 @@ BR.Models = (function () {
       bl.bezierCurveTo(0.128, -0.040, 0.090, -0.006, 0.040, -0.006); // sharpened inner edge
       bl.quadraticCurveTo(0.012, -0.007, 0.0, -0.013);
       bl.closePath();
-      k.add(new THREE.Mesh(ext(bl, 0.003, 0.0012), M.blade));
+      const bladeMat = (opts && opts.blade) || M.blade;
+      const bladeG = new THREE.Group(); bladeG.scale.setScalar(1.25); k.add(bladeG);   // 25% bigger blade
+      bladeG.add(new THREE.Mesh(ext(bl, 0.003, 0.0012), bladeMat));
       // Bevel line along the edge (slightly darker steel)
       const bev = new THREE.Shape();
       bev.moveTo(0.02, -0.002);
       bev.bezierCurveTo(0.07, 0.002, 0.115, -0.02, 0.136, -0.06);
       bev.bezierCurveTo(0.122, -0.032, 0.086, -0.005, 0.04, -0.004);
       bev.closePath();
-      const bm = new THREE.Mesh(ext(bev, 0.0045, 0.0005), M.metal); k.add(bm);
+      const bm = new THREE.Mesh(ext(bev, 0.0045, 0.0005), (opts && opts.blade) ? bladeMat : M.metal); bladeG.add(bm);
       // Jimping notches on the spine
       for (let i = 0; i < 6; i++) {
         const t = 0.008 + i * 0.008, j = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.004, 0.006), M.dark);
-        j.position.set(t, 0.016 + t * 0.35, 0); j.rotation.z = 0.35; k.add(j);
+        j.position.set(t, 0.016 + t * 0.35, 0); j.rotation.z = 0.35; bladeG.add(j);
       }
       // Curved handle (skin material) with a guard bump
       const hd = new THREE.Shape();
@@ -2670,6 +2712,7 @@ BR.Models = (function () {
       k.rotation.y = Math.PI / 2;      // +x -> -z
       g.add(k);
       g.userData.blade = k;
+      hands(g, [0, 0.012, 0.07], null, null);
       anchors(g, -0.15, 0, [0, -0.02, 0.12]);
       g.userData.flash.visible = false;
     },
@@ -2748,20 +2791,191 @@ BR.Models = (function () {
   }
   let mergedMat = null;
 
+  // ------------------------------------------------------------- blueprints
+  // Weapon blueprints: original designs per gun, each with its own palette and
+  // extra geometry (shrouds, fins, glow vents, muzzle devices...). A camo, if
+  // equipped, replaces the body material; blueprint accents and glow stay.
+  const glowMat = c => cache.mat['glow' + c] || (cache.mat['glow' + c] = new THREE.MeshBasicMaterial({ color: c }));
+  const bpMat = (c, gloss) => cache.mat['bp' + c + gloss] || (cache.mat['bp' + c + gloss] = gloss
+    ? new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: gloss === 2 ? 120 : 60 })
+    : new THREE.MeshLambertMaterial({ color: c }));
+  const bladeTex = (key, draw) => canvasTex('blade-' + key, draw, 128);
+  const BLADES = {
+    fade: () => new THREE.MeshPhongMaterial({ shininess: 120, specular: 0xffffff, side: THREE.DoubleSide, map: bladeTex('fade', (c, s) => {
+      const g = c.createLinearGradient(0, 0, s, 0); g.addColorStop(0, '#ffe066'); g.addColorStop(0.35, '#ff5ec4'); g.addColorStop(0.75, '#8a4dff'); g.addColorStop(1, '#4a2bff');
+      c.fillStyle = g; c.fillRect(0, 0, s, s); }) }),
+    doppler: () => new THREE.MeshPhongMaterial({ shininess: 140, specular: 0x9fd8ff, side: THREE.DoubleSide, emissive: 0x0a1030, map: bladeTex('doppler', (c, s) => {
+      const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#05061a'); g.addColorStop(0.5, '#1636a8'); g.addColorStop(1, '#0a0a20');
+      c.fillStyle = g; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 90; i++) { c.fillStyle = `rgba(160,220,255,${Math.random()})`; c.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); } }) }),
+  };
+  const glowStrip = (k, G, len, x, y, z, axis) => axis === 'y' ? k.box(0.003, len, 0.003, x, y, z, G) : k.box(0.003, 0.004, len, x, y, z, G);
+
+  const BLUEPRINTS = {
+    pistol: {
+      viper: { name: 'Viper', rarity: 'Epic', price: 450, body: 0x1d2a22, accent: 0x31423a, glow: 0x39ff88,
+        mod(g, k, P) {
+          k.box(0.056, 0.052, 0.05, 0, 0.05, -0.195, P.A);                       // compensator
+          for (const x of [-0.026, 0.026]) glowStrip(k, P.G, 0.16, x, 0.062, -0.06);
+          k.box(0.004, 0.012, 0.004, 0, 0.074, -0.205, P.G);                      // port glow
+          if (g.userData.mag) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.03, 0.054), P.A); b.position.set(0, -0.14, 0.042); b.rotation.x = 0.22; g.userData.mag.add(b); }
+        } },
+      gilded: { name: 'Gilded Monarch', rarity: 'Legendary', price: 800, body: 0xe6b422, bodyGloss: 2, accent: 0xf3efe6, glow: 0xffe9a0,
+        mod(g, k, P) {
+          for (let i = 0; i < 5; i++) k.box(0.052, 0.002, 0.012, 0, 0.076, -0.15 + i * 0.03, P.G);  // engraving lines
+          for (const x of [-0.023, 0.023]) { const p = k.box(0.004, 0.09, 0.04, x, -0.055, 0.022, P.A); p.rotation.x = 0.22; } // ivory grips
+          k.cyl(0.014, 0.008, 0, 0.045, -0.196, P.G, 'z', 12);
+        } },
+    },
+    smg: {
+      neonrush: { name: 'Neon Rush', rarity: 'Legendary', price: 900, body: 0x14161c, accent: 0x23262e, glow: 0x22e6ff,
+        mod(g, k, P) {
+          k.box(0.07, 0.072, 0.16, 0, 0.035, -0.3, P.A);                          // angular barrel shroud
+          for (let i = 0; i < 4; i++) k.box(0.072, 0.006, 0.02, 0, 0.045, -0.36 + i * 0.035, P.G);
+          for (const x of [-0.031, 0.031]) glowStrip(k, P.G, 0.26, x, 0.0, -0.08);
+          k.box(0.03, 0.006, 0.05, 0, -0.005, -0.38, P.G);
+        } },
+      hornet: { name: 'Hornet', rarity: 'Epic', price: 500, body: 0xf2c200, accent: 0x111111, glow: 0xffe14d,
+        mod(g, k, P) {
+          for (let i = 0; i < 6; i++) k.box(0.062, 0.082, 0.014, 0, 0.03, -0.2 + i * 0.045, P.A);  // hazard bands
+          k.box(0.05, 0.05, 0.05, 0, 0.035, -0.36, P.A);                          // muzzle brake
+          for (const x of [-0.026, 0.026]) k.box(0.004, 0.02, 0.03, x, 0.035, -0.36, P.G);
+          k.box(0.06, 0.08, 0.02, 0, 0.0, 0.25, P.A);
+        } },
+    },
+    shotgun: {
+      dragon: { name: "Dragon's Breath", rarity: 'Legendary', price: 950, body: 0x2a0d0a, accent: 0x5a1712, glow: 0xff5a1f,
+        mod(g, k, P) {
+          for (let i = 0; i < 5; i++) { const f = k.box(0.006, 0.05, 0.05, 0, 0.1, -0.24 - i * 0.065, P.A); f.rotation.x = -0.6; } // spine fins
+          for (let i = 0; i < 4; i++) k.box(0.104, 0.008, 0.04, 0, 0.081, -0.24 - i * 0.07, P.G);         // glowing vents
+          k.box(0.12, 0.07, 0.05, 0, 0.055, -0.585, P.A);                                                 // dragon head brake
+          for (const x of [-0.035, 0.035]) k.box(0.012, 0.01, 0.004, x, 0.075, -0.611, P.G);             // eyes
+          for (const x of [-0.04, 0.04]) glowStrip(k, P.G, 0.28, x, 0.02, -0.06);
+        } },
+      riot: { name: 'Riot Control', rarity: 'Epic', price: 500, body: 0x1b2a4a, accent: 0xe9eef4, glow: 0x7fd0ff,
+        mod(g, k, P) {
+          for (const x of [-0.039, 0.039]) k.box(0.003, 0.03, 0.26, x, 0.04, -0.07, P.A);   // white side panels
+          k.cyl(0.02, 0.09, 0, -0.015, -0.48, P.A, 'z', 12);                                 // flashlight
+          k.cyl(0.018, 0.004, 0, -0.015, -0.527, P.G, 'z', 12);
+          k.box(0.07, 0.1, 0.03, 0, -0.005, 0.32, P.A);                                     // stock pad
+        } },
+    },
+    rifle: {
+      vandal: { name: 'Vandal', rarity: 'Legendary', price: 1000, body: 0x14151a, accent: 0x2a2c33, glow: 0xff2e63,
+        mod(g, k, P) {
+          k.box(0.08, 0.082, 0.26, 0, 0.035, -0.34, P.A);                         // angular shroud
+          for (let i = 0; i < 5; i++) k.box(0.082, 0.007, 0.022, 0, 0.05, -0.43 + i * 0.045, P.G);
+          for (const x of [-0.031, 0.031]) glowStrip(k, P.G, 0.3, x, 0.0, -0.05);
+          k.box(0.05, 0.03, 0.12, 0, 0.065, 0.24, P.A);                           // cheek riser
+          for (const a of [0, 1, 2, 3]) { const sp = k.box(0.01, 0.01, 0.05, Math.cos(a * 1.57) * 0.034, 0.035 + Math.sin(a * 1.57) * 0.034, -0.75, P.A); }
+        } },
+      desert: { name: 'Desert Storm', rarity: 'Epic', price: 550, body: 0xb89a6a, accent: 0x4f5a3a, glow: 0xffb224,
+        mod(g, k, P) {
+          k.box(0.035, 0.032, 0.07, 0.035, 0.105, -0.3, P.A);                     // PEQ box
+          k.box(0.004, 0.012, 0.012, 0.053, 0.11, -0.33, P.G);
+          const fg = k.box(0.03, 0.06, 0.05, 0, -0.025, -0.38, P.A); fg.rotation.x = -0.6;   // angled grip
+          for (let i = 0; i < 3; i++) k.cyl(0.032, 0.012, 0, 0.035, -0.54 - i * 0.05, P.A, 'z', 12);  // ranger bands
+        } },
+    },
+    holoar: {
+      cyber: { name: 'Cyber Sentinel', rarity: 'Legendary', price: 1000, body: 0xe9edf2, accent: 0x2b3038, glow: 0x2ff3ff,
+        mod(g, k, P) {
+          for (const x of [-0.031, 0.031]) { glowStrip(k, P.G, 0.3, x, 0.05, -0.05); glowStrip(k, P.G, 0.18, x, 0.02, 0.23); }
+          k.box(0.07, 0.004, 0.072, 0, 0.192, -0.08, P.G);                         // holo frame glow
+          for (let i = 0; i < 3; i++) k.cyl(0.032, 0.008, 0, 0.035, -0.53 - i * 0.07, P.G, 'z', 14);
+          k.box(0.074, 0.074, 0.22, 0, 0.035, -0.34, P.A);
+        } },
+      obsidian: { name: 'Obsidian Gold', rarity: 'Epic', price: 600, body: 0x0b0b0e, bodyGloss: 2, accent: 0xd4a017, accentGloss: 1, glow: 0xffcf5a,
+        mod(g, k, P) {
+          for (const y of [-0.012, 0.073]) for (const x of [-0.031, 0.031]) k.box(0.003, 0.004, 0.34, x, y, -0.05, P.A);
+          for (let i = 0; i < 2; i++) k.cyl(0.032, 0.01, 0, 0.035, -0.5 - i * 0.18, P.A, 'z', 14);
+          k.box(0.062, 0.102, 0.012, 0, -0.005, 0.345, P.A);
+        } },
+    },
+    sniper: {
+      arctic: { name: 'Arctic Wolf', rarity: 'Epic', price: 600, body: 0xe8eef4, accent: 0x8fb7d6, glow: 0x9fe8ff,
+        mod(g, k, P) {
+          k.box(0.06, 0.05, 0.09, 0, 0.04, -0.88, P.A);                           // big brake
+          for (const x of [-0.031, 0.031]) k.box(0.004, 0.012, 0.06, x, 0.04, -0.88, P.G);
+          k.cyl(0.044, 0.02, 0, 0.13, -0.28, P.A, 'z', 14); k.cyl(0.038, 0.02, 0, 0.13, 0.14, P.A, 'z', 14);
+          k.box(0.065, 0.04, 0.14, 0, 0.065, 0.28, P.A);
+        } },
+      executioner: { name: 'Executioner', rarity: 'Legendary', price: 1100, body: 0x3a0a0e, accent: 0x111111, glow: 0xff2a2a,
+        mod(g, k, P) {
+          for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.04, 4), P.A); const a = i / 6 * Math.PI * 2; c.position.set(Math.cos(a) * 0.03, 0.04 + Math.sin(a) * 0.03, -0.86); c.rotation.x = -Math.PI / 2; g.add(c); }
+          glowStrip(k, P.G, 0.5, 0, 0.058, -0.55);
+          k.box(0.05, 0.05, 0.012, 0.031, 0.01, 0.3, P.A);                        // stock badge
+          for (const z of [0.29, 0.31]) k.box(0.004, 0.008, 0.006, 0.058, 0.02, z, P.G);
+        } },
+    },
+    knife: {
+      fade: { name: 'Fade', rarity: 'Legendary', price: 1200, body: 0x16161a, accent: 0x16161a, glow: 0xff5ec4, blade: 'fade' },
+      doppler: { name: 'Doppler', rarity: 'Legendary', price: 1200, body: 0x101014, accent: 0x101014, glow: 0x4a8bff, blade: 'doppler' },
+    },
+  };
+  for (const w in BLUEPRINTS) BLUEPRINTS[w] = Object.assign({ default: { name: 'Standard Issue', rarity: 'Base', price: 0 } }, BLUEPRINTS[w]);
+
+  // ------------------------------------------------------------------ gloves
+  const GLOVES = {
+    default: { name: 'Tactical', price: 0, color: 0x2a2d33, pad: 0x15171a },
+    desert:  { name: 'Desert Ops', price: 150, color: 0xb39a72, pad: 0x6f5a3c },
+    arctic:  { name: 'Arctic Camo', price: 200, tex: 'arctic', pad: 0x8d9aa5 },
+    carbon:  { name: 'Carbon Fiber', price: 250, tex: 'carbon', pad: 0x3a3f47 },
+    crimson: { name: 'Crimson Leather', price: 300, color: 0x8f1424, pad: 0x2a0509, gloss: true },
+    tiger:   { name: 'Tiger Claw', price: 350, tex: 'tiger', pad: 0x1a1209 },
+    neon:    { name: 'Neon Grid', price: 450, tex: 'neon', pad: 0x0c0e10, glow: 0x2ff3ff },
+    galaxy:  { name: 'Galaxy', price: 550, tex: 'galaxy', pad: 0x120a26, glow: 0xb48cff },
+    gold:    { name: 'Gilded', price: 750, color: 0xe6b422, pad: 0x3a2a05, gloss: true, glow: 0xfff0b0 },
+  };
+  function gloveMats(id) {
+    const key = 'glove-' + id;
+    if (cache.mat[key]) return cache.mat[key];
+    const G = GLOVES[id] || GLOVES.default;
+    let main;
+    if (G.tex === 'neon') main = skinMaterial('neon');
+    else if (G.tex) main = new THREE.MeshLambertMaterial({ map: TEX[G.tex]() });
+    else main = G.gloss ? new THREE.MeshPhongMaterial({ color: G.color, specular: 0xffffff, shininess: 70 }) : new THREE.MeshLambertMaterial({ color: G.color });
+    return (cache.mat[key] = { main, pad: new THREE.MeshLambertMaterial({ color: G.pad }), glow: G.glow ? glowMat(G.glow) : null });
+  }
+  // A gloved hand, fingers along -Z curling down (-Y), thumb on +X (mirrored for the left hand).
+  function hand(id, left) {
+    const m = gloveMats(id), g = new THREE.Group(), sx = left ? -1 : 1;
+    const box = (w, h, d, x, y, z, mat, rx) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); b.position.set(x * sx, y, z); if (rx) b.rotation.x = rx; g.add(b); return b; };
+    box(0.052, 0.03, 0.07, 0, 0, 0, m.main);                    // palm
+    box(0.044, 0.008, 0.045, 0, 0.018, -0.004, m.pad);           // back-of-hand armour
+    if (m.glow) box(0.03, 0.003, 0.003, 0, 0.023, -0.02, m.glow);
+    for (let i = 0; i < 4; i++) {                                // fingers, two segments each, curled
+      const x = -0.019 + i * 0.0128;
+      box(0.011, 0.013, 0.03, x, -0.004, -0.046, m.main, 0.5);
+      box(0.0105, 0.012, 0.022, x, -0.024, -0.058, m.main, 1.4);
+    }
+    const th = box(0.013, 0.014, 0.04, 0.03, -0.006, -0.02, m.main); th.rotation.y = -0.5 * sx; th.rotation.x = 0.3;  // thumb
+    box(0.056, 0.034, 0.02, 0, 0, 0.042, m.pad);                 // cuff
+    return g;
+  }
+
   return {
-    SKINS, TRACERS, CHARMS,
+    SKINS, TRACERS, CHARMS, BLUEPRINTS, GLOVES,
+    hand, gloveMats,
     merged,
     // A world-space weapon mesh (single draw call), barrel along -Z.
     worldWeapon(id) {
       mergedMat = mergedMat || new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
       return new THREE.Mesh(merged(id), mergedMat);
     },
-    // Build a weapon model with a skin (and optional charm).
-    weapon(id, skin, charmId) {
+    // Build a weapon model: blueprint design (optional), camo (optional), charm (optional).
+    weapon(id, skin, charmId, bpId) {
       const def = BR.CONFIG.weapons[id];
       const g = new THREE.Group();
-      const S = skinMaterial(skin || 'default', def.color);
-      (BUILD[id] || BUILD.pistol)(g, S, MAT());
+      const bp = bpId && bpId !== 'default' && BLUEPRINTS[id] ? BLUEPRINTS[id][bpId] : null;
+      let S;
+      if (skin && skin !== 'default') S = skinMaterial(skin, def.color);
+      else if (bp) S = bpMat(bp.body, bp.bodyGloss || 0);
+      else S = skinMaterial('default', def.color);
+      const opts = {};
+      if (bp && bp.blade) opts.blade = cache.mat['blade' + bp.blade] || (cache.mat['blade' + bp.blade] = BLADES[bp.blade]());
+      (BUILD[id] || BUILD.pistol)(g, S, MAT(), opts);
+      if (bp && bp.mod) bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT() });
       if (charmId && charmId !== 'none') {
         const c = charm(charmId);
         g.userData.charm.add(c);
@@ -2775,6 +2989,344 @@ BR.Models = (function () {
       if (tr.color >= 0) return tr.color;
       return new THREE.Color().setHSL((t * 0.7) % 1, 1, 0.6).getHex();
     },
+  };
+})();
+
+</script>
+<script>
+'use strict';
+// =============================================================================
+// VIEWMODEL — your gun + gloved arms in first person, drawn in their own scene
+// so they never clip into walls.
+//
+// Motion is procedural and spring-driven (no baked clips):
+//   springs  — sway from looking, movement bob, sprint pose, landing bounce, recoil
+//   keyframes — draw (karambit: CS-style twirl around the finger ring), inspect,
+//               knife slashes, full magazine reloads, shell-by-shell loading
+// Hooks called by Game: rebuild(), update(dt), onFire(w), onMelee(hit),
+// onShell(), startInspect(), onLand(speed). Read adsW for aim progress.
+// =============================================================================
+(function () {
+  const U = BR.util;
+  const clamp01 = t => (t < 0 ? 0 : t > 1 ? 1 : t);
+  const smooth = t => { t = clamp01(t); return t * t * (3 - 2 * t); };
+  const easeOutBack = t => { t = clamp01(t); const c = 1.6; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+  const easeInOut = t => { t = clamp01(t); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+  // Window helper: 0 before a, ramps to 1 by b, holds until c, back to 0 by d
+  const win = (t, a, b, c, d) => (t < a || t > d ? 0 : t < b ? smooth((t - a) / (b - a)) : t <= c ? 1 : 1 - smooth((t - c) / (d - c)));
+
+  class Spring {
+    constructor(k, z) { this.v = 0; this.vel = 0; this.k = k; this.d = 2 * Math.sqrt(k) * (z || 0.75); }
+    step(target, dt) {
+      const n = dt > 1 / 90 ? 2 : 1, h = dt / n;
+      for (let i = 0; i < n; i++) { this.vel += (this.k * (target - this.v) - this.d * this.vel) * h; this.v += this.vel * h; }
+      return this.v;
+    }
+  }
+  const S3 = (k, z) => ({ x: new Spring(k, z), y: new Spring(k, z), z: new Spring(k, z) });
+
+  BR.Viewmodel = class Viewmodel {
+    constructor(game) {
+      this.game = game;
+      this.scene = new THREE.Scene();
+      this.camera = new THREE.PerspectiveCamera(58, 1, 0.01, 10);
+      this.scene.add(new THREE.HemisphereLight(0xffffff, 0x6b6250, 0.85));
+      const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(1, 2, 1.5); this.scene.add(key);
+      const rim = new THREE.DirectionalLight(0x9fc4ff, 0.35); rim.position.set(-2, 0.5, -1); this.scene.add(rim);
+      this.root = new THREE.Group();
+      this.scene.add(this.root);
+      this.models = {};
+      this.pos = S3(140, 0.7);        // smoothed pose
+      this.rot = S3(140, 0.7);
+      this.kick = S3(260, 0.45);      // recoil (impulses, springs back to 0)
+      this.kickR = S3(220, 0.5);
+      this.adsW = 0; this.sprintW = 0; this.bob = 0; this.bobAmt = 0;
+      this.drawT = 0; this.drawDur = 0.5; this.inspectT = 0; this.inspectDur = 2;
+      this.swingT = 0; this.swingDir = 1; this.shellT = 0; this.flashT = 0;
+      this.charmA = 0; this.charmV = 0;
+      this.lastWeapon = null; this.lastReloadK = 0;
+      this.scale = 1;
+      this._v = new THREE.Vector3(); this._v2 = new THREE.Vector3(); this._q = new THREE.Quaternion(); this._e = new THREE.Euler();
+      this.rebuild();
+    }
+
+    resize(w, h) {
+      this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
+      this.scale = w < h ? 0.6 : 1;
+    }
+
+    // (Re)build weapon models + arms with the equipped blueprints, camo, charm and gloves.
+    rebuild() {
+      const eq = BR.Profile.data.equip;
+      while (this.root.children.length) this.root.remove(this.root.children[0]);
+      this.models = {};
+      for (const id in BR.CONFIG.weapons) {
+        const bp = (eq.blueprints || {})[id];
+        const m = BR.Models.weapon(id, eq.skins, id === 'knife' ? 'none' : eq.charms, bp);
+        const holder = new THREE.Group();
+        if (id === 'knife') {
+          m.rotation.set(0.15, 0.25, -0.5); m.scale.setScalar(1.35);
+          // Pivot at the finger ring so the karambit twirls around it
+          m.updateMatrix();
+          const P = new THREE.Vector3(0, 0.036, 0.152).applyMatrix4(m.matrix);
+          const axis = new THREE.Vector3(1, 0, 0).applyQuaternion(m.quaternion).normalize();
+          const spin = new THREE.Group();
+          spin.position.copy(P); m.position.sub(P);
+          spin.add(m); holder.add(spin);
+          holder.userData.spin = { obj: spin, axis };
+        } else holder.add(m);
+        holder.userData.model = m;
+        holder.visible = false;
+        this.root.add(holder);
+        this.models[id] = holder;
+      }
+      // Arms: sleeve + gloved hand for each side, placed every frame in camera space
+      if (this.arms) for (const s of ['R', 'L']) this.scene.remove(this.arms[s].hand, this.arms[s].fore);
+      const sleeve = new THREE.MeshLambertMaterial({ color: 0x2c333c });
+      const sleeveGeo = new THREE.CylinderGeometry(0.03, 0.042, 1, 10);
+      const mk = left => {
+        const hand = BR.Models.hand(eq.gloves || 'default', left);
+        hand.scale.setScalar(1.3);
+        const fore = new THREE.Mesh(sleeveGeo, sleeve);
+        this.scene.add(hand, fore);
+        return { hand, fore };
+      };
+      this.arms = { R: mk(false), L: mk(true) };
+      this.lastWeapon = null;
+    }
+
+    // ---- events from the game -------------------------------------------
+    onFire(w) {
+      const d = w.def, a = 1 - this.adsW * 0.65, auto = d.rpm >= 500;
+      const r = (Math.random() - 0.5);
+      this.kick.z.vel += (d.recoil * 9 + 0.35) * a;                   // straight back
+      this.kick.y.vel += (d.recoil * 2.2 + 0.05) * a;
+      this.kickR.x.vel += (d.recoil * 30 + 0.8) * a;                  // muzzle climb
+      this.kickR.z.vel += r * (auto ? 1.2 : 0.6) * a;                 // random roll
+      this.kickR.y.vel += r * (auto ? 0.6 : 0.25) * a;
+      this.flashT = d.suppressed ? 0.025 : 0.05;
+      this.inspectT = 0;
+    }
+    onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
+    onShell() { this.shellT = 0.2; }
+    onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.def.melee ? 2.4 : 2.1; }
+
+    hide() { this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+
+    // ---- per frame ------------------------------------------------------------
+    update(dt, lookDX, lookDY) {
+      const game = this.game, p = game.player, w = p.weapon, m = p.mover, Mv = BR.CONFIG.move;
+      for (const id in this.models) this.models[id].visible = false;
+      if (!w || m.dropping || (p.ads && w.def.scope)) { this.hide(); return; }
+      this.root.visible = true;
+      const holder = this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
+      holder.visible = true;
+
+      // New weapon in hand: draw animation
+      if (w !== this.lastWeapon) {
+        this.lastWeapon = w;
+        this.drawDur = this.drawT = def.melee ? 1.05 : 0.55;
+        this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0;
+        if (def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
+      }
+      this.drawT = Math.max(0, this.drawT - dt);
+      this.inspectT = Math.max(0, this.inspectT - dt);
+      this.swingT = Math.max(0, this.swingT - dt);
+      this.shellT = Math.max(0, this.shellT - dt);
+      this.flashT -= dt;
+
+      // ---- pose targets ---------------------------------------------------------
+      const s = this.scale;
+      const sp = m.speedH, run = Mv.runSpeed;
+      this.adsW = U.damp(this.adsW, p.ads ? 1 : 0, 13, dt);
+      const reloading = w.reloadT > 0;
+      const sprinting = m.onGround && !m.sliding && sp > run * 0.92 && !p.ads && !p.fireHeld && !reloading && this.drawT <= 0 && this.inspectT <= 0;
+      this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
+      let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
+      if (def.melee) { hx = 0.16 * s; hy = -0.13; hz = -0.36; }
+      if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) - sg.z; }
+      const A = this.adsW, nA = 1 - A * 0.85;
+      // Bob: figure-eight while moving on the ground
+      const grounded = m.onGround && !m.sliding;
+      this.bobAmt = U.damp(this.bobAmt, grounded ? Math.min(sp / run, 1.3) : 0, 8, dt);
+      this.bob += dt * (4 + sp * 0.9) * (grounded ? 1 : 0.3);
+      const bx = Math.sin(this.bob) * 0.011 * this.bobAmt * nA;
+      const by = -Math.abs(Math.cos(this.bob)) * 0.013 * this.bobAmt * nA;
+      let tx = U.lerp(hx, ax, A) + bx, ty = U.lerp(hy, ay, A) + by, tz = U.lerp(hz, az, A);
+      let rx = 0, ry = 0, rz = 0;
+      // Sway: the gun lags behind where you look
+      ry += U.clamp(-lookDX * 0.0022, -0.12, 0.12) * nA;
+      rx += U.clamp(-lookDY * 0.0018, -0.1, 0.1) * nA;
+      tx += U.clamp(-lookDX * 0.0004, -0.02, 0.02) * nA;
+      // Sprint: lowered and canted
+      const W = this.sprintW;
+      tx += 0.02 * W; ty -= 0.035 * W; tz += 0.03 * W; rx -= 0.22 * W; ry += 0.5 * W; rz += 0.32 * W;
+      // Air / slide / wall-run / crouch
+      if (!m.onGround) rx += U.clamp(m.vel.y * 0.012, -0.12, 0.1) * nA;
+      if (m.sliding) { rz += 0.32 * nA; ty -= 0.025; }
+      if (m.wallRunning) rz += 0.16 * nA;
+      if (m.crouched) ty -= 0.012;
+
+      // ---- keyframed overlays (added after the springs) -------------------------
+      let ox = 0, oy = 0, oz = 0, orx = 0, ory = 0, orz = 0;
+      let leftTarget = null, magOff = null, magVis = true, spinAng = 0, leftHidden = !!def.melee;
+      // Draw
+      if (this.drawT > 0) {
+        const t = 1 - this.drawT / this.drawDur;
+        if (def.melee) {
+          // CS-style karambit deploy: snap into view, twirl twice around the ring, settle
+          const rise = smooth(t / 0.14), out = 1 - smooth((t - 0.7) / 0.3);
+          oy += -(1 - rise) * 0.16 + out * rise * 0.06;
+          ox += -out * rise * 0.06; oz += -out * 0.14;
+          orz += -out * 0.3; orx += out * 0.15;
+          spinAng = easeInOut((t - 0.08) / 0.72) * Math.PI * 4;
+          const turns = Math.floor(spinAng / (Math.PI * 2) + 0.25);
+          if (turns > this.spinSwish) { this.spinSwish = turns; BR.Audio.swish(false); }
+        } else {
+          const e = easeOutBack(t);
+          oy -= (1 - e) * 0.3; orx -= (1 - e) * 0.85; orz += (1 - e) * 0.45; ox += (1 - e) * 0.06;
+        }
+      }
+      // Inspect
+      if (this.inspectT > 0) {
+        const t = 1 - this.inspectT / this.inspectDur;
+        if (def.melee) {
+          spinAng = easeInOut(t / 0.42) * Math.PI * 4;
+          const sh = win(t, 0.42, 0.55, 0.85, 1);
+          ory += sh * 1.15; orz += sh * 0.65; ox -= sh * 0.12; oy += sh * 0.06; orx += Math.sin(t * Math.PI * 3) * 0.05 * sh;
+        } else {
+          const a = win(t, 0, 0.2, 0.45, 0.6), b = win(t, 0.45, 0.6, 0.85, 1);
+          ory += a * 0.95 - b * 0.35; orz += a * 0.4 + b * 0.55; orx += b * 0.35;
+          ox -= a * 0.12 + b * 0.04; oy += a * 0.05 + b * 0.04; oz += b * 0.06;
+        }
+      }
+      // Knife slash: wind-up, fast arc across, follow-through; alternates direction
+      if (this.swingT > 0) {
+        const t = 1 - this.swingT / 0.42, dr = this.swingDir;
+        const wind = win(t, 0, 0.12, 0.12, 0.3), cut = smooth((t - 0.12) / 0.2), back = smooth((t - 0.45) / 0.55);
+        const arc = cut * (1 - back);
+        ox += dr * (0.05 * wind - 0.2 * arc); oy += 0.03 * wind - 0.05 * arc;
+        orz += dr * (0.35 * wind - 1.05 * arc); ory += dr * 0.6 * arc; orx += -0.5 * arc + 0.15 * wind;
+      }
+      // Reloads
+      const port = ud.port, fore = ud.fore;
+      if (reloading && !def.melee) {
+        const k = 1 - w.reloadT / def.reload;
+        if (def.shellReload) {
+          // Tilt the gun to show the loading port; left hand feeds a shell each cycle
+          const tilt = 1;
+          orz -= 0.45 * tilt; ory -= 0.25 * tilt; ox += 0.02; oy += 0.025; orx += 0.08;
+          const lp = this._v2.copy(port);
+          const reach = smooth(k / 0.55), push = smooth((k - 0.55) / 0.3), away = smooth((k - 0.85) / 0.15);
+          leftTarget = lp.set(port.x - 0.01, port.y - 0.16 * (1 - reach) - 0.01 * away, port.z + 0.06 * (1 - reach) - 0.035 * push + 0.08 * away);
+          if (this.shellT > 0) oy -= Math.sin(this.shellT / 0.2 * Math.PI) * 0.02;
+        } else {
+          // Magazine: tilt, mag out, hand to pouch, new mag in, slap, (rifles) charge
+          const tilt = win(k, 0, 0.12, 0.82, 0.97);
+          // roll the gun so the mag well faces you, lift it and bring it toward centre
+          orz -= 0.5 * tilt; orx += 0.3 * tilt; ory += 0.38 * tilt; oy += 0.06 * tilt; ox -= 0.08 * tilt; oz += 0.03 * tilt;
+          const magPos = this._v.set(0, 0, 0);
+          if (k < 0.18) magOff = magPos.set(0, 0, 0);
+          else if (k < 0.34) { const d = smooth((k - 0.18) / 0.16); magOff = magPos.set(0, -0.32 * d, 0.06 * d); magVis = d < 0.95; }
+          else if (k < 0.52) { magVis = false; magOff = magPos.set(0, -0.3, 0.05); }
+          else if (k < 0.7) { const d = smooth((k - 0.52) / 0.18); magOff = magPos.set(0, -0.24 * (1 - d), 0.05 * (1 - d)); }
+          else magOff = magPos.set(0, 0, 0);
+          // left hand path (model space)
+          const mc = ud.mag && ud.mag.children[0];
+          const magAt = mc ? this._v2.set(0, mc.position.y - 0.045, mc.position.z).add(magOff) : this._v2.set(0, -0.1, -0.08);
+          const pouch = new THREE.Vector3(-0.12, -0.42, 0.18);
+          if (k < 0.15) leftTarget = fore ? fore.clone().lerp(magAt, smooth(k / 0.15)) : magAt.clone();
+          else if (k < 0.32) leftTarget = magAt.clone();
+          else if (k < 0.52) leftTarget = magAt.clone().lerp(pouch, win(k, 0.32, 0.42, 0.44, 0.52));
+          else if (k < 0.72) leftTarget = magAt.clone();
+          else if (ud.charge && (def.rpm >= 300 || w.id === 'sniper')) {
+            const ch = ud.charge || fore;
+            const toC = smooth((k - 0.72) / 0.08), pull = win(k, 0.8, 0.85, 0.85, 0.9), back = smooth((k - 0.9) / 0.1);
+            leftTarget = magAt.clone().lerp(ch, toC).add(new THREE.Vector3(0, 0, 0.05 * pull)).lerp(fore || ch, back);
+          } else leftTarget = magAt.clone().lerp(fore || magAt, smooth((k - 0.72) / 0.2));
+          // one-shot jolts + sounds when passing key moments
+          const passed = x => this.lastReloadK < x && k >= x;
+          if (passed(0.22)) { BR.Audio.click(); this.rot.z.vel -= 0.6; }
+          if (passed(0.68)) { BR.Audio.reload(); this.pos.y.vel += 0.5; this.rot.x.vel -= 1.2; }
+          if (passed(0.86) && ud.charge) { BR.Audio.reload(); this.pos.z.vel += 0.5; }
+          this.lastReloadK = k;
+        }
+      } else this.lastReloadK = 0;
+
+      // ---- springs ---------------------------------------------------------------
+      const P = this.pos, R = this.rot, K = this.kick, KR = this.kickR;
+      P.x.step(tx, dt); P.y.step(ty, dt); P.z.step(tz, dt);
+      R.x.step(rx, dt); R.y.step(ry, dt); R.z.step(rz, dt);
+      K.x.step(0, dt); K.y.step(0, dt); K.z.step(0, dt);
+      KR.x.step(0, dt); KR.y.step(0, dt); KR.z.step(0, dt);
+      const g = this.root;
+      g.position.set(P.x.v + K.x.v + ox, P.y.v + K.y.v + oy, P.z.v + K.z.v + oz);
+      g.rotation.set(R.x.v + KR.x.v + orx, R.y.v + KR.y.v + ory, R.z.v + KR.z.v + orz);
+      g.scale.setScalar(s);
+
+      // Karambit ring twirl
+      if (holder.userData.spin) holder.userData.spin.obj.quaternion.setFromAxisAngle(holder.userData.spin.axis, -spinAng);
+      // Mag + muzzle flash
+      if (ud.mag) { ud.mag.position.copy(magOff || this._v.set(0, 0, 0)); ud.mag.visible = magVis; }
+      ud.flash.visible = this.flashT > 0 && A < 0.5;
+      if (ud.flash.visible) ud.flash.rotation.z = Math.random() * 3;
+
+      // Charm swings from look + movement + recoil
+      const ch = ud.charmObj;
+      if (ch) {
+        const force = -lookDX * 0.02 + p.input.mx * 0.4 - K.z.v * 8 + (P.y.vel || 0) * 0.5;
+        this.charmV += (-55 * this.charmA - 5 * this.charmV + force * 30) * dt;
+        this.charmA += this.charmV * dt;
+        ch.rotation.z = U.clamp(this.charmA, -1.2, 1.2);
+        ch.rotation.x = U.clamp(this.charmA * 0.4, -0.8, 0.8);
+      }
+
+      this.placeArms(holder, model, ud, leftTarget, leftHidden);
+    }
+
+    // Hands follow anchors on the weapon; sleeves run from the wrist to an elbow
+    // point just off-screen, so it reads as two arms holding the gun.
+    placeArms(holder, model, ud, leftTarget, leftHidden) {
+      this.root.updateMatrixWorld(true);
+      const A = this.adsW, s = this.scale;
+      const R = this.arms.R, L = this.arms.L;
+      let wq = model.getWorldQuaternion(this._q);
+      // right hand on the grip (palm against the grip's right side, fingers wrapping the front)
+      let gp = model.localToWorld(this._v.copy(ud.grip));
+      const spin = holder.userData.spin;
+      if (spin) {
+        // Karambit: the index finger stays in the ring while the knife twirls around it
+        gp = spin.obj.getWorldPosition(this._v).add(this._v2.set(0.01, -0.035, 0.02));
+        wq = holder.getWorldQuaternion(this._q).multiply(this._qKn || (this._qKn = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.4, 0.3, -0.6))));
+      }
+      R.hand.position.copy(gp);
+      R.hand.quaternion.copy(wq).multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
+      R.hand.translateX(0.0); R.hand.translateY(0.026); R.hand.translateZ(0.012);
+      R.hand.visible = true;
+      const elbowR = this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
+      this.limb(R.fore, R.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), elbowR);
+      // left hand on the foregrip / mag / charging handle
+      const lt = leftTarget || ud.fore;
+      if (!lt || leftHidden) { L.hand.visible = L.fore.visible = false; return; }
+      const lp = model.localToWorld(this._v.copy(lt));
+      L.hand.position.copy(lp);
+      L.hand.quaternion.copy(wq).multiply(this._qFore || (this._qFore = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, Math.PI, 'YXZ'))));
+      L.hand.translateY(0.024);
+      L.hand.visible = true;
+      const elbowL = new THREE.Vector3(U.lerp(-0.28, -0.16, A) * s, U.lerp(-0.6, -0.52, A), -0.06);
+      this.limb(L.fore, L.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), elbowL);
+    }
+
+    limb(mesh, a, b) {
+      const d = this._d || (this._d = new THREE.Vector3());
+      d.subVectors(b, a);
+      const len = d.length();
+      mesh.position.copy(a).addScaledVector(d, 0.5);
+      mesh.quaternion.setFromUnitVectors(this._up || (this._up = new THREE.Vector3(0, 1, 0)), d.normalize());
+      mesh.scale.set(1, len, 1);
+      mesh.visible = true;
+    }
   };
 })();
 
@@ -3664,11 +4216,11 @@ BR.Effects = class Effects {
     const unit = new THREE.BoxGeometry(1, 1, 1); unit.translate(0, 0, 0.5);
     for (let i = 0; i < 48; i++) {
       const mk = op => new THREE.Mesh(unit, new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-      const streak = mk(1), trail = mk(0.35);
-      streak.visible = trail.visible = false;
-      streak.frustumCulled = trail.frustumCulled = false;
-      scene.add(streak, trail);
-      this.tracers.push({ streak, trail, life: 0, from: new THREE.Vector3(), dir: new THREE.Vector3(), len: 0, t: 0, dur: 0, w: 0.03 });
+      const streak = mk(1), trail = mk(0.35), glow = mk(0.3);
+      streak.visible = trail.visible = glow.visible = false;
+      streak.frustumCulled = trail.frustumCulled = glow.frustumCulled = false;
+      scene.add(glow, trail, streak);
+      this.tracers.push({ streak, trail, glow, life: 0, from: new THREE.Vector3(), dir: new THREE.Vector3(), len: 0, t: 0, dur: 0, w: 0.03, sl: 5.5 });
     }
     const pg = new THREE.BoxGeometry(0.16, 0.16, 0.16);
     for (let i = 0; i < 40; i++) {
@@ -3714,7 +4266,8 @@ BR.Effects = class Effects {
     for (let i = 0; i < 3; i++) { this._b = this._b || new THREE.Vector3(); this._b.set(p.x + (Math.random() - 0.5), p.y + 0.2, p.z + (Math.random() - 0.5)); this.impact(this._b, false); }
   }
 
-  tracer(from, to, mine, color) {
+  // opts: { speed (m/s), streak (m) } — the shop preview uses a slow, long streak
+  tracer(from, to, mine, color, opts) {
     const t = this.tracers[this.ti++ % this.tracers.length];
     t.from.copy(from);
     t.dir.subVectors(to, from);
@@ -3722,22 +4275,26 @@ BR.Effects = class Effects {
     if (t.len < 0.5) return;
     t.dir.divideScalar(t.len);
     t.t = 0;
-    t.dur = Math.max(0.05, t.len / 320);        // bullet speed for the streak
-    t.life = t.dur + 0.12;                      // trail lingers briefly
-    t.w = mine ? 0.045 : 0.035;
-    const c = color !== undefined ? color : mine ? 0xfff1c4 : 0xff9a6b;
-    t.streak.material.color.setHex(c); t.trail.material.color.setHex(c);
+    t.dur = Math.max(0.05, t.len / ((opts && opts.speed) || 320)); // bullet speed for the streak
+    t.life = t.dur + 0.14;                      // trail lingers briefly
+    t.sl = (opts && opts.streak) || 6;
+    t.w = mine ? 0.06 : 0.04;
+    const c = color !== undefined ? color : mine ? 0xffe9a8 : 0xff9a6b;
+    t.streak.material.color.setHex(c); t.trail.material.color.setHex(c); t.glow.material.color.setHex(c);
+    // the core burns hotter (towards white) so colors read as bright light
+    t.streak.material.color.lerp(this._white || (this._white = new THREE.Color(0xffffff)), 0.35);
     const look = this._look || (this._look = new THREE.Vector3());
     look.copy(from).add(t.dir);
     t.streak.position.copy(from); t.streak.lookAt(look);
     t.trail.position.copy(from); t.trail.lookAt(look);
-    t.streak.visible = t.trail.visible = true;
+    t.glow.position.copy(from); t.glow.lookAt(look);
+    t.streak.visible = t.trail.visible = t.glow.visible = true;
     this.placeTracer(t);
   }
 
   placeTracer(t) {
     const k = Math.min(1, t.t / t.dur);
-    const head = t.len * k, sl = Math.min(t.len, 5.5);
+    const head = t.len * k, sl = Math.min(t.len, t.sl);
     const tail = Math.max(0, head - sl);
     t.streak.position.copy(t.from).addScaledVector(t.dir, tail);
     t.streak.scale.set(t.w, t.w, Math.max(0.01, head - tail));
@@ -3745,7 +4302,10 @@ BR.Effects = class Effects {
     t.trail.scale.set(t.w * 0.45, t.w * 0.45, Math.max(0.01, head));
     const fade = t.t > t.dur ? 1 - (t.t - t.dur) / 0.12 : 1;
     t.streak.material.opacity = t.t > t.dur ? 0 : 1;
-    t.trail.material.opacity = 0.35 * Math.max(0, fade);
+    t.trail.material.opacity = 0.4 * Math.max(0, fade);
+    t.glow.position.copy(t.streak.position);
+    t.glow.scale.set(t.w * 4, t.w * 4, t.streak.scale.z);
+    t.glow.material.opacity = t.t > t.dur ? 0 : 0.28;
   }
 
   impact(p, blood) {
@@ -3780,7 +4340,7 @@ BR.Effects = class Effects {
     for (const t of this.tracers) {
       if (!t.trail.visible) continue;
       t.t += dt;
-      if (t.t >= t.life) { t.streak.visible = t.trail.visible = false; continue; }
+      if (t.t >= t.life) { t.streak.visible = t.trail.visible = t.glow.visible = false; continue; }
       this.placeTracer(t);
     }
     for (const f of this.puffs) {
@@ -3951,6 +4511,7 @@ BR.Input = class Input {
       if (e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'ControlLeft') this.press('crouch');
       if (e.code === 'KeyG') this.press('grapple');
       if (e.code === 'KeyV') this.press('inspect');
+      if (e.code === 'KeyX') this.press('knife');
       if (e.code === 'Digit3') this.press('slot2');
       if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
       if (e.code === 'KeyR') this.press('reload');
@@ -4304,28 +4865,42 @@ BR.Profile = {
     d = d || {};
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
-      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none' }, d.equip || {}),
+      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [] }, d.owned || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default' }, d.equip || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0 }, d.stats || {}),
       dev: !!d.dev,
     };
+    this.data.equip.blueprints = Object.assign({}, (d.equip && d.equip.blueprints) || {});
+    for (const k of ['gloves', 'blueprints']) if (!this.data.owned[k]) this.data.owned[k] = k === 'gloves' ? ['default'] : [];
     return this.data;
   },
   save() { BR.util.save(this.KEY, this.data); },
-  owns(cat, id) { return this.data.owned[cat].includes(id); },
+  // Blueprint ids are "weapon:blueprint" (e.g. "rifle:vandal"); every weapon owns "default".
+  owns(cat, id) {
+    if (cat === 'blueprints' && id.endsWith(':default')) return true;
+    return this.data.owned[cat].includes(id);
+  },
+  isEquipped(cat, id) {
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b; }
+    return this.data.equip[cat] === id;
+  },
   infinite() { return !!this.data.dev; },
   coinsLabel() { return this.infinite() ? '∞' : String(this.data.coins); },
   canAfford(price) { return this.infinite() || this.data.coins >= price; },
   buy(cat, id) {
-    const item = BR.Shop.catalog(cat)[id];
+    const item = BR.Shop.item(cat, id);
     if (!item || this.owns(cat, id) || !this.canAfford(item.price)) return false;
     if (!this.infinite()) this.data.coins -= item.price;
     this.data.owned[cat].push(id);
-    this.data.equip[cat] = id;
+    this.setEquip(cat, id);
     this.save();
     return true;
   },
-  equip(cat, id) { if (!this.owns(cat, id)) return false; this.data.equip[cat] = id; this.save(); return true; },
+  equip(cat, id) { if (!this.owns(cat, id)) return false; this.setEquip(cat, id); this.save(); return true; },
+  setEquip(cat, id) {
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; }
+    else this.data.equip[cat] = id;
+  },
   // Coins for a finished match. Returns the breakdown so the end screen can show it.
   award(r) {
     const C = BR.CONFIG.coins;
@@ -4345,20 +4920,45 @@ BR.Profile = {
   },
 };
 
+const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['pistol', 'Pistol'], ['knife', 'Karambit']];
+const RARITY = { Base: '#8d97a5', Epic: '#b26bff', Legendary: '#ffb224' };
+
 BR.Shop = class Shop {
-  static catalog(cat) { return cat === 'skins' ? BR.Models.SKINS : cat === 'tracers' ? BR.Models.TRACERS : BR.Models.CHARMS; }
+  // Catalog for a category. Blueprints are per weapon; ids look like "rifle:vandal".
+  static catalog(cat, weapon) {
+    const M = BR.Models;
+    if (cat === 'blueprints') {
+      const out = {}, bps = M.BLUEPRINTS[weapon] || {};
+      for (const b in bps) out[weapon + ':' + b] = bps[b];
+      return out;
+    }
+    return cat === 'skins' ? M.SKINS : cat === 'tracers' ? M.TRACERS : cat === 'gloves' ? M.GLOVES : M.CHARMS;
+  }
+  static item(cat, id) {
+    if (cat === 'blueprints') { const [w] = id.split(':'); return Shop.catalog(cat, w)[id]; }
+    return Shop.catalog(cat)[id];
+  }
 
   constructor(game) {
     this.game = game;
-    this.cat = 'skins';
+    this.cat = 'blueprints';
+    this.weapon = 'rifle';
     this.sel = null;
     const $ = id => document.getElementById(id);
-    this.el = { root: $('shop'), grid: $('shop-grid'), coins: $('shop-coins'), name: $('shop-sel-name'), action: $('shop-action'), msg: $('shop-msg') };
+    this.el = { root: $('shop'), grid: $('shop-grid'), coins: $('shop-coins'), name: $('shop-sel-name'), action: $('shop-action'), msg: $('shop-msg'), weps: $('shop-weps') };
+    this.el.weps.innerHTML = SHOP_WEAPONS.map(([id, n]) => `<button data-w="${id}">${n}</button>`).join('');
     $('shop-tabs').addEventListener('click', e => {
       const b = e.target.closest('button[data-cat]');
       if (!b) return;
       this.cat = b.dataset.cat;
-      this.sel = BR.Profile.data.equip[this.cat];
+      this.sel = this.equippedId();
+      this.render();
+    });
+    this.el.weps.addEventListener('click', e => {
+      const b = e.target.closest('button[data-w]');
+      if (!b) return;
+      this.weapon = b.dataset.w;
+      this.sel = this.equippedId();
       this.render();
     });
     this.el.grid.addEventListener('click', e => {
@@ -4371,8 +4971,14 @@ BR.Shop = class Shop {
     $('shop-back').addEventListener('click', () => this.close());
   }
 
+  equippedId() {
+    const eq = BR.Profile.data.equip;
+    if (this.cat === 'blueprints') return this.weapon + ':' + (eq.blueprints[this.weapon] || 'default');
+    return eq[this.cat];
+  }
+
   open() {
-    this.sel = BR.Profile.data.equip[this.cat];
+    this.sel = this.equippedId();
     this.el.root.classList.remove('hidden');
     document.body.classList.add('shopping');
     this.game.openShop();
@@ -4401,33 +5007,53 @@ BR.Shop = class Shop {
     this.el.msg.classList.remove('on'); void this.el.msg.offsetWidth; this.el.msg.classList.add('on');
   }
 
+  swatch(cat, id, it) {
+    const hex = c => '#' + c.toString(16).padStart(6, '0');
+    if (cat === 'blueprints') {
+      if (!it.body) return `<i class="sw bp" style="--a:#5a6270;--b:#2a2f37;--g:#8d97a5"></i>`;
+      return `<i class="sw bp" style="--a:${hex(it.body)};--b:${hex(it.accent)};--g:${hex(it.glow)}"></i>`;
+    }
+    if (cat === 'skins') return `<i class="sw" style="background:${it.swatch}"></i>`;
+    if (cat === 'tracers') {
+      const c = it.color < 0 ? 'linear-gradient(90deg,#ff1f3d,#ffcc00,#39ff14,#00e5ff,#b026ff)' : hex(it.color);
+      return `<i class="sw tr" style="background:${c};--c:${it.color < 0 ? '#fff' : hex(it.color)}"></i>`;
+    }
+    if (cat === 'gloves') return `<i class="sw gl" style="--c:${it.color !== undefined ? hex(it.color) : '#666'};--p:${hex(it.pad)}">✋</i>`;
+    return `<i class="sw ch">${id === 'none' ? '—' : '◆'}</i>`;
+  }
+
   render() {
-    const P = BR.Profile, cat = this.cat, items = Shop.catalog(cat);
+    const P = BR.Profile, cat = this.cat, items = Shop.catalog(cat, this.weapon);
     document.querySelectorAll('#shop-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
+    const showWeps = cat === 'blueprints' || cat === 'skins';
+    this.el.weps.classList.toggle('hidden', !showWeps);
+    this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
     this.el.coins.textContent = P.coinsLabel();
     const html = [];
     for (const id in items) {
-      const it = items[id], own = P.owns(cat, id), eq = P.data.equip[cat] === id;
-      let sw = '';
-      if (cat === 'skins') sw = `<i class="sw" style="background:${it.swatch}"></i>`;
-      else if (cat === 'tracers') sw = `<i class="sw tr" style="background:${it.color < 0 ? 'linear-gradient(90deg,#f33,#fd3,#3f6,#3cf,#a3f)' : '#' + it.color.toString(16).padStart(6, '0')}"></i>`;
-      else sw = `<i class="sw ch">${id === 'none' ? '—' : '◆'}</i>`;
-      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}" data-id="${id}">${sw}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : '<i class="coin"></i>' + it.price}</span></button>`);
+      const it = items[id], own = P.owns(cat, id), eq = P.isEquipped(cat, id);
+      const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
+      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : '<i class="coin"></i>' + it.price}</span></button>`);
     }
     this.el.grid.innerHTML = html.join('');
     const it = items[this.sel];
     this.el.name.textContent = it ? it.name : '';
-    const own = it && P.owns(cat, this.sel), eq = it && P.data.equip[cat] === this.sel;
+    const own = it && P.owns(cat, this.sel), eq = it && P.isEquipped(cat, this.sel);
     this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : 'Buy · ' + it.price;
     this.el.action.disabled = !it || eq;
     this.el.action.classList.toggle('poor', !!it && !own && !P.canAfford(it.price));
-    // What the preview shows: equipped look, with the selected item swapped in
+    // Preview: the equipped look, with the selected item swapped in
     const eqd = P.data.equip;
+    const wpn = showWeps ? this.weapon : 'holoar';
     this.game.setShopPreview({
+      weapon: cat === 'gloves' ? 'pistol' : wpn,
+      bp: cat === 'blueprints' ? this.sel.split(':')[1] : (eqd.blueprints[cat === 'gloves' ? 'pistol' : wpn] || 'default'),
       skin: cat === 'skins' ? this.sel : eqd.skins,
       charm: cat === 'charms' ? this.sel : eqd.charms,
       tracer: cat === 'tracers' ? this.sel : eqd.tracers,
+      gloves: cat === 'gloves' ? this.sel : eqd.gloves,
       showTracer: cat === 'tracers',
+      showHands: cat === 'gloves',
     });
   }
 };
@@ -4449,6 +5075,7 @@ const ICON = {
   pause: '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>',
   swap: '<svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
   fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  knife: '<svg viewBox="0 0 24 24"><path d="M4 20c2-1 4-1 6-3l9-11c1-1 1-2 0-3-3 2-7 6-10 9l-2 4"/><circle cx="5.5" cy="18.5" r="1.6"/></svg>',
   grapple: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7L6 18"/><path d="M6 18l-2 2M9 21l-3-3 3-3"/><circle cx="17" cy="7" r="2"/></svg>',
 };
 
@@ -4512,8 +5139,6 @@ BR.HUD = class HUD {
   <button id="prompt" class="btn prompt hidden" data-act="interact">Swap</button>
 
   <div id="joy-base"><div id="joy-knob"></div></div>
-  <div id="joy-hint" class="touch-only">DRAG TO MOVE</div>
-  <div id="look-hint" class="touch-only">DRAG TO LOOK</div>
   <button class="btn act firel touch-only" data-act="firel" aria-label="Fire">${ICON.fire}</button>
   <button class="btn act fire touch-only" data-act="fire" aria-label="Fire">${ICON.fire}<span>FIRE</span></button>
   <button class="btn act jump touch-only" data-act="jump" aria-label="Jump">${ICON.jump}<span>JUMP</span></button>
@@ -4522,6 +5147,7 @@ BR.HUD = class HUD {
   <button class="btn act reload touch-only" data-act="reload" aria-label="Reload">${ICON.reload}</button>
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>AIM</span></button>
   <button class="btn act swap touch-only" data-act="swap" aria-label="Swap weapon">${ICON.swap}</button>
+  <button class="btn act knife touch-only" data-act="knife" aria-label="Knife">${ICON.knife}<span>KNIFE</span></button>
 </div>
 
 <button id="fs-game" class="btn fs-btn" aria-label="Fullscreen">${ICON.fs}</button>
@@ -4618,8 +5244,9 @@ BR.HUD = class HUD {
       <div class="coins-pill"><i class="coin"></i><span id="shop-coins" class="num">0</span></div>
     </div>
     <div id="shop-tabs" class="seg">
-      <button data-cat="skins">GUN SKINS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button>
+      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button>
     </div>
+    <div id="shop-weps" class="chips"></div>
     <div id="shop-grid"></div>
     <div class="shop-foot">
       <span id="shop-msg"></span>
@@ -4798,7 +5425,7 @@ BR.HUD = class HUD {
       this.set('cxl', e.crosshair, w.def.pattern === 'line', (el, v) => el.classList.toggle('line', v));
     }
     const scoped = p.ads && w && w.def.scope && p.alive;
-    const holo = p.ads && w && !w.def.scope && !w.def.melee && game.cam.ads > 0.7; // sights replace the crosshair
+    const holo = p.ads && w && !w.def.scope && !w.def.melee && game.vmr.adsW > 0.7; // sights replace the crosshair
     this.set('scope', e.scope, !!scoped, el => el.classList.toggle('on', !!scoped));
     this.set('xh', e.crosshair, !!(scoped || holo), (el, v) => el.classList.toggle('hide', v));
 
@@ -5029,15 +5656,8 @@ BR.Game = class Game {
     const C = BR.CONFIG.camera;
     this.camera = new THREE.PerspectiveCamera(this.baseFov(), 1, C.near, C.far);
     this.camera.rotation.order = 'YXZ';
-    // Viewmodel (your gun) is drawn in its own scene so it never clips into walls
-    this.vmScene = new THREE.Scene();
-    this.vmCamera = new THREE.PerspectiveCamera(58, 1, 0.01, 10);
-    this.vmScene.add(new THREE.HemisphereLight(0xffffff, 0x6b6250, 0.85));
-    const vd = new THREE.DirectionalLight(0xffffff, 0.75); vd.position.set(1, 2, 1.5); this.vmScene.add(vd);
-    this.vmGroup = new THREE.Group();
-    this.vmScene.add(this.vmGroup);
-    this.vm = {};
-    this.refreshCosmetics();
+    // Viewmodel (your gun + arms) lives in its own scene so it never clips into walls
+    this.vmr = new BR.Viewmodel(this);
     this.buildShopScene();
     this.input = new BR.Input(document.getElementById('play'));
     this.state = 'menu';
@@ -5071,8 +5691,9 @@ BR.Game = class Game {
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h, false);
-    for (const c of [this.camera, this.vmCamera, this.shopCam]) { if (!c) continue; c.aspect = w / h; c.updateProjectionMatrix(); }
-    this.vmScale = w < h ? 0.6 : 1;   // keep the gun from filling a portrait screen
+    for (const c of [this.camera, this.shopCam]) { if (!c) continue; c.aspect = w / h; c.updateProjectionMatrix(); }
+    if (this.vmr) this.vmr.resize(w, h);
+    this.vmScale = w < h ? 0.6 : 1;
   }
 
   // ------------------------------------------------------------ scene setup
@@ -5172,9 +5793,6 @@ BR.Game = class Game {
     this.hud.show('pause', false);
     this.hud.show('play', true);
     this.hud.toast(this.practice ? 'Practice mode: no bots, no storm' : 'Skydive! Steer to a landing spot', 2600);
-    document.body.classList.remove('hint-off');
-    clearTimeout(this._hintTO);
-    this._hintTO = setTimeout(() => document.body.classList.add('hint-off'), 12000);
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
   }
 
@@ -5331,6 +5949,11 @@ BR.Game = class Game {
     if (inp.consume('slot0')) sw(0);
     if (inp.consume('slot1')) sw(1);
     if (inp.consume('slot2')) sw(2);
+    if (inp.consume('knife')) {
+      if (p.cur === 2) { const back = p.slots[this.lastGun] ? this.lastGun : p.slots[0] ? 0 : p.slots[1] ? 1 : 2; if (back !== 2) sw(back); }
+      else { this.lastGun = p.cur; sw(2); }
+    }
+    if (p.cur !== 2) this.lastGun = p.cur;
     if (inp.consume('inspect')) this.startInspect();
     if (inp.consume('interact')) {
       if (this.chest && !this.chest.taken) { this.loot.openChest(p, this.chest); this.chest = null; }
@@ -5339,7 +5962,7 @@ BR.Game = class Game {
     if (inp.consume('pause')) this.pause();
     if (inp.consume('map')) this.hud.toggleMap();
     p.ads = inp.ads && !!w && !w.def.melee && !p.mover.dropping;
-    if (p.ads) this.cam.inspectT = 0;
+    if (p.ads) this.vmr.inspectT = 0;
 
     // Aim assist pull (touch only): gently drags the crosshair onto a nearby target
     if (target) {
@@ -5361,13 +5984,13 @@ BR.Game = class Game {
       if (h.actor) fire = true;
     }
     p.fireHeld = fire && !p.mover.dropping;
-    if (fire) this.cam.inspectT = 0;
+    if (fire && w && !w.def.melee) this.vmr.inspectT = 0;
   }
 
   startInspect() {
     const w = this.player && this.player.weapon;
     if (!w || this.player.ads) return;
-    this.cam.inspectDur = this.cam.inspectT = w.def.melee ? 2.4 : 2.0;
+    this.vmr.startInspect(w);
   }
 
   findAssistTarget() {
@@ -5389,7 +6012,7 @@ BR.Game = class Game {
     const p = this.player, ev = p.mover.events, m = p.mover;
     if (!p.alive) return;
     if (ev.jump || ev.walljump) BR.Audio.jump();
-    if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); }
+    if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); this.vmr.onLand(m.landSpeed); }
     if (ev.slide) BR.Audio.slide();
     if (ev.wallrun) BR.Audio.wallrun();
     if (ev.pad) { BR.Audio.pad(); this.cam.shake = Math.max(this.cam.shake, 0.15); }
@@ -5431,7 +6054,7 @@ BR.Game = class Game {
 
   muzzlePoint(a, out) {
     if (a.isPlayer) {
-      const ads = this.cam.ads || 0;
+      const ads = this.vmr.adsW || 0;
       out.set(BR.util.lerp(0.2 * this.vmScale, 0.02, ads), BR.util.lerp(-0.16, -0.08, ads), -1.6);
       return this.camera.localToWorld(out);
     }
@@ -5510,8 +6133,7 @@ BR.Game = class Game {
     }
     if (dist < 150 && !this.demo) BR.Audio.shot(w.id, dist, pan, !!w.def.suppressed);
     if (actor.isPlayer) {
-      this.cam.vmKick = Math.min(0.14, this.cam.vmKick + w.def.recoil * 2 + 0.02);
-      this.cam.flashT = w.def.suppressed ? 0.02 : 0.05;
+      this.vmr.onFire(w);
     } else {
       if (dist < 90) this.fx.flash(this.muzzlePoint(actor, this._v4));
       this.recentShots.push({ x: actor.pos.x, z: actor.pos.z, t: this.time });
@@ -5532,12 +6154,11 @@ BR.Game = class Game {
 
   onMelee(actor, hit) {
     if (actor !== this.player) return;
-    this.cam.swingT = 0.32;
-    this.cam.inspectT = 0;
+    this.vmr.onMelee(hit);
     BR.Audio.swish(hit);
   }
 
-  onShellLoaded() { this.cam.shellT = 0.18; BR.Audio.reload(); }
+  onShellLoaded() { this.vmr.onShell(); BR.Audio.reload(); }
 
   onPickup(actor, item) {
     if (actor !== this.player) return;
@@ -5594,38 +6215,41 @@ BR.Game = class Game {
     const s = new THREE.Scene();
     s.background = new THREE.Color(0x0c0e12);
     s.add(new THREE.HemisphereLight(0xdde6ff, 0x30281c, 0.7));
-    const k = new THREE.DirectionalLight(0xffe2b0, 0.9); k.position.set(2, 3, 2); s.add(k);
-    const r = new THREE.DirectionalLight(0x6fb8ff, 0.6); r.position.set(-3, 1, -2); s.add(r);
+    const k = new THREE.DirectionalLight(0xffe2b0, 0.95); k.position.set(2, 3, 2); s.add(k);
+    const r = new THREE.DirectionalLight(0x6fb8ff, 0.7); r.position.set(-3, 1, -2); s.add(r);
     const floor = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.08, 40), new THREE.MeshPhongMaterial({ color: 0x1c2027, specular: 0x444444 }));
     floor.position.y = -0.55; this.shopFloor = floor; s.add(floor);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.015, 6, 60), new THREE.MeshBasicMaterial({ color: 0xffa31a }));
-    ring.rotation.x = Math.PI / 2; ring.position.y = -0.5; floor.add(ring); ring.position.y = 0.05;
+    ring.rotation.x = Math.PI / 2; floor.add(ring); ring.position.y = 0.05;
     this.shopScene = s;
     this.shopCam = new THREE.PerspectiveCamera(40, 1, 0.01, 20);
     this.shopCam.position.set(0, 0.35, 3.6);
     this.shopCam.lookAt(0, 0, 0);
     this.shopPivot = new THREE.Group();
     s.add(this.shopPivot);
-    this.shopTracers = [];
-    for (let i = 0; i < 6; i++) {
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-      const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true }));
-      l.visible = false; s.add(l);
-      this.shopTracers.push({ l, t: 9 });
-    }
+    this.shopFx = new BR.Effects(s);   // real in-game tracers, slowed down for the preview
+    this.shopTracerT = 0;
   }
 
   openShop() { this.prevState = this.state; this.state = 'shop'; this.resize(); }
   closeShop() { this.state = this.prevState || 'menu'; }
 
+  // p: { weapon, bp, skin, charm, tracer, gloves, showTracer, showHands }
   setShopPreview(p) {
     this.shopPrev = p;
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
-    const g = BR.Models.weapon('holoar', p.skin, p.charm);
-    g.scale.setScalar(1.6);
+    const wid = p.weapon || 'holoar';
+    const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
+    const sc = wid === 'knife' ? 5 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' ? 1.3 : 1.6;
+    g.scale.setScalar(sc);
     g.rotation.y = Math.PI / 2;
-    g.position.set(0.0, -0.05, -0.15);
+    g.position.set(0, wid === 'knife' ? 0.05 : -0.05, -0.15);
+    if (p.showHands && g.userData.grip) {
+      // gloved hands on the grip + foregrip so glove skins can be previewed
+      const R = BR.Models.hand(p.gloves, false); R.position.copy(g.userData.grip); R.rotation.set(0.22, 0, -Math.PI / 2); R.translateY(0.026);
+      g.add(R);
+      if (g.userData.fore) { const L = BR.Models.hand(p.gloves, true); L.position.copy(g.userData.fore); L.rotation.set(0, -Math.PI / 2, Math.PI, 'YXZ'); L.translateY(0.024); g.add(L); }
+    }
     this.shopPivot.add(g);
     this.shopGun = g;
   }
@@ -5634,33 +6258,26 @@ BR.Game = class Game {
     this.time += dt;
     // Keep the gun in the open part of the screen (left of the panel, or above it in portrait)
     const land = window.innerWidth >= window.innerHeight;
-    // center of the visible area, in world units at the gun's distance
     const panelFrac = land ? Math.min(470, window.innerWidth * 0.56) / window.innerWidth : 0;
     const halfW = 3.6 * Math.tan(this.shopCam.fov * Math.PI / 360) * this.shopCam.aspect;
     this.shopPivot.position.x = -panelFrac * halfW;
     this.shopBaseY = land ? 0 : 0.45;
     this.shopPivot.rotation.y += dt * 0.5;
     this.shopPivot.position.y = this.shopBaseY + Math.sin(this.time * 1.4) * 0.03;
+    this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
     const ch = this.shopGun && this.shopGun.userData.charmObj;
     if (ch) ch.rotation.z = Math.sin(this.time * 3) * 0.4;
-    // Tracer preview: streaks flying past the gun
-    this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
-    const show = this.shopPrev && this.shopPrev.showTracer;
-    for (let i = 0; i < this.shopTracers.length; i++) {
-      const T = this.shopTracers[i];
-      T.t += dt;
-      if (show && T.t > 0.9 + i * 0.13) {
-        T.t = 0; T.y = -0.35 + Math.random() * 0.8; T.z = -0.6 + Math.random() * 0.4;
-        T.l.material.color.setHex(BR.Models.tracerColor(this.shopPrev.tracer, this.time + i * 0.15));
-      }
-      T.l.visible = show && T.t < 0.35;
-      if (T.l.visible) {
-        const a = T.l.geometry.attributes.position.array, x = -2 + T.t / 0.35 * 4.5;
-        a[0] = x - 1.2; a[1] = T.y; a[2] = T.z; a[3] = x; a[4] = T.y; a[5] = T.z;
-        T.l.geometry.attributes.position.needsUpdate = true;
-        T.l.material.opacity = 1 - T.t / 0.35;
+    // Tracer preview: slow, bright streaks sweeping past the gun
+    if (this.shopPrev && this.shopPrev.showTracer) {
+      this.shopTracerT -= dt;
+      if (this.shopTracerT <= 0) {
+        this.shopTracerT = 0.28;
+        const cx = this.shopPivot.position.x, y = this.shopBaseY - 0.3 + Math.random() * 0.7, z = 0.2 + Math.random() * 0.5;
+        const from = this._v1.set(cx - 3.2, y, z), to = this._v2.set(cx + 3.2, y + (Math.random() - 0.5) * 0.4, z - 0.4);
+        this.shopFx.tracer(from, to, true, BR.Models.tracerColor(this.shopPrev.tracer, this.time), { speed: 9, streak: 2.2 });
       }
     }
+    this.shopFx.update(dt);
   }
 
   // ---------------------------------------------------------------- camera
@@ -5676,7 +6293,7 @@ BR.Game = class Game {
       cam.position.y = U.damp(cam.position.y, dp.y + 5, 3, dt);
       cam.position.z = U.damp(cam.position.z, tz, 3, dt);
       cam.lookAt(dp.x, dp.y + 0.5, dp.z);
-      this.vmGroup.visible = false;
+      this.vmr.hide();
       return;
     }
     c.off = U.damp(c.off, m.h - C.actor.eyeFromTop, 14, dt);
@@ -5700,154 +6317,12 @@ BR.Game = class Game {
     c.fov = U.damp(c.fov, fovT, 10, dt);
     if (Math.abs(cam.fov - c.fov) > 0.01) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
 
-    this.updateViewmodel(dt);
+    const ld = this.lookD || [0, 0];
+    this.vmr.update(dt, ld[0], ld[1]);
   }
 
   // ------------------------------------------------------------- viewmodel
-  // (Re)build viewmodels with the equipped skin + charm.
-  refreshCosmetics() {
-    const eq = BR.Profile.data.equip;
-    while (this.vmGroup.children.length) this.vmGroup.remove(this.vmGroup.children[0]);
-    this.vm = {};
-    for (const id in BR.CONFIG.weapons) {
-      const m = BR.Models.weapon(id, eq.skins, id === 'knife' ? 'none' : eq.charms);
-      m.visible = false;
-      if (id === 'knife') { m.rotation.set(0.15, 0.25, -0.5); m.scale.setScalar(1.35); }
-      const holder = new THREE.Group();
-      if (id === 'knife') {
-        // Pivot at the finger ring so the karambit twirls around it (deploy + inspect)
-        m.updateMatrix();
-        const ringLocal = new THREE.Vector3(0, 0.036, 0.152);          // ring centre in model space
-        const P = ringLocal.applyMatrix4(m.matrix);
-        const axis = new THREE.Vector3(1, 0, 0).applyQuaternion(m.quaternion).normalize(); // ring axis
-        const spin = new THREE.Group();
-        spin.position.copy(P);
-        m.position.sub(P);
-        spin.add(m);
-        holder.add(spin);
-        m.userData.spin = { obj: spin, axis };
-      } else holder.add(m);
-      holder.userData = m.userData;
-      holder.visible = false;
-      this.vmGroup.add(holder);
-      m.visible = true;
-      this.vm[id] = holder;
-    }
-  }
-
-  updateViewmodel(dt) {
-    const p = this.player, c = this.cam, U = BR.util, m = p.mover;
-    const w = p.weapon;
-    for (const id in this.vm) this.vm[id].visible = false;
-    if (!w || m.dropping || (p.ads && w.def.scope)) { this.vmGroup.visible = false; return; }
-    this.vmGroup.visible = true;
-    const model = this.vm[w.id];
-    model.visible = true;
-    // Pull-out animation whenever the held weapon changes
-    if (w !== this.lastWeapon) {
-      this.lastWeapon = w;
-      c.drawDur = c.drawT = w.def.melee ? 0.85 : 0.38;
-      c.spinSwish = 0;
-      c.inspectT = 0;
-      if (w.def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
-    }
-    const [ldx, ldy] = this.lookD || [0, 0];
-    c.swayX = U.damp(c.swayX, U.clamp(-ldx * 0.0015, -0.05, 0.05), 10, dt);
-    c.swayY = U.damp(c.swayY, U.clamp(ldy * 0.0015, -0.05, 0.05), 10, dt);
-    c.vmKick = U.damp(c.vmKick, 0, 14, dt);
-    c.drawT = Math.max(0, c.drawT - dt);
-    c.inspectT = Math.max(0, c.inspectT - dt);
-    c.swingT = Math.max(0, c.swingT - dt);
-    c.shellT = Math.max(0, c.shellT - dt);
-    c.flashT -= dt;
-    model.userData.flash.visible = c.flashT > 0 && c.ads < 0.5;   // no flash in your face while aiming
-    const sp = Math.min(m.speedH, 10);
-    const bx = m.onGround ? Math.sin(c.bob) * sp * 0.0022 : 0;
-    const by = m.onGround ? Math.abs(Math.cos(c.bob)) * sp * 0.002 : 0;
-    c.ads = U.damp(c.ads, p.ads ? 1 : 0, 14, dt);
-    const s = this.vmScale;
-    const g = this.vmGroup;
-
-    // Base pose (hip) and ADS pose. Holo sights line the reticle up with screen center.
-    let hx = 0.24 * s, hy = -0.26, hz = -0.74, ax = 0, ay = -0.13, az = -0.5;
-    if (w.def.melee) { hx = 0.17 * s; hy = -0.15; hz = -0.36; }
-    // Any sight (holo, red dot, irons) is lined up with the exact screen center
-    if (model.userData.sight && !w.def.scope) { const sg = model.userData.sight.position; ax = -sg.x; ay = -sg.y; az = -(model.userData.sightDist || 0.3) - sg.z; }
-    let px = U.lerp(hx, ax, c.ads) + bx + c.swayX;
-    let py = U.lerp(hy, ay, c.ads) - by + c.swayY - (m.sliding ? 0.03 : 0) - (m.crouched ? 0.01 : 0);
-    const kick = c.vmKick * (1 - c.ads * 0.7);                     // softer visual kick when aiming
-    let pz = U.lerp(hz, az, c.ads) + kick;
-    let rx = kick * (2.2 - c.ads * 1.6), ry = 0, rz = m.sliding ? 0.35 : m.wallRunning ? 0.15 : 0;
-    const ease = t => t * t * (3 - 2 * t);
-
-    // Draw / pull-out
-    if (c.drawT > 0) {
-      const e = ease(1 - c.drawT / c.drawDur);
-      if (w.def.melee) {
-        // Rise up from below while tilting into place; the twirl itself happens on the ring pivot below
-        // Pop up quickly, twirl a bit higher / further out so the whole spin stays on screen, then settle
-        const t = 1 - c.drawT / c.drawDur;
-        const rise = ease(U.clamp(t / 0.22, 0, 1)), out = 1 - ease(U.clamp((t - 0.55) / 0.45, 0, 1));
-        py -= (1 - rise) * 0.2; py += out * rise * 0.07;
-        px -= out * rise * 0.05; pz -= out * 0.16;
-        rz += out * -0.35;
-      }
-      else { rx += (1 - e) * -0.9; py -= (1 - e) * 0.3; }
-    }
-    // Inspect: karambit twirl around the finger ring, guns turn to show the side
-    if (c.inspectT > 0) {
-      const t = 1 - c.inspectT / c.inspectDur;
-      if (w.def.melee) {
-        const show = U.clamp((t - 0.45) / 0.55, 0, 1), sh = Math.sin(show * Math.PI);
-        ry += sh * 1.1; rz += sh * 0.6; px -= sh * 0.12; py += sh * 0.06;
-      } else {
-        const sh = Math.sin(ease(t) * Math.PI);
-        ry += sh * 0.9; rz += sh * 0.35; px -= sh * 0.14; py += sh * 0.05;
-        rx += Math.sin(t * Math.PI * 2) * 0.12;
-      }
-    }
-    // Karambit slash
-    if (c.swingT > 0) {
-      const t = 1 - c.swingT / 0.32, a = Math.sin(t * Math.PI);
-      px -= a * 0.2; py += a * 0.05 - t * 0.04; rz += a * 1.0; ry += a * 0.7; rx -= a * 0.6;
-    }
-    // Reloads
-    if (w.reloadT > 0) {
-      if (w.def.shellReload) { rz += 0.45; rx -= 0.25; py -= 0.03; }
-      else rx -= Math.sin((1 - w.reloadT / w.def.reload) * Math.PI) * 0.9;
-    }
-    if (c.shellT > 0) py -= Math.sin(c.shellT / 0.18 * Math.PI) * 0.025;
-
-    // Karambit twirl around the finger ring: two decelerating spins on deploy (CS-style),
-    // two more at the start of an inspect
-    const spinRig = model.userData.spin;
-    if (spinRig) {
-      let ang = 0;
-      if (c.drawT > 0) {
-        const t = 1 - c.drawT / c.drawDur;
-        ang = (1 - Math.pow(1 - t, 2.2)) * Math.PI * 4;           // fast start, eases into the grip
-        const turns = Math.floor(ang / (Math.PI * 2));
-        if (turns > (c.spinSwish || 0)) { c.spinSwish = turns; BR.Audio.swish(false); }
-      } else if (c.inspectT > 0) {
-        const t = 1 - c.inspectT / c.inspectDur;
-        ang = ease(U.clamp(t / 0.45, 0, 1)) * Math.PI * 4;
-      }
-      spinRig.obj.quaternion.setFromAxisAngle(spinRig.axis, -ang);
-    }
-    g.position.set(px, py, pz);
-    g.rotation.set(rx, ry, rz);
-    g.scale.setScalar(s);
-
-    // Charm swings from look + movement
-    const ch = model.userData.charmObj;
-    if (ch) {
-      const force = -ldx * 0.02 + p.input.mx * 0.4 - c.vmKick * 8;
-      c.charmV += (-55 * c.charmA - 5 * c.charmV + force * 30) * dt;
-      c.charmA += c.charmV * dt;
-      ch.rotation.z = U.clamp(c.charmA, -1.2, 1.2);
-      ch.rotation.x = U.clamp(c.charmA * 0.4 + by * 6, -0.8, 0.8);
-    }
-  }
+  refreshCosmetics() { this.vmr.rebuild(); }
 
   render() {
     const r = this.renderer;
@@ -5857,7 +6332,7 @@ BR.Game = class Game {
     r.render(this.scene, this.camera);
     if ((this.state === 'playing' || this.state === 'won' || this.state === 'paused') && this.player && this.player.alive) {
       r.clearDepth();
-      r.render(this.vmScene, this.vmCamera);
+      r.render(this.vmr.scene, this.vmr.camera);
     }
   }
 };

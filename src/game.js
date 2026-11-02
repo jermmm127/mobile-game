@@ -25,15 +25,8 @@ BR.Game = class Game {
     const C = BR.CONFIG.camera;
     this.camera = new THREE.PerspectiveCamera(this.baseFov(), 1, C.near, C.far);
     this.camera.rotation.order = 'YXZ';
-    // Viewmodel (your gun) is drawn in its own scene so it never clips into walls
-    this.vmScene = new THREE.Scene();
-    this.vmCamera = new THREE.PerspectiveCamera(58, 1, 0.01, 10);
-    this.vmScene.add(new THREE.HemisphereLight(0xffffff, 0x6b6250, 0.85));
-    const vd = new THREE.DirectionalLight(0xffffff, 0.75); vd.position.set(1, 2, 1.5); this.vmScene.add(vd);
-    this.vmGroup = new THREE.Group();
-    this.vmScene.add(this.vmGroup);
-    this.vm = {};
-    this.refreshCosmetics();
+    // Viewmodel (your gun + arms) lives in its own scene so it never clips into walls
+    this.vmr = new BR.Viewmodel(this);
     this.buildShopScene();
     this.input = new BR.Input(document.getElementById('play'));
     this.state = 'menu';
@@ -67,8 +60,9 @@ BR.Game = class Game {
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h, false);
-    for (const c of [this.camera, this.vmCamera, this.shopCam]) { if (!c) continue; c.aspect = w / h; c.updateProjectionMatrix(); }
-    this.vmScale = w < h ? 0.6 : 1;   // keep the gun from filling a portrait screen
+    for (const c of [this.camera, this.shopCam]) { if (!c) continue; c.aspect = w / h; c.updateProjectionMatrix(); }
+    if (this.vmr) this.vmr.resize(w, h);
+    this.vmScale = w < h ? 0.6 : 1;
   }
 
   // ------------------------------------------------------------ scene setup
@@ -168,9 +162,6 @@ BR.Game = class Game {
     this.hud.show('pause', false);
     this.hud.show('play', true);
     this.hud.toast(this.practice ? 'Practice mode: no bots, no storm' : 'Skydive! Steer to a landing spot', 2600);
-    document.body.classList.remove('hint-off');
-    clearTimeout(this._hintTO);
-    this._hintTO = setTimeout(() => document.body.classList.add('hint-off'), 12000);
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
   }
 
@@ -327,6 +318,11 @@ BR.Game = class Game {
     if (inp.consume('slot0')) sw(0);
     if (inp.consume('slot1')) sw(1);
     if (inp.consume('slot2')) sw(2);
+    if (inp.consume('knife')) {
+      if (p.cur === 2) { const back = p.slots[this.lastGun] ? this.lastGun : p.slots[0] ? 0 : p.slots[1] ? 1 : 2; if (back !== 2) sw(back); }
+      else { this.lastGun = p.cur; sw(2); }
+    }
+    if (p.cur !== 2) this.lastGun = p.cur;
     if (inp.consume('inspect')) this.startInspect();
     if (inp.consume('interact')) {
       if (this.chest && !this.chest.taken) { this.loot.openChest(p, this.chest); this.chest = null; }
@@ -335,7 +331,7 @@ BR.Game = class Game {
     if (inp.consume('pause')) this.pause();
     if (inp.consume('map')) this.hud.toggleMap();
     p.ads = inp.ads && !!w && !w.def.melee && !p.mover.dropping;
-    if (p.ads) this.cam.inspectT = 0;
+    if (p.ads) this.vmr.inspectT = 0;
 
     // Aim assist pull (touch only): gently drags the crosshair onto a nearby target
     if (target) {
@@ -357,13 +353,13 @@ BR.Game = class Game {
       if (h.actor) fire = true;
     }
     p.fireHeld = fire && !p.mover.dropping;
-    if (fire) this.cam.inspectT = 0;
+    if (fire && w && !w.def.melee) this.vmr.inspectT = 0;
   }
 
   startInspect() {
     const w = this.player && this.player.weapon;
     if (!w || this.player.ads) return;
-    this.cam.inspectDur = this.cam.inspectT = w.def.melee ? 2.4 : 2.0;
+    this.vmr.startInspect(w);
   }
 
   findAssistTarget() {
@@ -385,7 +381,7 @@ BR.Game = class Game {
     const p = this.player, ev = p.mover.events, m = p.mover;
     if (!p.alive) return;
     if (ev.jump || ev.walljump) BR.Audio.jump();
-    if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); }
+    if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); this.vmr.onLand(m.landSpeed); }
     if (ev.slide) BR.Audio.slide();
     if (ev.wallrun) BR.Audio.wallrun();
     if (ev.pad) { BR.Audio.pad(); this.cam.shake = Math.max(this.cam.shake, 0.15); }
@@ -427,7 +423,7 @@ BR.Game = class Game {
 
   muzzlePoint(a, out) {
     if (a.isPlayer) {
-      const ads = this.cam.ads || 0;
+      const ads = this.vmr.adsW || 0;
       out.set(BR.util.lerp(0.2 * this.vmScale, 0.02, ads), BR.util.lerp(-0.16, -0.08, ads), -1.6);
       return this.camera.localToWorld(out);
     }
@@ -506,8 +502,7 @@ BR.Game = class Game {
     }
     if (dist < 150 && !this.demo) BR.Audio.shot(w.id, dist, pan, !!w.def.suppressed);
     if (actor.isPlayer) {
-      this.cam.vmKick = Math.min(0.14, this.cam.vmKick + w.def.recoil * 2 + 0.02);
-      this.cam.flashT = w.def.suppressed ? 0.02 : 0.05;
+      this.vmr.onFire(w);
     } else {
       if (dist < 90) this.fx.flash(this.muzzlePoint(actor, this._v4));
       this.recentShots.push({ x: actor.pos.x, z: actor.pos.z, t: this.time });
@@ -528,12 +523,11 @@ BR.Game = class Game {
 
   onMelee(actor, hit) {
     if (actor !== this.player) return;
-    this.cam.swingT = 0.32;
-    this.cam.inspectT = 0;
+    this.vmr.onMelee(hit);
     BR.Audio.swish(hit);
   }
 
-  onShellLoaded() { this.cam.shellT = 0.18; BR.Audio.reload(); }
+  onShellLoaded() { this.vmr.onShell(); BR.Audio.reload(); }
 
   onPickup(actor, item) {
     if (actor !== this.player) return;
@@ -590,38 +584,41 @@ BR.Game = class Game {
     const s = new THREE.Scene();
     s.background = new THREE.Color(0x0c0e12);
     s.add(new THREE.HemisphereLight(0xdde6ff, 0x30281c, 0.7));
-    const k = new THREE.DirectionalLight(0xffe2b0, 0.9); k.position.set(2, 3, 2); s.add(k);
-    const r = new THREE.DirectionalLight(0x6fb8ff, 0.6); r.position.set(-3, 1, -2); s.add(r);
+    const k = new THREE.DirectionalLight(0xffe2b0, 0.95); k.position.set(2, 3, 2); s.add(k);
+    const r = new THREE.DirectionalLight(0x6fb8ff, 0.7); r.position.set(-3, 1, -2); s.add(r);
     const floor = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.08, 40), new THREE.MeshPhongMaterial({ color: 0x1c2027, specular: 0x444444 }));
     floor.position.y = -0.55; this.shopFloor = floor; s.add(floor);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.015, 6, 60), new THREE.MeshBasicMaterial({ color: 0xffa31a }));
-    ring.rotation.x = Math.PI / 2; ring.position.y = -0.5; floor.add(ring); ring.position.y = 0.05;
+    ring.rotation.x = Math.PI / 2; floor.add(ring); ring.position.y = 0.05;
     this.shopScene = s;
     this.shopCam = new THREE.PerspectiveCamera(40, 1, 0.01, 20);
     this.shopCam.position.set(0, 0.35, 3.6);
     this.shopCam.lookAt(0, 0, 0);
     this.shopPivot = new THREE.Group();
     s.add(this.shopPivot);
-    this.shopTracers = [];
-    for (let i = 0; i < 6; i++) {
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-      const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true }));
-      l.visible = false; s.add(l);
-      this.shopTracers.push({ l, t: 9 });
-    }
+    this.shopFx = new BR.Effects(s);   // real in-game tracers, slowed down for the preview
+    this.shopTracerT = 0;
   }
 
   openShop() { this.prevState = this.state; this.state = 'shop'; this.resize(); }
   closeShop() { this.state = this.prevState || 'menu'; }
 
+  // p: { weapon, bp, skin, charm, tracer, gloves, showTracer, showHands }
   setShopPreview(p) {
     this.shopPrev = p;
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
-    const g = BR.Models.weapon('holoar', p.skin, p.charm);
-    g.scale.setScalar(1.6);
+    const wid = p.weapon || 'holoar';
+    const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
+    const sc = wid === 'knife' ? 5 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' ? 1.3 : 1.6;
+    g.scale.setScalar(sc);
     g.rotation.y = Math.PI / 2;
-    g.position.set(0.0, -0.05, -0.15);
+    g.position.set(0, wid === 'knife' ? 0.05 : -0.05, -0.15);
+    if (p.showHands && g.userData.grip) {
+      // gloved hands on the grip + foregrip so glove skins can be previewed
+      const R = BR.Models.hand(p.gloves, false); R.position.copy(g.userData.grip); R.rotation.set(0.22, 0, -Math.PI / 2); R.translateY(0.026);
+      g.add(R);
+      if (g.userData.fore) { const L = BR.Models.hand(p.gloves, true); L.position.copy(g.userData.fore); L.rotation.set(0, -Math.PI / 2, Math.PI, 'YXZ'); L.translateY(0.024); g.add(L); }
+    }
     this.shopPivot.add(g);
     this.shopGun = g;
   }
@@ -630,33 +627,26 @@ BR.Game = class Game {
     this.time += dt;
     // Keep the gun in the open part of the screen (left of the panel, or above it in portrait)
     const land = window.innerWidth >= window.innerHeight;
-    // center of the visible area, in world units at the gun's distance
     const panelFrac = land ? Math.min(470, window.innerWidth * 0.56) / window.innerWidth : 0;
     const halfW = 3.6 * Math.tan(this.shopCam.fov * Math.PI / 360) * this.shopCam.aspect;
     this.shopPivot.position.x = -panelFrac * halfW;
     this.shopBaseY = land ? 0 : 0.45;
     this.shopPivot.rotation.y += dt * 0.5;
     this.shopPivot.position.y = this.shopBaseY + Math.sin(this.time * 1.4) * 0.03;
+    this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
     const ch = this.shopGun && this.shopGun.userData.charmObj;
     if (ch) ch.rotation.z = Math.sin(this.time * 3) * 0.4;
-    // Tracer preview: streaks flying past the gun
-    this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
-    const show = this.shopPrev && this.shopPrev.showTracer;
-    for (let i = 0; i < this.shopTracers.length; i++) {
-      const T = this.shopTracers[i];
-      T.t += dt;
-      if (show && T.t > 0.9 + i * 0.13) {
-        T.t = 0; T.y = -0.35 + Math.random() * 0.8; T.z = -0.6 + Math.random() * 0.4;
-        T.l.material.color.setHex(BR.Models.tracerColor(this.shopPrev.tracer, this.time + i * 0.15));
-      }
-      T.l.visible = show && T.t < 0.35;
-      if (T.l.visible) {
-        const a = T.l.geometry.attributes.position.array, x = -2 + T.t / 0.35 * 4.5;
-        a[0] = x - 1.2; a[1] = T.y; a[2] = T.z; a[3] = x; a[4] = T.y; a[5] = T.z;
-        T.l.geometry.attributes.position.needsUpdate = true;
-        T.l.material.opacity = 1 - T.t / 0.35;
+    // Tracer preview: slow, bright streaks sweeping past the gun
+    if (this.shopPrev && this.shopPrev.showTracer) {
+      this.shopTracerT -= dt;
+      if (this.shopTracerT <= 0) {
+        this.shopTracerT = 0.28;
+        const cx = this.shopPivot.position.x, y = this.shopBaseY - 0.3 + Math.random() * 0.7, z = 0.2 + Math.random() * 0.5;
+        const from = this._v1.set(cx - 3.2, y, z), to = this._v2.set(cx + 3.2, y + (Math.random() - 0.5) * 0.4, z - 0.4);
+        this.shopFx.tracer(from, to, true, BR.Models.tracerColor(this.shopPrev.tracer, this.time), { speed: 9, streak: 2.2 });
       }
     }
+    this.shopFx.update(dt);
   }
 
   // ---------------------------------------------------------------- camera
@@ -672,7 +662,7 @@ BR.Game = class Game {
       cam.position.y = U.damp(cam.position.y, dp.y + 5, 3, dt);
       cam.position.z = U.damp(cam.position.z, tz, 3, dt);
       cam.lookAt(dp.x, dp.y + 0.5, dp.z);
-      this.vmGroup.visible = false;
+      this.vmr.hide();
       return;
     }
     c.off = U.damp(c.off, m.h - C.actor.eyeFromTop, 14, dt);
@@ -696,154 +686,12 @@ BR.Game = class Game {
     c.fov = U.damp(c.fov, fovT, 10, dt);
     if (Math.abs(cam.fov - c.fov) > 0.01) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
 
-    this.updateViewmodel(dt);
+    const ld = this.lookD || [0, 0];
+    this.vmr.update(dt, ld[0], ld[1]);
   }
 
   // ------------------------------------------------------------- viewmodel
-  // (Re)build viewmodels with the equipped skin + charm.
-  refreshCosmetics() {
-    const eq = BR.Profile.data.equip;
-    while (this.vmGroup.children.length) this.vmGroup.remove(this.vmGroup.children[0]);
-    this.vm = {};
-    for (const id in BR.CONFIG.weapons) {
-      const m = BR.Models.weapon(id, eq.skins, id === 'knife' ? 'none' : eq.charms);
-      m.visible = false;
-      if (id === 'knife') { m.rotation.set(0.15, 0.25, -0.5); m.scale.setScalar(1.35); }
-      const holder = new THREE.Group();
-      if (id === 'knife') {
-        // Pivot at the finger ring so the karambit twirls around it (deploy + inspect)
-        m.updateMatrix();
-        const ringLocal = new THREE.Vector3(0, 0.036, 0.152);          // ring centre in model space
-        const P = ringLocal.applyMatrix4(m.matrix);
-        const axis = new THREE.Vector3(1, 0, 0).applyQuaternion(m.quaternion).normalize(); // ring axis
-        const spin = new THREE.Group();
-        spin.position.copy(P);
-        m.position.sub(P);
-        spin.add(m);
-        holder.add(spin);
-        m.userData.spin = { obj: spin, axis };
-      } else holder.add(m);
-      holder.userData = m.userData;
-      holder.visible = false;
-      this.vmGroup.add(holder);
-      m.visible = true;
-      this.vm[id] = holder;
-    }
-  }
-
-  updateViewmodel(dt) {
-    const p = this.player, c = this.cam, U = BR.util, m = p.mover;
-    const w = p.weapon;
-    for (const id in this.vm) this.vm[id].visible = false;
-    if (!w || m.dropping || (p.ads && w.def.scope)) { this.vmGroup.visible = false; return; }
-    this.vmGroup.visible = true;
-    const model = this.vm[w.id];
-    model.visible = true;
-    // Pull-out animation whenever the held weapon changes
-    if (w !== this.lastWeapon) {
-      this.lastWeapon = w;
-      c.drawDur = c.drawT = w.def.melee ? 0.85 : 0.38;
-      c.spinSwish = 0;
-      c.inspectT = 0;
-      if (w.def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
-    }
-    const [ldx, ldy] = this.lookD || [0, 0];
-    c.swayX = U.damp(c.swayX, U.clamp(-ldx * 0.0015, -0.05, 0.05), 10, dt);
-    c.swayY = U.damp(c.swayY, U.clamp(ldy * 0.0015, -0.05, 0.05), 10, dt);
-    c.vmKick = U.damp(c.vmKick, 0, 14, dt);
-    c.drawT = Math.max(0, c.drawT - dt);
-    c.inspectT = Math.max(0, c.inspectT - dt);
-    c.swingT = Math.max(0, c.swingT - dt);
-    c.shellT = Math.max(0, c.shellT - dt);
-    c.flashT -= dt;
-    model.userData.flash.visible = c.flashT > 0 && c.ads < 0.5;   // no flash in your face while aiming
-    const sp = Math.min(m.speedH, 10);
-    const bx = m.onGround ? Math.sin(c.bob) * sp * 0.0022 : 0;
-    const by = m.onGround ? Math.abs(Math.cos(c.bob)) * sp * 0.002 : 0;
-    c.ads = U.damp(c.ads, p.ads ? 1 : 0, 14, dt);
-    const s = this.vmScale;
-    const g = this.vmGroup;
-
-    // Base pose (hip) and ADS pose. Holo sights line the reticle up with screen center.
-    let hx = 0.24 * s, hy = -0.26, hz = -0.74, ax = 0, ay = -0.13, az = -0.5;
-    if (w.def.melee) { hx = 0.17 * s; hy = -0.15; hz = -0.36; }
-    // Any sight (holo, red dot, irons) is lined up with the exact screen center
-    if (model.userData.sight && !w.def.scope) { const sg = model.userData.sight.position; ax = -sg.x; ay = -sg.y; az = -(model.userData.sightDist || 0.3) - sg.z; }
-    let px = U.lerp(hx, ax, c.ads) + bx + c.swayX;
-    let py = U.lerp(hy, ay, c.ads) - by + c.swayY - (m.sliding ? 0.03 : 0) - (m.crouched ? 0.01 : 0);
-    const kick = c.vmKick * (1 - c.ads * 0.7);                     // softer visual kick when aiming
-    let pz = U.lerp(hz, az, c.ads) + kick;
-    let rx = kick * (2.2 - c.ads * 1.6), ry = 0, rz = m.sliding ? 0.35 : m.wallRunning ? 0.15 : 0;
-    const ease = t => t * t * (3 - 2 * t);
-
-    // Draw / pull-out
-    if (c.drawT > 0) {
-      const e = ease(1 - c.drawT / c.drawDur);
-      if (w.def.melee) {
-        // Rise up from below while tilting into place; the twirl itself happens on the ring pivot below
-        // Pop up quickly, twirl a bit higher / further out so the whole spin stays on screen, then settle
-        const t = 1 - c.drawT / c.drawDur;
-        const rise = ease(U.clamp(t / 0.22, 0, 1)), out = 1 - ease(U.clamp((t - 0.55) / 0.45, 0, 1));
-        py -= (1 - rise) * 0.2; py += out * rise * 0.07;
-        px -= out * rise * 0.05; pz -= out * 0.16;
-        rz += out * -0.35;
-      }
-      else { rx += (1 - e) * -0.9; py -= (1 - e) * 0.3; }
-    }
-    // Inspect: karambit twirl around the finger ring, guns turn to show the side
-    if (c.inspectT > 0) {
-      const t = 1 - c.inspectT / c.inspectDur;
-      if (w.def.melee) {
-        const show = U.clamp((t - 0.45) / 0.55, 0, 1), sh = Math.sin(show * Math.PI);
-        ry += sh * 1.1; rz += sh * 0.6; px -= sh * 0.12; py += sh * 0.06;
-      } else {
-        const sh = Math.sin(ease(t) * Math.PI);
-        ry += sh * 0.9; rz += sh * 0.35; px -= sh * 0.14; py += sh * 0.05;
-        rx += Math.sin(t * Math.PI * 2) * 0.12;
-      }
-    }
-    // Karambit slash
-    if (c.swingT > 0) {
-      const t = 1 - c.swingT / 0.32, a = Math.sin(t * Math.PI);
-      px -= a * 0.2; py += a * 0.05 - t * 0.04; rz += a * 1.0; ry += a * 0.7; rx -= a * 0.6;
-    }
-    // Reloads
-    if (w.reloadT > 0) {
-      if (w.def.shellReload) { rz += 0.45; rx -= 0.25; py -= 0.03; }
-      else rx -= Math.sin((1 - w.reloadT / w.def.reload) * Math.PI) * 0.9;
-    }
-    if (c.shellT > 0) py -= Math.sin(c.shellT / 0.18 * Math.PI) * 0.025;
-
-    // Karambit twirl around the finger ring: two decelerating spins on deploy (CS-style),
-    // two more at the start of an inspect
-    const spinRig = model.userData.spin;
-    if (spinRig) {
-      let ang = 0;
-      if (c.drawT > 0) {
-        const t = 1 - c.drawT / c.drawDur;
-        ang = (1 - Math.pow(1 - t, 2.2)) * Math.PI * 4;           // fast start, eases into the grip
-        const turns = Math.floor(ang / (Math.PI * 2));
-        if (turns > (c.spinSwish || 0)) { c.spinSwish = turns; BR.Audio.swish(false); }
-      } else if (c.inspectT > 0) {
-        const t = 1 - c.inspectT / c.inspectDur;
-        ang = ease(U.clamp(t / 0.45, 0, 1)) * Math.PI * 4;
-      }
-      spinRig.obj.quaternion.setFromAxisAngle(spinRig.axis, -ang);
-    }
-    g.position.set(px, py, pz);
-    g.rotation.set(rx, ry, rz);
-    g.scale.setScalar(s);
-
-    // Charm swings from look + movement
-    const ch = model.userData.charmObj;
-    if (ch) {
-      const force = -ldx * 0.02 + p.input.mx * 0.4 - c.vmKick * 8;
-      c.charmV += (-55 * c.charmA - 5 * c.charmV + force * 30) * dt;
-      c.charmA += c.charmV * dt;
-      ch.rotation.z = U.clamp(c.charmA, -1.2, 1.2);
-      ch.rotation.x = U.clamp(c.charmA * 0.4 + by * 6, -0.8, 0.8);
-    }
-  }
+  refreshCosmetics() { this.vmr.rebuild(); }
 
   render() {
     const r = this.renderer;
@@ -853,7 +701,7 @@ BR.Game = class Game {
     r.render(this.scene, this.camera);
     if ((this.state === 'playing' || this.state === 'won' || this.state === 'paused') && this.player && this.player.alive) {
       r.clearDepth();
-      r.render(this.vmScene, this.vmCamera);
+      r.render(this.vmr.scene, this.vmr.camera);
     }
   }
 };

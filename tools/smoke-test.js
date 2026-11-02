@@ -117,12 +117,32 @@ const server = http.createServer((req, res) => {
     BR.Profile.data.equip.tracers = 'red';
     r.tracerFired = BR.Weapons.tryFire(g, p); g.fx.update(0.02);
     const tr = g.fx.tracers.filter(t => t.streak.visible);
-    r.tracerVisible = tr.some(t => t.streak.material.color.getHex() === 0xff3344 && t.streak.scale.z > 1);
+    r.tracerVisible = tr.some(t => t.glow.material.color.getHex() === BR.Models.tracerColor('red', 0) && t.streak.scale.z > 1);
     BR.Profile.data.equip.tracers = 'default';
     // ground loot shows the merged weapon model
     const wl = g.loot.items.find(i => i.kind === 'weapon');
     r.lootModel = wl.mesh.children.some(c => c.geometry && c.geometry.attributes.position.count > 200);
     r.pois = g.world.pois.map(q => q.name);
+    // viewmodel: every blueprint builds, karambit deploy spins, reload moves the mag, arms render
+    let built = 0; for (const w in BR.Models.BLUEPRINTS) for (const b in BR.Models.BLUEPRINTS[w]) { BR.Models.weapon(w, 'default', 'none', b); built++; }
+    r.blueprints = built;
+    const v = g.vmr; p.alive = true; p.mover.dropping = false; p.ads = false;
+    p.cur = 2; v.update(1 / 60, 0, 0); let maxSpin = 0;
+    for (let i = 0; i < 70; i++) { v.update(1 / 60, 0, 0); const q = v.models.knife.userData.spin.obj.quaternion; maxSpin = Math.max(maxSpin, 2 * Math.acos(Math.min(1, Math.abs(q.w)))); }
+    r.knifeSpin = maxSpin;
+    r.armsVisible = v.arms.R.hand.visible && v.arms.R.fore.visible;
+    p.slots[0] = BR.Weapons.create('rifle', 2); p.ammo.heavy = 90; p.cur = 0;
+    for (let i = 0; i < 60; i++) v.update(1 / 60, 0, 0);
+    BR.Weapons.startReload(p.weapon, p); let magDrop = 0;
+    while (p.weapon.reloadT > 0) { BR.Weapons.update(p.weapon, 1 / 60, p); v.update(1 / 60, 0, 0); magDrop = Math.min(magDrop, v.models.rifle.userData.model.userData.mag.position.y); }
+    r.magDrop = magDrop; r.reloaded = p.weapon.mag === 45;
+    r.leftHandOnGun = v.arms.L.hand.visible;
+    // knife button toggles knife <-> last gun
+    g.input.press('knife'); g.controlPlayer(1 / 60); const onKnife = p.cur === 2;
+    g.input.press('knife'); g.controlPlayer(1 / 60); r.knifeButton = onKnife && p.cur === 0;
+    // random rifle recoil moves yaw sideways
+    const yaws = []; for (let i = 0; i < 12; i++) { p.slots[0].cool = 0; const y0 = p.yaw; BR.Weapons.tryFire(g, p); yaws.push(p.yaw - y0); }
+    r.recoilSideways = new Set(yaws.map(y => Math.sign(y))).size > 1 && yaws.some(y => Math.abs(y) > 1e-4);
     r.mapSize = g.world.size;
     return r;
   });
@@ -192,6 +212,12 @@ const server = http.createServer((req, res) => {
     ['dev code gives that account infinite coins', acct.devOk && acct.buyFree && acct.devPersists],
     ['guests and other accounts do not get it', acct.guestNotDev],
     ['big map loads in under 4s (headless)', loadMs < 4000],
+    ['all weapon blueprints build', combat.blueprints >= 21],
+    ['karambit deploy twirls (CS-style)', combat.knifeSpin > 2],
+    ['first-person arms render', combat.armsVisible && combat.leftHandOnGun],
+    ['reload drops the magazine and refills', combat.magDrop < -0.15 && combat.reloaded],
+    ['knife button swaps to the karambit and back', combat.knifeButton],
+    ['rifle recoil kicks randomly sideways', combat.recoilSideways],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];

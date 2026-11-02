@@ -153,6 +153,7 @@ BR.Input = class Input {
       if (e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'ControlLeft') this.press('crouch');
       if (e.code === 'KeyG') this.press('grapple');
       if (e.code === 'KeyV') this.press('inspect');
+      if (e.code === 'KeyX') this.press('knife');
       if (e.code === 'Digit3') this.press('slot2');
       if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
       if (e.code === 'KeyR') this.press('reload');

@@ -132,8 +132,14 @@ BR.Weapons = {
     }
     w.bloom = Math.min(d.bloomMax, w.bloom + d.bloom);
     if (actor.isPlayer) {
-      actor.recoil += d.recoil * (actor.ads ? 0.6 : 1);
-      actor.yaw += (Math.random() - 0.5) * d.recoil * 0.4;
+      // Random recoil: vertical kick varies shot to shot; automatic rifles also wander
+      // sideways on a random walk, so sprays need control. Aiming tames it.
+      const ads = actor.ads ? 0.6 : 1;
+      actor.recoil += d.recoil * (0.75 + Math.random() * 0.5) * ads;
+      if (d.recoilH) {
+        actor.recoilDrift = BR.util.clamp((actor.recoilDrift || 0) * 0.85 + (Math.random() - 0.5) * 0.9, -1, 1);
+        actor.yaw += (actor.recoilDrift * 0.7 + (Math.random() - 0.5) * 0.6) * d.recoilH * ads;
+      } else actor.yaw += (Math.random() - 0.5) * d.recoil * 0.4;
     }
     game.onShot(actor, w);
     return true;

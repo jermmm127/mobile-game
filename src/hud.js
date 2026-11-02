@@ -13,6 +13,7 @@ const ICON = {
   pause: '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>',
   swap: '<svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>',
   fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  knife: '<svg viewBox="0 0 24 24"><path d="M4 20c2-1 4-1 6-3l9-11c1-1 1-2 0-3-3 2-7 6-10 9l-2 4"/><circle cx="5.5" cy="18.5" r="1.6"/></svg>',
   grapple: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7L6 18"/><path d="M6 18l-2 2M9 21l-3-3 3-3"/><circle cx="17" cy="7" r="2"/></svg>',
 };
 
@@ -76,8 +77,6 @@ BR.HUD = class HUD {
   <button id="prompt" class="btn prompt hidden" data-act="interact">Swap</button>
 
   <div id="joy-base"><div id="joy-knob"></div></div>
-  <div id="joy-hint" class="touch-only">DRAG TO MOVE</div>
-  <div id="look-hint" class="touch-only">DRAG TO LOOK</div>
   <button class="btn act firel touch-only" data-act="firel" aria-label="Fire">${ICON.fire}</button>
   <button class="btn act fire touch-only" data-act="fire" aria-label="Fire">${ICON.fire}<span>FIRE</span></button>
   <button class="btn act jump touch-only" data-act="jump" aria-label="Jump">${ICON.jump}<span>JUMP</span></button>
@@ -86,6 +85,7 @@ BR.HUD = class HUD {
   <button class="btn act reload touch-only" data-act="reload" aria-label="Reload">${ICON.reload}</button>
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>AIM</span></button>
   <button class="btn act swap touch-only" data-act="swap" aria-label="Swap weapon">${ICON.swap}</button>
+  <button class="btn act knife touch-only" data-act="knife" aria-label="Knife">${ICON.knife}<span>KNIFE</span></button>
 </div>
 
 <button id="fs-game" class="btn fs-btn" aria-label="Fullscreen">${ICON.fs}</button>
@@ -182,8 +182,9 @@ BR.HUD = class HUD {
       <div class="coins-pill"><i class="coin"></i><span id="shop-coins" class="num">0</span></div>
     </div>
     <div id="shop-tabs" class="seg">
-      <button data-cat="skins">GUN SKINS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button>
+      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button>
     </div>
+    <div id="shop-weps" class="chips"></div>
     <div id="shop-grid"></div>
     <div class="shop-foot">
       <span id="shop-msg"></span>
@@ -362,7 +363,7 @@ BR.HUD = class HUD {
       this.set('cxl', e.crosshair, w.def.pattern === 'line', (el, v) => el.classList.toggle('line', v));
     }
     const scoped = p.ads && w && w.def.scope && p.alive;
-    const holo = p.ads && w && !w.def.scope && !w.def.melee && game.cam.ads > 0.7; // sights replace the crosshair
+    const holo = p.ads && w && !w.def.scope && !w.def.melee && game.vmr.adsW > 0.7; // sights replace the crosshair
     this.set('scope', e.scope, !!scoped, el => el.classList.toggle('on', !!scoped));
     this.set('xh', e.crosshair, !!(scoped || holo), (el, v) => el.classList.toggle('hide', v));
 
