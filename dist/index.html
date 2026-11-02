@@ -5714,7 +5714,19 @@ BR.Game = class Game {
       m.visible = false;
       if (id === 'knife') { m.rotation.set(0.15, 0.25, -0.5); m.scale.setScalar(1.35); }
       const holder = new THREE.Group();
-      holder.add(m);
+      if (id === 'knife') {
+        // Pivot at the finger ring so the karambit twirls around it (deploy + inspect)
+        m.updateMatrix();
+        const ringLocal = new THREE.Vector3(0, 0.036, 0.152);          // ring centre in model space
+        const P = ringLocal.applyMatrix4(m.matrix);
+        const axis = new THREE.Vector3(1, 0, 0).applyQuaternion(m.quaternion).normalize(); // ring axis
+        const spin = new THREE.Group();
+        spin.position.copy(P);
+        m.position.sub(P);
+        spin.add(m);
+        holder.add(spin);
+        m.userData.spin = { obj: spin, axis };
+      } else holder.add(m);
       holder.userData = m.userData;
       holder.visible = false;
       this.vmGroup.add(holder);
@@ -5734,7 +5746,8 @@ BR.Game = class Game {
     // Pull-out animation whenever the held weapon changes
     if (w !== this.lastWeapon) {
       this.lastWeapon = w;
-      c.drawDur = c.drawT = w.def.melee ? 0.55 : 0.38;
+      c.drawDur = c.drawT = w.def.melee ? 0.85 : 0.38;
+      c.spinSwish = 0;
       c.inspectT = 0;
       if (w.def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
     }
@@ -5770,15 +5783,21 @@ BR.Game = class Game {
     // Draw / pull-out
     if (c.drawT > 0) {
       const e = ease(1 - c.drawT / c.drawDur);
-      if (w.def.melee) { rz += (1 - e) * -3.2; rx += (1 - e) * -1.1; py -= (1 - e) * 0.22; px += (1 - e) * 0.08; }
+      if (w.def.melee) {
+        // Rise up from below while tilting into place; the twirl itself happens on the ring pivot below
+        // Pop up quickly, twirl a bit higher / further out so the whole spin stays on screen, then settle
+        const t = 1 - c.drawT / c.drawDur;
+        const rise = ease(U.clamp(t / 0.22, 0, 1)), out = 1 - ease(U.clamp((t - 0.55) / 0.45, 0, 1));
+        py -= (1 - rise) * 0.2; py += out * rise * 0.07;
+        px -= out * rise * 0.05; pz -= out * 0.16;
+        rz += out * -0.35;
+      }
       else { rx += (1 - e) * -0.9; py -= (1 - e) * 0.3; }
     }
     // Inspect: karambit twirl around the finger ring, guns turn to show the side
     if (c.inspectT > 0) {
       const t = 1 - c.inspectT / c.inspectDur;
       if (w.def.melee) {
-        const spinP = U.clamp(t / 0.45, 0, 1);
-        rx += ease(spinP) * Math.PI * 4;                       // two full spins
         const show = U.clamp((t - 0.45) / 0.55, 0, 1), sh = Math.sin(show * Math.PI);
         ry += sh * 1.1; rz += sh * 0.6; px -= sh * 0.12; py += sh * 0.06;
       } else {
@@ -5799,6 +5818,22 @@ BR.Game = class Game {
     }
     if (c.shellT > 0) py -= Math.sin(c.shellT / 0.18 * Math.PI) * 0.025;
 
+    // Karambit twirl around the finger ring: two decelerating spins on deploy (CS-style),
+    // two more at the start of an inspect
+    const spinRig = model.userData.spin;
+    if (spinRig) {
+      let ang = 0;
+      if (c.drawT > 0) {
+        const t = 1 - c.drawT / c.drawDur;
+        ang = (1 - Math.pow(1 - t, 2.2)) * Math.PI * 4;           // fast start, eases into the grip
+        const turns = Math.floor(ang / (Math.PI * 2));
+        if (turns > (c.spinSwish || 0)) { c.spinSwish = turns; BR.Audio.swish(false); }
+      } else if (c.inspectT > 0) {
+        const t = 1 - c.inspectT / c.inspectDur;
+        ang = ease(U.clamp(t / 0.45, 0, 1)) * Math.PI * 4;
+      }
+      spinRig.obj.quaternion.setFromAxisAngle(spinRig.axis, -ang);
+    }
     g.position.set(px, py, pz);
     g.rotation.set(rx, ry, rz);
     g.scale.setScalar(s);
