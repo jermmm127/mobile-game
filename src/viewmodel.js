@@ -110,6 +110,8 @@
       this.kickR.y.vel += r * (auto ? 0.6 : 0.25) * a;
       this.flashT = d.suppressed ? 0.025 : 0.05;
       this.inspectT = 0;
+      // Bolt action: cycle the bolt after every shot (unless that was the last round)
+      if (d.bolt && w.mag > 0) { this.boltDelay = 0.12; this.boltDur = Math.min(0.9, 60 / d.rpm * 0.72); this.boltT = 0; }
     }
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
@@ -122,6 +124,10 @@
     update(dt, lookDX, lookDY) {
       const game = this.game, p = game.player, w = p.weapon, m = p.mover, Mv = BR.CONFIG.move;
       for (const id in this.models) this.models[id].visible = false;
+      // bolt cycle timer (runs even while scoped, when the gun is hidden)
+      if (this.boltDelay > 0) { this.boltDelay -= dt; if (this.boltDelay <= 0) this.boltT = this.boltDur; }
+      else if (this.boltT > 0) this.boltT = Math.max(0, this.boltT - dt);
+      if (!w || !w.def.bolt) { this.boltT = 0; this.boltDelay = 0; }
       if (!w || m.dropping || (p.ads && w.def.scope)) { this.hide(); return; }
       this.root.visible = true;
       const holder = this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
@@ -131,7 +137,7 @@
       if (w !== this.lastWeapon) {
         this.lastWeapon = w;
         this.drawDur = this.drawT = def.melee ? 1.05 : 0.55;
-        this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0;
+        this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.boltT = 0; this.boltDelay = 0;
         if (def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
       }
       this.drawT = Math.max(0, this.drawT - dt);
@@ -213,6 +219,25 @@
         ox += dr * (0.05 * wind - 0.2 * arc); oy += 0.03 * wind - 0.05 * arc;
         orz += dr * (0.35 * wind - 1.05 * arc); ory += dr * 0.6 * arc; orx += -0.5 * arc + 0.15 * wind;
       }
+      // Bolt action: right hand leaves the grip, lifts the bolt, rips it back, drives it
+      // home, locks it down and returns. The gun cants toward you while you work it.
+      let rightTarget = null, boltLift = 0, boltBack = 0;
+      if (this.boltT > 0 && ud.bolt && !reloading) {
+        const k = 1 - this.boltT / this.boltDur;
+        const reach = smooth(k / 0.18), ret = smooth((k - 0.8) / 0.2);
+        boltLift = smooth((k - 0.16) / 0.12) * (1 - smooth((k - 0.66) / 0.12));
+        boltBack = smooth((k - 0.3) / 0.16) * (1 - smooth((k - 0.5) / 0.14));
+        const cant = win(k, 0, 0.2, 0.75, 1) * (1 - A * 0.6);
+        orz += 0.32 * cant; ory += 0.12 * cant; oy += 0.015 * cant; orx += 0.06 * cant + boltBack * 0.04;
+        oz += boltBack * 0.015;
+        rightTarget = { w: reach * (1 - ret) };
+        const passed = x => this.lastBoltK < x && k >= x;
+        if (passed(0.32)) { BR.Audio.click(); }
+        if (passed(0.5)) { BR.Audio.reload(); this.pos.z.vel += 0.25; }
+        this.lastBoltK = k;
+      } else this.lastBoltK = 0;
+      if (ud.bolt) { ud.bolt.rotation.z = boltLift * 1.05; ud.bolt.position.z = ud.boltZ0 + boltBack * 0.075; }
+
       // Reloads
       const port = ud.port, fore = ud.fore;
       if (reloading && !def.melee) {
@@ -270,7 +295,7 @@
       g.scale.setScalar(s);
 
       // Karambit ring twirl
-      if (holder.userData.spin) holder.userData.spin.obj.quaternion.setFromAxisAngle(holder.userData.spin.axis, -spinAng);
+      if (holder.userData.spin) { holder.userData.spin.obj.quaternion.setFromAxisAngle(holder.userData.spin.axis, -spinAng); holder.userData.spin.ang = spinAng; }
       // Mag + muzzle flash
       if (ud.mag) { ud.mag.position.copy(magOff || this._v.set(0, 0, 0)); ud.mag.visible = magVis; }
       ud.flash.visible = this.flashT > 0 && A < 0.5;
@@ -286,12 +311,12 @@
         ch.rotation.x = U.clamp(this.charmA * 0.4, -0.8, 0.8);
       }
 
-      this.placeArms(holder, model, ud, leftTarget, leftHidden);
+      this.placeArms(holder, model, ud, leftTarget, leftHidden, rightTarget);
     }
 
     // Hands follow anchors on the weapon; sleeves run from the wrist to an elbow
     // point just off-screen, so it reads as two arms holding the gun.
-    placeArms(holder, model, ud, leftTarget, leftHidden) {
+    placeArms(holder, model, ud, leftTarget, leftHidden, rightTarget) {
       this.root.updateMatrixWorld(true);
       const A = this.adsW, s = this.scale;
       const R = this.arms.R, L = this.arms.L;
@@ -300,13 +325,46 @@
       let gp = model.localToWorld(this._v.copy(ud.grip));
       const spin = holder.userData.spin;
       if (spin) {
-        // Karambit: the index finger stays in the ring while the knife twirls around it
-        gp = spin.obj.getWorldPosition(this._v).add(this._v2.set(0.01, -0.035, 0.02));
-        wq = holder.getWorldQuaternion(this._q).multiply(this._qKn || (this._qKn = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.4, 0.3, -0.6))));
+        // Karambit. At rest the fist wraps the curved handle (index finger toward the
+        // ring); while it twirls, the hand opens to the ring and the index finger stays in it.
+        const ringPos = spin.obj.getWorldPosition(this._kv1 || (this._kv1 = new THREE.Vector3())).add(this._v2.set(0.01, -0.035, 0.02));
+        const ringQ = holder.getWorldQuaternion(this._kq1 || (this._kq1 = new THREE.Quaternion()))
+          .multiply(this._qKn || (this._qKn = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.4, 0.3, -0.6))))
+          .multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
+        // handle centre line in model space: guard (0,0,0) -> ring end (0,0.055,0.1)
+        const a = model.localToWorld(this._kv2 || (this._kv2 = new THREE.Vector3())).set(0, 0, 0); model.localToWorld(a.set(0, 0.004, 0.004));
+        const b = model.localToWorld((this._kv3 || (this._kv3 = new THREE.Vector3())).set(0, 0.055, 0.1));
+        const X = (this._kx || (this._kx = new THREE.Vector3())).subVectors(b, a).normalize();
+        // wrist (+Z of the hand) points back down toward the elbow, so the forearm stays low
+        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.35, -0.8, 0.45).normalize();
+        Z.addScaledVector(X, -Z.dot(X)).normalize();
+        const Y = (this._ky || (this._ky = new THREE.Vector3())).crossVectors(Z, X);
+        const gripQ = (this._kq2 || (this._kq2 = new THREE.Quaternion())).setFromRotationMatrix((this._km || (this._km = new THREE.Matrix4())).makeBasis(X, Y, Z));
+        // fist centre (where the handle sits, under the curled fingers) in hand space
+        const fist = this._v2.set(0, -0.026, -0.05).multiplyScalar(1.3).applyQuaternion(gripQ);
+        const gripPos = a.lerp(b, 0.5).sub(fist);
+        const sa = spin.ang || 0, w = Math.pow(U.clamp((Math.cos(sa) - 0.2) / 0.8, 0, 1), 2) * (sa > 0.05 ? 1 : 1);
+        R.hand.position.copy(ringPos).lerp(gripPos, w);
+        R.hand.quaternion.copy(ringQ).slerp(gripQ, w);
+      } else {
+        R.hand.position.copy(gp);
+        R.hand.quaternion.copy(wq).multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
+        R.hand.translateX(0.0); R.hand.translateY(0.026); R.hand.translateZ(0.012);
+        if (rightTarget && rightTarget.w > 0 && ud.bolt) {
+          // pinch the bolt knob: hand sits just behind/right of it, fingers forward
+          const kp = ud.bolt.localToWorld((this._kb2 || (this._kb2 = new THREE.Vector3())).copy(ud.boltKnob));
+          // fingers reach in from the right toward the knob, wrist back toward the elbow
+          const Zc = (this._bz || (this._bz = new THREE.Vector3())).set(0.75, -0.45, 0.5).normalize();
+          const Yb = (this._by || (this._by = new THREE.Vector3())).set(0.1, 1, 0.15);
+          Yb.addScaledVector(Zc, -Yb.dot(Zc)).normalize();
+          const Xb = (this._bx || (this._bx = new THREE.Vector3())).crossVectors(Yb, Zc);
+          const bq = (this._kq3 || (this._kq3 = new THREE.Quaternion())).setFromRotationMatrix((this._bm || (this._bm = new THREE.Matrix4())).makeBasis(Xb, Yb, Zc));
+          const off = this._v2.set(0, -0.018, -0.062).multiplyScalar(1.3 * this.scale).applyQuaternion(bq);
+          kp.sub(off);
+          R.hand.position.lerp(kp, rightTarget.w);
+          R.hand.quaternion.slerp(bq, rightTarget.w);
+        }
       }
-      R.hand.position.copy(gp);
-      R.hand.quaternion.copy(wq).multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
-      R.hand.translateX(0.0); R.hand.translateY(0.026); R.hand.translateZ(0.012);
       R.hand.visible = true;
       const elbowR = this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
       this.limb(R.fore, R.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), elbowR);

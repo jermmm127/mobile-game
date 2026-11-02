@@ -33,6 +33,9 @@ BR.World = class World {
     this.trees = [];       // {x,z,h,s}
     this.occupied = [];    // rects used during generation to avoid overlaps
     this.decor = [];       // visual-only boxes (trims, frames): rendered, never collided
+    this.buildings = [];   // {x0,x1,z0,z1,H,floors,walls:[{si,cols,door}]} for dressing
+    this.containers = [];  // {x0,x1,z0,z1,y0,y1,along}
+    this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
     this.generate();
@@ -46,6 +49,7 @@ BR.World = class World {
     if (x1 - x0 < 1e-3 || y1 - y0 < 1e-3 || z1 - z0 < 1e-3) return null;
     const b = { x0, y0, z0, x1, y1, z1, color, stamp: 0, tag: opt && opt.tag };
     if (opt && opt.decor) { this.decor.push(b); return b; }
+    if (opt && opt.hidden) b.hidden = true;      // collision only (drawn by an instanced prop)
     this.boxes.push(b);
     const c = this.cellRange(x0, z0, x1, z1);
     for (let cz = c[1]; cz <= c[3]; cz++)
@@ -155,6 +159,14 @@ BR.World = class World {
     return true;
   }
   claim(x0, z0, x1, z1) { this.occupied.push([x0, z0, x1, z1]); }
+  // No solid box and no loot/chest spot in this footprint (for props inside built-up areas)
+  clear(x0, z0, x1, z1, pad) {
+    pad = pad || 0;
+    if (x0 < -this.half + 6 || z0 < -this.half + 6 || x1 > this.half - 6 || z1 > this.half - 6) return false;
+    if (this.query(x0 - pad, 0.02, z0 - pad, x1 + pad, 40, z1 + pad, this._clr || (this._clr = [])).length) return false;
+    const near = q => q.x > x0 - pad - 1.2 && q.x < x1 + pad + 1.2 && q.z > z0 - pad - 1.2 && q.z < z1 + pad + 1.2 && q.y < 0.5;
+    return !this.lootSpots.some(near) && !this.chestSpots.some(near);
+  }
 
   generate() {
     const R = this.rand, U = BR.util, H = this.half;
@@ -199,6 +211,9 @@ BR.World = class World {
     for (let i = 0; i < 6; i++) this.placeRandom(18, 18, (x, z) => this.pillarMaze(x, z));
     for (let i = 0; i < 60; i++) this.placeRandom(4, 4, (x, z) => this.jumpPad(x, z));
 
+    // Ponds (before the scatter so they find room; visual water, walkable)
+    for (let i = 0; i < 10; i++) this.placeRandom(22, 22, (x, z) => this.props.ponds.push({ x, z, r: 5 + R() * 4 }));
+
     // Scatter
     for (let i = 0; i < 70; i++) this.placeRandom(8, 8, (x, z) => this.container(x, z));
     for (let i = 0; i < 140; i++) this.placeRandom(5, 5, (x, z) => this.crateStack(x, z));
@@ -207,11 +222,293 @@ BR.World = class World {
     for (let i = 0; i < 520; i++) this.placeRandom(2, 2, (x, z) => this.tree(x, z));
     for (let i = 0; i < 50; i++) this.placeRandom(12, 3, (x, z) => this.fence(x, z));
 
+    // Visual dressing (own RNG so it never changes the gameplay layout)
+    this.dress();
+
     // Open-field loot so nobody is empty-handed for long
     for (let i = 0; i < 220; i++) {
       const x = U.rand(R, -H + 10, H - 10), z = U.rand(R, -H + 10, H - 10);
       if (this.free(x - 0.5, z - 0.5, x + 0.5, z + 0.5, 0.5)) this.lootSpots.push({ x, y: 0, z, tier: 0 });
     }
+  }
+
+  // ---------------------------------------------------------------- dressing
+  // Visual detail layered on top of the gameplay layout: window + door frames,
+  // shutters, awnings, signs, rooftop AC units, pipes, sidewalks, parked cars,
+  // power lines, street furniture, container ribs, barrels, pallets, logs,
+  // stumps, mossy rocks, ponds. Mostly decor boxes (merged into the one world
+  // mesh, so they cost almost nothing); a few small solid props for cover.
+  dress() {
+    const R = BR.util.rng(this.seed + 911), U = BR.util;
+    const D = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    const F = (x0, y0, z0, x1, y1, z1, c) => { const b = D(x0, y0, z0, x1, y1, z1, c); if (b) b.fine = true; return b; };   // skipped on Low graphics
+    const pick = a => a[Math.floor(R() * a.length)];
+    const SHUT = [0x4f6b52, 0x3f5f7a, 0x8a4a3c, 0x6b5a8a, 0x2f4f4f];
+    const AWN = [[0xc8463c, 0xf0e6d6], [0x2f6fa8, 0xf0e6d6], [0x3f8a5a, 0xf0e6d6], [0xd99a2b, 0x3a3a3a]];
+    const SIGN = [0xd94f3c, 0x2f7fc8, 0xf2b234, 0x3caa6a, 0x8a4ad9];
+    const FRAME = 0xeee6d6, GLASS = 0x34465a, METAL = 0x6c737c, DARK = 0x2a2d33;
+
+    for (const B of this.buildings) {
+      const { x0, x1, z0, z1, H, fh } = B;
+      // wall element helper: a = along-wall range, y range, out = [inner, outer] offset from the face
+      for (const W of B.walls) {
+        const n = W.si === 0 || W.si === 2 ? -1 : 1;
+        const face = W.si === 0 ? z0 : W.si === 1 ? z1 : W.si === 2 ? x0 : x1;
+        const E = (a0, a1, y0, y1, o0, o1, c, fine) => {
+          const c0 = face + n * o0, c1 = face + n * o1, f = fine ? F : D;
+          if (W.axis === 'x') f(a0, y0, c0, a1, y1, c1, c); else f(c0, y0, a0, c1, y1, a1, c);
+        };
+        const shut = pick(SHUT), boxes = R() < 0.35;
+        W.cols.forEach((col, ci) => {
+          for (const [g0, g1] of col.gaps) {
+            const a = col.a, b = col.b, door = g0 < 0.05;
+            E(a - 0.1, a, g0, g1 + 0.1, -0.02, 0.09, FRAME);            // jambs
+            E(b, b + 0.1, g0, g1 + 0.1, -0.02, 0.09, FRAME);
+            E(a - 0.14, b + 0.14, g1, g1 + 0.14, -0.02, 0.12, FRAME);   // lintel
+            if (door) {
+              E(a - 0.3, b + 0.3, 0, 0.12, 0, 0.7, 0xb5ada0);            // door step
+              // striped awning over the door
+              const [c1, c2] = pick(AWN), wa = b - a + 0.8, k = 5;
+              for (let i = 0; i < k; i++) E(a - 0.4 + wa * i / k, a - 0.4 + wa * (i + 1) / k, g1 + 0.3, g1 + 0.38, 0.05, 0.95, i % 2 ? c2 : c1);
+              E(a - 0.4, b + 0.4, g1 + 0.18, g1 + 0.3, 0.9, 0.95, c1);  // valance
+              if (R() < 0.6) {                                          // shop sign above
+                const sc = pick(SIGN);
+                E(a - 0.6, b + 0.6, g1 + 0.6, g1 + 1.15, 0.0, 0.08, DARK);
+                E(a - 0.5, b + 0.5, g1 + 0.67, g1 + 1.08, 0.08, 0.1, sc);
+              }
+            } else {
+              E(a - 0.18, b + 0.18, g0 - 0.12, g0, -0.02, 0.2, FRAME);   // sill
+              E(a + (b - a) / 2 - 0.03, a + (b - a) / 2 + 0.03, g0, g1, -0.02, 0.04, FRAME);   // mullion
+              if (boxes && R() < 0.7) {                                  // flower box
+                E(a - 0.05, b + 0.05, g0 - 0.38, g0 - 0.12, 0.05, 0.32, 0x7a5236);
+                for (let i = 0; i < 4; i++) { const fx = a + (b - a) * (i + 0.5) / 4; E(fx - 0.09, fx + 0.09, g0 - 0.12, g0 + 0.06, 0.1, 0.27, pick([0xe0546a, 0xf2d24a, 0xf4f4f4, 0x9a6ad9, 0x5aa04a]), true); }
+              }
+              if (R() < 0.55) {                                          // shutters
+                E(a - 0.72, a - 0.12, g0 - 0.05, g1 + 0.05, 0.02, 0.07, shut);
+                E(b + 0.12, b + 0.72, g0 - 0.05, g1 + 0.05, 0.02, 0.07, shut);
+                for (const yy of [g0 + 0.3, g0 + 0.65, g0 + 1.0]) {      // louvre lines
+                  E(a - 0.68, a - 0.16, yy, yy + 0.04, 0.07, 0.085, 0x1a1a1a, true);
+                  E(b + 0.16, b + 0.68, yy, yy + 0.04, 0.07, 0.085, 0x1a1a1a, true);
+                }
+              }
+            }
+          }
+        });
+        // drain pipe on one end of each wall
+        const len = W.axis === 'x' ? [x0, x1] : [z0, z1], pa = R() < 0.5 ? len[0] + 0.35 : len[1] - 0.5;
+        E(pa, pa + 0.14, 0, H + 0.3, 0.02, 0.16, METAL);
+        E(pa - 0.05, pa + 0.19, H + 0.15, H + 0.32, 0.02, 0.24, METAL);
+      }
+      // rooftop: AC units (solid, low cover), vent stacks, satellite dish, antenna
+      const ry = H + 0.3, nAC = 1 + Math.floor(R() * 2);
+      for (let i = 0; i < nAC; i++) {
+        const ax = i === 0 ? x0 + 1.4 : x1 - 1.4, az = i === 0 ? z1 - 1.4 : z0 + 1.4;
+        this.addBox(ax - 0.55, ry, az - 0.45, ax + 0.55, ry + 0.75, az + 0.45, 0xbfc3c4);
+        D(ax - 0.35, ry + 0.75, az - 0.35, ax + 0.35, ry + 0.79, az + 0.35, DARK);      // fan grille
+        D(ax - 0.57, ry + 0.1, az - 0.47, ax + 0.57, ry + 0.16, az + 0.47, 0x9a9e9f);   // panel line
+        D(ax - 0.57, ry + 0.4, az - 0.47, ax + 0.57, ry + 0.46, az + 0.47, 0x9a9e9f);
+      }
+      for (let i = 0; i < 2; i++) {
+        const vx = U.lerp(x0 + 1, x1 - 1, R()), vz = U.lerp(z0 + 1, z1 - 1, R());
+        if (Math.abs(vx - B.cx) < 2.5 && Math.abs(vz - B.cz) < 2.5) continue;
+        D(vx - 0.1, ry, vz - 0.1, vx + 0.1, ry + 0.9, vz + 0.1, METAL);
+        D(vx - 0.16, ry + 0.9, vz - 0.16, vx + 0.16, ry + 0.98, vz + 0.16, DARK);
+      }
+      if (R() < 0.5) {   // antenna
+        const ax = x0 + 0.8, az = z0 + 0.8;
+        D(ax - 0.04, ry, az - 0.04, ax + 0.04, ry + 2.6, az + 0.04, METAL);
+        for (const yy of [1.6, 2.0, 2.4]) D(ax - 0.5, ry + yy, az - 0.02, ax + 0.5, ry + yy + 0.04, az + 0.02, METAL);
+      }
+      // Interior: rug, table + chairs, shelf, baseboards and a ceiling light on every floor
+      const rw = Math.min(x1 - x0, z1 - z0) * 0.22;
+      D(B.cx - rw, 0.1, B.cz - rw * 0.7, B.cx + rw, 0.13, B.cz + rw * 0.7, pick([0x8a3a3a, 0x3a5a8a, 0x6a7a3a, 0x7a5a8a]));
+      D(B.cx - rw + 0.15, 0.13, B.cz - rw * 0.7 + 0.15, B.cx + rw - 0.15, 0.135, B.cz + rw * 0.7 - 0.15, 0xd8c9a0);
+      const tx = B.cx + (R() < 0.5 ? -1 : 1) * 2.4, tz = B.cz + (R() - 0.5) * 2;
+      if (this.clear(tx - 0.9, tz - 0.6, tx + 0.9, tz + 0.6, 0.1)) {
+        this.addBox(tx - 0.75, 0.1, tz - 0.45, tx + 0.75, 0.85, tz + 0.45, 0x7a5a3c);           // table (cover you can vault)
+        D(tx - 0.8, 0.85, tz - 0.5, tx + 0.8, 0.9, tz + 0.5, 0x8f6a46);
+        for (const sx of [-1, 1]) {                                                          // chairs
+          D(tx + sx * 1.05 - 0.22, 0.1, tz - 0.22, tx + sx * 1.05 + 0.22, 0.55, tz + 0.22, 0x5a4230);
+          D(tx + sx * 1.27 - 0.04, 0.55, tz - 0.22, tx + sx * 1.27 + 0.04, 1.1, tz + 0.22, 0x5a4230);
+        }
+      }
+      const t = 0.3;
+      for (let f = 0; f < B.floors; f++) {
+        const fy = f === 0 ? 0.1 : f * fh;
+        D(x0 + t, fy, z0 + t, x1 - t, fy + 0.12, z0 + t + 0.04, 0x4a4038);                  // baseboards
+        D(x0 + t, fy, z1 - t - 0.04, x1 - t, fy + 0.12, z1 - t, 0x4a4038);
+        D(x1 - t - 0.04, fy, z0 + t, x1 - t, fy + 0.12, z1 - t, 0x4a4038);
+        const cy = (f + 1) * fh - (f + 1 < B.floors ? 0.25 : 0);                              // ceiling light
+        D(B.cx - 0.4, cy - 0.08, B.cz - 0.4, B.cx + 0.4, cy, B.cz + 0.4, 0x3a3a3a);
+        D(B.cx - 0.32, cy - 0.1, B.cz - 0.32, B.cx + 0.32, cy - 0.08, B.cz + 0.32, 0xfff0c0);
+      }
+      // shelf against the east wall
+      const shz = B.cz + (R() < 0.5 ? -1.6 : 1.6), shx = x1 - t - 0.3;
+      if (this.clear(shx - 0.3, shz - 0.8, shx + 0.3, shz + 0.8, 0)) {
+        this.addBox(shx - 0.25, 0.1, shz - 0.75, shx + 0.25, 1.9, shz + 0.75, 0x6a4e34);
+        for (const yy of [0.6, 1.1, 1.6]) for (let i = 0; i < 3; i++) if (R() < 0.7)
+          F(shx - 0.3, yy, shz - 0.6 + i * 0.45, shx - 0.25, yy + 0.3, shz - 0.6 + i * 0.45 + 0.3, pick([0xc8463c, 0x3f78b5, 0xd9a441, 0x4f9a6a, 0xe8e4dc]));
+      }
+      // sidewalk all round
+      D(x0 - 1.4, 0, z0 - 1.4, x1 + 1.4, 0.06, z1 + 1.4, 0xb4ada0);
+      D(x0 - 1.5, 0, z0 - 1.5, x1 + 1.5, 0.1, z0 - 1.35, 0x9c958a);
+      D(x0 - 1.5, 0, z1 + 1.35, x1 + 1.5, 0.1, z1 + 1.5, 0x9c958a);
+      D(x0 - 1.5, 0, z0 - 1.5, x0 - 1.35, 0.1, z1 + 1.5, 0x9c958a);
+      D(x1 + 1.35, 0, z0 - 1.5, x1 + 1.5, 0.1, z1 + 1.5, 0x9c958a);
+      // street furniture beside the building
+      if (R() < 0.6) this.bench(R() < 0.5 ? x0 - 1.0 : x1 + 1.0, U.lerp(z0 + 1.5, z1 - 1.5, R()), 'z');
+      if (R() < 0.6) this.bin(U.lerp(x0 + 1, x1 - 1, R()), R() < 0.5 ? z0 - 0.9 : z1 + 0.9);
+      if (R() < 0.3) this.hydrant(x1 + 1.0, z1 + 1.0);
+    }
+
+    // Towns: parked cars on the outskirts + power lines on poles round the block
+    for (const T of this.pois.filter(p => p.type === 'town')) {
+      for (let i = 0; i < 4; i++) {
+        const side = Math.floor(R() * 4), off = 34 + R() * 8, along = (R() * 2 - 1) * 20;
+        const x = T.x + (side === 0 ? -off : side === 1 ? off : along), z = T.z + (side === 2 ? -off : side === 3 ? off : along);
+        this.car(x, z, side < 2 ? 'z' : 'x', pick([0xb8433f, 0x3f78b5, 0xe8e4dc, 0x2f3338, 0xd9a441, 0x4f9a6a]));
+      }
+      const P = 30, poles = [[-P, -P], [P, -P], [P, P], [-P, P]].map(([dx, dz]) => [T.x + dx, T.z + dz]);
+      const ok = poles.every(([x, z]) => this.clear(x - 0.3, z - 0.3, x + 0.3, z + 0.3, 0.3));
+      if (ok) {
+        for (const [x, z] of poles) {
+          this.addBox(x - 0.14, 0, z - 0.14, x + 0.14, 7.2, z + 0.14, 0x6b4a2f);
+          D(x - 0.9, 6.6, z - 0.08, x + 0.9, 6.75, z + 0.08, 0x6b4a2f); D(x - 0.08, 6.6, z - 0.9, x + 0.08, 6.75, z + 0.9, 0x6b4a2f);
+          for (const [ix, iz] of [[-0.75, 0], [0.75, 0], [0, -0.75], [0, 0.75]]) D(x + ix - 0.05, 6.75, z + iz - 0.05, x + ix + 0.05, 6.9, z + iz + 0.05, 0xe0e8e8);
+        }
+        for (let i = 0; i < 4; i++) {
+          const [ax, az] = poles[i], [bx, bz] = poles[(i + 1) % 4];
+          for (const o of [-0.75, 0.75]) {
+            if (Math.abs(az - bz) < 0.1) D(Math.min(ax, bx), 6.86, az + o - 0.02, Math.max(ax, bx), 6.89, az + o + 0.02, 0x1e1f22);
+            else D(ax + o - 0.02, 6.86, Math.min(az, bz), ax + o + 0.02, 6.89, Math.max(az, bz), 0x1e1f22);
+          }
+        }
+      }
+    }
+
+    // Containers: corrugation ribs, door bars, top rails
+    for (const C of this.containers) {
+      const along = C.x1 - C.x0 > C.z1 - C.z0, L = along ? C.x1 - C.x0 : C.z1 - C.z0;
+      const dark = new THREE.Color(C.color).multiplyScalar(0.72).getHex();
+      const ribs = Math.floor(L / 0.7);
+      for (let i = 1; i < ribs; i++) {
+        const a = (along ? C.x0 : C.z0) + i * L / ribs;
+        if (along) { F(a - 0.06, C.y0 + 0.1, C.z0 - 0.05, a + 0.06, C.y1 - 0.1, C.z0, dark); F(a - 0.06, C.y0 + 0.1, C.z1, a + 0.06, C.y1 - 0.1, C.z1 + 0.05, dark); }
+        else { F(C.x0 - 0.05, C.y0 + 0.1, a - 0.06, C.x0, C.y1 - 0.1, a + 0.06, dark); F(C.x1, C.y0 + 0.1, a - 0.06, C.x1 + 0.05, C.y1 - 0.1, a + 0.06, dark); }
+      }
+      // doors on one end: two vertical lock bars + hinge line
+      const e = along ? C.x1 : C.z1, w0 = along ? C.z0 : C.x0, w1 = along ? C.z1 : C.x1, mid = (w0 + w1) / 2;
+      for (const q of [mid - 0.45, mid - 0.15, mid + 0.15, mid + 0.45]) {
+        if (along) D(e, C.y0 + 0.15, q - 0.03, e + 0.06, C.y1 - 0.15, q + 0.03, 0x8a8f94);
+        else D(q - 0.03, C.y0 + 0.15, e, q + 0.03, C.y1 - 0.15, e + 0.06, 0x8a8f94);
+      }
+      if (along) D(e, C.y0 + 0.1, mid - 0.01, e + 0.03, C.y1 - 0.1, mid + 0.01, DARK); else D(mid - 0.01, C.y0 + 0.1, e, mid + 0.01, C.y1 - 0.1, e + 0.03, DARK);
+    }
+
+    // Container yards: barrels + pallets + a forklift
+    for (const Y of this.pois.filter(p => p.type === 'yard')) {
+      for (let i = 0; i < 5; i++) this.barrelCluster(Y.x + (R() * 2 - 1) * 24, Y.z + (R() * 2 - 1) * 24, R);
+      for (let i = 0; i < 4; i++) this.pallet(Y.x + (R() * 2 - 1) * 22, Y.z + (R() * 2 - 1) * 22, R);
+      this.forklift(Y.x + 7, Y.z + 3);
+    }
+
+    // Rocks: moss caps + loose boulders at the base
+    for (const b of this.boxes) {
+      if (b.color !== PAL.rock && b.color !== PAL.cliff) continue;
+      if (b.tag === 'edge' || b.x1 - b.x0 > 40 || b.z1 - b.z0 > 40) continue;
+      if (R() < 0.55) D(b.x0 + 0.1, b.y1, b.z0 + 0.1, b.x1 - 0.1, b.y1 + 0.05, b.z1 - 0.1, R() < 0.5 ? 0x5f7f45 : 0x6d8a4c);
+      const nb = 1 + Math.floor(R() * 3);
+      for (let i = 0; i < nb; i++) {
+        const side = Math.floor(R() * 4), sz = 0.25 + R() * 0.55;
+        const x = side < 2 ? U.lerp(b.x0, b.x1, R()) : side === 2 ? b.x0 - sz * 0.6 : b.x1 + sz * 0.6;
+        const z = side >= 2 ? U.lerp(b.z0, b.z1, R()) : side === 0 ? b.z0 - sz * 0.6 : b.z1 + sz * 0.6;
+        this.props.boulders.push({ x, z, s: sz });
+      }
+    }
+
+    // Open country: fallen logs, stumps, barrels, ponds
+    for (let i = 0; i < 70; i++) this.placeRandom(6, 6, (x, z) => this.log(x, z, R));
+    for (let i = 0; i < 90; i++) { const x = (R() * 2 - 1) * (this.half - 10), z = (R() * 2 - 1) * (this.half - 10); if (this.free(x - 0.5, z - 0.5, x + 0.5, z + 0.5, 0.3)) this.props.stumps.push({ x, z, s: 0.25 + R() * 0.2, h: 0.3 + R() * 0.4 }); }
+    for (let i = 0; i < 30; i++) this.placeRandom(4, 4, (x, z) => this.barrelCluster(x, z, R));
+  }
+
+  bench(x, z, axis) {
+    const L = 1.8, a = axis === 'z';
+    if (!(a ? this.clear(x - 0.3, z - 1, x + 0.3, z + 1) : this.clear(x - 1, z - 0.3, x + 1, z + 0.3))) return;
+    const B = (dx0, y0, dz0, dx1, y1, dz1, c, solid) => a ? this.addBox(x + dx0, y0, z + dz0, x + dx1, y1, z + dz1, c, solid ? null : { decor: true }) : this.addBox(x + dz0, y0, z + dx0, x + dz1, y1, z + dx1, c, solid ? null : { decor: true });
+    B(-0.25, 0, -L / 2, 0.25, 0.45, L / 2, 0x7a5236, true);
+    B(-0.27, 0.45, -L / 2 - 0.05, 0.27, 0.5, L / 2 + 0.05, 0x8a6240);
+    B(0.2, 0.5, -L / 2, 0.27, 0.95, L / 2, 0x8a6240);
+    for (const s of [-L / 2 + 0.1, L / 2 - 0.2]) B(-0.27, 0, s, 0.27, 0.48, s + 0.1, 0x2a2d33);
+  }
+  bin(x, z) {
+    if (!this.clear(x - 0.35, z - 0.35, x + 0.35, z + 0.35)) return;
+    this.addBox(x - 0.28, 0, z - 0.28, x + 0.28, 0.9, z + 0.28, 0x3f6b4a);
+    this.addBox(x - 0.32, 0.9, z - 0.32, x + 0.32, 0.98, z + 0.32, 0x2f5038, { decor: true });
+  }
+  hydrant(x, z) {
+    if (!this.clear(x - 0.3, z - 0.3, x + 0.3, z + 0.3)) return;
+    this.addBox(x - 0.14, 0, z - 0.14, x + 0.14, 0.7, z + 0.14, 0xc8362c);
+    this.addBox(x - 0.24, 0.42, z - 0.07, x + 0.24, 0.54, z + 0.07, 0xc8362c, { decor: true });
+    this.addBox(x - 0.1, 0.7, z - 0.1, x + 0.1, 0.8, z + 0.1, 0xd9d9d9, { decor: true });
+  }
+  car(x, z, axis, color) {
+    const L = 4.2, W = 1.9;
+    const w = axis === 'x' ? L : W, d = axis === 'x' ? W : L;
+    if (!this.clear(x - w / 2, z - d / 2, x + w / 2, z + d / 2, 0.8)) return;
+    this.claim(x - w / 2, z - d / 2, x + w / 2, z + d / 2);
+    const B = (a0, y0, b0, a1, y1, b1, c, solid) => axis === 'x'
+      ? this.addBox(x + a0, y0, z + b0, x + a1, y1, z + b1, c, solid ? null : { decor: true })
+      : this.addBox(x + b0, y0, z + a0, x + b1, y1, z + a1, c, solid ? null : { decor: true });
+    const dark = new THREE.Color(color).multiplyScalar(0.7).getHex();
+    B(-L / 2, 0.32, -W / 2, L / 2, 1.0, W / 2, color, true);                  // body (cover)
+    B(-0.9, 1.0, -W / 2 + 0.12, 1.1, 1.62, W / 2 - 0.12, color, true);        // cabin
+    B(-0.85, 1.08, -W / 2 + 0.1, 1.05, 1.52, W / 2 - 0.1, 0x34465a);           // side windows
+    B(1.1, 1.05, -W / 2 + 0.18, 1.14, 1.55, W / 2 - 0.18, 0x34465a);           // windscreen
+    B(-0.94, 1.05, -W / 2 + 0.18, -0.9, 1.55, W / 2 - 0.18, 0x34465a);         // rear window
+    B(-L / 2 - 0.05, 0.3, -W / 2, L / 2 + 0.05, 0.45, W / 2, 0x2a2d33);         // bumpers / skirt
+    B(L / 2, 0.62, -W / 2 + 0.15, L / 2 + 0.03, 0.8, -W / 2 + 0.45, 0xfff2c0);  // headlights
+    B(L / 2, 0.62, W / 2 - 0.45, L / 2 + 0.03, 0.8, W / 2 - 0.15, 0xfff2c0);
+    B(-L / 2 - 0.03, 0.66, -W / 2 + 0.15, -L / 2, 0.82, -W / 2 + 0.45, 0xd02a2a); // tail lights
+    B(-L / 2 - 0.03, 0.66, W / 2 - 0.45, -L / 2, 0.82, W / 2 - 0.15, 0xd02a2a);
+    B(-L / 2 + 0.2, 0.98, -W / 2 - 0.01, L / 2 - 0.2, 1.0, W / 2 + 0.01, dark);  // belt line
+    for (const a of [-1.3, 1.3]) for (const b of [-W / 2 - 0.02, W / 2 - 0.26]) B(a - 0.36, 0, b, a + 0.36, 0.66, b + 0.28, 0x18191b);  // wheels
+  }
+  barrelCluster(x, z, R) {
+    const n = 1 + Math.floor(R() * 4);
+    for (let i = 0; i < n; i++) {
+      const bx = x + (i % 2) * 0.75 - 0.35, bz = z + Math.floor(i / 2) * 0.75 - 0.35;
+      if (!this.clear(bx - 0.35, bz - 0.35, bx + 0.35, bz + 0.35, 0.1)) continue;
+      this.addBox(bx - 0.32, 0, bz - 0.32, bx + 0.32, 1.0, bz + 0.32, 0, { hidden: true });
+      this.props.barrels.push({ x: bx, z: bz, c: Math.floor(R() * 4), tip: R() < 0.08 });
+    }
+  }
+  pallet(x, z, R) {
+    if (!this.clear(x - 0.7, z - 0.6, x + 0.7, z + 0.6, 0.2)) return;
+    const n = 1 + Math.floor(R() * 4);
+    for (let k = 0; k < n; k++) {
+      const y = k * 0.16;
+      this.addBox(x - 0.6, y, z - 0.5, x + 0.6, y + 0.16, z + 0.5, 0x9a7a52, k === n - 1 ? null : { decor: true });
+      for (const o of [-0.35, 0, 0.35]) this.addBox(x - 0.62, y + 0.05, z + o - 0.06, x + 0.62, y + 0.1, z + o + 0.06, 0x6f5538, { decor: true });
+    }
+    if (R() < 0.5) this.addBox(x - 0.5, n * 0.16, z - 0.4, x + 0.5, n * 0.16 + 0.7, z + 0.4, 0xa77b4f);   // load on top
+  }
+  forklift(x, z) {
+    if (!this.clear(x - 1.2, z - 2.6, x + 1.2, z + 2, 0.3)) return;
+    this.addBox(x - 0.7, 0.25, z - 1.1, x + 0.7, 1.3, z + 0.9, 0xe0a32a);
+    this.addBox(x - 0.7, 1.3, z - 0.8, x + 0.7, 1.36, z + 0.4, 0x2a2d33, { decor: true });
+    for (const sx of [-0.65, 0.6]) this.addBox(x + sx, 1.3, z + 0.3, x + sx + 0.05, 2.3, z + 0.36, 0x2a2d33, { decor: true });
+    for (const sx of [-0.65, 0.6]) this.addBox(x + sx, 1.3, z - 0.8, x + sx + 0.05, 2.3, z - 0.74, 0x2a2d33, { decor: true });
+    this.addBox(x - 0.7, 2.3, z - 0.8, x + 0.7, 2.36, z + 0.36, 0x2a2d33, { decor: true });
+    this.addBox(x - 0.55, 0.1, z - 1.6, x + 0.55, 2.6, z - 1.45, 0x3a3d42);    // mast
+    for (const sx of [-0.4, 0.3]) this.addBox(x + sx, 0.08, z - 2.5, x + sx + 0.12, 0.16, z - 1.45, 0x6c737c, { decor: true }); // forks
+    for (const a of [-0.8, 0.6]) for (const sx of [-0.78, 0.5]) this.addBox(x + sx, 0, z + a - 0.3, x + sx + 0.28, 0.6, z + a + 0.3, 0x18191b, { decor: true });
+  }
+  log(x, z, R) {
+    const L = 3 + R() * 2.5, r = 0.28 + R() * 0.15, alongX = R() < 0.5;
+    if (alongX) this.addBox(x - L / 2, 0, z - r, x + L / 2, r * 2, z + r, 0, { hidden: true });
+    else this.addBox(x - r, 0, z - L / 2, x + r, r * 2, z + L / 2, 0, { hidden: true });
+    this.props.logs.push({ x, z, L, r, alongX });
   }
 
   // Which named place is this point in (or nearest to, within 70 m)?
@@ -235,6 +532,7 @@ BR.World = class World {
         const c = U.pick(PAL.containers, R), y = k * 2.6, inset = k * 0.6;
         if (along) this.addBox(x - 6 + inset, y, z - 1.25, x + 6 - inset, y + 2.6, z + 1.25, c);
         else this.addBox(x - 1.25, y, z - 6 + inset, x + 1.25, y + 2.6, z + 6 - inset, c);
+        this.containers.push(this.boxes[this.boxes.length - 1]);
       }
       this.lootSpots.push({ x: x + (along ? 0 : 2.4), y: 0, z: z + (along ? 2.4 : 0), tier: 1, force: R() < 0.5 ? 'weapon' : undefined });
       if (stack >= 2) this.lootSpots.push({ x, y: stack * 2.6, z, tier: 2 });
@@ -385,6 +683,7 @@ BR.World = class World {
     const doorSides = new Set([Math.floor(R() * 4)]);
     if (R() < 0.6) doorSides.add(Math.floor(R() * 4));
 
+    const walls = [];
     const sides = [
       { axis: 'x', a0: x0, a1: x1, c0: z0, c1: z0 + t, len: w },
       { axis: 'x', a0: x0, a1: x1, c0: z1 - t, c1: z1, len: w },
@@ -407,7 +706,9 @@ BR.World = class World {
         cols.push(col);
       });
       this.wallSeg(s.axis, s.a0, s.a1, s.c0, s.c1, 0, H, cols, color);
+      walls.push({ si, axis: s.axis, cols, door: hasDoor });
     });
+    this.buildings.push({ x0, x1, z0, z1, H, floors, fh, color, walls, cx, cz });
 
     // Upper floors with a stair hole + staircase along the west wall
     const ix0 = x0 + t, ix1 = x1 - t, iz0 = z0 + t, iz1 = z1 - t;
@@ -472,6 +773,7 @@ BR.World = class World {
     const c = U.pick(PAL.containers, R);
     if (along) this.addBox(x - L / 2, 0, z - W / 2, x + L / 2, Hh, z + W / 2, c);
     else this.addBox(x - W / 2, 0, z - L / 2, x + W / 2, Hh, z + L / 2, c);
+    this.containers.push(this.boxes[this.boxes.length - 1]);
     if (R() < 0.3) {
       const c2 = U.pick(PAL.containers, R);
       if (along) this.addBox(x - L / 2 + 0.5, Hh, z - W / 2, x + L / 2 - 0.5, Hh * 2, z + W / 2, c2);
@@ -511,7 +813,7 @@ BR.World = class World {
     const R = this.rand, U = BR.util;
     const h = U.rand(R, 3.5, 6);
     this.addBox(x - 0.3, 0, z - 0.3, x + 0.3, h, z + 0.3, PAL.trunk);
-    this.trees.push({ x, z, h, s: U.rand(R, 1.6, 2.6) });
+    this.trees.push({ x, z, h, s: U.rand(R, 1.6, 2.6), pine: R() < 0.35 });
   }
 
   // Two tall parallel walls: the movement playground. Run along them, jump between.
@@ -634,7 +936,8 @@ BR.World = class World {
   // ---------------------------------------------------------------- render
   buildMeshes(scene, detail) {
     const tex = makeTileTexture();
-    const vis = this.boxes.concat(this.decor);
+    const lowDetail = detail !== undefined && detail < 0.5;
+    const vis = this.boxes.filter(b => !b.hidden).concat(lowDetail ? this.decor.filter(b => !b.fine) : this.decor);
     const count = vis.length;
     const pos = new Float32Array(count * 24 * 3);
     const nor = new Float32Array(count * 24 * 3);
@@ -775,12 +1078,14 @@ BR.World = class World {
     }
     scene.add(cl);
 
-    // Tree canopies: two stacked blobs per tree, two greens
+    // Tree canopies: leafy trees get two stacked blobs (two greens), pines get stacked cones
     const cg = new THREE.IcosahedronGeometry(1, 0);
     const greens = [0x4f7d3c, 0x3f6b33];
+    const leafy = this.trees.filter(t => !t.pine), pines = this.trees.filter(t => t.pine);
     for (let gi = 0; gi < 2; gi++) {
-      const inst = new THREE.InstancedMesh(cg, new THREE.MeshLambertMaterial({ color: greens[gi], flatShading: true }), this.trees.length);
-      this.trees.forEach((t, i) => {
+      const inst = new THREE.InstancedMesh(cg, new THREE.MeshLambertMaterial({ color: greens[gi], flatShading: true }), Math.max(1, leafy.length));
+      inst.count = leafy.length;
+      leafy.forEach((t, i) => {
         const s = gi ? t.s * 0.7 : t.s;
         o.position.set(t.x + (gi ? 0.3 : 0), t.h + t.s * (gi ? 1.2 : 0.4), t.z);
         o.scale.set(s, s * 1.2, s); o.rotation.set(0, i + gi, 0);
@@ -788,6 +1093,69 @@ BR.World = class World {
       });
       scene.add(inst);
     }
+    if (pines.length) {
+      const cone = new THREE.ConeGeometry(1, 1, 7);
+      const pm = new THREE.InstancedMesh(cone, new THREE.MeshLambertMaterial({ color: 0x2f5a35, flatShading: true }), pines.length * 3);
+      let k = 0;
+      pines.forEach((t, i) => {
+        for (let tier = 0; tier < 3; tier++) {
+          const w = t.s * (1.15 - tier * 0.3), hh = t.s * (1.5 - tier * 0.25);
+          o.position.set(t.x, t.h * 0.55 + tier * t.s * 0.8 + hh / 2, t.z); o.scale.set(w, hh, w); o.rotation.set(0, i + tier, 0);
+          o.updateMatrix(); pm.setMatrixAt(k++, o.matrix);
+        }
+      });
+      scene.add(pm);
+    }
+
+    // Props from the dressing pass (instanced: one draw call each)
+    const P = this.props, col = new THREE.Color();
+    const inst = (geo, mat, list, place) => {
+      if (!list.length) return null;
+      const m = new THREE.InstancedMesh(geo, mat, list.length);
+      list.forEach((q, i) => { place(q, i); o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
+      scene.add(m); return m;
+    };
+    // oil drums with lids and rib bands
+    const BC = [0x2f6fa8, 0xb8433f, 0x3f7a4a, 0x8a5a32];
+    const drum = inst(new THREE.CylinderGeometry(0.3, 0.3, 0.95, 12), new THREE.MeshLambertMaterial({ color: 0xffffff }), P.barrels, q => {
+      o.position.set(q.x, q.tip ? 0.3 : 0.475, q.z); o.scale.set(1, 1, 1); o.rotation.set(q.tip ? Math.PI / 2 : 0, q.x * 3, 0);
+    });
+    if (drum) { P.barrels.forEach((q, i) => drum.setColorAt(i, col.setHex(BC[q.c]))); drum.instanceColor.needsUpdate = true; }
+    const ribG = new THREE.CylinderGeometry(0.315, 0.315, 0.05, 12);
+    for (const yy of [0.3, 0.65]) inst(ribG, new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), P.barrels.filter(q => !q.tip), q => {
+      o.position.set(q.x, yy, q.z); o.scale.set(1, 1, 1); o.rotation.set(0, 0, 0);
+    });
+    // logs (bark) + their cut ends, stumps with rings
+    const bark = new THREE.MeshLambertMaterial({ color: 0x5e4129, flatShading: true }), cut = new THREE.MeshLambertMaterial({ color: 0xc9a46c });
+    inst(new THREE.CylinderGeometry(1, 1, 1, 9), bark, P.logs, q => {
+      o.position.set(q.x, q.r, q.z); o.scale.set(q.r, q.L, q.r); o.rotation.set(q.alongX ? 0 : Math.PI / 2, 0, q.alongX ? Math.PI / 2 : 0);
+    });
+    const ends = [];
+    P.logs.forEach(q => { for (const sgn of [-1, 1]) ends.push({ x: q.x + (q.alongX ? sgn * q.L / 2 : 0), z: q.z + (q.alongX ? 0 : sgn * q.L / 2), r: q.r, alongX: q.alongX }); });
+    inst(new THREE.CylinderGeometry(1, 1, 0.04, 9), cut, ends, q => {
+      o.position.set(q.x, q.r, q.z); o.scale.set(q.r * 0.92, 1, q.r * 0.92); o.rotation.set(q.alongX ? 0 : Math.PI / 2, 0, q.alongX ? Math.PI / 2 : 0);
+    });
+    inst(new THREE.CylinderGeometry(0.85, 1, 1, 9), bark, P.stumps, q => { o.position.set(q.x, q.h / 2, q.z); o.scale.set(q.s, q.h, q.s); o.rotation.set(0, q.x, 0); });
+    inst(new THREE.CylinderGeometry(1, 1, 0.02, 9), cut, P.stumps, q => { o.position.set(q.x, q.h + 0.01, q.z); o.scale.set(q.s * 0.85, 1, q.s * 0.85); o.rotation.set(0, q.x, 0); });
+    // loose boulders round the rocks
+    inst(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x8a8c86, flatShading: true }), P.boulders, q => {
+      o.position.set(q.x, q.s * 0.45, q.z); o.scale.set(q.s * 1.2, q.s * 0.8, q.s); o.rotation.set(q.x, q.z, 0);
+    });
+    // ponds: sandy shore, water, lily pads, reeds
+    for (const q of P.ponds) {
+      const shore = new THREE.Mesh(new THREE.CircleGeometry(q.r + 1.4, 28), new THREE.MeshLambertMaterial({ color: 0xa89a6c }));
+      shore.rotation.x = -Math.PI / 2; shore.position.set(q.x, 0.02, q.z); scene.add(shore);
+      const water = new THREE.Mesh(new THREE.CircleGeometry(q.r, 28), new THREE.MeshPhongMaterial({ color: 0x3a7aa6, specular: 0xcfe8ff, shininess: 80, transparent: true, opacity: 0.88 }));
+      water.rotation.x = -Math.PI / 2; water.position.set(q.x, 0.05, q.z); scene.add(water);
+      q.mesh = water;
+    }
+    const pads = [], reeds = [];
+    P.ponds.forEach(q => {
+      for (let i = 0; i < 7; i++) { const a = R() * 6.28, d = R() * q.r * 0.8; pads.push({ x: q.x + Math.cos(a) * d, z: q.z + Math.sin(a) * d, s: 0.3 + R() * 0.35 }); }
+      for (let i = 0; i < 26 * detail + 6; i++) { const a = R() * 6.28, d = q.r + (R() - 0.3) * 1.2; reeds.push({ x: q.x + Math.cos(a) * d, z: q.z + Math.sin(a) * d, h: 0.8 + R() * 0.9 }); }
+    });
+    inst(new THREE.CircleGeometry(1, 9), new THREE.MeshLambertMaterial({ color: 0x4f8a3c, side: THREE.DoubleSide }), pads, q => { o.position.set(q.x, 0.07, q.z); o.scale.set(q.s, q.s, q.s); o.rotation.set(-Math.PI / 2, 0, q.x); });
+    inst(new THREE.ConeGeometry(0.05, 1, 3), new THREE.MeshLambertMaterial({ color: 0x5a7a32 }), reeds, q => { o.position.set(q.x, q.h / 2, q.z); o.scale.set(1, q.h, 1); o.rotation.set((R() - 0.5) * 0.3, 0, (R() - 0.5) * 0.3); });
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
     const nB = Math.floor(700 * detail), nG = Math.floor(5000 * detail);
@@ -809,6 +1177,23 @@ BR.World = class World {
     }
     bush.count = bi; tuft.count = gi;
     scene.add(bush, tuft);
+    // Wildflower patches
+    const nF = Math.floor(2400 * detail), FC = [0xf4f4f4, 0xf2d24a, 0xe0546a, 0x9a6ad9, 0xf28a3c];
+    if (nF > 0) {
+      const fl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), nF);
+      let fi = 0;
+      for (let tries = 0; tries < nF && fi < nF; tries++) {
+        const px = (R() * 2 - 1) * (H - 6), pz = (R() * 2 - 1) * (H - 6);
+        if (!this.free(px - 2, pz - 2, px + 2, pz + 2, 0)) continue;
+        const c = FC[Math.floor(R() * FC.length)], n = 8 + Math.floor(R() * 14);
+        for (let k = 0; k < n && fi < nF; k++) {
+          o.position.set(px + (R() - 0.5) * 3.5, 0.18 + R() * 0.15, pz + (R() - 0.5) * 3.5); o.scale.setScalar(0.8 + R() * 0.7); o.rotation.set(0, 0, 0);
+          o.updateMatrix(); fl.setMatrixAt(fi, o.matrix); fl.setColorAt(fi, col.setHex(c)); fi++;
+        }
+      }
+      fl.count = fi; if (fl.instanceColor) fl.instanceColor.needsUpdate = true;
+      scene.add(fl);
+    }
   }
 
   // Top-down picture of the map for the minimap.
@@ -837,6 +1222,31 @@ function makeTileTexture(grass) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, s, s);
   const r = BR.util.rng(grass ? 7 : 3);
+  if (grass) {
+    // Natural ground: soft blotches + thousands of short grass strokes, no tile lines
+    cv.width = cv.height = 256;
+    const S2 = 256;
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S2, S2);
+    for (let i = 0; i < 60; i++) {
+      const x = r() * S2, y = r() * S2, rad = 8 + r() * 26, dark = r() < 0.5;
+      for (const [ox, oy] of [[0, 0], [S2, 0], [-S2, 0], [0, S2], [0, -S2]]) {
+        const gr = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
+        gr.addColorStop(0, dark ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,230,0.08)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gr; ctx.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
+      }
+    }
+    ctx.lineWidth = 1.3; ctx.lineCap = 'round';
+    for (let i = 0; i < 3200; i++) {
+      const x = r() * S2, y = r() * S2, l = 3 + r() * 5, a = -Math.PI / 2 + (r() - 0.5) * 1.1, dk = r() < 0.55;
+      ctx.strokeStyle = dk ? `rgba(20,40,10,${0.1 + r() * 0.12})` : `rgba(255,255,210,${0.08 + r() * 0.12})`;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke();
+    }
+    for (let i = 0; i < 400; i++) { ctx.fillStyle = `rgba(90,70,40,${0.1 + r() * 0.1})`; ctx.fillRect(r() * S2, r() * S2, 2, 2); }  // grit
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    return tex;
+  }
   for (let i = 0; i < 900; i++) {
     const a = grass ? 0.08 : 0.05;
     ctx.fillStyle = r() < 0.5 ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`;

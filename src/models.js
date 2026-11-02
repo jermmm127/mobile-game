@@ -160,6 +160,17 @@ BR.Models = (function () {
     g.userData.sight = s; g.userData.sightDist = 0.3;
   }
 
+  // Bolt-action bolt: a group pivoting on the bore axis at (y, z) so it can lift
+  // (rotation.z) and slide back (+z). Handle sticks out to the right with a knob.
+  function boltGroup(g, M, y, z, len) {
+    const b = new THREE.Group(); b.position.set(0, y, z); g.add(b);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, len, 10), M.metal); body.rotation.x = Math.PI / 2; b.add(body);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.055, 8), M.metal); arm.rotation.z = Math.PI / 2; arm.position.set(0.03, 0, 0.02); b.add(arm);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), M.dark); knob.position.set(0.06, -0.004, 0.022); b.add(knob);
+    g.userData.bolt = b; g.userData.boltKnob = knob.position.clone(); g.userData.boltZ0 = z;
+    return b;
+  }
+
   // Group some meshes as the detachable magazine (animated during reloads).
   function magGroup(g, meshes) {
     const grp = new THREE.Group();
@@ -295,12 +306,13 @@ BR.Models = (function () {
       k.box(0.034, 0.04, 0.2, 0, 0.045, 0.04, M.metal);           // receiver
       k.cyl(0.011, 0.5, 0, 0.045, -0.36, M.metal, 'z', 10);       // slim barrel
       k.cyl(0.014, 0.02, 0, 0.045, -0.6, M.dark, 'z', 10);        // crown
-      k.cyl(0.021, 0.18, 0, 0.1, 0.03, M.scopeTube, 'z', 14);     // compact scope
-      k.cyl(0.027, 0.04, 0, 0.1, -0.075, M.scopeTube, 'z', 14);
-      k.cyl(0.024, 0.03, 0, 0.1, 0.13, M.scopeTube, 'z', 14);
-      k.cyl(0.025, 0.003, 0, 0.1, -0.096, M.lensDark, 'z', 14);
-      for (const z of [-0.02, 0.08]) k.box(0.014, 0.03, 0.014, 0, 0.072, z, M.dark);
-      const bolt = k.cyl(0.006, 0.05, 0.035, 0.05, 0.11, M.metal, 'x'); const knob = new THREE.Mesh(new THREE.SphereGeometry(0.01, 8, 6), M.metal); knob.position.set(0.062, 0.05, 0.11); g.add(knob);
+      // Open iron sights: buckhorn rear on the receiver, ramp + bead front at the muzzle
+      k.box(0.012, 0.022, 0.03, 0, 0.065, -0.555, M.metal);       // front ramp
+      k.box(0.022, 0.016, 0.016, 0, 0.07, -0.03, M.metal);        // rear sight base
+      irons(g, M, 0.088, -0.03, -0.555, false);
+      g.userData.sightDist = 0.4;
+      k.box(0.026, 0.01, 0.05, 0, 0.06, 0.13, M.metal);           // bolt shroud
+      boltGroup(g, M, 0.052, 0.1, 0.12);
       k.box(0.006, 0.02, 0.006, 0, -0.04, -0.1, M.metal); k.box(0.006, 0.02, 0.006, 0, -0.085, 0.36, M.metal);  // sling swivels
       magGroup(g, [k.box(0.03, 0.035, 0.06, 0, -0.04, 0.03, M.dark)]);
       hands(g, [0, -0.06, 0.17], [0, -0.035, -0.12], [0.06, 0.05, 0.11]);
@@ -316,7 +328,7 @@ BR.Models = (function () {
       k.cyl(0.036, 0.05, 0, 0.13, 0.11, M.dark, 'z', 14);         // eyepiece
       k.cyl(0.04, 0.003, 0, 0.13, -0.271, M.lensDark, 'z', 14);   // lens
       k.box(0.02, 0.05, 0.02, 0, 0.085, -0.13, M.dark); k.box(0.02, 0.05, 0.02, 0, 0.085, 0.02, M.dark); // rings
-      k.cyl(0.008, 0.06, 0.05, 0.05, 0.08, M.metal, 'x');         // bolt handle
+      boltGroup(g, M, 0.05, 0.1, 0.16);                            // bolt (cycles after every shot)
       magGroup(g, [k.box(0.035, 0.08, 0.06, 0, -0.06, -0.06, M.dark)]); // mag
       hands(g, [0, -0.07, 0.1], [0, 0.0, -0.32], [0.05, 0.05, 0.08]);
       k.box(0.042, 0.12, 0.05, 0, -0.06, 0.1, M.grip, 0.25);      // grip
@@ -583,7 +595,8 @@ BR.Models = (function () {
           for (const z of [-0.08, 0.06, 0.38]) k.box(0.054, 0.012, 0.012, 0, z > 0.3 ? -0.03 : 0.0, z, P.A);   // brass bands
           for (const x of [-0.026, 0.026]) k.box(0.002, 0.03, 0.12, x, -0.03, 0.31, P.A);                    // inlay
           k.box(0.004, 0.006, 0.42, -0.03, -0.06, 0.13, new THREE.MeshLambertMaterial({ color: 0x3a2a1c }));  // leather sling
-          k.cyl(0.023, 0.006, 0, 0.1, 0.12, P.G, 'z', 14);
+          k.box(0.002, 0.006, 0.12, 0.019, 0.04, 0.04, P.G);           // glowing receiver inlay
+          k.box(0.007, 0.007, 0.007, 0, 0.08, -0.555, P.G);            // glowing front bead
         } },
     },
     knife: {

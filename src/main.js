@@ -171,7 +171,7 @@
   // ---- match flow ------------------------------------------------------------
   // Matchmaking queue: one life per match, so every new match goes through here
   let qTimer = null;
-  const TIPS = ['One life. If you go down, you\'re out.', 'Hold jump in the drop to pop your chute early.', 'Slide-jump timing keeps your speed.', 'The Hunting Rifle is deadly without scoping.', 'Grapple anything: walls, rocks, trees.'];
+  const TIPS = ['One life. If you go down, you\'re out.', 'Hold jump in the drop to pop your chute early.', 'Slide-jump timing keeps your speed.', 'The Hunting Rifle is deadly from the hip.', 'Grapple anything: walls, rocks, trees.'];
   const cancelQueue = () => { clearInterval(qTimer); qTimer = null; game.hud.show('queue', false); };
   const play = () => {
     BR.Audio.init(); tryFullscreen();
