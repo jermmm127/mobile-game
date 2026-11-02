@@ -160,7 +160,7 @@ const server = http.createServer((req, res) => {
     r.coinsBefore = BR.Profile.data.coins;
     r.wrongCode = (await A.redeem('NOT-A-CODE')).ok === false;
     r.devOk = (await A.redeem(testCode)).ok && BR.Profile.infinite();
-    r.buyFree = BR.Profile.buy('skins', 'chrome') && BR.Profile.data.coins === r.coinsBefore;
+    r.buyFree = BR.Profile.owns('skins', 'chrome') && BR.Profile.owns('blueprints', 'rifle:vandal') && BR.Profile.data.coins === r.coinsBefore; // redeeming unlocks everything
     const me = A.current();
     A.logOut(); BR.Profile.load();
     r.guestNotDev = !BR.Profile.infinite();
