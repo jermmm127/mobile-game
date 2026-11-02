@@ -114,14 +114,14 @@ BR.Shop = class Shop {
       let sw = '';
       if (cat === 'skins') sw = `<i class="sw" style="background:${it.swatch}"></i>`;
       else if (cat === 'tracers') sw = `<i class="sw tr" style="background:${it.color < 0 ? 'linear-gradient(90deg,#f33,#fd3,#3f6,#3cf,#a3f)' : '#' + it.color.toString(16).padStart(6, '0')}"></i>`;
-      else sw = `<i class="sw ch">${id === 'none' ? '—' : '✦'}</i>`;
-      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}" data-id="${id}">${sw}<span class="cn">${it.name}</span><span class="cp">${eq ? 'EQUIPPED' : own ? 'OWNED' : '◉ ' + it.price}</span></button>`);
+      else sw = `<i class="sw ch">${id === 'none' ? '—' : '◆'}</i>`;
+      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}" data-id="${id}">${sw}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : '<i class="coin"></i>' + it.price}</span></button>`);
     }
     this.el.grid.innerHTML = html.join('');
     const it = items[this.sel];
     this.el.name.textContent = it ? it.name : '';
     const own = it && P.owns(cat, this.sel), eq = it && P.data.equip[cat] === this.sel;
-    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : 'Buy ◉ ' + it.price;
+    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : 'Buy · ' + it.price;
     this.el.action.disabled = !it || eq;
     this.el.action.classList.toggle('poor', !!it && !own && P.data.coins < it.price);
     // What the preview shows: equipped look, with the selected item swapped in

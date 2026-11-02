@@ -27,7 +27,7 @@ This doc explains how the prototype is built, where to tune it, and where new fe
 | **Fullscreen** | Button in the menu and in-game. On iPhone Safari it explains *Share → Add to Home Screen*, which launches fullscreen. |
 | **Movement tech** | Deliberate "bugs" with a skill ceiling. See section 5b. |
 | **Desktop controls** | WASD, mouse look, Space jump, Shift/C crouch-slide, G or middle-click grapple, R, 1/2/3/Q, V inspect, E, Esc. |
-| **Look** | Old-school arena-shooter UI: beveled gunmetal panels, pixel + terminal fonts (Silkscreen, VT323), amber highlights, segmented health/shield bars. |
+| **Look** | Clean modern UI: dark frosted-glass panels, hairline borders, soft radii, Saira condensed type, one amber accent, slim health/shield bars, round translucent touch buttons. |
 | **Settings** | Bot skill, bot count (0–29), look speed, **FOV (60–110)**, graphics, volume, aim assist, auto-fire, FPS counter. Saved per device. |
 ---
 

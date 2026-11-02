@@ -465,7 +465,7 @@ BR.Game = class Game {
     this.hud.killfeed(killer ? `${nm(killer)} <i>${esc(how)}</i> ${nm(victim)}` : `${nm(victim)} <i>${esc(how)}</i>`);
     if (killer && killer === this.player) {
       BR.Audio.kill();
-      this.hud.toast(`Eliminated ${victim.name}  +${BR.CONFIG.coins.perKill} ◉`, 1400);
+      this.hud.toast(`Eliminated ${victim.name}  ·  +${BR.CONFIG.coins.perKill} coins`, 1400);
     }
     if (victim === this.player) {
       this.deathPos = victim.pos.clone();

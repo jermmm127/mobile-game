@@ -105,23 +105,22 @@ BR.HUD = class HUD {
 
 <div id="menu" class="overlay menu">
   <div class="film"><i class="lb top"></i><i class="lb bot"></i><i class="scan"></i><i class="grain"></i><i class="cutflash"></i></div>
-  <div class="menu-coins metal"><span class="coin">◉</span> <span id="menu-coins" class="num">0</span></div>
+  <div class="menu-coins glass"><i class="coin"></i><span id="menu-coins" class="num">0</span></div>
   <div class="menu-main">
     <div class="logo">
-      <div class="logo-small">PROTOTYPE V${V} · OFFLINE · VS BOTS</div>
-      <h1 class="chrome" data-text="VELOCITY">VELOCITY</h1>
-      <h1 class="chrome two" data-text="ROYALE">ROYALE</h1>
-      <div class="tagline">SLIDE · WALL-RUN · GRAPPLE · LAST ONE STANDING</div>
+      <div class="logo-small">Prototype v${V} · Offline vs bots</div>
+      <h1 class="logo-title"><span>Velocity</span><span class="accent">Royale</span></h1>
+      <div class="tagline">Slide. Wall-run. Grapple. Be the last one standing.</div>
     </div>
     <nav class="menu-nav">
-      <button id="btn-play" class="mbtn big hot">▶ PLAY</button>
+      <button id="btn-play" class="mbtn big hot"><svg viewBox="0 0 24 24" class="play-ic"><path d="M8 5l11 7-11 7z"/></svg>Play</button>
       <button id="btn-shop" class="mbtn">SHOP</button>
       <button id="btn-settings" class="mbtn">SETTINGS</button>
       <button id="btn-hud" class="mbtn">CUSTOMIZE HUD</button>
       <button id="btn-fs" class="mbtn">FULLSCREEN</button>
     </nav>
   </div>
-  <div class="rec"><b>●</b> LIVE MATCH FEED</div>
+  <div class="rec"><b></b>Live match</div>
   <div id="rotate-hint">TURN YOUR PHONE SIDEWAYS FOR THE BEST VIEW</div>
 </div>
 
@@ -154,7 +153,7 @@ BR.HUD = class HUD {
   <div class="shop-panel metal">
     <div class="shop-head">
       <div class="ptitle">SHOP</div>
-      <div class="coins-pill"><span class="coin">◉</span> <span id="shop-coins" class="num">0</span></div>
+      <div class="coins-pill"><i class="coin"></i><span id="shop-coins" class="num">0</span></div>
     </div>
     <div id="shop-tabs" class="seg">
       <button data-cat="skins">GUN SKINS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button>
@@ -461,7 +460,7 @@ BR.HUD = class HUD {
     const ec = $('end-coins');
     if (r.coins) {
       ec.innerHTML = r.coins.parts.map(p => `<div><span>${p[0]}</span><b>+${p[1]}</b></div>`).join('') +
-        `<div class="tot"><span>COINS EARNED</span><b>◉ +${r.coins.total}</b></div>`;
+        `<div class="tot"><span>Coins earned</span><b><i class="coin"></i>+${r.coins.total}</b></div>`;
       if (r.coins.total > 0) BR.Audio.coin();
     } else ec.innerHTML = '<div class="tot"><span>PRACTICE · NO COINS</span><b></b></div>';
     this.show('end', true);
