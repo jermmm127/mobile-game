@@ -141,7 +141,7 @@ const server = http.createServer((req, res) => {
     g.input.press('knife'); g.controlPlayer(1 / 60); const onKnife = p.cur === 2;
     g.input.press('knife'); g.controlPlayer(1 / 60); r.knifeButton = onKnife && p.cur === 0;
     // random rifle recoil moves yaw sideways
-    const yaws = []; for (let i = 0; i < 12; i++) { p.slots[0].cool = 0; const y0 = p.yaw; BR.Weapons.tryFire(g, p); yaws.push(p.yaw - y0); }
+    const yaws = []; for (let i = 0; i < 40; i++) { p.slots[0].cool = 0; const y0 = p.yaw; BR.Weapons.tryFire(g, p); yaws.push(p.yaw - y0); }
     r.recoilSideways = new Set(yaws.map(y => Math.sign(y))).size > 1 && yaws.some(y => Math.abs(y) > 1e-4);
     r.mapSize = g.world.size;
     return r;
