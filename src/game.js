@@ -811,7 +811,7 @@ BR.Game = class Game {
     const right = Math.cos(p.yaw) * m.wallN.x - Math.sin(p.yaw) * m.wallN.z;
     const rollT = m.wallRunning ? -right * C.camera.wallRunRoll : m.sliding ? 0.05 : 0;
     c.roll = U.damp(c.roll, rollT, 8, dt);
-    cam.rotation.set(p.pitch + c.punch, p.yaw, c.roll + c.rollP);
+    cam.rotation.set(p.pitch + c.punch - (this.vmr.lookDown || 0), p.yaw, c.roll + c.rollP);
 
     const w = p.weapon;
     const zoom = p.ads && w ? w.def.zoom : 1;

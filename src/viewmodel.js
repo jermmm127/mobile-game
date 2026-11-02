@@ -73,7 +73,15 @@
         const m = BR.Models.weapon(id, eq.skins, id === 'knife' ? 'none' : eq.charms, bp);
         const holder = new THREE.Group();
         if (id === 'knife') {
-          m.rotation.set(0.15, 0.25, -0.5); m.scale.setScalar(1.35);
+          // Reverse grip: handle upright in the fist (ring on top by the index finger), blade
+          // hanging below it with the hooked tip sweeping forward and up.
+          // Built from screen directions: the blade (model -Z) hangs down, its hook (model -Y)
+          // curls in toward the screen centre and up, and the flat of the blade faces you.
+          const Bd = new THREE.Vector3(-0.38, -0.9, -0.2).normalize();
+          const Cd = new THREE.Vector3(-1, 0.25, 0); Cd.addScaledVector(Bd, -Cd.dot(Bd)).normalize();
+          const Zm = Bd.clone().negate(), Ym = Cd.clone().negate(), Xm = new THREE.Vector3().crossVectors(Ym, Zm);
+          m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(Xm, Ym, Zm));
+          m.scale.setScalar(1.35);
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
           const P = new THREE.Vector3(0, 0.066, 0.12).applyMatrix4(m.matrix);   // ring centre
@@ -116,11 +124,12 @@
       const inj = new THREE.Group();
       const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.12, 10), new THREE.MeshLambertMaterial({ color: 0xe8ecef })); tube.rotation.z = Math.PI / 2; inj.add(tube);
       const win = new THREE.Mesh(new THREE.CylinderGeometry(0.0135, 0.0135, 0.04, 10), new THREE.MeshBasicMaterial({ color: 0x5dff9a })); win.rotation.z = Math.PI / 2; win.position.x = 0.01; inj.add(win);
-      const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.011, 0.03, 10), new THREE.MeshLambertMaterial({ color: 0x2f9a5a })); plunger.rotation.z = Math.PI / 2; plunger.position.x = -0.075; inj.add(plunger);
+      const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.011, 0.03, 10), new THREE.MeshLambertMaterial({ color: 0x2f9a5a })); plunger.rotation.z = Math.PI / 2; plunger.position.x = -0.075; inj.add(plunger); inj.userData.plunger = plunger;
       const needle = new THREE.Mesh(new THREE.CylinderGeometry(0.0015, 0.0015, 0.03, 6), steel); needle.rotation.z = Math.PI / 2; needle.position.x = 0.075; inj.add(needle);
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.012, 0.04, 10), orange); cap.rotation.z = Math.PI / 2; cap.position.x = 0.08; inj.add(cap);
       inj.userData.cap = cap; inj.scale.setScalar(1.3); inj.visible = false;
       this.scene.add(inj); this.injector = inj;
+
       this.lastWeapon = null;
     }
 
@@ -143,7 +152,7 @@
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.def.melee ? 2.4 : 2.1; }
 
-    hide() { this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -179,7 +188,7 @@
       const sprinting = m.onGround && !m.sliding && sp > run * 0.92 && !p.ads && !p.fireHeld && !reloading && this.drawT <= 0 && this.inspectT <= 0;
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
-      if (def.melee) { hx = 0.16 * s; hy = -0.13; hz = -0.36; }
+      if (def.melee) { hx = 0.13 * s; hy = -0.035; hz = -0.38; }   // karambit up in view: fist + hanging blade
       if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) - sg.z; }
       const A = this.adsW, nA = 1 - A * 0.85;
       // Bob: figure-eight while moving on the ground
@@ -254,14 +263,17 @@
         this.stimT = Math.max(0, this.stimT - dt);
         this.stimK = 1 - this.stimT / this.stimDur;
         const passedS = x => this.lastStimK < x && this.stimK >= x;
-        if (passedS(0.3)) BR.Audio.click();
-        if (passedS(0.5)) {   // needle goes in: the whole view flinches
+        if (passedS(0.24)) BR.Audio.click();
+        if (passedS(0.46)) {   // needle goes into the chest: the whole view flinches
           const c = this.game.cam; c.kick = Math.max(c.kick, 0.07); c.punchV = (c.punchV || 0) - 0.9; c.rollV = (c.rollV || 0) + 0.6;
           this.rot.z.vel += 1.4; this.pos.y.vel -= 0.6; BR.Audio.swish(true);
         }
         this.lastStimK = this.stimK;
       }
       this.stimW = U.damp(this.stimW, this.stimT > 0 && this.stimK < 0.86 ? 1 : 0, this.stimT > 0 && this.stimK < 0.86 ? 16 : 9, dt);
+      // look down at the chest while stabbing (the game camera tilts by the same amount)
+      this.lookDown = this.stimT > 0 ? 0.22 * win(this.stimK, 0.26, 0.4, 0.66, 0.84) : 0;
+      if (this.injector) this.injector.userData.plunger.position.x = -0.075 + (this.stimK > 0.48 && this.stimT > 0 ? Math.min(1, (this.stimK - 0.48) / 0.15) * 0.022 : 0);
       const busy = Math.max(this.grapW, this.stimW);
       if (busy > 0.01) {
         oy -= 0.05 * busy; ox += 0.04 * busy; orz -= 0.22 * busy; orx -= 0.1 * this.stimW;
@@ -385,7 +397,7 @@
         const b = model.localToWorld((this._kv3 || (this._kv3 = new THREE.Vector3())).set(0, 0.055, 0.1));
         const X = (this._kx || (this._kx = new THREE.Vector3())).subVectors(b, a).normalize();
         // wrist (+Z of the hand) points back down toward the elbow, so the forearm stays low
-        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.35, -0.8, 0.45).normalize();
+        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.6, -0.75, 0.1).normalize();   // forearm comes up from the lower right
         Z.addScaledVector(X, -Z.dot(X)).normalize();
         const Y = (this._ky || (this._ky = new THREE.Vector3())).crossVectors(Z, X);
         const gripQ = (this._kq2 || (this._kq2 = new THREE.Quaternion())).setFromRotationMatrix((this._km || (this._km = new THREE.Matrix4())).makeBasis(X, Y, Z));
@@ -415,7 +427,7 @@
         }
       }
       R.hand.visible = true;
-      const elbowR = this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
+      const elbowR = spin ? this._v2.set(0.4 * s, -0.58, -0.22) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
       this.limb(R.fore, R.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), elbowR);
       // left hand on the foregrip / mag / charging handle
       const lt = leftTarget || ud.fore;
@@ -468,14 +480,27 @@
       };
       if (this.stimW > 0.01) {
         const k = this.stimK, q = this._sq1;
-        // enter from below -> present the pen (thumb flicks the cap) -> drive it down into the thigh -> hold
-        const P0 = this._sp0.set(-0.28, -0.6, -0.22), P1 = this._sp1.set(-0.1, -0.12, -0.36), P2 = this._sp2.set(-0.2, -0.66, -0.2);
-        const present = smooth(k / 0.16), plunge = smooth((k - 0.4) / 0.1);
-        const p = this._spo.copy(P0).lerp(P1, present).lerp(P2, plunge);
-        if (k > 0.24 && k < 0.34) p.y += Math.sin((k - 0.24) / 0.1 * Math.PI) * 0.015;     // cap flick
-        p.x += Math.sin(k * 9) * 0.006 * (1 - plunge);
-        const needle = this._sx.set(0.25, -0.6, -0.75).normalize().lerp(this._sv.set(0.05, -1, 0.15), plunge).normalize();
-        return { kind: 'stim', w: this.stimW, p, q: B(needle, this._sv.set(-0.55, -0.55, 0.6), q), capOn: k < 0.3 };
+        // enter from below -> present the pen and flick the cap -> turn the needle on yourself ->
+        // stab it into the left side of the chest, press, hold -> pull it out and drop it away
+        const P0 = this._sp0.set(-0.28, -0.6, -0.22), P1 = this._sp1.set(-0.1, -0.1, -0.36);
+        const present = smooth(k / 0.16), aim = smooth((k - 0.28) / 0.12), stab = smooth((k - 0.42) / 0.05), out = smooth((k - 0.7) / 0.14);
+        // needle (+X of the fist): down-forward while presenting, then turned back onto your chest
+        const needle = this._sx.set(0.25, -0.6, -0.75).normalize().lerp(this._sv.set(0.12, -0.35, 0.93), aim).normalize();
+        B(needle, this._sv.set(-0.6, -0.5, 0.2), q);
+        // solve the hand so the needle tip lands on the left chest (body space, before the look-down tilt)
+        const tipOff = this._sp2.set(0.117, -0.034, -0.065).applyQuaternion(q);
+        const chest = this._sy.set(-0.15, -0.2, -0.2);
+        const wind = this._sz.copy(chest).addScaledVector(needle, -0.1).sub(tipOff);
+        const p = this._spo.copy(P0).lerp(P1, present).lerp(wind, aim);
+        p.addScaledVector(needle, 0.112 * stab);                                            // drive it in
+        if (k > 0.47 && k < 0.7) p.add(this._sv.set((Math.random() - 0.5) * 0.003, (Math.random() - 0.5) * 0.003, 0));   // pressing
+        p.lerp(this._sv.set(-0.3, -0.62, -0.2), out);
+        if (k > 0.2 && k < 0.3) p.y += Math.sin((k - 0.2) / 0.1 * Math.PI) * 0.015;        // cap flick
+        p.x += Math.sin(k * 9) * 0.005 * (1 - aim);
+        // you look down at your chest for the stab: rotate the pose into the tilted view
+        const qa = this._sq2.setFromAxisAngle(this._sv.set(1, 0, 0), this.lookDown);
+        p.applyQuaternion(qa); q.premultiply(qa);
+        return { kind: 'stim', w: this.stimW, p, q, capOn: k < 0.26, press: stab };
       }
       if (this.grapW > 0.01) {
         // arm thrown out toward the hook, fingers pointing at it, launcher on the wrist

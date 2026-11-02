@@ -208,16 +208,21 @@ const server = http.createServer((req, res) => {
     // stim: 4s cooldown, 3s speed boost, heals 10 ticks/s for 5s
     P.health = 20; P.stimCd = 0;
     const used = P.tryStim(), again = P.tryStim();
+    const realWorld = P.mover.world, realPos = P.mover.pos.clone();
+    P.mover.world = flat; P.mover.pos.set(0, 0, 0);          // open flat ground: nothing to run into
     P.mover.vel.set(0, 0, 0); P.mover.onGround = true; P.mover.sliding = false; P.mover.crouched = false; P.input.mx = 0; P.input.mz = 1;
     let vBoost = 0; for (let i = 0; i < 60; i++) { P.update(1 / 60); P.input.mz = 1; vBoost = P.mover.speedH; }
     const hp1 = P.health;              // after 1 s: ~+10
     for (let i = 0; i < 60 * 5; i++) { P.update(1 / 60); P.input.mz = 1; }
     const hpEnd = P.health, cdBack = P.stimCd === 0, vAfter = P.mover.speedH;
+    P.mover.world = realWorld; P.mover.pos.copy(realPos);
     r.stim = { used, again, vBoost, vAfter, hp1, hpEnd, cdBack, ready: P.tryStim(), hudBtn: !!document.querySelector('#play > .btn.stim[data-act="stim"]') };
     // knife = faster; bolt actions cycle; hunting rifle has irons, no scope; detailed map
     P.health = 100; P.stimT = 0; P.stimCd = 0;
+    P.mover.world = flat; P.mover.pos.set(0, 0, 0); P.mover.onGround = true;
     P.switchTo(2); P.mover.vel.set(0, 0, 0); for (let i = 0; i < 90; i++) { P.input.mz = 1; P.update(1 / 60); }
     const knifeSpeed = P.mover.speedH;
+    P.mover.world = realWorld; P.mover.pos.copy(realPos);
     const C = BR.CONFIG.weapons, vm = g.vmr;
     g.practiceSpawn('weapon', 'hunter');
     const hm = vm.models.hunter.userData.model.userData;
