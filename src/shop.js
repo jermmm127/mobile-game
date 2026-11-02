@@ -6,23 +6,31 @@
 BR.Profile = {
   KEY: 'velocity-royale.profile',
   data: null,
+  // Loads the profile of the signed-in account (or the guest profile).
   load() {
     const C = BR.CONFIG.coins;
-    const d = BR.util.load(this.KEY, null) || {};
+    this.KEY = BR.Accounts ? BR.Accounts.profileKey() : 'velocity-royale.profile';
+    let d = BR.util.load(this.KEY, null);
+    if (!d && this.KEY.endsWith('.guest')) d = BR.util.load('velocity-royale.profile', null); // pre-accounts save
+    d = d || {};
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
       owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'] }, d.owned || {}),
       equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none' }, d.equip || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0 }, d.stats || {}),
+      dev: !!d.dev,
     };
     return this.data;
   },
   save() { BR.util.save(this.KEY, this.data); },
   owns(cat, id) { return this.data.owned[cat].includes(id); },
+  infinite() { return !!this.data.dev; },
+  coinsLabel() { return this.infinite() ? '∞' : String(this.data.coins); },
+  canAfford(price) { return this.infinite() || this.data.coins >= price; },
   buy(cat, id) {
     const item = BR.Shop.catalog(cat)[id];
-    if (!item || this.owns(cat, id) || this.data.coins < item.price) return false;
-    this.data.coins -= item.price;
+    if (!item || this.owns(cat, id) || !this.canAfford(item.price)) return false;
+    if (!this.infinite()) this.data.coins -= item.price;
     this.data.owned[cat].push(id);
     this.data.equip[cat] = id;
     this.save();
@@ -107,7 +115,7 @@ BR.Shop = class Shop {
   render() {
     const P = BR.Profile, cat = this.cat, items = Shop.catalog(cat);
     document.querySelectorAll('#shop-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
-    this.el.coins.textContent = P.data.coins;
+    this.el.coins.textContent = P.coinsLabel();
     const html = [];
     for (const id in items) {
       const it = items[id], own = P.owns(cat, id), eq = P.data.equip[cat] === id;
@@ -123,7 +131,7 @@ BR.Shop = class Shop {
     const own = it && P.owns(cat, this.sel), eq = it && P.data.equip[cat] === this.sel;
     this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : 'Buy · ' + it.price;
     this.el.action.disabled = !it || eq;
-    this.el.action.classList.toggle('poor', !!it && !own && P.data.coins < it.price);
+    this.el.action.classList.toggle('poor', !!it && !own && !P.canAfford(it.price));
     // What the preview shows: equipped look, with the selected item swapped in
     const eqd = P.data.equip;
     this.game.setShopPreview({

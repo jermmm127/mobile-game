@@ -50,6 +50,7 @@ BR.Mover = class Mover {
     this.wallChain = 0;
     this.mantleT = 0;
     this.pendingBoost = null;
+    this.superCd = 0;        // super jump cooldown
     this._tmp = [];
   }
 
@@ -60,7 +61,7 @@ BR.Mover = class Mover {
     const ev = this.events;
     for (const k in ev) ev[k] = false;
     this.slideCd -= dt; this.wallRunCd -= dt; this.coyote -= dt; this.jumpBuf -= dt;
-    this.slideQueue -= dt; this.wallContactT += dt; this.mantleT -= dt;
+    this.slideQueue -= dt; this.wallContactT += dt; this.mantleT -= dt; this.superCd -= dt;
     this.sinceLand = this.onGround ? this.sinceLand + dt : 0;
     if (inp.jump) this.jumpBuf = M.jumpBuffer;
     const run = M.runSpeed * (inp.speedMult || 1);
@@ -129,7 +130,8 @@ BR.Mover = class Mover {
           }
         } else this.hopChain = 0;
         // TECH super jump: jump in the first instant of a slide
-        if (this.sliding && this.slideT < M.tech.superJumpWindow) {
+        if (this.sliding && this.slideT < M.tech.superJumpWindow && this.superCd <= 0) {
+          this.superCd = M.tech.superJumpCooldown;
           this.vel.y = M.jumpSpeed * M.tech.superJumpMult;
           this.vel.x *= 1.08; this.vel.z *= 1.08;
           ev.tech = 'SUPER JUMP';
@@ -277,8 +279,9 @@ BR.Mover = class Mover {
   }
 
   // ---- grapple ---------------------------------------------------------------
-  startGrapple(x, y, z) {
-    this.grapple = { x, y, z, t: 0 };
+  // actor (optional): hooked onto a player — the hook follows them
+  startGrapple(x, y, z, actor) {
+    this.grapple = { x, y, z, t: 0, actor: actor || null };
     this.sliding = false; this.crouched = false; this.wallRunning = false;
     this.onGround = false;
     if (this.vel.y < 2) this.vel.y = 2;
@@ -305,6 +308,10 @@ BR.Mover = class Mover {
   updateGrapple(dt) {
     const G = BR.CONFIG.move.grapple, g = this.grapple;
     g.t += dt;
+    if (g.actor) {
+      if (!g.actor.alive) { this.releaseGrapple(true); return; }
+      g.x = g.actor.pos.x; g.y = g.actor.pos.y + g.actor.mover.h * 0.6; g.z = g.actor.pos.z;
+    }
     const dx = g.x - this.pos.x, dy = g.y - (this.pos.y + 0.6), dz = g.z - this.pos.z;
     const d = Math.hypot(dx, dy, dz);
     if (d < 1.6 || g.t > G.maxTime) { this.releaseGrapple(true); return; }

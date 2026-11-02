@@ -7,20 +7,21 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.3.1',
+  version: '0.4.0',
 
   map: {
-    size: 340,          // square map edge length (m)
+    size: 640,          // square map edge length (m) — ~4x the area of v0.3
     cell: 8,            // spatial-hash cell size for collision / raycasts
   },
 
   match: {
-    defaultBots: 19,     // 19 bots + you = 20 players. 0 bots = practice mode
-    dropHeight: 75,      // everyone skydives in from this height
+    defaultBots: 29,     // 29 bots + you = 30 players. 0 bots = practice mode
+    maxBots: 39,
+    dropHeight: 110,     // everyone skydives in from this height
     endDelay: 2.4,       // seconds between your death/win and the results screen
     botLootPhase: 80,    // seconds until bots engage at full sight range
     botVsBotDamage: 0.4, // pacing: bots hurt each other less so the lobby doesn't empty in 30s
-    demoBots: 14,        // bots in the menu's live "trailer" match
+    demoBots: 16,        // bots in the menu's live "trailer" match
   },
 
   actor: {
@@ -72,7 +73,7 @@ BR.CONFIG = {
     wallJumpUp: 8,
 
     grapple: {
-      range: 48,            // how far the hook reaches
+      range: 60,            // how far the hook reaches (walls, ground, trees, players: anything)
       pull: 40,             // pull acceleration (m/s²)
       maxSpeed: 23,         // top speed while reeling in
       maxTime: 1.6,         // auto-release after this long
@@ -88,13 +89,14 @@ BR.CONFIG = {
       slideHopWindow: 0.15,   // crouch this soon after landing: slide with no cooldown, cap rises to maxSpeed
       superJumpWindow: 0.12,  // jump this soon after starting a slide: bigger jump
       superJumpMult: 1.4,
+      superJumpCooldown: 6,   // seconds between super jumps
       mantleBoostWindow: 0.25, // jump while mantling: launch forward
       mantleBoost: 6,
       wallChainCooldown: 0.12, // short cooldown after a wall-jump so you can catch the next wall
     },
 
     dropFallSpeed: 16,      // skydive terminal velocity
-    dropGlideSpeed: 17,     // skydive horizontal steering speed
+    dropGlideSpeed: 24,     // skydive horizontal steering speed (big map: cover ground)
     dropAccel: 10,
   },
 
@@ -102,7 +104,7 @@ BR.CONFIG = {
     fov: 80,                // default; players change it in Settings
     fovSpeedBoost: 12,      // extra FOV at high speed
     near: 0.05,
-    far: 520,
+    far: 1000,
     wallRunRoll: 0.12,
   },
 
@@ -142,19 +144,25 @@ BR.CONFIG = {
     pickupRadius: 1.6,
   },
 
-  // ---- Coins (saved per device) -------------------------------------------
+  // ---- Accounts -----------------------------------------------------------------
+  // SHA-256 of the private dev code. Redeeming that code on an account gives it
+  // infinite coins on THIS device. Offline only: once the game has a server, the
+  // server decides who is a dev and this check should be removed (see accounts.js).
+  devCodeHash: '89799be69c532868209a761cbdcfbb642286502c419d77f5583bb8fd46e5db2a',
+
+  // ---- Coins (saved per account) -------------------------------------------
   coins: { start: 150, perKill: 25, win: 150, top5: 60, top10: 25, perDamage: 0.05 },
 
   // ---- Zone (the shrinking safe circle) ------------------------------------
   // radius = target radius at the end of that phase. dps = damage/second outside.
   zone: {
     phases: [
-      { wait: 45, shrink: 35, radius: 115, dps: 1 },
-      { wait: 35, shrink: 30, radius: 68,  dps: 2 },
-      { wait: 30, shrink: 25, radius: 38,  dps: 4 },
-      { wait: 25, shrink: 20, radius: 18,  dps: 7 },
-      { wait: 20, shrink: 20, radius: 6,   dps: 10 },
-      { wait: 15, shrink: 25, radius: 0,   dps: 15 },
+      { wait: 60, shrink: 45, radius: 230, dps: 1 },
+      { wait: 45, shrink: 40, radius: 140, dps: 2 },
+      { wait: 40, shrink: 30, radius: 80,  dps: 4 },
+      { wait: 30, shrink: 25, radius: 40,  dps: 7 },
+      { wait: 25, shrink: 20, radius: 15,  dps: 10 },
+      { wait: 15, shrink: 20, radius: 0,   dps: 15 },
     ],
   },
 

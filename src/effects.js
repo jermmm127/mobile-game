@@ -8,15 +8,16 @@ BR.Effects = class Effects {
     this.scene = scene;
     this.tracers = [];
     this.puffs = [];
+    // Tracers: a bright travelling streak (the "bullet") + a faint trail behind it.
+    // Unit box along +Z, stretched/oriented per shot. Additive so colors glow.
+    const unit = new THREE.BoxGeometry(1, 1, 1); unit.translate(0, 0, 0.5);
     for (let i = 0; i < 48; i++) {
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-      const m = new THREE.LineBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0, fog: false });
-      const line = new THREE.Line(g, m);
-      line.frustumCulled = false;
-      line.visible = false;
-      scene.add(line);
-      this.tracers.push({ line, life: 0 });
+      const mk = op => new THREE.Mesh(unit, new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      const streak = mk(1), trail = mk(0.35);
+      streak.visible = trail.visible = false;
+      streak.frustumCulled = trail.frustumCulled = false;
+      scene.add(streak, trail);
+      this.tracers.push({ streak, trail, life: 0, from: new THREE.Vector3(), dir: new THREE.Vector3(), len: 0, t: 0, dur: 0, w: 0.03 });
     }
     const pg = new THREE.BoxGeometry(0.16, 0.16, 0.16);
     for (let i = 0; i < 40; i++) {
@@ -64,14 +65,36 @@ BR.Effects = class Effects {
 
   tracer(from, to, mine, color) {
     const t = this.tracers[this.ti++ % this.tracers.length];
-    const a = t.line.geometry.attributes.position.array;
-    a[0] = from.x; a[1] = from.y; a[2] = from.z;
-    a[3] = to.x; a[4] = to.y; a[5] = to.z;
-    t.line.geometry.attributes.position.needsUpdate = true;
-    t.line.material.color.setHex(color !== undefined ? color : mine ? 0xfff1c4 : 0xff9a6b);
-    t.line.material.opacity = 0.9;
-    t.line.visible = true;
-    t.life = 0.07;
+    t.from.copy(from);
+    t.dir.subVectors(to, from);
+    t.len = t.dir.length();
+    if (t.len < 0.5) return;
+    t.dir.divideScalar(t.len);
+    t.t = 0;
+    t.dur = Math.max(0.05, t.len / 320);        // bullet speed for the streak
+    t.life = t.dur + 0.12;                      // trail lingers briefly
+    t.w = mine ? 0.045 : 0.035;
+    const c = color !== undefined ? color : mine ? 0xfff1c4 : 0xff9a6b;
+    t.streak.material.color.setHex(c); t.trail.material.color.setHex(c);
+    const look = this._look || (this._look = new THREE.Vector3());
+    look.copy(from).add(t.dir);
+    t.streak.position.copy(from); t.streak.lookAt(look);
+    t.trail.position.copy(from); t.trail.lookAt(look);
+    t.streak.visible = t.trail.visible = true;
+    this.placeTracer(t);
+  }
+
+  placeTracer(t) {
+    const k = Math.min(1, t.t / t.dur);
+    const head = t.len * k, sl = Math.min(t.len, 5.5);
+    const tail = Math.max(0, head - sl);
+    t.streak.position.copy(t.from).addScaledVector(t.dir, tail);
+    t.streak.scale.set(t.w, t.w, Math.max(0.01, head - tail));
+    t.trail.position.copy(t.from);
+    t.trail.scale.set(t.w * 0.45, t.w * 0.45, Math.max(0.01, head));
+    const fade = t.t > t.dur ? 1 - (t.t - t.dur) / 0.12 : 1;
+    t.streak.material.opacity = t.t > t.dur ? 0 : 1;
+    t.trail.material.opacity = 0.35 * Math.max(0, fade);
   }
 
   impact(p, blood) {
@@ -104,10 +127,10 @@ BR.Effects = class Effects {
       if (r.life <= 0) r.m.visible = false;
     }
     for (const t of this.tracers) {
-      if (!t.line.visible) continue;
-      t.life -= dt;
-      t.line.material.opacity = Math.max(0, t.life / 0.07) * 0.9;
-      if (t.life <= 0) t.line.visible = false;
+      if (!t.trail.visible) continue;
+      t.t += dt;
+      if (t.t >= t.life) { t.streak.visible = t.trail.visible = false; continue; }
+      this.placeTracer(t);
     }
     for (const f of this.puffs) {
       if (!f.mesh.visible) continue;

@@ -154,6 +154,7 @@ BR.Input = class Input {
       if (e.code === 'KeyG') this.press('grapple');
       if (e.code === 'KeyV') this.press('inspect');
       if (e.code === 'Digit3') this.press('slot2');
+      if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
       if (e.code === 'KeyR') this.press('reload');
       if (e.code === 'KeyE' || e.code === 'KeyF') this.press('interact');
       if (e.code === 'KeyQ') this.press('swap');

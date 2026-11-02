@@ -92,8 +92,66 @@ const server = http.createServer((req, res) => {
     let peak = y0; for (let i = 0; i < 60; i++) { p.mover.update(1 / 60, { mx: 0, mz: 0 }, p.yaw); peak = Math.max(peak, p.pos.y); }
     r.shotgunJump = peak - y0;
     r.spawnSlots = p.slots.map(s => s && s.id);
+    // super jump cooldown: two slide-jumps in a row -> only the first is super
+    { const fw = new BR.World(1); fw.boxes = []; fw.cells = fw.cells.map(() => []);
+      const m = new BR.Mover(fw); m.pos.set(0, 0, 0);
+      const go = (n, inp) => { for (let i = 0; i < n; i++) m.update(1 / 60, Object.assign({ mx: 0, mz: 0, jump: false, crouch: false }, inp), 0); };
+      for (let i = 0; i < 200 && !m.onGround; i++) go(1, {});
+      go(60, { mz: 1 }); go(1, { mz: 1, crouch: true }); go(1, { mz: 1, jump: true }); const v1 = m.vel.y;
+      for (let i = 0; i < 200 && !m.onGround; i++) go(1, { mz: 1 });
+      go(30, { mz: 1 }); go(1, { mz: 1, crouch: true }); go(1, { mz: 1, jump: true }); const v2 = m.vel.y;
+      r.superJumpVy = [v1, v2]; }
+    // grapple: ground, a tree canopy, and another player
+    p.mover.grapple = null; p.grappleCd = 0; p.mover.pos.set(0, 20, 0); p.pitch = -1.2; p.yaw = 0;
+    r.grappleGround = p.tryGrapple(); p.mover.grapple = null;
+    const tree = g.world.trees[0]; p.grappleCd = 0;
+    p.mover.pos.set(tree.x + 8, tree.h + tree.s * 0.4 - 1.5, tree.z); p.yaw = Math.atan2(8, 0); p.pitch = Math.atan2(1.5 - BR.CONFIG.actor.standHeight + BR.CONFIG.actor.eyeFromTop, 8);
+    r.grappleTree = p.tryGrapple() && !!p.mover.grapple; p.mover.grapple = null;
+    const bot = g.actors[1]; bot.alive = true; bot.mover.dropping = false;
+    // find an open spot (high up, nothing in between) so the map layout can't block the test
+    bot.mover.pos.set(0, 120, 0); p.grappleCd = 0; p.mover.pos.set(0, 120, 15); p.yaw = 0; p.pitch = Math.atan2(1.08 - 1.66, 15);
+    r.grappleActor = !!(p.tryGrapple() && p.mover.grapple && p.mover.grapple.actor === bot);
+    p.mover.grapple = null; bot.alive = false;
+    // tracers render as visible meshes in the player's tracer color
+    p.alive = true; p.mover.pos.set(0, 150, 0); p.slots[0] = BR.Weapons.create('rifle'); p.slots[0].cool = 0; p.cur = 0; p.pitch = 0; p.weapon.reloadT = 0;
+    BR.Profile.data.equip.tracers = 'red';
+    r.tracerFired = BR.Weapons.tryFire(g, p); g.fx.update(0.02);
+    const tr = g.fx.tracers.filter(t => t.streak.visible);
+    r.tracerVisible = tr.some(t => t.streak.material.color.getHex() === 0xff3344 && t.streak.scale.z > 1);
+    BR.Profile.data.equip.tracers = 'default';
+    // ground loot shows the merged weapon model
+    const wl = g.loot.items.find(i => i.kind === 'weapon');
+    r.lootModel = wl.mesh.children.some(c => c.geometry && c.geometry.attributes.position.count > 200);
+    r.pois = g.world.pois.map(q => q.name);
+    r.mapSize = g.world.size;
     return r;
   });
+  // Accounts: use a throwaway test code (the real dev code is never stored in the repo)
+  const acct = await page.evaluate(async () => {
+    const A = BR.Accounts, r = {};
+    const realHash = BR.CONFIG.devCodeHash;
+    const testCode = 'TEST-' + Math.random().toString(36).slice(2);
+    BR.CONFIG.devCodeHash = await BR.sha256.hex(testCode.toUpperCase());
+    r.jsHashMatches = BR.sha256.js(new TextEncoder().encode('abc')) === 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+    A.logOut();
+    r.bad = (await A.signUp('x', '1')).ok === false;
+    r.signup = (await A.signUp('Tester_' + Date.now() % 100000, 'hunter22')).ok;
+    BR.Profile.load();
+    r.coinsBefore = BR.Profile.data.coins;
+    r.wrongCode = (await A.redeem('NOT-A-CODE')).ok === false;
+    r.devOk = (await A.redeem(testCode)).ok && BR.Profile.infinite();
+    r.buyFree = BR.Profile.buy('skins', 'chrome') && BR.Profile.data.coins === r.coinsBefore;
+    const me = A.current();
+    A.logOut(); BR.Profile.load();
+    r.guestNotDev = !BR.Profile.infinite();
+    r.relogin = (await A.logIn(me, 'hunter22')).ok; BR.Profile.load();
+    r.devPersists = BR.Profile.infinite();
+    r.wrongPass = (await A.logIn(me, 'nope')).ok === false;
+    A.logOut(); BR.Profile.load();
+    BR.CONFIG.devCodeHash = realHash;
+    return r;
+  });
+  const loadMs = await page.evaluate(() => { const t = performance.now(); BR.game.startMatch(); return performance.now() - t; });
   await page.evaluate(() => { BR.game.settings.bots = 19; BR.game.startMatch(); });
   const match = await page.evaluate(() => {
     const g = BR.game;
@@ -122,10 +180,22 @@ const server = http.createServer((req, res) => {
     ['grapple pulls you onto a 10m roof', mech.grappleTop >= 9.9],
     ['shotgun jump launches > 2.5m', combat.shotgunJump > 2.5],
     ['you spawn with a pistol + karambit', combat.spawnSlots[0] === 'pistol' && combat.spawnSlots[2] === 'knife'],
+    ['super jump has a cooldown', combat.superJumpVy[0] > 11 && combat.superJumpVy[1] < 9],
+    ['grapple hooks the ground', combat.grappleGround],
+    ['grapple hooks tree canopies', combat.grappleTree],
+    ['grapple hooks other players', combat.grappleActor],
+    ['tracers are visible in the equipped color', combat.tracerVisible],
+    ['dropped guns show the real model', combat.lootModel],
+    ['big map has 10+ named locations', combat.pois.length >= 10 && combat.mapSize >= 600],
+    ['SHA-256 fallback is correct', acct.jsHashMatches],
+    ['accounts: validation, sign up, wrong code/password rejected', acct.bad && acct.signup && acct.wrongCode && acct.wrongPass],
+    ['dev code gives that account infinite coins', acct.devOk && acct.buyFree && acct.devPersists],
+    ['guests and other accounts do not get it', acct.guestNotDev],
+    ['big map loads in under 4s (headless)', loadMs < 4000],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ mech, combat, match, errors }, null, 1));
+  console.log(JSON.stringify({ mech, combat, acct, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

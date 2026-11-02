@@ -107,20 +107,44 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
   background: linear-gradient(#05070b, #05070b) center / 1px 100% no-repeat, linear-gradient(#05070b, #05070b) center / 100% 1px no-repeat;
 }
 
-#crosshair { --gap: 8px; position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+/* Crosshair — fully driven by CSS variables set from Settings */
+.xh { --gap: 6px; --len: 8px; --thick: 2px; --xc: #fff; --xo: 1; position: absolute; left: 50%; top: 50%; width: 0; height: 0; opacity: var(--xo); }
 #crosshair.hide { display: none; }
-#crosshair i { position: absolute; background: #fff; border-radius: 1px; box-shadow: 0 0 2px rgba(0, 0, 0, 0.6); }
-#crosshair .c-t, #crosshair .c-b { width: 2px; height: 8px; left: -1px; }
-#crosshair .c-l, #crosshair .c-r { width: 8px; height: 2px; top: -1px; }
-#crosshair .c-t { bottom: var(--gap); }
-#crosshair .c-b { top: var(--gap); }
-#crosshair .c-l { right: var(--gap); }
-#crosshair .c-r { left: var(--gap); }
-#crosshair b { position: absolute; width: 3px; height: 3px; left: -1.5px; top: -1.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 2px rgba(0, 0, 0, 0.6); }
-#crosshair.line .c-t, #crosshair.line .c-b { display: none; }
-#crosshair.line .c-l, #crosshair.line .c-r { width: 5px; height: 16px; top: -8px; background: transparent; box-shadow: none; border: 2px solid rgba(255, 255, 255, 0.95); border-radius: 3px; }
-#crosshair.line .c-l { border-right: none; }
-#crosshair.line .c-r { border-left: none; }
+.xh i, .xh b { position: absolute; background: var(--xc); }
+.xh.ol i, .xh.ol b { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.75); }
+.xh .c-t, .xh .c-b { width: var(--thick); height: var(--len); left: calc(var(--thick) / -2); }
+.xh .c-l, .xh .c-r { width: var(--len); height: var(--thick); top: calc(var(--thick) / -2); }
+.xh .c-t { bottom: var(--gap); }
+.xh .c-b { top: var(--gap); }
+.xh .c-l { right: var(--gap); }
+.xh .c-r { left: var(--gap); }
+.xh b { width: calc(var(--thick) + 1px); height: calc(var(--thick) + 1px); left: calc((var(--thick) + 1px) / -2); top: calc((var(--thick) + 1px) / -2); border-radius: 50%; }
+.xh u { display: none; position: absolute; width: calc(var(--gap) * 2 + var(--len)); height: calc(var(--gap) * 2 + var(--len)); left: 50%; top: 50%; transform: translate(-50%, -50%); border: var(--thick) solid var(--xc); border-radius: 50%; box-sizing: border-box; }
+.xh.ol u { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(0, 0, 0, 0.6); }
+.xh.nodot b { display: none; }
+.xh.s-dot i, .xh.s-circle i { display: none; }
+.xh.s-dot b, .xh.s-circle b, .xh.s-crossdot b { display: block; }
+.xh.s-circle u { display: block; }
+.xh.s-tee .c-t { display: none; }
+/* Breacher: horizontal line pattern -> bracket crosshair */
+.xh.line i { display: block; }
+.xh.line .c-t, .xh.line .c-b { display: none; }
+.xh.line .c-l, .xh.line .c-r { width: 5px; height: 16px; top: -8px; background: transparent; box-shadow: none; border: var(--thick) solid var(--xc); border-radius: 3px; }
+.xh.line .c-l { border-right: none; }
+.xh.line .c-r { border-left: none; }
+.xh.line u { display: none; }
+
+/* settings: crosshair editor */
+.xh-wrap { display: grid; grid-template-columns: 110px 1fr; gap: 14px; margin-top: 10px; }
+.xh-prev { position: relative; height: 110px; border-radius: 12px; border: 1px solid var(--line); overflow: hidden;
+  background: linear-gradient(160deg, #6f8f58, #48633c 55%, #8aa9c4 56%, #b9d0e2); }
+.xh-ctl { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.xh-ctl .seg button { font-size: 10px; padding: 7px 2px; letter-spacing: 0.06em; }
+.xh-ctl .row { grid-template-columns: 84px 1fr 34px; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatches button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.15); background: var(--c); cursor: pointer; padding: 0; }
+.swatches button.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+@media (max-width: 560px) { .xh-wrap { grid-template-columns: 1fr; } }
 
 #hitmarker { position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%) rotate(45deg); opacity: 0; }
 #hitmarker::before, #hitmarker::after { content: ''; position: absolute; background: #fff; border-radius: 1px; }
@@ -153,7 +177,16 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 .kf b.me { color: var(--accent); }
 .kf i { font: 600 10px var(--ui); font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 6px; }
 
-#minimap { position: absolute; top: calc(10px + var(--st)); right: calc(10px + var(--sr)); width: 108px; height: 108px; border-radius: 12px; border: 1px solid var(--line-2); background: #2c3a28; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+.mapbtn { position: absolute; z-index: 6; top: calc(10px + var(--st)); right: calc(10px + var(--sr)); width: 108px; height: 108px; }
+#minimap { display: block; width: 108px; height: 108px; border-radius: 12px; border: 1px solid var(--line-2); background: #2c3a28; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+#bigmap { position: absolute; inset: 0; z-index: 5; display: none; place-items: center; background: rgba(6, 8, 11, 0.7); }
+#bigmap.on { display: grid; }
+#bigmap-cv { width: min(86vh, 86vw); height: min(86vh, 86vw); border-radius: 16px; border: 1px solid var(--line-2); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+.bm-hint { position: absolute; bottom: calc(10px + var(--sb)); font: 600 11px var(--ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+#loc { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); font: 800 italic 30px var(--display); letter-spacing: 0.02em; text-transform: uppercase; color: #fff; opacity: 0; white-space: nowrap; text-shadow: 0 4px 18px rgba(0, 0, 0, 0.6); }
+#loc::after { content: ''; display: block; height: 2px; margin: 6px auto 0; width: 40%; background: var(--accent); }
+#loc.on { animation: loc 2.8s ease-out forwards; }
+@keyframes loc { 0% { opacity: 0; letter-spacing: 0.3em; } 15% { opacity: 1; letter-spacing: 0.02em; } 75% { opacity: 1; } 100% { opacity: 0; } }
 #fps { position: absolute; top: calc(124px + var(--st)); right: calc(12px + var(--sr)); font: 600 12px var(--ui); color: var(--muted); }
 
 #toast {
@@ -240,7 +273,8 @@ body:not(.touch) .btn.prompt::after { content: '  · E'; }
 .btn.swap { width: 50px; height: 50px; right: calc(46px + var(--sr)); bottom: calc(214px + var(--sb)); }
 .btn.grapple .cd { position: absolute; inset: 0; display: grid; place-items: center; font: 700 20px var(--ui); font-style: normal; color: #fff; text-shadow: 0 1px 3px #000; pointer-events: none; }
 .btn.grapple.cooling { color: rgba(143, 230, 255, 0.35); }
-.btn.grapple.cooling::before { content: ''; position: absolute; inset: -1.5px; border-radius: 50%; pointer-events: none; background: conic-gradient(rgba(0, 0, 0, 0.55) var(--cd), transparent 0); }
+.btn.crouch.cooling { border-color: rgba(255, 255, 255, 0.18); }
+.btn.cdable.cooling::before { content: ''; position: absolute; inset: -1.5px; border-radius: 50%; pointer-events: none; background: conic-gradient(rgba(0, 0, 0, 0.55) var(--cd), transparent 0); }
 .btn.grapple.hooked { border-color: #8fe6ff; box-shadow: 0 0 18px rgba(80, 220, 255, 0.6); }
 .btn.act.user-hidden { display: none !important; }
 .touch-only { display: none !important; }
@@ -369,6 +403,34 @@ body.cut .film .cutflash { animation: cut 0.45s ease-out; }
   .mbtn { padding: 8px 16px; font-size: 12px; }
 }
 
+/* ----------------------------------------------------------------- account */
+.acct-chip {
+  position: absolute; z-index: 2; top: calc(16px + var(--st)); right: calc(max(16px, calc(var(--sr) + 12px)) + 130px);
+  display: flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: 999px; cursor: pointer; color: var(--text); text-align: left;
+}
+.acct-chip .avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 14px var(--ui); color: var(--accent-ink); background: linear-gradient(135deg, #ffcb52, var(--accent-2)); }
+.acct-text { display: flex; flex-direction: column; line-height: 1.1; }
+.acct-text b { font: 600 14px var(--ui); }
+.acct-text small { font: 500 11px var(--ui); color: var(--muted); }
+.panel.acct { text-align: left; }
+.panel.acct form { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.panel.acct label { font: 600 11px var(--ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.panel.acct input[type=text], .panel.acct input[type=password] {
+  font: 500 16px var(--ui); color: var(--text); padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line-2); background: rgba(0, 0, 0, 0.35); outline: none;
+  -webkit-user-select: text; user-select: text;
+}
+.panel.acct input:focus { border-color: var(--accent); }
+.panel.acct form .mbtn { margin-top: 8px; justify-content: center; }
+.fine { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.acct-me { display: flex; align-items: center; gap: 10px; font: 700 22px var(--display); margin: 6px 0 10px; }
+.dev-badge { font: 700 10px var(--ui); letter-spacing: 0.16em; padding: 3px 8px; border-radius: 6px; color: var(--accent-ink); background: var(--accent); }
+.acct-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+.acct-row b { color: var(--text); font-weight: 600; display: flex; align-items: center; }
+.code-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.code-row input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 0.08em; }
+.acct-msg { min-height: 1.4em; font-size: 13px; color: var(--accent); }
+@media (max-width: 700px) { .acct-chip { right: auto; left: max(16px, calc(var(--sl) + 12px)); top: calc(16px + var(--st)); } .acct-text small { display: none; } }
+
 /* -------------------------------------------------------------------- shop */
 #shop { display: block; background: none; padding: 0; }
 body.shopping #menu { display: none; }
@@ -454,20 +516,21 @@ body.editing #play > .btn.act.ed-sel:not(#view) { outline: 2px solid var(--accen
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.3.1',
+  version: '0.4.0',
 
   map: {
-    size: 340,          // square map edge length (m)
+    size: 640,          // square map edge length (m) — ~4x the area of v0.3
     cell: 8,            // spatial-hash cell size for collision / raycasts
   },
 
   match: {
-    defaultBots: 19,     // 19 bots + you = 20 players. 0 bots = practice mode
-    dropHeight: 75,      // everyone skydives in from this height
+    defaultBots: 29,     // 29 bots + you = 30 players. 0 bots = practice mode
+    maxBots: 39,
+    dropHeight: 110,     // everyone skydives in from this height
     endDelay: 2.4,       // seconds between your death/win and the results screen
     botLootPhase: 80,    // seconds until bots engage at full sight range
     botVsBotDamage: 0.4, // pacing: bots hurt each other less so the lobby doesn't empty in 30s
-    demoBots: 14,        // bots in the menu's live "trailer" match
+    demoBots: 16,        // bots in the menu's live "trailer" match
   },
 
   actor: {
@@ -519,7 +582,7 @@ BR.CONFIG = {
     wallJumpUp: 8,
 
     grapple: {
-      range: 48,            // how far the hook reaches
+      range: 60,            // how far the hook reaches (walls, ground, trees, players: anything)
       pull: 40,             // pull acceleration (m/s²)
       maxSpeed: 23,         // top speed while reeling in
       maxTime: 1.6,         // auto-release after this long
@@ -535,13 +598,14 @@ BR.CONFIG = {
       slideHopWindow: 0.15,   // crouch this soon after landing: slide with no cooldown, cap rises to maxSpeed
       superJumpWindow: 0.12,  // jump this soon after starting a slide: bigger jump
       superJumpMult: 1.4,
+      superJumpCooldown: 6,   // seconds between super jumps
       mantleBoostWindow: 0.25, // jump while mantling: launch forward
       mantleBoost: 6,
       wallChainCooldown: 0.12, // short cooldown after a wall-jump so you can catch the next wall
     },
 
     dropFallSpeed: 16,      // skydive terminal velocity
-    dropGlideSpeed: 17,     // skydive horizontal steering speed
+    dropGlideSpeed: 24,     // skydive horizontal steering speed (big map: cover ground)
     dropAccel: 10,
   },
 
@@ -549,7 +613,7 @@ BR.CONFIG = {
     fov: 80,                // default; players change it in Settings
     fovSpeedBoost: 12,      // extra FOV at high speed
     near: 0.05,
-    far: 520,
+    far: 1000,
     wallRunRoll: 0.12,
   },
 
@@ -589,19 +653,25 @@ BR.CONFIG = {
     pickupRadius: 1.6,
   },
 
-  // ---- Coins (saved per device) -------------------------------------------
+  // ---- Accounts -----------------------------------------------------------------
+  // SHA-256 of the private dev code. Redeeming that code on an account gives it
+  // infinite coins on THIS device. Offline only: once the game has a server, the
+  // server decides who is a dev and this check should be removed (see accounts.js).
+  devCodeHash: '89799be69c532868209a761cbdcfbb642286502c419d77f5583bb8fd46e5db2a',
+
+  // ---- Coins (saved per account) -------------------------------------------
   coins: { start: 150, perKill: 25, win: 150, top5: 60, top10: 25, perDamage: 0.05 },
 
   // ---- Zone (the shrinking safe circle) ------------------------------------
   // radius = target radius at the end of that phase. dps = damage/second outside.
   zone: {
     phases: [
-      { wait: 45, shrink: 35, radius: 115, dps: 1 },
-      { wait: 35, shrink: 30, radius: 68,  dps: 2 },
-      { wait: 30, shrink: 25, radius: 38,  dps: 4 },
-      { wait: 25, shrink: 20, radius: 18,  dps: 7 },
-      { wait: 20, shrink: 20, radius: 6,   dps: 10 },
-      { wait: 15, shrink: 25, radius: 0,   dps: 15 },
+      { wait: 60, shrink: 45, radius: 230, dps: 1 },
+      { wait: 45, shrink: 40, radius: 140, dps: 2 },
+      { wait: 40, shrink: 30, radius: 80,  dps: 4 },
+      { wait: 30, shrink: 25, radius: 40,  dps: 7 },
+      { wait: 25, shrink: 20, radius: 15,  dps: 10 },
+      { wait: 15, shrink: 20, radius: 0,   dps: 15 },
     ],
   },
 
@@ -915,6 +985,17 @@ BR.World = class World {
     return this.hit;
   }
 
+  // Ray vs tree canopies (visual-only for bullets, but the grapple can hook them).
+  raycastTrees(ox, oy, oz, dx, dy, dz, maxDist) {
+    let best = maxDist;
+    for (const t of this.trees) {
+      if (Math.abs(t.x - ox) > maxDist + 4 || Math.abs(t.z - oz) > maxDist + 4) continue;
+      const hit = BR.util.raySphere(ox, oy, oz, dx, dy, dz, t.x, t.h + t.s * 0.4, t.z, t.s * 1.05, best);
+      if (hit < best) best = hit;
+    }
+    return best;
+  }
+
   lineOfSight(ax, ay, az, bx, by, bz) {
     const dx = bx - ax, dy = by - ay, dz = bz - az;
     const d = Math.hypot(dx, dy, dz);
@@ -951,36 +1032,151 @@ BR.World = class World {
     this.addBox(-H - bw, 0, -H, -H, bh, H, PAL.cliff, { tag: 'edge' });
     this.addBox(H, 0, -H, H + bw, bh, H, PAL.cliff, { tag: 'edge' });
 
-    // Towns — clusters of enterable buildings
-    const towns = [];
-    for (let tries = 0; towns.length < 6 && tries < 400; tries++) {
-      const tx = U.rand(R, -H + 45, H - 45), tz = U.rand(R, -H + 45, H - 45);
-      if (towns.every(t => Math.hypot(t.x - tx, t.z - tz) > 85)) towns.push({ x: tx, z: tz });
+    // Named points of interest, spread across the map. Each has a type that
+    // decides what gets built there.
+    const NAMES = ['Relay Spire', 'Rust Basin', 'Dustwater', 'Hollow Yards', 'Cinder Flats', 'Skyhook',
+      'Gravel Point', 'Ironbark', 'Saltmarsh', 'Bastion', 'Lowtide', 'Overpass', 'Redline', 'Kestrel Ridge'];
+    const TYPES = ['town', 'yard', 'town', 'relay', 'town', 'outpost', 'town', 'yard', 'town', 'relay', 'outpost', 'town'];
+    const pois = [];
+    for (let tries = 0; pois.length < 12 && tries < 3000; tries++) {
+      const px = U.rand(R, -H + 60, H - 60), pz = U.rand(R, -H + 60, H - 60);
+      if (pois.every(t => Math.hypot(t.x - px, t.z - pz) > 125)) pois.push({ x: px, z: pz });
     }
-    this.towns = towns;
-    for (const t of towns) this.town(t.x, t.z);
+    const names = NAMES.slice().sort(() => R() - 0.5);
+    pois.forEach((p, i) => { p.name = names[i]; p.type = TYPES[i % TYPES.length]; });
+    this.pois = pois;
+    this.towns = pois;  // bots drop toward these; roads link them
+    for (const p of pois) {
+      if (p.type === 'town') this.town(p.x, p.z);
+      else if (p.type === 'yard') this.yard(p.x, p.z);
+      else if (p.type === 'outpost') this.outpost(p.x, p.z);
+      else this.relay(p.x, p.z);
+    }
+
+    // Long rock ridges carve the map into regions (with gaps to run through)
+    for (let i = 0; i < 7; i++) this.ridge();
 
     // Landmarks
-    for (let i = 0; i < 2; i++) this.placeRandom(34, 34, (x, z) => this.mesa(x, z));
-    for (let i = 0; i < 4; i++) this.placeRandom(14, 14, (x, z) => this.tower(x, z));
-    for (let i = 0; i < 7; i++) this.placeRandom(18, 18, (x, z) => this.wallRunLane(x, z));
+    for (let i = 0; i < 4; i++) this.placeRandom(34, 34, (x, z) => this.mesa(x, z));
+    for (let i = 0; i < 6; i++) this.placeRandom(14, 14, (x, z) => this.tower(x, z));
+    for (let i = 0; i < 14; i++) this.placeRandom(18, 18, (x, z) => this.wallRunLane(x, z));
     // Movement playgrounds
-    for (let i = 0; i < 5; i++) this.placeRandom(34, 34, (x, z) => this.parkourCourse(x, z));
-    for (let i = 0; i < 3; i++) this.placeRandom(18, 18, (x, z) => this.pillarMaze(x, z));
-    for (let i = 0; i < 22; i++) this.placeRandom(4, 4, (x, z) => this.jumpPad(x, z));
+    for (let i = 0; i < 10; i++) this.placeRandom(34, 34, (x, z) => this.parkourCourse(x, z));
+    for (let i = 0; i < 6; i++) this.placeRandom(18, 18, (x, z) => this.pillarMaze(x, z));
+    for (let i = 0; i < 60; i++) this.placeRandom(4, 4, (x, z) => this.jumpPad(x, z));
 
     // Scatter
-    for (let i = 0; i < 26; i++) this.placeRandom(8, 8, (x, z) => this.container(x, z));
-    for (let i = 0; i < 45; i++) this.placeRandom(5, 5, (x, z) => this.crateStack(x, z));
-    for (let i = 0; i < 50; i++) this.placeRandom(7, 7, (x, z) => this.rock(x, z));
-    for (let i = 0; i < 40; i++) this.placeRandom(7, 7, (x, z) => this.coverWall(x, z));
-    for (let i = 0; i < 160; i++) this.placeRandom(2, 2, (x, z) => this.tree(x, z));
-    for (let i = 0; i < 18; i++) this.placeRandom(12, 3, (x, z) => this.fence(x, z));
+    for (let i = 0; i < 70; i++) this.placeRandom(8, 8, (x, z) => this.container(x, z));
+    for (let i = 0; i < 140; i++) this.placeRandom(5, 5, (x, z) => this.crateStack(x, z));
+    for (let i = 0; i < 160; i++) this.placeRandom(7, 7, (x, z) => this.rock(x, z));
+    for (let i = 0; i < 120; i++) this.placeRandom(7, 7, (x, z) => this.coverWall(x, z));
+    for (let i = 0; i < 520; i++) this.placeRandom(2, 2, (x, z) => this.tree(x, z));
+    for (let i = 0; i < 50; i++) this.placeRandom(12, 3, (x, z) => this.fence(x, z));
 
     // Open-field loot so nobody is empty-handed for long
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 220; i++) {
       const x = U.rand(R, -H + 10, H - 10), z = U.rand(R, -H + 10, H - 10);
       if (this.free(x - 0.5, z - 0.5, x + 0.5, z + 0.5, 0.5)) this.lootSpots.push({ x, y: 0, z, tier: 0 });
+    }
+  }
+
+  // Which named place is this point in (or nearest to, within 70 m)?
+  poiAt(x, z) {
+    let best = null, bd = 70;
+    for (const p of this.pois || []) { const d = Math.hypot(p.x - x, p.z - z); if (d < bd) { bd = d; best = p; } }
+    return best;
+  }
+
+  // Container yard: stacked containers in rows, a crane with loot on its arm.
+  yard(cx, cz) {
+    const R = this.rand, U = BR.util;
+    const W = 56;
+    if (!this.free(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2, 4)) return;
+    this.claim(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      if (i === 0 && j === 0) continue;
+      const x = cx + i * 16, z = cz + j * 16, along = (i + j) % 2 === 0;
+      const stack = 1 + Math.floor(R() * 3);
+      for (let k = 0; k < stack; k++) {
+        const c = U.pick(PAL.containers, R), y = k * 2.6, inset = k * 0.6;
+        if (along) this.addBox(x - 6 + inset, y, z - 1.25, x + 6 - inset, y + 2.6, z + 1.25, c);
+        else this.addBox(x - 1.25, y, z - 6 + inset, x + 1.25, y + 2.6, z + 6 - inset, c);
+      }
+      this.lootSpots.push({ x: x + (along ? 0 : 2.4), y: 0, z: z + (along ? 2.4 : 0), tier: 1, force: R() < 0.5 ? 'weapon' : undefined });
+      if (stack >= 2) this.lootSpots.push({ x, y: stack * 2.6, z, tier: 2 });
+    }
+    // Crane: tower + long arm, chest at the end of the arm
+    this.addBox(cx - 1.6, 0, cz - 1.6, cx + 1.6, 18, cz + 1.6, PAL.parkour);
+    this.addBox(cx - 1.6, 18, cz - 1.2, cx + 16, 19, cz + 1.2, PAL.parkour);
+    this.addBox(cx + 14, 6, cz - 0.15, cx + 14.3, 18, cz + 0.15, PAL.lamp);           // cable (grapple it)
+    this.addBox(cx + 12.5, 19, cz - 1.2, cx + 16, 19.4, cz + 1.2, PAL.parkourAlt);
+    this.chestSpots.push({ x: cx + 14.5, y: 19.4, z: cz, tier: 2 });
+    for (let k = 0; k < 4; k++) this.addBox(cx - 2.6, k * 4.5 + 3.8, cz - 1, cx - 1.6, k * 4.5 + 4.1, cz + 1, PAL.cover); // ladder ledges
+    this.jumpPad(cx - 4.5, cz + 6); this.jumpPad(cx + 6, cz - 6);
+    this.lampPost(cx - W / 2 + 1, cz - W / 2 + 1); this.lampPost(cx + W / 2 - 1, cz + W / 2 - 1);
+  }
+
+  // Outpost: a big raised plateau with ramps of steps, a watchtower and loot on top.
+  outpost(cx, cz) {
+    const W = 44, Hh = 7;
+    if (!this.free(cx - W / 2 - 10, cz - W / 2 - 10, cx + W / 2 + 10, cz + W / 2 + 10, 4)) return;
+    this.claim(cx - W / 2 - 10, cz - W / 2 - 10, cx + W / 2 + 10, cz + W / 2 + 10);
+    this.addBox(cx - W / 2, 0, cz - W / 2, cx + W / 2, Hh, cz + W / 2, PAL.cliff);
+    // Two stairways (0.5 m steps) on opposite sides
+    for (let i = 0; i < 14; i++) {
+      const y = (i + 1) * 0.5, off = W / 2 + 14 - i;
+      this.addBox(cx - 2.5, 0, cz - off, cx + 2.5, y, cz - off + 1, PAL.cover);
+      this.addBox(cx - 2.5, 0, cz + off - 1, cx + 2.5, y, cz + off, PAL.cover);
+    }
+    this.addBox(cx - 2, Hh, cz - 2, cx + 2, Hh + 9, cz + 2, PAL.tower);            // watchtower
+    this.addBox(cx - 3.5, Hh + 9, cz - 3.5, cx + 3.5, Hh + 9.4, cz + 3.5, PAL.tower);
+    this.chestSpots.push({ x: cx, y: Hh + 9.4, z: cz, tier: 2 });
+    const R = this.rand;
+    for (let i = 0; i < 8; i++) {
+      const x = cx + BR.util.rand(R, -W / 2 + 4, W / 2 - 4), z = cz + BR.util.rand(R, -W / 2 + 4, W / 2 - 4);
+      if (Math.abs(x - cx) < 5 && Math.abs(z - cz) < 5) continue;
+      const L = 4, T = 0.6;
+      if (i % 2) this.addBox(x - L / 2, Hh, z - T / 2, x + L / 2, Hh + 1.4, z + T / 2, PAL.cover);
+      else this.addBox(x - T / 2, Hh, z - L / 2, x + T / 2, Hh + 1.4, z + L / 2, PAL.cover);
+      this.lootSpots.push({ x: x + 1.5, y: Hh, z: z + 1.5, tier: 1, force: i < 3 ? 'weapon' : undefined });
+    }
+    this.jumpPad(cx + W / 2 + 4, cz); this.jumpPad(cx - W / 2 - 4, cz);
+  }
+
+  // Relay: the movement hub — spiral tower, pillar maze, wall-run lane and a parkour course.
+  relay(cx, cz) {
+    const W = 70;
+    if (!this.free(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2, 4)) return;
+    this.claim(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2);
+    this.tower(cx, cz);
+    this.pillarMaze(cx + 20, cz + 18);
+    this.wallRunLane(cx - 20, cz + 20);
+    this.parkourCourse(cx - 8, cz - 22);
+    this.jumpPad(cx + 8, cz); this.jumpPad(cx - 8, cz + 6);
+    this.chestSpots.push({ x: cx + 6, y: 0, z: cz - 6, tier: 1 });
+  }
+
+  // Long rock wall with a couple of gaps. Tall enough to wall-run and grapple.
+  ridge() {
+    const R = this.rand, U = BR.util, H = this.half;
+    for (let tries = 0; tries < 60; tries++) {
+      const alongX = R() < 0.5, L = U.rand(R, 80, 150), T = U.rand(R, 5, 8), h = U.rand(R, 7, 11);
+      const x = U.rand(R, -H + 30, H - 30), z = U.rand(R, -H + 30, H - 30);
+      const w = alongX ? L : T, d = alongX ? T : L;
+      if (!this.free(x - w / 2, z - d / 2, x + w / 2, z + d / 2, 6)) continue;
+      this.claim(x - w / 2, z - d / 2, x + w / 2, z + d / 2);
+      // split into segments with gaps
+      const segs = [[0, 0.3], [0.38, 0.7], [0.78, 1]];
+      for (const [a, b] of segs) {
+        const p0 = -L / 2 + a * L, p1 = -L / 2 + b * L, hh = h * U.rand(R, 0.8, 1.1);
+        if (alongX) this.addBox(x + p0, 0, z - T / 2, x + p1, hh, z + T / 2, PAL.cliff);
+        else this.addBox(x - T / 2, 0, z + p0, x + T / 2, hh, z + p1, PAL.cliff);
+        // ledge halfway up to mantle onto
+        if (alongX) this.addBox(x + p0 + 2, 0, z + T / 2, x + p0 + 6, hh * 0.45, z + T / 2 + 2.5, PAL.rock);
+        else this.addBox(x + T / 2, 0, z + p0 + 2, x + T / 2 + 2.5, hh * 0.45, z + p0 + 6, PAL.rock);
+        this.lootSpots.push({ x: alongX ? x + (p0 + p1) / 2 : x, y: hh, z: alongX ? z : z + (p0 + p1) / 2, tier: 2, force: R() < 0.4 ? 'weapon' : undefined });
+      }
+      return;
     }
   }
 
@@ -999,7 +1195,7 @@ BR.World = class World {
 
   town(cx, cz) {
     const R = this.rand, U = BR.util;
-    const lot = 18, nx = 2 + Math.floor(R() * 2), nz = 2 + Math.floor(R() * 2);
+    const lot = 18, nx = 2 + Math.floor(R() * 3), nz = 2 + Math.floor(R() * 2);
     const w = nx * lot, d = nz * lot;
     const x0 = cx - w / 2, z0 = cz - d / 2;
     if (!this.free(x0, z0, x0 + w, z0 + d, 4)) return;
@@ -1373,7 +1569,7 @@ BR.World = class World {
   buildGround(scene) {
     const gt = makeTileTexture(true);
     gt.repeat.set(this.size / 5, this.size / 5);
-    const segs = 110, S = this.size + 12;
+    const segs = 160, S = this.size + 12;
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
     const grass = new THREE.Color(0x7d9a5a), grass2 = new THREE.Color(0x6a8a4a), dry = new THREE.Color(0xa4a35e), dirt = new THREE.Color(0x9c8460);
@@ -1406,11 +1602,11 @@ BR.World = class World {
   buildScenery(scene, detail) {
     const R = BR.util.rng(this.seed + 5), H = this.half;
     // Sky dome with a vertical gradient + sun
-    const skyG = new THREE.SphereGeometry(480, 24, 12);
+    const skyG = new THREE.SphereGeometry(900, 24, 12);
     const sp = skyG.attributes.position, sc = new Float32Array(sp.count * 3);
     const top = new THREE.Color(0x3d7cc9), hor = new THREE.Color(0xcfe3f0), c = new THREE.Color();
     for (let i = 0; i < sp.count; i++) {
-      const k = BR.util.clamp(sp.getY(i) / 480, 0, 1);
+      const k = BR.util.clamp(sp.getY(i) / 900, 0, 1);
       c.copy(hor).lerp(top, Math.pow(k, 0.6));
       sc[i * 3] = c.r; sc[i * 3 + 1] = c.g; sc[i * 3 + 2] = c.b;
     }
@@ -1420,26 +1616,26 @@ BR.World = class World {
     scene.add(sky);
     this.sky = sky;
     const sun = new THREE.Mesh(new THREE.CircleGeometry(16, 20), new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false }));
-    sun.position.set(220, 300, 160); sun.lookAt(0, 0, 0);
+    sun.position.set(420, 560, 300); sun.scale.setScalar(1.8); sun.lookAt(0, 0, 0);
     scene.add(sun);
 
     // Mountain ring beyond the map edge
     const mg = new THREE.ConeGeometry(1, 1, 5);
-    const mtn = new THREE.InstancedMesh(mg, new THREE.MeshLambertMaterial({ color: 0x6f7f8c, flatShading: true }), 26);
+    const mtn = new THREE.InstancedMesh(mg, new THREE.MeshBasicMaterial({ color: 0x8aa0b4, fog: false }), 30);
     const o = new THREE.Object3D();
-    for (let i = 0; i < 26; i++) {
-      const a = i / 26 * Math.PI * 2 + R() * 0.2, r = H + 70 + R() * 60;
+    for (let i = 0; i < 30; i++) {
+      const a = i / 30 * Math.PI * 2 + R() * 0.2, r = H + 160 + R() * 120;
       o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-      const hgt = 50 + R() * 70, wid = 45 + R() * 40;
+      const hgt = 90 + R() * 110, wid = 90 + R() * 70;
       o.scale.set(wid, hgt, wid); o.position.y = hgt / 2 - 2; o.rotation.y = R() * 6;
       o.updateMatrix(); mtn.setMatrixAt(i, o.matrix);
     }
     scene.add(mtn);
 
     // Clouds
-    const cl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x8a9aaa, flatShading: true }), 18);
-    for (let i = 0; i < 18; i++) {
-      o.position.set((R() * 2 - 1) * 420, 110 + R() * 50, (R() * 2 - 1) * 420);
+    const cl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshBasicMaterial({ color: 0xf4f7fb, fog: false }), 30);
+    for (let i = 0; i < 30; i++) {
+      o.position.set((R() * 2 - 1) * 700, 140 + R() * 60, (R() * 2 - 1) * 700);
       o.scale.set(20 + R() * 30, 5 + R() * 5, 12 + R() * 16); o.rotation.set(0, R() * 6, 0);
       o.updateMatrix(); cl.setMatrixAt(i, o.matrix);
     }
@@ -1460,7 +1656,7 @@ BR.World = class World {
     }
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
-    const nB = Math.floor(260 * detail), nG = Math.floor(2400 * detail);
+    const nB = Math.floor(700 * detail), nG = Math.floor(5000 * detail);
     const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x55803e, flatShading: true }), nB);
     const tuft = new THREE.InstancedMesh(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
     let bi = 0, gi = 0;
@@ -1575,6 +1771,7 @@ BR.Mover = class Mover {
     this.wallChain = 0;
     this.mantleT = 0;
     this.pendingBoost = null;
+    this.superCd = 0;        // super jump cooldown
     this._tmp = [];
   }
 
@@ -1585,7 +1782,7 @@ BR.Mover = class Mover {
     const ev = this.events;
     for (const k in ev) ev[k] = false;
     this.slideCd -= dt; this.wallRunCd -= dt; this.coyote -= dt; this.jumpBuf -= dt;
-    this.slideQueue -= dt; this.wallContactT += dt; this.mantleT -= dt;
+    this.slideQueue -= dt; this.wallContactT += dt; this.mantleT -= dt; this.superCd -= dt;
     this.sinceLand = this.onGround ? this.sinceLand + dt : 0;
     if (inp.jump) this.jumpBuf = M.jumpBuffer;
     const run = M.runSpeed * (inp.speedMult || 1);
@@ -1654,7 +1851,8 @@ BR.Mover = class Mover {
           }
         } else this.hopChain = 0;
         // TECH super jump: jump in the first instant of a slide
-        if (this.sliding && this.slideT < M.tech.superJumpWindow) {
+        if (this.sliding && this.slideT < M.tech.superJumpWindow && this.superCd <= 0) {
+          this.superCd = M.tech.superJumpCooldown;
           this.vel.y = M.jumpSpeed * M.tech.superJumpMult;
           this.vel.x *= 1.08; this.vel.z *= 1.08;
           ev.tech = 'SUPER JUMP';
@@ -1802,8 +2000,9 @@ BR.Mover = class Mover {
   }
 
   // ---- grapple ---------------------------------------------------------------
-  startGrapple(x, y, z) {
-    this.grapple = { x, y, z, t: 0 };
+  // actor (optional): hooked onto a player — the hook follows them
+  startGrapple(x, y, z, actor) {
+    this.grapple = { x, y, z, t: 0, actor: actor || null };
     this.sliding = false; this.crouched = false; this.wallRunning = false;
     this.onGround = false;
     if (this.vel.y < 2) this.vel.y = 2;
@@ -1830,6 +2029,10 @@ BR.Mover = class Mover {
   updateGrapple(dt) {
     const G = BR.CONFIG.move.grapple, g = this.grapple;
     g.t += dt;
+    if (g.actor) {
+      if (!g.actor.alive) { this.releaseGrapple(true); return; }
+      g.x = g.actor.pos.x; g.y = g.actor.pos.y + g.actor.mover.h * 0.6; g.z = g.actor.pos.z;
+    }
     const dx = g.x - this.pos.x, dy = g.y - (this.pos.y + 0.6), dz = g.z - this.pos.z;
     const d = Math.hypot(dx, dy, dz);
     if (d < 1.6 || g.t > G.maxTime) { this.releaseGrapple(true); return; }
@@ -2265,6 +2468,7 @@ BR.Models = (function () {
     lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }),
     lensDark: new THREE.MeshPhongMaterial({ color: 0x102030, specular: 0x88ccff, shininess: 120 }),
     reticle: new THREE.MeshBasicMaterial({ color: 0xff3040 }),
+    sightDot: new THREE.MeshBasicMaterial({ color: 0xff8a1f }),
     shell: new THREE.MeshLambertMaterial({ color: 0xc8202a }),
     brass: new THREE.MeshPhongMaterial({ color: 0xc89b3c, specular: 0xffe2a0, shininess: 60 }),
     flash: new THREE.MeshBasicMaterial({ color: 0xffd27a }),
@@ -2281,6 +2485,24 @@ BR.Models = (function () {
         g.add(m); return m;
       },
     };
+  }
+
+  // Iron sights: rear notch (or aperture ring) + front post with a dot, on one sight line.
+  function irons(g, M, y, rearZ, frontZ, ring) {
+    const k = kit(g);
+    if (ring) {
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.011, 0.0028, 6, 16), M.dark);
+      r.position.set(0, y, rearZ); g.add(r);
+      k.box(0.026, y - 0.095, 0.01, 0, (y + 0.095) / 2 - 0.006, rearZ, M.dark);
+    } else {
+      k.box(0.006, 0.014, 0.008, 0.008, y - 0.002, rearZ, M.dark);
+      k.box(0.006, 0.014, 0.008, -0.008, y - 0.002, rearZ, M.dark);
+      k.box(0.024, 0.006, 0.008, 0, y - 0.011, rearZ, M.dark);
+    }
+    k.box(0.004, 0.016, 0.004, 0, y - 0.007, frontZ, M.dark);
+    const dot = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.005, 0.005), M.sightDot); dot.position.set(0, y, frontZ); g.add(dot);
+    const s = new THREE.Object3D(); s.position.set(0, y, rearZ); g.add(s);
+    g.userData.sight = s; g.userData.sightDist = 0.3;
   }
 
   function anchors(g, muzzleZ, muzzleY, charmPos) {
@@ -2302,8 +2524,7 @@ BR.Models = (function () {
       k.box(0.008, 0.012, 0.06, 0, -0.012, -0.03, M.dark);        // trigger guard bottom
       k.box(0.006, 0.03, 0.006, 0, -0.005, -0.03, M.metal);       // trigger
       k.cyl(0.011, 0.03, 0, 0.045, -0.18, M.metal, 'z');          // barrel tip
-      k.box(0.01, 0.012, 0.01, 0, 0.081, -0.16, M.dark);          // front sight
-      k.box(0.03, 0.012, 0.01, 0, 0.081, 0.04, M.dark);           // rear sight
+      irons(g, M, 0.088, 0.035, -0.16, false);
       anchors(g, -0.2, 0.045, [-0.03, 0.0, 0.04]);
     },
     smg(g, S, M) {
@@ -2318,8 +2539,14 @@ BR.Models = (function () {
       k.box(0.012, 0.012, 0.18, 0.02, 0.02, 0.15, M.metal);       // stock rods
       k.box(0.012, 0.012, 0.18, -0.02, 0.02, 0.15, M.metal);
       k.box(0.05, 0.07, 0.015, 0, 0.0, 0.24, M.grip);             // butt plate
-      k.box(0.03, 0.03, 0.05, 0, 0.115, -0.06, M.dark);           // mini red dot
-      k.box(0.012, 0.012, 0.004, 0, 0.12, -0.085, M.reticle);
+      // open mini red dot: base + hoop, dot floating in the middle
+      k.box(0.03, 0.012, 0.05, 0, 0.1, -0.06, M.dark);
+      k.box(0.004, 0.034, 0.012, 0.016, 0.122, -0.075, M.dark);
+      k.box(0.004, 0.034, 0.012, -0.016, 0.122, -0.075, M.dark);
+      k.box(0.036, 0.004, 0.012, 0, 0.139, -0.075, M.dark);
+      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 8), M.reticle); rd.position.set(0, 0.122, -0.075); g.add(rd);
+      const ss = new THREE.Object3D(); ss.position.set(0, 0.122, -0.075); g.add(ss);
+      g.userData.sight = ss; g.userData.sightDist = 0.36;
       anchors(g, -0.34, 0.035, [-0.04, -0.01, 0.03]);
     },
     shotgun(g, S, M) {
@@ -2333,7 +2560,7 @@ BR.Models = (function () {
       k.box(0.045, 0.12, 0.055, 0, -0.07, 0.04, M.grip, 0.25);    // grip
       k.box(0.06, 0.08, 0.22, 0, 0.0, 0.2, S);                    // stock
       for (let i = 0; i < 3; i++) k.cyl(0.011, 0.05, 0.042, 0.02 - i * 0.026, -0.02, M.shell, 'z', 8); // side-saddle shells
-      k.box(0.01, 0.02, 0.01, 0, 0.09, -0.52, M.reticle);         // bead sight
+      irons(g, M, 0.1, 0.0, -0.52, false);
       anchors(g, -0.58, 0.055, [-0.05, -0.02, 0.06]);
     },
     rifle(g, S, M, holo) {
@@ -2364,10 +2591,9 @@ BR.Models = (function () {
         const dot = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 8), M.reticle);
         dot.position.set(0, 0.156, -0.099); g.add(dot);
         const sight = new THREE.Object3D(); sight.position.set(0, 0.156, -0.1); g.add(sight);
-        g.userData.sight = sight;
+        g.userData.sight = sight; g.userData.sightDist = 0.44;
       } else {
-        k.box(0.012, 0.035, 0.01, 0, 0.11, -0.3, M.dark);         // iron sights
-        k.box(0.03, 0.03, 0.012, 0, 0.11, 0.06, M.dark);
+        irons(g, M, 0.13, 0.05, -0.3, true);                      // aperture iron sights
       }
       anchors(g, -0.74, 0.035, [-0.04, -0.01, 0.1]);
     },
@@ -2392,23 +2618,55 @@ BR.Models = (function () {
       anchors(g, -0.9, 0.04, [-0.04, -0.01, 0.14]);
     },
     knife(g, S, M) {
-      // Karambit: curved claw blade + finger ring, built in the blade's plane
-      // (x = forward, y = up) then turned so +x points down -Z.
+      // Karambit, CS-style: a curved "banana" handle with a large finger ring at the
+      // butt, a finger guard, and a deeply hooked claw blade with spine notches.
+      // Built in the blade plane (x = forward, y = up), then turned so +x points down -Z.
       const k = new THREE.Group();
-      const sh = new THREE.Shape();
-      sh.moveTo(0, 0.012);
-      sh.quadraticCurveTo(0.09, 0.03, 0.15, -0.06);    // spine
-      sh.lineTo(0.152, -0.072);                          // tip
-      sh.quadraticCurveTo(0.085, 0.0, 0.0, -0.014);    // edge
-      sh.closePath();
-      const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.006, bevelEnabled: true, bevelThickness: 0.002, bevelSize: 0.002, bevelSegments: 1, curveSegments: 10 }), M.blade);
-      blade.position.z = -0.003;
-      k.add(blade);
-      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.03, 0.022), S);
-      handle.position.set(-0.055, 0, 0); handle.rotation.z = -0.12; k.add(handle);
-      for (let i = 0; i < 3; i++) { const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.026, 6), M.metal); sc.rotation.x = Math.PI / 2; sc.position.set(-0.03 - i * 0.03, 0.002 + i * 0.004, 0); k.add(sc); }
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.0065, 8, 18), M.metal);
-      ring.position.set(-0.13, 0.016, 0); k.add(ring);
+      const ext = (shape, depth, bevel) => {
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 14 });
+        geo.translate(0, 0, -depth / 2);
+        return geo;
+      };
+      // Blade: concave inner edge, sweeping spine, needle tip
+      const bl = new THREE.Shape();
+      bl.moveTo(0, 0.013);
+      bl.bezierCurveTo(0.045, 0.034, 0.105, 0.026, 0.138, -0.022);   // spine
+      bl.bezierCurveTo(0.150, -0.042, 0.150, -0.062, 0.141, -0.078); // hook to the tip
+      bl.bezierCurveTo(0.128, -0.040, 0.090, -0.006, 0.040, -0.006); // sharpened inner edge
+      bl.quadraticCurveTo(0.012, -0.007, 0.0, -0.013);
+      bl.closePath();
+      k.add(new THREE.Mesh(ext(bl, 0.003, 0.0012), M.blade));
+      // Bevel line along the edge (slightly darker steel)
+      const bev = new THREE.Shape();
+      bev.moveTo(0.02, -0.002);
+      bev.bezierCurveTo(0.07, 0.002, 0.115, -0.02, 0.136, -0.06);
+      bev.bezierCurveTo(0.122, -0.032, 0.086, -0.005, 0.04, -0.004);
+      bev.closePath();
+      const bm = new THREE.Mesh(ext(bev, 0.0045, 0.0005), M.metal); k.add(bm);
+      // Jimping notches on the spine
+      for (let i = 0; i < 6; i++) {
+        const t = 0.008 + i * 0.008, j = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.004, 0.006), M.dark);
+        j.position.set(t, 0.016 + t * 0.35, 0); j.rotation.z = 0.35; k.add(j);
+      }
+      // Curved handle (skin material) with a guard bump
+      const hd = new THREE.Shape();
+      hd.moveTo(0.004, 0.016);
+      hd.quadraticCurveTo(-0.06, 0.03, -0.128, 0.046);                // top line curves up toward the ring
+      hd.lineTo(-0.134, 0.022);
+      hd.quadraticCurveTo(-0.07, 0.006, -0.022, -0.012);              // belly
+      hd.quadraticCurveTo(-0.008, -0.03, 0.006, -0.026);              // finger guard
+      hd.lineTo(0.004, -0.014);
+      hd.closePath();
+      k.add(new THREE.Mesh(ext(hd, 0.014, 0.003), S));
+      // Steel liner peeking out between the scales
+      const liner = new THREE.Mesh(ext(hd, 0.007, 0.0005), M.metal); liner.scale.set(1.03, 1.08, 1); liner.position.set(0.002, -0.001, 0); k.add(liner);
+      // Pins
+      for (const [x, y] of [[-0.03, 0.012], [-0.075, 0.024], [-0.11, 0.033]]) {
+        const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 0.02, 8), M.blade); pin.rotation.x = Math.PI / 2; pin.position.set(x, y, 0); k.add(pin);
+      }
+      // Finger ring at the butt
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.0062, 10, 22), M.metal);
+      ring.position.set(-0.152, 0.036, 0); k.add(ring);
       k.rotation.y = Math.PI / 2;      // +x -> -z
       g.add(k);
       g.userData.blade = k;
@@ -2454,8 +2712,50 @@ BR.Models = (function () {
     return g;
   }
 
+  // One merged, vertex-colored geometry per weapon: a single draw call for world
+  // models (loot on the ground, guns in bots' hands).
+  const mergedCache = {};
+  function merged(id) {
+    if (mergedCache[id]) return mergedCache[id];
+    const g = new THREE.Group();
+    const def = BR.CONFIG.weapons[id];
+    (BUILD[id] || BUILD.pistol)(g, skinMaterial('default', def.color), MAT());
+    g.updateMatrixWorld(true);
+    const pos = [], nor = [], col = [];
+    const c = new THREE.Color();
+    g.traverse(o => {
+      if (!o.isMesh || o === g.userData.flash) return;
+      const mat = o.material;
+      if (mat.transparent && mat.opacity < 0.5) return;           // skip holo glass
+      let geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      geo.applyMatrix4(o.matrixWorld);
+      if (!geo.attributes.normal) geo.computeVertexNormals();
+      c.copy(mat.color || new THREE.Color(0x888888));
+      const p = geo.attributes.position, n = geo.attributes.normal;
+      for (let i = 0; i < p.count; i++) {
+        pos.push(p.getX(i), p.getY(i), p.getZ(i));
+        nor.push(n.getX(i), n.getY(i), n.getZ(i));
+        col.push(c.r, c.g, c.b);
+      }
+    });
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    out.computeBoundingSphere();
+    out._shared = true;
+    return (mergedCache[id] = out);
+  }
+  let mergedMat = null;
+
   return {
     SKINS, TRACERS, CHARMS,
+    merged,
+    // A world-space weapon mesh (single draw call), barrel along -Z.
+    worldWeapon(id) {
+      mergedMat = mergedMat || new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+      return new THREE.Mesh(merged(id), mergedMat);
+    },
     // Build a weapon model with a skin (and optional charm).
     weapon(id, skin, charmId) {
       const def = BR.CONFIG.weapons[id];
@@ -2570,9 +2870,13 @@ BR.Actor = class Actor {
     if (this.grappleCd > 0 || m.grapple || m.dropping) return false;
     const e = this.eye(this._ge || (this._ge = new THREE.Vector3()));
     const d = this.aimDir(this._gd || (this._gd = new THREE.Vector3()));
-    const h = this.game.world.raycast(e.x, e.y, e.z, d.x, d.y, d.z, G.range);
-    if (!h.box || h.box.ground || h.t >= G.range) return false;
-    m.startGrapple(e.x + d.x * h.t, e.y + d.y * h.t, e.z + d.z * h.t);
+    // Anything solid works: buildings, rocks, the ground, tree canopies, other players
+    const h = this.game.hitscan(this, e, d, G.range);
+    let t = h.t, target = h.actor;
+    const tt = this.game.world.raycastTrees(e.x, e.y, e.z, d.x, d.y, d.z, t);
+    if (tt < t) { t = tt; target = null; }
+    if (t >= G.range - 0.01) return false;
+    m.startGrapple(e.x + d.x * t, e.y + d.y * t, e.z + d.z * t, target);
     return true;
   }
 
@@ -2652,7 +2956,7 @@ BR.Actor = class Actor {
     const head = new THREE.Mesh(S.head, mat); head.position.y = 1.64;
     const visor = new THREE.Mesh(S.visor, S.visorMat); visor.position.set(0, 1.66, -0.19);
     const pack = new THREE.Mesh(S.pack, S.dark); pack.position.set(0, 1.1, 0.26);
-    const gun = new THREE.Mesh(S.gun, S.dark); gun.position.set(0.26, 1.18, -0.38);
+    const gun = new THREE.Group(); gun.position.set(0.26, 1.18, -0.2);   // holds the real weapon model
     body.add(torso, hips, l1, l2, head, visor, pack, gun);
     g.add(body);
     g.userData = { body, l1, l2, gun, mat, t: 0 };
@@ -2674,6 +2978,13 @@ BR.Actor = class Actor {
     // Lean into wall-runs
     u.body.rotation.z = BR.util.damp(u.body.rotation.z, m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : 0, 10, dt);
     u.gun.rotation.x = -this.pitch * 0.6;
+    // Show the gun this bot is actually holding
+    const wid = this.weapon ? this.weapon.id : null;
+    if (u.wid !== wid) {
+      u.wid = wid;
+      while (u.gun.children.length) u.gun.remove(u.gun.children[0]);
+      if (wid) { const m = BR.Models.worldWeapon(wid); m.scale.setScalar(wid === 'knife' ? 1.6 : 1.15); u.gun.add(m); }
+    }
   }
 
   // Flash white briefly on hit
@@ -3064,13 +3375,15 @@ BR.Loot = class Loot {
     const g = new THREE.Group(), G = this.geo;
     if (item.kind === 'weapon') {
       const def = BR.CONFIG.weapons[item.wid];
-      const m = this.mat('w_' + item.wid, def.color);
-      const gun = new THREE.Mesh(G.gun, m);
-      gun.scale.x = 0.6 + def.len;
-      const stock = new THREE.Mesh(G.stock, m); stock.position.set(-0.3, -0.08, 0);
-      g.add(gun, stock);
+      // The real gun model, lying on its side and slowly turning, over a rarity ring
+      const gun = BR.Models.worldWeapon(item.wid);
+      gun.scale.setScalar(1.7);
+      gun.rotation.set(0, Math.PI / 2, Math.PI / 2 * 0.9);
+      gun.position.y = -0.05;
+      g.add(gun);
       const ring = new THREE.Mesh(G.ring, this.mat('ring' + def.tier, TIER_COLORS[def.tier], true));
       ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4;
+      ring.scale.setScalar(1.4);
       g.add(ring);
       g.userData.ring = ring;
     } else if (item.kind === 'chest') {
@@ -3346,15 +3659,16 @@ BR.Effects = class Effects {
     this.scene = scene;
     this.tracers = [];
     this.puffs = [];
+    // Tracers: a bright travelling streak (the "bullet") + a faint trail behind it.
+    // Unit box along +Z, stretched/oriented per shot. Additive so colors glow.
+    const unit = new THREE.BoxGeometry(1, 1, 1); unit.translate(0, 0, 0.5);
     for (let i = 0; i < 48; i++) {
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-      const m = new THREE.LineBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0, fog: false });
-      const line = new THREE.Line(g, m);
-      line.frustumCulled = false;
-      line.visible = false;
-      scene.add(line);
-      this.tracers.push({ line, life: 0 });
+      const mk = op => new THREE.Mesh(unit, new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      const streak = mk(1), trail = mk(0.35);
+      streak.visible = trail.visible = false;
+      streak.frustumCulled = trail.frustumCulled = false;
+      scene.add(streak, trail);
+      this.tracers.push({ streak, trail, life: 0, from: new THREE.Vector3(), dir: new THREE.Vector3(), len: 0, t: 0, dur: 0, w: 0.03 });
     }
     const pg = new THREE.BoxGeometry(0.16, 0.16, 0.16);
     for (let i = 0; i < 40; i++) {
@@ -3402,14 +3716,36 @@ BR.Effects = class Effects {
 
   tracer(from, to, mine, color) {
     const t = this.tracers[this.ti++ % this.tracers.length];
-    const a = t.line.geometry.attributes.position.array;
-    a[0] = from.x; a[1] = from.y; a[2] = from.z;
-    a[3] = to.x; a[4] = to.y; a[5] = to.z;
-    t.line.geometry.attributes.position.needsUpdate = true;
-    t.line.material.color.setHex(color !== undefined ? color : mine ? 0xfff1c4 : 0xff9a6b);
-    t.line.material.opacity = 0.9;
-    t.line.visible = true;
-    t.life = 0.07;
+    t.from.copy(from);
+    t.dir.subVectors(to, from);
+    t.len = t.dir.length();
+    if (t.len < 0.5) return;
+    t.dir.divideScalar(t.len);
+    t.t = 0;
+    t.dur = Math.max(0.05, t.len / 320);        // bullet speed for the streak
+    t.life = t.dur + 0.12;                      // trail lingers briefly
+    t.w = mine ? 0.045 : 0.035;
+    const c = color !== undefined ? color : mine ? 0xfff1c4 : 0xff9a6b;
+    t.streak.material.color.setHex(c); t.trail.material.color.setHex(c);
+    const look = this._look || (this._look = new THREE.Vector3());
+    look.copy(from).add(t.dir);
+    t.streak.position.copy(from); t.streak.lookAt(look);
+    t.trail.position.copy(from); t.trail.lookAt(look);
+    t.streak.visible = t.trail.visible = true;
+    this.placeTracer(t);
+  }
+
+  placeTracer(t) {
+    const k = Math.min(1, t.t / t.dur);
+    const head = t.len * k, sl = Math.min(t.len, 5.5);
+    const tail = Math.max(0, head - sl);
+    t.streak.position.copy(t.from).addScaledVector(t.dir, tail);
+    t.streak.scale.set(t.w, t.w, Math.max(0.01, head - tail));
+    t.trail.position.copy(t.from);
+    t.trail.scale.set(t.w * 0.45, t.w * 0.45, Math.max(0.01, head));
+    const fade = t.t > t.dur ? 1 - (t.t - t.dur) / 0.12 : 1;
+    t.streak.material.opacity = t.t > t.dur ? 0 : 1;
+    t.trail.material.opacity = 0.35 * Math.max(0, fade);
   }
 
   impact(p, blood) {
@@ -3442,10 +3778,10 @@ BR.Effects = class Effects {
       if (r.life <= 0) r.m.visible = false;
     }
     for (const t of this.tracers) {
-      if (!t.line.visible) continue;
-      t.life -= dt;
-      t.line.material.opacity = Math.max(0, t.life / 0.07) * 0.9;
-      if (t.life <= 0) t.line.visible = false;
+      if (!t.trail.visible) continue;
+      t.t += dt;
+      if (t.t >= t.life) { t.streak.visible = t.trail.visible = false; continue; }
+      this.placeTracer(t);
     }
     for (const f of this.puffs) {
       if (!f.mesh.visible) continue;
@@ -3616,6 +3952,7 @@ BR.Input = class Input {
       if (e.code === 'KeyG') this.press('grapple');
       if (e.code === 'KeyV') this.press('inspect');
       if (e.code === 'Digit3') this.press('slot2');
+      if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
       if (e.code === 'KeyR') this.press('reload');
       if (e.code === 'KeyE' || e.code === 'KeyF') this.press('interact');
       if (e.code === 'KeyQ') this.press('swap');
@@ -3829,29 +4166,160 @@ BR.Fullscreen = {
 <script>
 'use strict';
 // =============================================================================
+// ACCOUNTS — local (on-device) accounts. Each account has its own coins,
+// cosmetics and stats (see BR.Profile in shop.js). Signed-out players are
+// "Guest".
+//
+// Dev access: redeeming the private dev code (CONFIG.devCodeHash is its
+// SHA-256) marks THAT account as dev = infinite coins on this device.
+//
+// GOING ONLINE: everything here runs on the player's device, so a determined
+// player can edit their own storage. That's fine offline, but once there's a
+// server, coins, purchases and the dev flag must live on the server:
+//   POST /api/signup  {username, password}      -> {token}
+//   POST /api/login   {username, password}      -> {token}
+//   GET  /api/profile (Authorization: token)    -> {coins, owned, equip, stats, dev}
+//   POST /api/buy     {category, id}            -> {coins, owned}      (server checks price)
+//   POST /api/match   {matchId, kills, ...}     -> {coinsAwarded}      (server validates)
+//   POST /api/equip   {category, id}
+// Swap the methods below for fetch() calls with the same names and delete the
+// dev-code check from the client. Nothing else in the game needs to change.
+// =============================================================================
+BR.Accounts = {
+  KEY: 'velocity-royale.accounts',
+  db: null,
+
+  load() {
+    const d = BR.util.load(this.KEY, null) || {};
+    this.db = { users: d.users || {}, current: d.current && d.users && d.users[d.current] ? d.current : null };
+    return this;
+  },
+  save() { BR.util.save(this.KEY, this.db); },
+
+  current() { return this.db.current; },
+  displayName() { return this.db.current || 'Guest'; },
+  profileKey() { return 'velocity-royale.profile.' + (this.db.current ? 'u:' + this.db.current.toLowerCase() : 'guest'); },
+
+  validName(n) { return /^[A-Za-z0-9_]{3,16}$/.test(n); },
+
+  async signUp(name, pass) {
+    name = (name || '').trim();
+    if (!this.validName(name)) return { ok: false, msg: 'Username: 3–16 letters, numbers or _' };
+    if (!pass || pass.length < 4) return { ok: false, msg: 'Password: at least 4 characters' };
+    if (Object.keys(this.db.users).some(u => u.toLowerCase() === name.toLowerCase())) return { ok: false, msg: 'That username is taken on this device' };
+    const salt = BR.sha256.randomHex(16);
+    this.db.users[name] = { salt, hash: await BR.sha256.hex(salt + ':' + pass), created: Date.now() };
+    this.db.current = name;
+    this.save();
+    return { ok: true };
+  },
+
+  async logIn(name, pass) {
+    name = (name || '').trim();
+    const key = Object.keys(this.db.users).find(u => u.toLowerCase() === name.toLowerCase());
+    const u = key && this.db.users[key];
+    if (!u || (await BR.sha256.hex(u.salt + ':' + (pass || ''))) !== u.hash) return { ok: false, msg: 'Wrong username or password' };
+    this.db.current = key;
+    this.save();
+    return { ok: true };
+  },
+
+  logOut() { this.db.current = null; this.save(); },
+
+  // Returns {ok, msg}. On success the current account's profile becomes dev.
+  async redeem(code) {
+    if (!this.db.current) return { ok: false, msg: 'Sign in to an account first' };
+    const h = await BR.sha256.hex((code || '').trim().toUpperCase());
+    if (h !== BR.CONFIG.devCodeHash) return { ok: false, msg: 'That code isn’t valid' };
+    BR.Profile.data.dev = true;
+    BR.Profile.save();
+    return { ok: true, msg: 'Dev access unlocked: infinite coins' };
+  },
+};
+
+// SHA-256: Web Crypto when available (https / localhost), small JS fallback otherwise
+// (e.g. testing over plain http on your Wi-Fi).
+BR.sha256 = {
+  randomHex(bytes) {
+    const a = new Uint8Array(bytes);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(a); else for (let i = 0; i < bytes; i++) a[i] = Math.random() * 256 | 0;
+    return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
+  },
+  async hex(text) {
+    const data = new TextEncoder().encode(text);
+    if (window.crypto && crypto.subtle) {
+      try {
+        const buf = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) { /* fall through */ }
+    }
+    return this.js(data);
+  },
+  js(bytes) {
+    const K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+    const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const l = bytes.length, n = ((l + 9 + 63) >> 6) << 6, m = new Uint8Array(n);
+    m.set(bytes); m[l] = 0x80;
+    const dv = new DataView(m.buffer);
+    dv.setUint32(n - 4, l * 8); dv.setUint32(n - 8, Math.floor(l / 0x20000000));
+    const w = new Uint32Array(64), r = (x, s) => (x >>> s) | (x << (32 - s));
+    for (let o = 0; o < n; o += 64) {
+      for (let i = 0; i < 16; i++) w[i] = dv.getUint32(o + i * 4);
+      for (let i = 16; i < 64; i++) {
+        const s0 = r(w[i - 15], 7) ^ r(w[i - 15], 18) ^ (w[i - 15] >>> 3), s1 = r(w[i - 2], 17) ^ r(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+      }
+      let [a, b, c, d, e, f, g, h] = H;
+      for (let i = 0; i < 64; i++) {
+        const t1 = (h + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+        const t2 = ((r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+    return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
+  },
+};
+
+</script>
+<script>
+'use strict';
+// =============================================================================
 // PROFILE + SHOP — coins earned in matches, spent on cosmetics. Saved per
 // device in localStorage. The shop shows a live 3D preview (Game.renderShop).
 // =============================================================================
 BR.Profile = {
   KEY: 'velocity-royale.profile',
   data: null,
+  // Loads the profile of the signed-in account (or the guest profile).
   load() {
     const C = BR.CONFIG.coins;
-    const d = BR.util.load(this.KEY, null) || {};
+    this.KEY = BR.Accounts ? BR.Accounts.profileKey() : 'velocity-royale.profile';
+    let d = BR.util.load(this.KEY, null);
+    if (!d && this.KEY.endsWith('.guest')) d = BR.util.load('velocity-royale.profile', null); // pre-accounts save
+    d = d || {};
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
       owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'] }, d.owned || {}),
       equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none' }, d.equip || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0 }, d.stats || {}),
+      dev: !!d.dev,
     };
     return this.data;
   },
   save() { BR.util.save(this.KEY, this.data); },
   owns(cat, id) { return this.data.owned[cat].includes(id); },
+  infinite() { return !!this.data.dev; },
+  coinsLabel() { return this.infinite() ? '∞' : String(this.data.coins); },
+  canAfford(price) { return this.infinite() || this.data.coins >= price; },
   buy(cat, id) {
     const item = BR.Shop.catalog(cat)[id];
-    if (!item || this.owns(cat, id) || this.data.coins < item.price) return false;
-    this.data.coins -= item.price;
+    if (!item || this.owns(cat, id) || !this.canAfford(item.price)) return false;
+    if (!this.infinite()) this.data.coins -= item.price;
     this.data.owned[cat].push(id);
     this.data.equip[cat] = id;
     this.save();
@@ -3936,7 +4404,7 @@ BR.Shop = class Shop {
   render() {
     const P = BR.Profile, cat = this.cat, items = Shop.catalog(cat);
     document.querySelectorAll('#shop-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
-    this.el.coins.textContent = P.data.coins;
+    this.el.coins.textContent = P.coinsLabel();
     const html = [];
     for (const id in items) {
       const it = items[id], own = P.owns(cat, id), eq = P.data.equip[cat] === id;
@@ -3952,7 +4420,7 @@ BR.Shop = class Shop {
     const own = it && P.owns(cat, this.sel), eq = it && P.data.equip[cat] === this.sel;
     this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : 'Buy · ' + it.price;
     this.el.action.disabled = !it || eq;
-    this.el.action.classList.toggle('poor', !!it && !own && P.data.coins < it.price);
+    this.el.action.classList.toggle('poor', !!it && !own && !P.canAfford(it.price));
     // What the preview shows: equipped look, with the selected item swapped in
     const eqd = P.data.equip;
     this.game.setShopPreview({
@@ -4008,7 +4476,7 @@ BR.HUD = class HUD {
   <div id="vignette"></div>
   <div id="zone-tint"></div>
   <div id="scope"><div class="scope-ring"></div></div>
-  <div id="crosshair"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b></div>
+  <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
   <div id="dmg-dirs"></div>
   <div id="dmg-nums"></div>
@@ -4020,7 +4488,9 @@ BR.HUD = class HUD {
   </div>
   <button class="btn pause" data-act="pause" aria-label="Pause">${ICON.pause}</button>
   <div id="killfeed"></div>
-  <canvas id="minimap" width="220" height="220"></canvas>
+  <button class="btn mapbtn" data-act="map" aria-label="Map"><canvas id="minimap" width="220" height="220"></canvas></button>
+  <div id="bigmap"><canvas id="bigmap-cv" width="720" height="720"></canvas><div class="bm-hint">Tap the minimap to close</div></div>
+  <div id="loc"></div>
   <div id="fps"></div>
   <div id="toast"></div>
   <div id="state-tag"></div>
@@ -4047,8 +4517,8 @@ BR.HUD = class HUD {
   <button class="btn act firel touch-only" data-act="firel" aria-label="Fire">${ICON.fire}</button>
   <button class="btn act fire touch-only" data-act="fire" aria-label="Fire">${ICON.fire}<span>FIRE</span></button>
   <button class="btn act jump touch-only" data-act="jump" aria-label="Jump">${ICON.jump}<span>JUMP</span></button>
-  <button class="btn act crouch touch-only" data-act="crouch" aria-label="Crouch / Slide">${ICON.crouch}<span>CROUCH</span></button>
-  <button class="btn act grapple touch-only" data-act="grapple" aria-label="Grapple">${ICON.grapple}<span>HOOK</span><em class="cd"></em></button>
+  <button class="btn act crouch cdable touch-only" data-act="crouch" aria-label="Crouch / Slide">${ICON.crouch}<span>CROUCH</span></button>
+  <button class="btn act grapple cdable touch-only" data-act="grapple" aria-label="Grapple">${ICON.grapple}<span>HOOK</span><em class="cd"></em></button>
   <button class="btn act reload touch-only" data-act="reload" aria-label="Reload">${ICON.reload}</button>
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>AIM</span></button>
   <button class="btn act swap touch-only" data-act="swap" aria-label="Swap weapon">${ICON.swap}</button>
@@ -4074,6 +4544,7 @@ BR.HUD = class HUD {
 <div id="menu" class="overlay menu">
   <div class="film"><i class="lb top"></i><i class="lb bot"></i><i class="scan"></i><i class="grain"></i><i class="cutflash"></i></div>
   <div class="menu-coins glass"><i class="coin"></i><span id="menu-coins" class="num">0</span></div>
+  <button id="acct-chip" class="acct-chip glass"><span id="acct-avatar" class="avatar">G</span><span class="acct-text"><b id="acct-name">Guest</b><small id="acct-sub">Sign in</small></span></button>
   <div class="menu-main">
     <div class="logo">
       <div class="logo-small">Prototype v${V} · Offline vs bots</div>
@@ -4109,6 +4580,29 @@ BR.HUD = class HUD {
         <label class="tg"><input type="checkbox" id="set-auto"> AUTO-FIRE</label>
         <label class="tg"><input type="checkbox" id="set-fps"> SHOW FPS</label>
       </div>
+      <details class="help xh-set"><summary>CROSSHAIR</summary>
+        <div class="xh-wrap">
+          <div class="xh-prev"><div id="xh-prev" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div></div>
+          <div class="xh-ctl">
+            <div class="seg" id="xh-style"><button data-v="cross">CROSS</button><button data-v="crossdot">CROSS+DOT</button><button data-v="dot">DOT</button><button data-v="circle">CIRCLE</button><button data-v="tee">T</button></div>
+            <div class="swatches" id="xh-color">
+              <button data-v="#ffffff" style="--c:#ffffff" aria-label="White"></button><button data-v="#4dff6a" style="--c:#4dff6a" aria-label="Green"></button>
+              <button data-v="#39e1ff" style="--c:#39e1ff" aria-label="Cyan"></button><button data-v="#ffe14d" style="--c:#ffe14d" aria-label="Yellow"></button>
+              <button data-v="#ffb224" style="--c:#ffb224" aria-label="Orange"></button><button data-v="#ff4d5e" style="--c:#ff4d5e" aria-label="Red"></button>
+              <button data-v="#ff5cf0" style="--c:#ff5cf0" aria-label="Pink"></button>
+            </div>
+            <div class="row"><label for="xh-len">LENGTH</label><input id="xh-len" type="range" min="2" max="24" step="1"><output id="xh-len-o"></output></div>
+            <div class="row"><label for="xh-thick">THICKNESS</label><input id="xh-thick" type="range" min="1" max="6" step="1"><output id="xh-thick-o"></output></div>
+            <div class="row"><label for="xh-gap">GAP</label><input id="xh-gap" type="range" min="0" max="24" step="1"><output id="xh-gap-o"></output></div>
+            <div class="row"><label for="xh-op">OPACITY</label><input id="xh-op" type="range" min="0.2" max="1" step="0.05"><output id="xh-op-o"></output></div>
+            <div class="row toggles">
+              <label class="tg"><input type="checkbox" id="xh-dot"> CENTER DOT</label>
+              <label class="tg"><input type="checkbox" id="xh-ol"> OUTLINE</label>
+              <label class="tg"><input type="checkbox" id="xh-dyn"> SPREAD MOVES IT</label>
+            </div>
+          </div>
+        </div>
+      </details>
       <details class="help"><summary>CONTROLS</summary>${HELP}</details>
       <details class="help"><summary>MOVEMENT TECH</summary>${TECH_HELP}</details>
     </div>
@@ -4132,6 +4626,33 @@ BR.HUD = class HUD {
       <button id="shop-back" class="mbtn sm">BACK</button>
       <button id="shop-action" class="mbtn sm hot">EQUIP</button>
     </div>
+  </div>
+</div>
+
+<div id="account" class="overlay hidden">
+  <div class="panel metal acct">
+    <div class="ptitle">ACCOUNT</div>
+    <div id="acct-out">
+      <div class="seg" id="acct-tabs"><button data-v="login">SIGN IN</button><button data-v="signup">CREATE ACCOUNT</button></div>
+      <form id="acct-form" autocomplete="on">
+        <label for="acct-user">Username</label>
+        <input id="acct-user" name="username" type="text" autocomplete="username" maxlength="16" autocapitalize="off" spellcheck="false">
+        <label for="acct-pass">Password</label>
+        <input id="acct-pass" name="password" type="password" autocomplete="current-password" maxlength="64">
+        <button id="acct-submit" class="mbtn hot" type="submit">Sign in</button>
+      </form>
+      <p class="fine">Accounts are saved on this device for now. Coins, skins and stats are kept per account.</p>
+    </div>
+    <div id="acct-in" class="hidden">
+      <div class="acct-me"><span id="acct-me"></span><span id="acct-dev" class="dev-badge hidden">DEV</span></div>
+      <div class="acct-row"><span>Coins</span><b><i class="coin"></i><span id="acct-coins"></span></b></div>
+      <div class="acct-row"><span>Record</span><b id="acct-stats"></b></div>
+      <label for="acct-code">Redeem a code</label>
+      <div class="code-row"><input id="acct-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XX-XXX-XXXX"><button id="acct-redeem" class="mbtn sm">REDEEM</button></div>
+      <button id="acct-logout" class="mbtn">LOG OUT</button>
+    </div>
+    <div id="acct-msg" class="acct-msg" role="status"></div>
+    <button id="acct-close" class="mbtn">CLOSE</button>
   </div>
 </div>
 
@@ -4183,6 +4704,8 @@ BR.HUD = class HUD {
     };
     this.cache = {};
     this.mm = this.el.minimap.getContext('2d');
+    this.bm = $('bigmap-cv').getContext('2d');
+    this.el.bigmap = $('bigmap'); this.el.loc = $('loc');
     this.numPool = [];
     for (let i = 0; i < 16; i++) {
       const d = document.createElement('div');
@@ -4257,18 +4780,25 @@ BR.HUD = class HUD {
       el.querySelector('.cd').textContent = v > 0 ? Math.ceil(v) : '';
     });
     const m = p.mover;
+    // Super jump cooldown sweep on the crouch/slide button
+    const sj = Math.max(0, Math.ceil(m.superCd * 10) / 10);
+    this.set('sjcd', e.crouchBtn, sj, (el, v) => {
+      el.classList.toggle('cooling', v > 0);
+      el.style.setProperty('--cd', (v / BR.CONFIG.move.tech.superJumpCooldown * 360).toFixed(0) + 'deg');
+    });
     const cLbl = m.sliding ? 'SLIDE' : m.crouched ? 'STAND' : m.speedH >= BR.CONFIG.move.runSpeed * BR.CONFIG.move.slideMinSpeed ? 'SLIDE' : 'CROUCH';
     this.set('cl', e.crouchBtn, cLbl, (el, v) => { el.querySelector('span').textContent = v; el.classList.toggle('on-toggle', m.crouched); });
 
     // Crosshair gap from current spread (hidden while scoped or on a holo sight)
     if (w) {
       const spread = BR.Weapons.spread(p, w);
-      const px = Math.round(spread * (window.innerHeight / 2) / Math.tan(game.camera.fov * Math.PI / 360));
-      this.set('cx', e.crosshair, Math.max(4, Math.min(px, 90)), (el, v) => el.style.setProperty('--gap', v + 'px'));
+      const X = BR.xh || {};
+      const px = X.dyn === false ? 0 : Math.round(spread * (window.innerHeight / 2) / Math.tan(game.camera.fov * Math.PI / 360));
+      this.set('cx', e.crosshair, Math.min((X.gap ?? 6) + px, 90), (el, v) => el.style.setProperty('--gap', v + 'px'));
       this.set('cxl', e.crosshair, w.def.pattern === 'line', (el, v) => el.classList.toggle('line', v));
     }
     const scoped = p.ads && w && w.def.scope && p.alive;
-    const holo = p.ads && w && w.def.holo && game.cam.ads > 0.7;
+    const holo = p.ads && w && !w.def.scope && !w.def.melee && game.cam.ads > 0.7; // sights replace the crosshair
     this.set('scope', e.scope, !!scoped, el => el.classList.toggle('on', !!scoped));
     this.set('xh', e.crosshair, !!(scoped || holo), (el, v) => el.classList.toggle('hide', v));
 
@@ -4373,47 +4903,76 @@ BR.HUD = class HUD {
 
   setStaticMap(img) { this.mapImg = img; }
 
-  drawMinimap(game) {
-    const c = this.mm, S = 220, w = game.world, k = S / w.size, H = w.half;
-    this._mmT = (this._mmT || 0) + 1;
-    if (this._mmT % 3) return; // 20 Hz is plenty
+  toggleMap(on) {
+    this.bigOpen = on === undefined ? !this.bigOpen : on;
+    this.el.bigmap.classList.toggle('on', this.bigOpen);
+  }
+
+  // Location banner when you enter a named place
+  location(name) {
+    const l = this.el.loc;
+    l.textContent = name;
+    l.classList.remove('on'); void l.offsetWidth; l.classList.add('on');
+  }
+
+  // Shared map painter: draws the world image, storm, names and player into a
+  // square view centred on (cx, cz) that is `view` meters wide.
+  paintMap(c, S, game, cx, cz, view, labels) {
+    const w = game.world, H = w.half, k = S / view;
+    const X = x => (x - cx) * k + S / 2, Z = z => (z - cz) * k + S / 2;
     c.clearRect(0, 0, S, S);
-    if (this.mapImg) c.drawImage(this.mapImg, 0, 0, S, S);
-    const z = game.zone;
-    // storm outside the circle
-    c.save();
-    c.fillStyle = 'rgba(122,92,255,0.38)';
-    c.beginPath();
-    c.rect(0, 0, S, S);
-    c.arc((z.x + H) * k, (z.z + H) * k, Math.max(z.r, 0) * k, 0, Math.PI * 2, true);
-    c.fill('evenodd');
-    c.restore();
-    c.strokeStyle = '#ffffff';
-    c.lineWidth = 2;
-    c.beginPath(); c.arc((z.x + H) * k, (z.z + H) * k, Math.max(z.r, 0) * k, 0, Math.PI * 2); c.stroke();
-    if (z.state !== 'done') {
-      c.setLineDash([5, 4]);
-      c.strokeStyle = '#ffd27a';
-      c.beginPath(); c.arc((z.nextX + H) * k, (z.nextZ + H) * k, Math.max(z.nextR, 0.5) * k, 0, Math.PI * 2); c.stroke();
-      c.setLineDash([]);
+    c.fillStyle = '#26331f'; c.fillRect(0, 0, S, S);
+    if (this.mapImg) {
+      const ik = this.mapImg.width / w.size;
+      const sx = (cx - view / 2 + H) * ik, sz = (cz - view / 2 + H) * ik;
+      c.drawImage(this.mapImg, sx, sz, view * ik, view * ik, 0, 0, S, S);
     }
-    // Recently heard gunfire shows as red ticks
+    const z = game.zone;
+    if (!game.practice) {
+      c.save();
+      c.fillStyle = 'rgba(138,107,255,0.36)';
+      c.beginPath(); c.rect(0, 0, S, S);
+      c.arc(X(z.x), Z(z.z), Math.max(z.r, 0) * k, 0, Math.PI * 2, true);
+      c.fill('evenodd');
+      c.restore();
+      c.strokeStyle = '#ffffff'; c.lineWidth = Math.max(1.5, S / 150);
+      c.beginPath(); c.arc(X(z.x), Z(z.z), Math.max(z.r, 0) * k, 0, Math.PI * 2); c.stroke();
+      if (z.state !== 'done') {
+        c.setLineDash([6, 5]); c.strokeStyle = '#ffd27a';
+        c.beginPath(); c.arc(X(z.nextX), Z(z.nextZ), Math.max(z.nextR, 0.5) * k, 0, Math.PI * 2); c.stroke();
+        c.setLineDash([]);
+      }
+    }
+    if (labels) {
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.font = `600 ${Math.round(S / 34)}px "Saira Semi Condensed", sans-serif`;
+      for (const p of w.pois || []) {
+        c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,0.7)'; c.strokeText(p.name.toUpperCase(), X(p.x), Z(p.z));
+        c.fillStyle = '#fff'; c.fillText(p.name.toUpperCase(), X(p.x), Z(p.z));
+      }
+    }
     for (const s of game.recentShots) {
       c.fillStyle = `rgba(255,90,90,${Math.max(0, 1 - (game.time - s.t) / 2)})`;
-      c.fillRect((s.x + H) * k - 2, (s.z + H) * k - 2, 4, 4);
+      c.fillRect(X(s.x) - 2, Z(s.z) - 2, 4, 4);
     }
-    // player arrow
-    const p = game.player;
-    const px = (p.pos.x + H) * k, pz = (p.pos.z + H) * k;
+    const p = game.player, sz = Math.max(7, S / 40);
     c.save();
-    c.translate(px, pz);
+    c.translate(X(p.pos.x), Z(p.pos.z));
     c.rotate(-p.yaw);
-    c.fillStyle = '#ffb547';
-    c.strokeStyle = '#1a1206';
-    c.lineWidth = 1.5;
-    c.beginPath(); c.moveTo(0, -8); c.lineTo(5.5, 6); c.lineTo(0, 3); c.lineTo(-5.5, 6); c.closePath();
+    c.fillStyle = '#ffb224'; c.strokeStyle = '#1a1206'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(0, -sz); c.lineTo(sz * 0.7, sz * 0.75); c.lineTo(0, sz * 0.38); c.lineTo(-sz * 0.7, sz * 0.75); c.closePath();
     c.fill(); c.stroke();
     c.restore();
+  }
+
+  drawMinimap(game) {
+    this._mmT = (this._mmT || 0) + 1;
+    if (this._mmT % 3) return; // 20 Hz is plenty
+    const p = game.player, w = game.world, view = 220, H = w.half;
+    // Zoomed window that follows you (clamped to the map)
+    const cx = BR.util.clamp(p.pos.x, -H + view / 2, H - view / 2), cz = BR.util.clamp(p.pos.z, -H + view / 2, H - view / 2);
+    this.paintMap(this.mm, 220, game, cx, cz, view, false);
+    if (this.bigOpen) this.paintMap(this.bm, 720, game, 0, 0, w.size, true);
   }
 
   showEnd(r) {
@@ -4529,7 +5088,7 @@ BR.Game = class Game {
     this.scene.add(sun);
     this.world = new BR.World(seed);
     this.world.buildMeshes(this.scene, this.detail);
-    this.hud.setStaticMap(this.world.renderMinimap(256));
+    this.hud.setStaticMap(this.world.renderMinimap(1024));
     this.fx = new BR.Effects(this.scene);
     this.loot = new BR.Loot(this);
     this.loot.spawnFromWorld(this.world);
@@ -4573,6 +5132,13 @@ BR.Game = class Game {
     this.diff = BR.CONFIG.difficulty.normal;
     this.practice = false;
     this.addBots(BR.CONFIG.match.demoBots, this.diff);
+    // Big map: cluster the trailer's bots around two hot spots so there's action to film
+    const pois = this.world.pois.slice().sort(() => Math.random() - 0.5).slice(0, 2);
+    this.actors.forEach((a, i) => {
+      const p = pois[i % pois.length];
+      a.mover.pos.set(p.x + (Math.random() - 0.5) * 70, 30 + Math.random() * 20, p.z + (Math.random() - 0.5) * 70);
+      if (a.brain) a.brain.dropTarget = { x: p.x + (Math.random() - 0.5) * 30, z: p.z + (Math.random() - 0.5) * 30 };
+    });
     this.camera.fov = 62; this.camera.updateProjectionMatrix();
     this.camera.position.set(0, 90, 120); this.camera.lookAt(0, 0, 0);
   }
@@ -4588,13 +5154,15 @@ BR.Game = class Game {
     this.player.yaw = Math.atan2(this.player.pos.x, this.player.pos.z); // face map center
     this.player.pitch = -0.75;                                           // look down at the landing area
     this.actors.push(this.player);
-    const bots = Math.max(0, Math.min(29, S.bots ?? C.match.defaultBots));
+    const bots = Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
     this.practice = bots === 0;
     this.addBots(bots, this.diff);
     this.zone.mesh.visible = !this.practice;
     this.total = this.actors.length;
     this.swapItem = null;
     this.lastWeapon = null;
+    this.lastPoi = null;
+    this.hud.toggleMap(false);
     this.input.reset();
     this.state = 'playing';
     this.cam.off = C.actor.standHeight - C.actor.eyeFromTop;
@@ -4704,6 +5272,11 @@ BR.Game = class Game {
     if (p.mover.grapple) this.fx.rope(this.muzzlePoint(p, this._v4), p.mover.grapple);
     else this.fx.rope(null);
 
+    // Location banner when entering a named place
+    const poi = this.world.poiAt(p.pos.x, p.pos.z);
+    if (poi && poi !== this.lastPoi && !p.mover.dropping) this.hud.location(poi.name);
+    if (!p.mover.dropping) this.lastPoi = poi;
+
     this.updateCamera(dt);
     this.hud.update(this, dt);
     this.hud.fps(this.fpsVal, this.settings.showFps);
@@ -4764,6 +5337,7 @@ BR.Game = class Game {
       else if (this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; }
     }
     if (inp.consume('pause')) this.pause();
+    if (inp.consume('map')) this.hud.toggleMap();
     p.ads = inp.ads && !!w && !w.def.melee && !p.mover.dropping;
     if (p.ads) this.cam.inspectT = 0;
 
@@ -4857,7 +5431,8 @@ BR.Game = class Game {
 
   muzzlePoint(a, out) {
     if (a.isPlayer) {
-      out.set(0.2 * this.vmScale, -0.16, -0.75);
+      const ads = this.cam.ads || 0;
+      out.set(BR.util.lerp(0.2 * this.vmScale, 0.02, ads), BR.util.lerp(-0.16, -0.08, ads), -1.6);
       return this.camera.localToWorld(out);
     }
     const s = Math.sin(a.yaw), c = Math.cos(a.yaw), m = a.mover;
@@ -5172,7 +5747,7 @@ BR.Game = class Game {
     c.swingT = Math.max(0, c.swingT - dt);
     c.shellT = Math.max(0, c.shellT - dt);
     c.flashT -= dt;
-    model.userData.flash.visible = c.flashT > 0;
+    model.userData.flash.visible = c.flashT > 0 && c.ads < 0.5;   // no flash in your face while aiming
     const sp = Math.min(m.speedH, 10);
     const bx = m.onGround ? Math.sin(c.bob) * sp * 0.0022 : 0;
     const by = m.onGround ? Math.abs(Math.cos(c.bob)) * sp * 0.002 : 0;
@@ -5183,11 +5758,13 @@ BR.Game = class Game {
     // Base pose (hip) and ADS pose. Holo sights line the reticle up with screen center.
     let hx = 0.24 * s, hy = -0.26, hz = -0.74, ax = 0, ay = -0.13, az = -0.5;
     if (w.def.melee) { hx = 0.17 * s; hy = -0.15; hz = -0.36; }
-    if (w.def.holo && model.userData.sight) { const sg = model.userData.sight.position; ax = -sg.x; ay = -sg.y; az = -0.44 - sg.z; }
+    // Any sight (holo, red dot, irons) is lined up with the exact screen center
+    if (model.userData.sight && !w.def.scope) { const sg = model.userData.sight.position; ax = -sg.x; ay = -sg.y; az = -(model.userData.sightDist || 0.3) - sg.z; }
     let px = U.lerp(hx, ax, c.ads) + bx + c.swayX;
     let py = U.lerp(hy, ay, c.ads) - by + c.swayY - (m.sliding ? 0.03 : 0) - (m.crouched ? 0.01 : 0);
-    let pz = U.lerp(hz, az, c.ads) + c.vmKick;
-    let rx = c.vmKick * 2.2, ry = 0, rz = m.sliding ? 0.35 : m.wallRunning ? 0.15 : 0;
+    const kick = c.vmKick * (1 - c.ads * 0.7);                     // softer visual kick when aiming
+    let pz = U.lerp(hz, az, c.ads) + kick;
+    let rx = kick * (2.2 - c.ads * 1.6), ry = 0, rz = m.sliding ? 0.35 : m.wallRunning ? 0.15 : 0;
     const ease = t => t * t * (3 - 2 * t);
 
     // Draw / pull-out
@@ -5257,11 +5834,14 @@ BR.Game = class Game {
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false };
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
+    xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
   const settings = Object.assign({}, DEFAULTS, stored);
+  settings.xh = Object.assign({}, DEFAULTS.xh, stored.xh || {});
   const save = () => BR.util.save('velocity-royale.settings', settings);
+  BR.Accounts.load();
   BR.Profile.load();
 
   let game;
@@ -5278,7 +5858,12 @@ BR.Game = class Game {
   BR.Audio.setVolume(settings.volume);
 
   const $ = id => document.getElementById(id);
-  BR.updateCoins = () => { $('menu-coins').textContent = BR.Profile.data.coins; };
+  BR.updateCoins = () => {
+    $('menu-coins').textContent = BR.Profile.coinsLabel();
+    $('acct-name').textContent = BR.Accounts.displayName();
+    $('acct-sub').textContent = BR.Accounts.current() ? (BR.Profile.infinite() ? 'Dev · infinite coins' : 'Signed in') : 'Sign in';
+    $('acct-avatar').textContent = BR.Accounts.displayName()[0].toUpperCase();
+  };
   BR.updateCoins();
 
   // ---- settings panel --------------------------------------------------------
@@ -5307,6 +5892,7 @@ BR.Game = class Game {
   };
   seg('set-diff', 'difficulty');
   seg('set-gfx', 'gfx', () => game.applyGraphics());
+  $('set-bots').max = BR.CONFIG.match.maxBots;
   range('set-bots', 'bots', v => v === 0 ? 'NONE' : v + '');
   range('set-sens', 'sens', v => v.toFixed(2) + '×');
   range('set-fov', 'fov', v => v + '°');
@@ -5314,6 +5900,38 @@ BR.Game = class Game {
   check('set-assist', 'assist');
   check('set-auto', 'autoFire');
   check('set-fps', 'showFps');
+  // ---- crosshair editor -------------------------------------------------------
+  const X = settings.xh;
+  BR.xh = X;
+  const applyXh = () => {
+    document.querySelectorAll('.xh').forEach(el => {
+      el.style.setProperty('--len', X.len + 'px');
+      el.style.setProperty('--thick', X.thick + 'px');
+      el.style.setProperty('--xc', X.color);
+      el.style.setProperty('--xo', X.op);
+      if (el.id === 'xh-prev') el.style.setProperty('--gap', X.gap + 'px');
+      el.classList.remove('s-cross', 's-crossdot', 's-dot', 's-circle', 's-tee');
+      el.classList.add('s-' + X.style);
+      el.classList.toggle('nodot', !X.dot && X.style !== 'dot' && X.style !== 'crossdot' && X.style !== 'circle');
+      el.classList.toggle('ol', X.ol);
+    });
+    $('xh-style').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === X.style));
+    $('xh-color').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === X.color));
+    game.hud.cache.cx = undefined; // re-apply the in-game gap
+  };
+  $('xh-style').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; X.style = b.dataset.v; save(); applyXh(); });
+  $('xh-color').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; X.color = b.dataset.v; save(); applyXh(); });
+  for (const [id, key, fmt] of [['xh-len', 'len', v => v], ['xh-thick', 'thick', v => v], ['xh-gap', 'gap', v => v], ['xh-op', 'op', v => Math.round(v * 100) + '%']]) {
+    const el = $(id), out = $(id + '-o');
+    el.value = X[key]; out.textContent = fmt(X[key]);
+    el.addEventListener('input', () => { X[key] = parseFloat(el.value); out.textContent = fmt(X[key]); save(); applyXh(); });
+  }
+  for (const [id, key] of [['xh-dot', 'dot'], ['xh-ol', 'ol'], ['xh-dyn', 'dyn']]) {
+    const el = $(id); el.checked = !!X[key];
+    el.addEventListener('change', () => { X[key] = el.checked; save(); applyXh(); });
+  }
+  applyXh();
+
   const openSettings = () => $('settings').classList.remove('hidden');
   $('btn-settings').addEventListener('click', openSettings);
   $('btn-settings2').addEventListener('click', openSettings);
@@ -5339,6 +5957,44 @@ BR.Game = class Game {
   const shop = new BR.Shop(game);
   BR.shop = shop;
   $('btn-shop').addEventListener('click', () => { BR.Audio.init(); shop.open(); });
+
+  // ---- accounts --------------------------------------------------------------
+  let acctMode = 'login';
+  const renderAccount = () => {
+    const signed = !!BR.Accounts.current(), P = BR.Profile.data;
+    $('acct-out').classList.toggle('hidden', signed);
+    $('acct-in').classList.toggle('hidden', !signed);
+    $('acct-msg').textContent = '';
+    document.querySelectorAll('#acct-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.v === acctMode));
+    $('acct-submit').textContent = acctMode === 'login' ? 'Sign in' : 'Create account';
+    if (signed) {
+      $('acct-me').textContent = BR.Accounts.current();
+      $('acct-coins').textContent = BR.Profile.coinsLabel();
+      $('acct-stats').textContent = `${P.stats.matches} matches · ${P.stats.wins} wins · ${P.stats.kills} kills`;
+      $('acct-dev').classList.toggle('hidden', !BR.Profile.infinite());
+    }
+  };
+  const afterAuth = () => { BR.Profile.load(); game.refreshCosmetics(); BR.updateCoins(); renderAccount(); };
+  $('acct-chip').addEventListener('click', () => { renderAccount(); $('account').classList.remove('hidden'); });
+  $('acct-close').addEventListener('click', () => $('account').classList.add('hidden'));
+  $('acct-tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; acctMode = b.dataset.v; renderAccount(); });
+  $('acct-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const fn = acctMode === 'login' ? 'logIn' : 'signUp';
+    const r = await BR.Accounts[fn]($('acct-user').value, $('acct-pass').value);
+    if (!r.ok) { $('acct-msg').textContent = r.msg; return; }
+    $('acct-pass').value = '';
+    afterAuth();
+  });
+  $('acct-logout').addEventListener('click', () => { BR.Accounts.logOut(); afterAuth(); });
+  $('acct-redeem').addEventListener('click', async () => {
+    const r = await BR.Accounts.redeem($('acct-code').value);
+    $('acct-code').value = '';
+    BR.updateCoins(); renderAccount();
+    $('acct-msg').textContent = r.msg;
+    if (r.ok) BR.Audio.coin();
+  });
+  BR.updateCoins();
 
   // ---- match flow ------------------------------------------------------------
   const play = () => { BR.Audio.init(); tryFullscreen(); game.startMatch(); };

@@ -118,6 +118,7 @@ BR.Models = (function () {
     lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }),
     lensDark: new THREE.MeshPhongMaterial({ color: 0x102030, specular: 0x88ccff, shininess: 120 }),
     reticle: new THREE.MeshBasicMaterial({ color: 0xff3040 }),
+    sightDot: new THREE.MeshBasicMaterial({ color: 0xff8a1f }),
     shell: new THREE.MeshLambertMaterial({ color: 0xc8202a }),
     brass: new THREE.MeshPhongMaterial({ color: 0xc89b3c, specular: 0xffe2a0, shininess: 60 }),
     flash: new THREE.MeshBasicMaterial({ color: 0xffd27a }),
@@ -134,6 +135,24 @@ BR.Models = (function () {
         g.add(m); return m;
       },
     };
+  }
+
+  // Iron sights: rear notch (or aperture ring) + front post with a dot, on one sight line.
+  function irons(g, M, y, rearZ, frontZ, ring) {
+    const k = kit(g);
+    if (ring) {
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.011, 0.0028, 6, 16), M.dark);
+      r.position.set(0, y, rearZ); g.add(r);
+      k.box(0.026, y - 0.095, 0.01, 0, (y + 0.095) / 2 - 0.006, rearZ, M.dark);
+    } else {
+      k.box(0.006, 0.014, 0.008, 0.008, y - 0.002, rearZ, M.dark);
+      k.box(0.006, 0.014, 0.008, -0.008, y - 0.002, rearZ, M.dark);
+      k.box(0.024, 0.006, 0.008, 0, y - 0.011, rearZ, M.dark);
+    }
+    k.box(0.004, 0.016, 0.004, 0, y - 0.007, frontZ, M.dark);
+    const dot = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.005, 0.005), M.sightDot); dot.position.set(0, y, frontZ); g.add(dot);
+    const s = new THREE.Object3D(); s.position.set(0, y, rearZ); g.add(s);
+    g.userData.sight = s; g.userData.sightDist = 0.3;
   }
 
   function anchors(g, muzzleZ, muzzleY, charmPos) {
@@ -155,8 +174,7 @@ BR.Models = (function () {
       k.box(0.008, 0.012, 0.06, 0, -0.012, -0.03, M.dark);        // trigger guard bottom
       k.box(0.006, 0.03, 0.006, 0, -0.005, -0.03, M.metal);       // trigger
       k.cyl(0.011, 0.03, 0, 0.045, -0.18, M.metal, 'z');          // barrel tip
-      k.box(0.01, 0.012, 0.01, 0, 0.081, -0.16, M.dark);          // front sight
-      k.box(0.03, 0.012, 0.01, 0, 0.081, 0.04, M.dark);           // rear sight
+      irons(g, M, 0.088, 0.035, -0.16, false);
       anchors(g, -0.2, 0.045, [-0.03, 0.0, 0.04]);
     },
     smg(g, S, M) {
@@ -171,8 +189,14 @@ BR.Models = (function () {
       k.box(0.012, 0.012, 0.18, 0.02, 0.02, 0.15, M.metal);       // stock rods
       k.box(0.012, 0.012, 0.18, -0.02, 0.02, 0.15, M.metal);
       k.box(0.05, 0.07, 0.015, 0, 0.0, 0.24, M.grip);             // butt plate
-      k.box(0.03, 0.03, 0.05, 0, 0.115, -0.06, M.dark);           // mini red dot
-      k.box(0.012, 0.012, 0.004, 0, 0.12, -0.085, M.reticle);
+      // open mini red dot: base + hoop, dot floating in the middle
+      k.box(0.03, 0.012, 0.05, 0, 0.1, -0.06, M.dark);
+      k.box(0.004, 0.034, 0.012, 0.016, 0.122, -0.075, M.dark);
+      k.box(0.004, 0.034, 0.012, -0.016, 0.122, -0.075, M.dark);
+      k.box(0.036, 0.004, 0.012, 0, 0.139, -0.075, M.dark);
+      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 8), M.reticle); rd.position.set(0, 0.122, -0.075); g.add(rd);
+      const ss = new THREE.Object3D(); ss.position.set(0, 0.122, -0.075); g.add(ss);
+      g.userData.sight = ss; g.userData.sightDist = 0.36;
       anchors(g, -0.34, 0.035, [-0.04, -0.01, 0.03]);
     },
     shotgun(g, S, M) {
@@ -186,7 +210,7 @@ BR.Models = (function () {
       k.box(0.045, 0.12, 0.055, 0, -0.07, 0.04, M.grip, 0.25);    // grip
       k.box(0.06, 0.08, 0.22, 0, 0.0, 0.2, S);                    // stock
       for (let i = 0; i < 3; i++) k.cyl(0.011, 0.05, 0.042, 0.02 - i * 0.026, -0.02, M.shell, 'z', 8); // side-saddle shells
-      k.box(0.01, 0.02, 0.01, 0, 0.09, -0.52, M.reticle);         // bead sight
+      irons(g, M, 0.1, 0.0, -0.52, false);
       anchors(g, -0.58, 0.055, [-0.05, -0.02, 0.06]);
     },
     rifle(g, S, M, holo) {
@@ -217,10 +241,9 @@ BR.Models = (function () {
         const dot = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 8), M.reticle);
         dot.position.set(0, 0.156, -0.099); g.add(dot);
         const sight = new THREE.Object3D(); sight.position.set(0, 0.156, -0.1); g.add(sight);
-        g.userData.sight = sight;
+        g.userData.sight = sight; g.userData.sightDist = 0.44;
       } else {
-        k.box(0.012, 0.035, 0.01, 0, 0.11, -0.3, M.dark);         // iron sights
-        k.box(0.03, 0.03, 0.012, 0, 0.11, 0.06, M.dark);
+        irons(g, M, 0.13, 0.05, -0.3, true);                      // aperture iron sights
       }
       anchors(g, -0.74, 0.035, [-0.04, -0.01, 0.1]);
     },
@@ -245,23 +268,55 @@ BR.Models = (function () {
       anchors(g, -0.9, 0.04, [-0.04, -0.01, 0.14]);
     },
     knife(g, S, M) {
-      // Karambit: curved claw blade + finger ring, built in the blade's plane
-      // (x = forward, y = up) then turned so +x points down -Z.
+      // Karambit, CS-style: a curved "banana" handle with a large finger ring at the
+      // butt, a finger guard, and a deeply hooked claw blade with spine notches.
+      // Built in the blade plane (x = forward, y = up), then turned so +x points down -Z.
       const k = new THREE.Group();
-      const sh = new THREE.Shape();
-      sh.moveTo(0, 0.012);
-      sh.quadraticCurveTo(0.09, 0.03, 0.15, -0.06);    // spine
-      sh.lineTo(0.152, -0.072);                          // tip
-      sh.quadraticCurveTo(0.085, 0.0, 0.0, -0.014);    // edge
-      sh.closePath();
-      const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.006, bevelEnabled: true, bevelThickness: 0.002, bevelSize: 0.002, bevelSegments: 1, curveSegments: 10 }), M.blade);
-      blade.position.z = -0.003;
-      k.add(blade);
-      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.03, 0.022), S);
-      handle.position.set(-0.055, 0, 0); handle.rotation.z = -0.12; k.add(handle);
-      for (let i = 0; i < 3; i++) { const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.026, 6), M.metal); sc.rotation.x = Math.PI / 2; sc.position.set(-0.03 - i * 0.03, 0.002 + i * 0.004, 0); k.add(sc); }
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.0065, 8, 18), M.metal);
-      ring.position.set(-0.13, 0.016, 0); k.add(ring);
+      const ext = (shape, depth, bevel) => {
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 14 });
+        geo.translate(0, 0, -depth / 2);
+        return geo;
+      };
+      // Blade: concave inner edge, sweeping spine, needle tip
+      const bl = new THREE.Shape();
+      bl.moveTo(0, 0.013);
+      bl.bezierCurveTo(0.045, 0.034, 0.105, 0.026, 0.138, -0.022);   // spine
+      bl.bezierCurveTo(0.150, -0.042, 0.150, -0.062, 0.141, -0.078); // hook to the tip
+      bl.bezierCurveTo(0.128, -0.040, 0.090, -0.006, 0.040, -0.006); // sharpened inner edge
+      bl.quadraticCurveTo(0.012, -0.007, 0.0, -0.013);
+      bl.closePath();
+      k.add(new THREE.Mesh(ext(bl, 0.003, 0.0012), M.blade));
+      // Bevel line along the edge (slightly darker steel)
+      const bev = new THREE.Shape();
+      bev.moveTo(0.02, -0.002);
+      bev.bezierCurveTo(0.07, 0.002, 0.115, -0.02, 0.136, -0.06);
+      bev.bezierCurveTo(0.122, -0.032, 0.086, -0.005, 0.04, -0.004);
+      bev.closePath();
+      const bm = new THREE.Mesh(ext(bev, 0.0045, 0.0005), M.metal); k.add(bm);
+      // Jimping notches on the spine
+      for (let i = 0; i < 6; i++) {
+        const t = 0.008 + i * 0.008, j = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.004, 0.006), M.dark);
+        j.position.set(t, 0.016 + t * 0.35, 0); j.rotation.z = 0.35; k.add(j);
+      }
+      // Curved handle (skin material) with a guard bump
+      const hd = new THREE.Shape();
+      hd.moveTo(0.004, 0.016);
+      hd.quadraticCurveTo(-0.06, 0.03, -0.128, 0.046);                // top line curves up toward the ring
+      hd.lineTo(-0.134, 0.022);
+      hd.quadraticCurveTo(-0.07, 0.006, -0.022, -0.012);              // belly
+      hd.quadraticCurveTo(-0.008, -0.03, 0.006, -0.026);              // finger guard
+      hd.lineTo(0.004, -0.014);
+      hd.closePath();
+      k.add(new THREE.Mesh(ext(hd, 0.014, 0.003), S));
+      // Steel liner peeking out between the scales
+      const liner = new THREE.Mesh(ext(hd, 0.007, 0.0005), M.metal); liner.scale.set(1.03, 1.08, 1); liner.position.set(0.002, -0.001, 0); k.add(liner);
+      // Pins
+      for (const [x, y] of [[-0.03, 0.012], [-0.075, 0.024], [-0.11, 0.033]]) {
+        const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 0.02, 8), M.blade); pin.rotation.x = Math.PI / 2; pin.position.set(x, y, 0); k.add(pin);
+      }
+      // Finger ring at the butt
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.0062, 10, 22), M.metal);
+      ring.position.set(-0.152, 0.036, 0); k.add(ring);
       k.rotation.y = Math.PI / 2;      // +x -> -z
       g.add(k);
       g.userData.blade = k;
@@ -307,8 +362,50 @@ BR.Models = (function () {
     return g;
   }
 
+  // One merged, vertex-colored geometry per weapon: a single draw call for world
+  // models (loot on the ground, guns in bots' hands).
+  const mergedCache = {};
+  function merged(id) {
+    if (mergedCache[id]) return mergedCache[id];
+    const g = new THREE.Group();
+    const def = BR.CONFIG.weapons[id];
+    (BUILD[id] || BUILD.pistol)(g, skinMaterial('default', def.color), MAT());
+    g.updateMatrixWorld(true);
+    const pos = [], nor = [], col = [];
+    const c = new THREE.Color();
+    g.traverse(o => {
+      if (!o.isMesh || o === g.userData.flash) return;
+      const mat = o.material;
+      if (mat.transparent && mat.opacity < 0.5) return;           // skip holo glass
+      let geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      geo.applyMatrix4(o.matrixWorld);
+      if (!geo.attributes.normal) geo.computeVertexNormals();
+      c.copy(mat.color || new THREE.Color(0x888888));
+      const p = geo.attributes.position, n = geo.attributes.normal;
+      for (let i = 0; i < p.count; i++) {
+        pos.push(p.getX(i), p.getY(i), p.getZ(i));
+        nor.push(n.getX(i), n.getY(i), n.getZ(i));
+        col.push(c.r, c.g, c.b);
+      }
+    });
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    out.computeBoundingSphere();
+    out._shared = true;
+    return (mergedCache[id] = out);
+  }
+  let mergedMat = null;
+
   return {
     SKINS, TRACERS, CHARMS,
+    merged,
+    // A world-space weapon mesh (single draw call), barrel along -Z.
+    worldWeapon(id) {
+      mergedMat = mergedMat || new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+      return new THREE.Mesh(merged(id), mergedMat);
+    },
     // Build a weapon model with a skin (and optional charm).
     weapon(id, skin, charmId) {
       const def = BR.CONFIG.weapons[id];

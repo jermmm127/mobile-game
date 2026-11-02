@@ -88,9 +88,13 @@ BR.Actor = class Actor {
     if (this.grappleCd > 0 || m.grapple || m.dropping) return false;
     const e = this.eye(this._ge || (this._ge = new THREE.Vector3()));
     const d = this.aimDir(this._gd || (this._gd = new THREE.Vector3()));
-    const h = this.game.world.raycast(e.x, e.y, e.z, d.x, d.y, d.z, G.range);
-    if (!h.box || h.box.ground || h.t >= G.range) return false;
-    m.startGrapple(e.x + d.x * h.t, e.y + d.y * h.t, e.z + d.z * h.t);
+    // Anything solid works: buildings, rocks, the ground, tree canopies, other players
+    const h = this.game.hitscan(this, e, d, G.range);
+    let t = h.t, target = h.actor;
+    const tt = this.game.world.raycastTrees(e.x, e.y, e.z, d.x, d.y, d.z, t);
+    if (tt < t) { t = tt; target = null; }
+    if (t >= G.range - 0.01) return false;
+    m.startGrapple(e.x + d.x * t, e.y + d.y * t, e.z + d.z * t, target);
     return true;
   }
 
@@ -170,7 +174,7 @@ BR.Actor = class Actor {
     const head = new THREE.Mesh(S.head, mat); head.position.y = 1.64;
     const visor = new THREE.Mesh(S.visor, S.visorMat); visor.position.set(0, 1.66, -0.19);
     const pack = new THREE.Mesh(S.pack, S.dark); pack.position.set(0, 1.1, 0.26);
-    const gun = new THREE.Mesh(S.gun, S.dark); gun.position.set(0.26, 1.18, -0.38);
+    const gun = new THREE.Group(); gun.position.set(0.26, 1.18, -0.2);   // holds the real weapon model
     body.add(torso, hips, l1, l2, head, visor, pack, gun);
     g.add(body);
     g.userData = { body, l1, l2, gun, mat, t: 0 };
@@ -192,6 +196,13 @@ BR.Actor = class Actor {
     // Lean into wall-runs
     u.body.rotation.z = BR.util.damp(u.body.rotation.z, m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : 0, 10, dt);
     u.gun.rotation.x = -this.pitch * 0.6;
+    // Show the gun this bot is actually holding
+    const wid = this.weapon ? this.weapon.id : null;
+    if (u.wid !== wid) {
+      u.wid = wid;
+      while (u.gun.children.length) u.gun.remove(u.gun.children[0]);
+      if (wid) { const m = BR.Models.worldWeapon(wid); m.scale.setScalar(wid === 'knife' ? 1.6 : 1.15); u.gun.add(m); }
+    }
   }
 
   // Flash white briefly on hit

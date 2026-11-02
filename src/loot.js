@@ -79,13 +79,15 @@ BR.Loot = class Loot {
     const g = new THREE.Group(), G = this.geo;
     if (item.kind === 'weapon') {
       const def = BR.CONFIG.weapons[item.wid];
-      const m = this.mat('w_' + item.wid, def.color);
-      const gun = new THREE.Mesh(G.gun, m);
-      gun.scale.x = 0.6 + def.len;
-      const stock = new THREE.Mesh(G.stock, m); stock.position.set(-0.3, -0.08, 0);
-      g.add(gun, stock);
+      // The real gun model, lying on its side and slowly turning, over a rarity ring
+      const gun = BR.Models.worldWeapon(item.wid);
+      gun.scale.setScalar(1.7);
+      gun.rotation.set(0, Math.PI / 2, Math.PI / 2 * 0.9);
+      gun.position.y = -0.05;
+      g.add(gun);
       const ring = new THREE.Mesh(G.ring, this.mat('ring' + def.tier, TIER_COLORS[def.tier], true));
       ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4;
+      ring.scale.setScalar(1.4);
       g.add(ring);
       g.userData.ring = ring;
     } else if (item.kind === 'chest') {

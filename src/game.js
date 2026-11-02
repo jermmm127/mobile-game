@@ -84,7 +84,7 @@ BR.Game = class Game {
     this.scene.add(sun);
     this.world = new BR.World(seed);
     this.world.buildMeshes(this.scene, this.detail);
-    this.hud.setStaticMap(this.world.renderMinimap(256));
+    this.hud.setStaticMap(this.world.renderMinimap(1024));
     this.fx = new BR.Effects(this.scene);
     this.loot = new BR.Loot(this);
     this.loot.spawnFromWorld(this.world);
@@ -128,6 +128,13 @@ BR.Game = class Game {
     this.diff = BR.CONFIG.difficulty.normal;
     this.practice = false;
     this.addBots(BR.CONFIG.match.demoBots, this.diff);
+    // Big map: cluster the trailer's bots around two hot spots so there's action to film
+    const pois = this.world.pois.slice().sort(() => Math.random() - 0.5).slice(0, 2);
+    this.actors.forEach((a, i) => {
+      const p = pois[i % pois.length];
+      a.mover.pos.set(p.x + (Math.random() - 0.5) * 70, 30 + Math.random() * 20, p.z + (Math.random() - 0.5) * 70);
+      if (a.brain) a.brain.dropTarget = { x: p.x + (Math.random() - 0.5) * 30, z: p.z + (Math.random() - 0.5) * 30 };
+    });
     this.camera.fov = 62; this.camera.updateProjectionMatrix();
     this.camera.position.set(0, 90, 120); this.camera.lookAt(0, 0, 0);
   }
@@ -143,13 +150,15 @@ BR.Game = class Game {
     this.player.yaw = Math.atan2(this.player.pos.x, this.player.pos.z); // face map center
     this.player.pitch = -0.75;                                           // look down at the landing area
     this.actors.push(this.player);
-    const bots = Math.max(0, Math.min(29, S.bots ?? C.match.defaultBots));
+    const bots = Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
     this.practice = bots === 0;
     this.addBots(bots, this.diff);
     this.zone.mesh.visible = !this.practice;
     this.total = this.actors.length;
     this.swapItem = null;
     this.lastWeapon = null;
+    this.lastPoi = null;
+    this.hud.toggleMap(false);
     this.input.reset();
     this.state = 'playing';
     this.cam.off = C.actor.standHeight - C.actor.eyeFromTop;
@@ -259,6 +268,11 @@ BR.Game = class Game {
     if (p.mover.grapple) this.fx.rope(this.muzzlePoint(p, this._v4), p.mover.grapple);
     else this.fx.rope(null);
 
+    // Location banner when entering a named place
+    const poi = this.world.poiAt(p.pos.x, p.pos.z);
+    if (poi && poi !== this.lastPoi && !p.mover.dropping) this.hud.location(poi.name);
+    if (!p.mover.dropping) this.lastPoi = poi;
+
     this.updateCamera(dt);
     this.hud.update(this, dt);
     this.hud.fps(this.fpsVal, this.settings.showFps);
@@ -319,6 +333,7 @@ BR.Game = class Game {
       else if (this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; }
     }
     if (inp.consume('pause')) this.pause();
+    if (inp.consume('map')) this.hud.toggleMap();
     p.ads = inp.ads && !!w && !w.def.melee && !p.mover.dropping;
     if (p.ads) this.cam.inspectT = 0;
 
@@ -412,7 +427,8 @@ BR.Game = class Game {
 
   muzzlePoint(a, out) {
     if (a.isPlayer) {
-      out.set(0.2 * this.vmScale, -0.16, -0.75);
+      const ads = this.cam.ads || 0;
+      out.set(BR.util.lerp(0.2 * this.vmScale, 0.02, ads), BR.util.lerp(-0.16, -0.08, ads), -1.6);
       return this.camera.localToWorld(out);
     }
     const s = Math.sin(a.yaw), c = Math.cos(a.yaw), m = a.mover;
@@ -727,7 +743,7 @@ BR.Game = class Game {
     c.swingT = Math.max(0, c.swingT - dt);
     c.shellT = Math.max(0, c.shellT - dt);
     c.flashT -= dt;
-    model.userData.flash.visible = c.flashT > 0;
+    model.userData.flash.visible = c.flashT > 0 && c.ads < 0.5;   // no flash in your face while aiming
     const sp = Math.min(m.speedH, 10);
     const bx = m.onGround ? Math.sin(c.bob) * sp * 0.0022 : 0;
     const by = m.onGround ? Math.abs(Math.cos(c.bob)) * sp * 0.002 : 0;
@@ -738,11 +754,13 @@ BR.Game = class Game {
     // Base pose (hip) and ADS pose. Holo sights line the reticle up with screen center.
     let hx = 0.24 * s, hy = -0.26, hz = -0.74, ax = 0, ay = -0.13, az = -0.5;
     if (w.def.melee) { hx = 0.17 * s; hy = -0.15; hz = -0.36; }
-    if (w.def.holo && model.userData.sight) { const sg = model.userData.sight.position; ax = -sg.x; ay = -sg.y; az = -0.44 - sg.z; }
+    // Any sight (holo, red dot, irons) is lined up with the exact screen center
+    if (model.userData.sight && !w.def.scope) { const sg = model.userData.sight.position; ax = -sg.x; ay = -sg.y; az = -(model.userData.sightDist || 0.3) - sg.z; }
     let px = U.lerp(hx, ax, c.ads) + bx + c.swayX;
     let py = U.lerp(hy, ay, c.ads) - by + c.swayY - (m.sliding ? 0.03 : 0) - (m.crouched ? 0.01 : 0);
-    let pz = U.lerp(hz, az, c.ads) + c.vmKick;
-    let rx = c.vmKick * 2.2, ry = 0, rz = m.sliding ? 0.35 : m.wallRunning ? 0.15 : 0;
+    const kick = c.vmKick * (1 - c.ads * 0.7);                     // softer visual kick when aiming
+    let pz = U.lerp(hz, az, c.ads) + kick;
+    let rx = kick * (2.2 - c.ads * 1.6), ry = 0, rz = m.sliding ? 0.35 : m.wallRunning ? 0.15 : 0;
     const ease = t => t * t * (3 - 2 * t);
 
     // Draw / pull-out

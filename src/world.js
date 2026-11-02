@@ -119,6 +119,17 @@ BR.World = class World {
     return this.hit;
   }
 
+  // Ray vs tree canopies (visual-only for bullets, but the grapple can hook them).
+  raycastTrees(ox, oy, oz, dx, dy, dz, maxDist) {
+    let best = maxDist;
+    for (const t of this.trees) {
+      if (Math.abs(t.x - ox) > maxDist + 4 || Math.abs(t.z - oz) > maxDist + 4) continue;
+      const hit = BR.util.raySphere(ox, oy, oz, dx, dy, dz, t.x, t.h + t.s * 0.4, t.z, t.s * 1.05, best);
+      if (hit < best) best = hit;
+    }
+    return best;
+  }
+
   lineOfSight(ax, ay, az, bx, by, bz) {
     const dx = bx - ax, dy = by - ay, dz = bz - az;
     const d = Math.hypot(dx, dy, dz);
@@ -155,36 +166,151 @@ BR.World = class World {
     this.addBox(-H - bw, 0, -H, -H, bh, H, PAL.cliff, { tag: 'edge' });
     this.addBox(H, 0, -H, H + bw, bh, H, PAL.cliff, { tag: 'edge' });
 
-    // Towns — clusters of enterable buildings
-    const towns = [];
-    for (let tries = 0; towns.length < 6 && tries < 400; tries++) {
-      const tx = U.rand(R, -H + 45, H - 45), tz = U.rand(R, -H + 45, H - 45);
-      if (towns.every(t => Math.hypot(t.x - tx, t.z - tz) > 85)) towns.push({ x: tx, z: tz });
+    // Named points of interest, spread across the map. Each has a type that
+    // decides what gets built there.
+    const NAMES = ['Relay Spire', 'Rust Basin', 'Dustwater', 'Hollow Yards', 'Cinder Flats', 'Skyhook',
+      'Gravel Point', 'Ironbark', 'Saltmarsh', 'Bastion', 'Lowtide', 'Overpass', 'Redline', 'Kestrel Ridge'];
+    const TYPES = ['town', 'yard', 'town', 'relay', 'town', 'outpost', 'town', 'yard', 'town', 'relay', 'outpost', 'town'];
+    const pois = [];
+    for (let tries = 0; pois.length < 12 && tries < 3000; tries++) {
+      const px = U.rand(R, -H + 60, H - 60), pz = U.rand(R, -H + 60, H - 60);
+      if (pois.every(t => Math.hypot(t.x - px, t.z - pz) > 125)) pois.push({ x: px, z: pz });
     }
-    this.towns = towns;
-    for (const t of towns) this.town(t.x, t.z);
+    const names = NAMES.slice().sort(() => R() - 0.5);
+    pois.forEach((p, i) => { p.name = names[i]; p.type = TYPES[i % TYPES.length]; });
+    this.pois = pois;
+    this.towns = pois;  // bots drop toward these; roads link them
+    for (const p of pois) {
+      if (p.type === 'town') this.town(p.x, p.z);
+      else if (p.type === 'yard') this.yard(p.x, p.z);
+      else if (p.type === 'outpost') this.outpost(p.x, p.z);
+      else this.relay(p.x, p.z);
+    }
+
+    // Long rock ridges carve the map into regions (with gaps to run through)
+    for (let i = 0; i < 7; i++) this.ridge();
 
     // Landmarks
-    for (let i = 0; i < 2; i++) this.placeRandom(34, 34, (x, z) => this.mesa(x, z));
-    for (let i = 0; i < 4; i++) this.placeRandom(14, 14, (x, z) => this.tower(x, z));
-    for (let i = 0; i < 7; i++) this.placeRandom(18, 18, (x, z) => this.wallRunLane(x, z));
+    for (let i = 0; i < 4; i++) this.placeRandom(34, 34, (x, z) => this.mesa(x, z));
+    for (let i = 0; i < 6; i++) this.placeRandom(14, 14, (x, z) => this.tower(x, z));
+    for (let i = 0; i < 14; i++) this.placeRandom(18, 18, (x, z) => this.wallRunLane(x, z));
     // Movement playgrounds
-    for (let i = 0; i < 5; i++) this.placeRandom(34, 34, (x, z) => this.parkourCourse(x, z));
-    for (let i = 0; i < 3; i++) this.placeRandom(18, 18, (x, z) => this.pillarMaze(x, z));
-    for (let i = 0; i < 22; i++) this.placeRandom(4, 4, (x, z) => this.jumpPad(x, z));
+    for (let i = 0; i < 10; i++) this.placeRandom(34, 34, (x, z) => this.parkourCourse(x, z));
+    for (let i = 0; i < 6; i++) this.placeRandom(18, 18, (x, z) => this.pillarMaze(x, z));
+    for (let i = 0; i < 60; i++) this.placeRandom(4, 4, (x, z) => this.jumpPad(x, z));
 
     // Scatter
-    for (let i = 0; i < 26; i++) this.placeRandom(8, 8, (x, z) => this.container(x, z));
-    for (let i = 0; i < 45; i++) this.placeRandom(5, 5, (x, z) => this.crateStack(x, z));
-    for (let i = 0; i < 50; i++) this.placeRandom(7, 7, (x, z) => this.rock(x, z));
-    for (let i = 0; i < 40; i++) this.placeRandom(7, 7, (x, z) => this.coverWall(x, z));
-    for (let i = 0; i < 160; i++) this.placeRandom(2, 2, (x, z) => this.tree(x, z));
-    for (let i = 0; i < 18; i++) this.placeRandom(12, 3, (x, z) => this.fence(x, z));
+    for (let i = 0; i < 70; i++) this.placeRandom(8, 8, (x, z) => this.container(x, z));
+    for (let i = 0; i < 140; i++) this.placeRandom(5, 5, (x, z) => this.crateStack(x, z));
+    for (let i = 0; i < 160; i++) this.placeRandom(7, 7, (x, z) => this.rock(x, z));
+    for (let i = 0; i < 120; i++) this.placeRandom(7, 7, (x, z) => this.coverWall(x, z));
+    for (let i = 0; i < 520; i++) this.placeRandom(2, 2, (x, z) => this.tree(x, z));
+    for (let i = 0; i < 50; i++) this.placeRandom(12, 3, (x, z) => this.fence(x, z));
 
     // Open-field loot so nobody is empty-handed for long
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 220; i++) {
       const x = U.rand(R, -H + 10, H - 10), z = U.rand(R, -H + 10, H - 10);
       if (this.free(x - 0.5, z - 0.5, x + 0.5, z + 0.5, 0.5)) this.lootSpots.push({ x, y: 0, z, tier: 0 });
+    }
+  }
+
+  // Which named place is this point in (or nearest to, within 70 m)?
+  poiAt(x, z) {
+    let best = null, bd = 70;
+    for (const p of this.pois || []) { const d = Math.hypot(p.x - x, p.z - z); if (d < bd) { bd = d; best = p; } }
+    return best;
+  }
+
+  // Container yard: stacked containers in rows, a crane with loot on its arm.
+  yard(cx, cz) {
+    const R = this.rand, U = BR.util;
+    const W = 56;
+    if (!this.free(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2, 4)) return;
+    this.claim(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      if (i === 0 && j === 0) continue;
+      const x = cx + i * 16, z = cz + j * 16, along = (i + j) % 2 === 0;
+      const stack = 1 + Math.floor(R() * 3);
+      for (let k = 0; k < stack; k++) {
+        const c = U.pick(PAL.containers, R), y = k * 2.6, inset = k * 0.6;
+        if (along) this.addBox(x - 6 + inset, y, z - 1.25, x + 6 - inset, y + 2.6, z + 1.25, c);
+        else this.addBox(x - 1.25, y, z - 6 + inset, x + 1.25, y + 2.6, z + 6 - inset, c);
+      }
+      this.lootSpots.push({ x: x + (along ? 0 : 2.4), y: 0, z: z + (along ? 2.4 : 0), tier: 1, force: R() < 0.5 ? 'weapon' : undefined });
+      if (stack >= 2) this.lootSpots.push({ x, y: stack * 2.6, z, tier: 2 });
+    }
+    // Crane: tower + long arm, chest at the end of the arm
+    this.addBox(cx - 1.6, 0, cz - 1.6, cx + 1.6, 18, cz + 1.6, PAL.parkour);
+    this.addBox(cx - 1.6, 18, cz - 1.2, cx + 16, 19, cz + 1.2, PAL.parkour);
+    this.addBox(cx + 14, 6, cz - 0.15, cx + 14.3, 18, cz + 0.15, PAL.lamp);           // cable (grapple it)
+    this.addBox(cx + 12.5, 19, cz - 1.2, cx + 16, 19.4, cz + 1.2, PAL.parkourAlt);
+    this.chestSpots.push({ x: cx + 14.5, y: 19.4, z: cz, tier: 2 });
+    for (let k = 0; k < 4; k++) this.addBox(cx - 2.6, k * 4.5 + 3.8, cz - 1, cx - 1.6, k * 4.5 + 4.1, cz + 1, PAL.cover); // ladder ledges
+    this.jumpPad(cx - 4.5, cz + 6); this.jumpPad(cx + 6, cz - 6);
+    this.lampPost(cx - W / 2 + 1, cz - W / 2 + 1); this.lampPost(cx + W / 2 - 1, cz + W / 2 - 1);
+  }
+
+  // Outpost: a big raised plateau with ramps of steps, a watchtower and loot on top.
+  outpost(cx, cz) {
+    const W = 44, Hh = 7;
+    if (!this.free(cx - W / 2 - 10, cz - W / 2 - 10, cx + W / 2 + 10, cz + W / 2 + 10, 4)) return;
+    this.claim(cx - W / 2 - 10, cz - W / 2 - 10, cx + W / 2 + 10, cz + W / 2 + 10);
+    this.addBox(cx - W / 2, 0, cz - W / 2, cx + W / 2, Hh, cz + W / 2, PAL.cliff);
+    // Two stairways (0.5 m steps) on opposite sides
+    for (let i = 0; i < 14; i++) {
+      const y = (i + 1) * 0.5, off = W / 2 + 14 - i;
+      this.addBox(cx - 2.5, 0, cz - off, cx + 2.5, y, cz - off + 1, PAL.cover);
+      this.addBox(cx - 2.5, 0, cz + off - 1, cx + 2.5, y, cz + off, PAL.cover);
+    }
+    this.addBox(cx - 2, Hh, cz - 2, cx + 2, Hh + 9, cz + 2, PAL.tower);            // watchtower
+    this.addBox(cx - 3.5, Hh + 9, cz - 3.5, cx + 3.5, Hh + 9.4, cz + 3.5, PAL.tower);
+    this.chestSpots.push({ x: cx, y: Hh + 9.4, z: cz, tier: 2 });
+    const R = this.rand;
+    for (let i = 0; i < 8; i++) {
+      const x = cx + BR.util.rand(R, -W / 2 + 4, W / 2 - 4), z = cz + BR.util.rand(R, -W / 2 + 4, W / 2 - 4);
+      if (Math.abs(x - cx) < 5 && Math.abs(z - cz) < 5) continue;
+      const L = 4, T = 0.6;
+      if (i % 2) this.addBox(x - L / 2, Hh, z - T / 2, x + L / 2, Hh + 1.4, z + T / 2, PAL.cover);
+      else this.addBox(x - T / 2, Hh, z - L / 2, x + T / 2, Hh + 1.4, z + L / 2, PAL.cover);
+      this.lootSpots.push({ x: x + 1.5, y: Hh, z: z + 1.5, tier: 1, force: i < 3 ? 'weapon' : undefined });
+    }
+    this.jumpPad(cx + W / 2 + 4, cz); this.jumpPad(cx - W / 2 - 4, cz);
+  }
+
+  // Relay: the movement hub — spiral tower, pillar maze, wall-run lane and a parkour course.
+  relay(cx, cz) {
+    const W = 70;
+    if (!this.free(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2, 4)) return;
+    this.claim(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2);
+    this.tower(cx, cz);
+    this.pillarMaze(cx + 20, cz + 18);
+    this.wallRunLane(cx - 20, cz + 20);
+    this.parkourCourse(cx - 8, cz - 22);
+    this.jumpPad(cx + 8, cz); this.jumpPad(cx - 8, cz + 6);
+    this.chestSpots.push({ x: cx + 6, y: 0, z: cz - 6, tier: 1 });
+  }
+
+  // Long rock wall with a couple of gaps. Tall enough to wall-run and grapple.
+  ridge() {
+    const R = this.rand, U = BR.util, H = this.half;
+    for (let tries = 0; tries < 60; tries++) {
+      const alongX = R() < 0.5, L = U.rand(R, 80, 150), T = U.rand(R, 5, 8), h = U.rand(R, 7, 11);
+      const x = U.rand(R, -H + 30, H - 30), z = U.rand(R, -H + 30, H - 30);
+      const w = alongX ? L : T, d = alongX ? T : L;
+      if (!this.free(x - w / 2, z - d / 2, x + w / 2, z + d / 2, 6)) continue;
+      this.claim(x - w / 2, z - d / 2, x + w / 2, z + d / 2);
+      // split into segments with gaps
+      const segs = [[0, 0.3], [0.38, 0.7], [0.78, 1]];
+      for (const [a, b] of segs) {
+        const p0 = -L / 2 + a * L, p1 = -L / 2 + b * L, hh = h * U.rand(R, 0.8, 1.1);
+        if (alongX) this.addBox(x + p0, 0, z - T / 2, x + p1, hh, z + T / 2, PAL.cliff);
+        else this.addBox(x - T / 2, 0, z + p0, x + T / 2, hh, z + p1, PAL.cliff);
+        // ledge halfway up to mantle onto
+        if (alongX) this.addBox(x + p0 + 2, 0, z + T / 2, x + p0 + 6, hh * 0.45, z + T / 2 + 2.5, PAL.rock);
+        else this.addBox(x + T / 2, 0, z + p0 + 2, x + T / 2 + 2.5, hh * 0.45, z + p0 + 6, PAL.rock);
+        this.lootSpots.push({ x: alongX ? x + (p0 + p1) / 2 : x, y: hh, z: alongX ? z : z + (p0 + p1) / 2, tier: 2, force: R() < 0.4 ? 'weapon' : undefined });
+      }
+      return;
     }
   }
 
@@ -203,7 +329,7 @@ BR.World = class World {
 
   town(cx, cz) {
     const R = this.rand, U = BR.util;
-    const lot = 18, nx = 2 + Math.floor(R() * 2), nz = 2 + Math.floor(R() * 2);
+    const lot = 18, nx = 2 + Math.floor(R() * 3), nz = 2 + Math.floor(R() * 2);
     const w = nx * lot, d = nz * lot;
     const x0 = cx - w / 2, z0 = cz - d / 2;
     if (!this.free(x0, z0, x0 + w, z0 + d, 4)) return;
@@ -577,7 +703,7 @@ BR.World = class World {
   buildGround(scene) {
     const gt = makeTileTexture(true);
     gt.repeat.set(this.size / 5, this.size / 5);
-    const segs = 110, S = this.size + 12;
+    const segs = 160, S = this.size + 12;
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
     const grass = new THREE.Color(0x7d9a5a), grass2 = new THREE.Color(0x6a8a4a), dry = new THREE.Color(0xa4a35e), dirt = new THREE.Color(0x9c8460);
@@ -610,11 +736,11 @@ BR.World = class World {
   buildScenery(scene, detail) {
     const R = BR.util.rng(this.seed + 5), H = this.half;
     // Sky dome with a vertical gradient + sun
-    const skyG = new THREE.SphereGeometry(480, 24, 12);
+    const skyG = new THREE.SphereGeometry(900, 24, 12);
     const sp = skyG.attributes.position, sc = new Float32Array(sp.count * 3);
     const top = new THREE.Color(0x3d7cc9), hor = new THREE.Color(0xcfe3f0), c = new THREE.Color();
     for (let i = 0; i < sp.count; i++) {
-      const k = BR.util.clamp(sp.getY(i) / 480, 0, 1);
+      const k = BR.util.clamp(sp.getY(i) / 900, 0, 1);
       c.copy(hor).lerp(top, Math.pow(k, 0.6));
       sc[i * 3] = c.r; sc[i * 3 + 1] = c.g; sc[i * 3 + 2] = c.b;
     }
@@ -624,26 +750,26 @@ BR.World = class World {
     scene.add(sky);
     this.sky = sky;
     const sun = new THREE.Mesh(new THREE.CircleGeometry(16, 20), new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false }));
-    sun.position.set(220, 300, 160); sun.lookAt(0, 0, 0);
+    sun.position.set(420, 560, 300); sun.scale.setScalar(1.8); sun.lookAt(0, 0, 0);
     scene.add(sun);
 
     // Mountain ring beyond the map edge
     const mg = new THREE.ConeGeometry(1, 1, 5);
-    const mtn = new THREE.InstancedMesh(mg, new THREE.MeshLambertMaterial({ color: 0x6f7f8c, flatShading: true }), 26);
+    const mtn = new THREE.InstancedMesh(mg, new THREE.MeshBasicMaterial({ color: 0x8aa0b4, fog: false }), 30);
     const o = new THREE.Object3D();
-    for (let i = 0; i < 26; i++) {
-      const a = i / 26 * Math.PI * 2 + R() * 0.2, r = H + 70 + R() * 60;
+    for (let i = 0; i < 30; i++) {
+      const a = i / 30 * Math.PI * 2 + R() * 0.2, r = H + 160 + R() * 120;
       o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-      const hgt = 50 + R() * 70, wid = 45 + R() * 40;
+      const hgt = 90 + R() * 110, wid = 90 + R() * 70;
       o.scale.set(wid, hgt, wid); o.position.y = hgt / 2 - 2; o.rotation.y = R() * 6;
       o.updateMatrix(); mtn.setMatrixAt(i, o.matrix);
     }
     scene.add(mtn);
 
     // Clouds
-    const cl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x8a9aaa, flatShading: true }), 18);
-    for (let i = 0; i < 18; i++) {
-      o.position.set((R() * 2 - 1) * 420, 110 + R() * 50, (R() * 2 - 1) * 420);
+    const cl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshBasicMaterial({ color: 0xf4f7fb, fog: false }), 30);
+    for (let i = 0; i < 30; i++) {
+      o.position.set((R() * 2 - 1) * 700, 140 + R() * 60, (R() * 2 - 1) * 700);
       o.scale.set(20 + R() * 30, 5 + R() * 5, 12 + R() * 16); o.rotation.set(0, R() * 6, 0);
       o.updateMatrix(); cl.setMatrixAt(i, o.matrix);
     }
@@ -664,7 +790,7 @@ BR.World = class World {
     }
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
-    const nB = Math.floor(260 * detail), nG = Math.floor(2400 * detail);
+    const nB = Math.floor(700 * detail), nG = Math.floor(5000 * detail);
     const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x55803e, flatShading: true }), nB);
     const tuft = new THREE.InstancedMesh(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
     let bi = 0, gi = 0;
