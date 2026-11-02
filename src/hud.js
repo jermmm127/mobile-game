@@ -55,7 +55,12 @@ BR.HUD = class HUD {
     <div class="pill"><span class="lbl">ALIVE</span><span id="alive" class="num">20</span></div>
     <div class="pill"><span class="lbl">KILLS</span><span id="kills" class="num">0</span></div>
     <div class="pill zone"><span class="lbl" id="zone-lbl">ZONE</span><span id="zone-time" class="num">0:45</span></div>
+    <div class="pill dp you"><span class="lbl">YOU</span><span id="d-you" class="num">0</span></div>
+    <div class="pill dp dtime"><span class="lbl" id="d-round">R1 · FT5</span><span id="d-time" class="num">1:30</span></div>
+    <div class="pill dp bot"><span class="lbl">BOT</span><span id="d-bot" class="num">0</span></div>
   </div>
+  <div id="duelcount"></div>
+  <div id="duelbanner"><b></b><span></span></div>
   <button class="btn pause" data-act="pause" aria-label="Pause">${ICON.pause}</button>
   <div id="killfeed"></div>
   <button class="btn mapbtn" data-act="map" aria-label="Minimap"><canvas id="minimap" width="220" height="220"></canvas></button>
@@ -122,6 +127,7 @@ BR.HUD = class HUD {
     </div>
     <nav class="menu-nav">
       <button id="btn-play" class="mbtn big hot"><svg viewBox="0 0 24 24" class="play-ic"><path d="M8 5l11 7-11 7z"/></svg>Play</button>
+      <button id="btn-duel" class="mbtn duel-btn">1V1 DUEL</button>
       <button id="btn-practice" class="mbtn">PRACTICE</button>
       <button id="btn-shop" class="mbtn">SHOP</button>
       <button id="btn-settings" class="mbtn">SETTINGS</button>
@@ -291,6 +297,23 @@ BR.HUD = class HUD {
   </div>
 </div>
 
+<div id="duelmenu" class="overlay hidden">
+  <div class="panel metal wide duel">
+    <button id="dm-x" class="xbtn" aria-label="Close">✕</button>
+    <div class="ptitle" id="dm-title">1V1 DUEL</div>
+    <div class="dm-sub" id="dm-sub">The Yard · you vs a bot · pick your loadout</div>
+    <div class="dm-setup">
+      <div class="row"><label>OPPONENT</label><div class="seg" id="dm-diff"><button data-v="easy">EASY</button><button data-v="normal">MEDIUM</button><button data-v="hard">HARD</button></div></div>
+      <div class="row"><label>FIRST TO</label><div class="seg" id="dm-target"><button data-v="3">3</button><button data-v="5">5</button><button data-v="7">7</button></div></div>
+      <div class="row"><label>ROUND TIME</label><div class="seg" id="dm-time"><button data-v="60">60s</button><button data-v="90">90s</button><button data-v="120">120s</button></div></div>
+    </div>
+    <div class="sp-sec">PRIMARY</div><div class="sp-grid dm-guns" id="dm-g0"></div>
+    <div class="sp-sec">SECONDARY</div><div class="sp-grid dm-guns" id="dm-g1"></div>
+    <div class="dm-note">Karambit, stim and grapple always come with you. Everyone gets 100 HP + 50 shield.</div>
+    <button id="dm-go" class="mbtn hot">START DUEL</button>
+  </div>
+</div>
+
 <div id="end" class="overlay hidden">
   <div class="panel metal">
     <div class="eyebrow" id="end-eyebrow">ELIMINATED</div>
@@ -353,6 +376,14 @@ BR.HUD = class HUD {
 
   update(game, dt) {
     const p = game.player, e = this.el;
+    if (game.duel) {
+      const D = game.duel, $ = this.$;
+      this.set('dyou', $('d-you'), D.score[0]); this.set('dbot', $('d-bot'), D.score[1]);
+      this.set('dround', $('d-round'), `R${D.round} · FIRST TO ${D.target}`);
+      const tl = D.phase === 'fight' ? Math.max(0, D.t) : D.phase === 'countdown' ? D.roundTime : 0;
+      this.set('dtime', $('d-time'), fmtTime(tl));
+      this.set('dlow', $('d-time').parentNode, D.phase === 'fight' && D.t < 10, (el, v) => el.classList.toggle('low', v));
+    }
     this.set('alive', e.alive, game.aliveCount());
     this.set('kills', e.kills, p.kills);
     const z = game.zone;
@@ -462,6 +493,21 @@ BR.HUD = class HUD {
     while (this.el.killfeed.children.length > 5) this.el.killfeed.lastChild.remove();
     setTimeout(() => d.classList.add('fade'), 5000);
     setTimeout(() => d.remove(), 6000);
+  }
+
+  // Big centre countdown (3, 2, 1, FIGHT!)
+  duelCount(text) {
+    const el = this.$('duelcount');
+    el.textContent = text;
+    el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  }
+  // Round banner: kind = win | lose | info
+  duelBanner(title, sub, kind) {
+    const el = this.$('duelbanner');
+    el.querySelector('b').textContent = title; el.querySelector('span').textContent = sub || '';
+    el.className = kind || 'info';
+    void el.offsetWidth; el.classList.add('on');
+    clearTimeout(this._dbTO); this._dbTO = setTimeout(() => el.classList.remove('on'), 2300);
   }
 
   toast(text, ms) {
@@ -611,9 +657,10 @@ BR.HUD = class HUD {
 
   showEnd(r) {
     const $ = this.$;
-    $('end-eyebrow').textContent = r.win ? 'VICTORY' : 'ELIMINATED';
-    $('end-place').textContent = r.win ? '#1' : '#' + r.place;
-    $('end-sub').textContent = r.win ? `Last one standing out of ${r.total}.` : `${r.by} · out of ${r.total}`;
+    $('end-eyebrow').textContent = r.duel ? (r.win ? 'DUEL WON' : 'DUEL LOST') : r.win ? 'VICTORY' : 'ELIMINATED';
+    $('end-place').textContent = r.duel ? `${r.score[0]} – ${r.score[1]}` : r.win ? '#1' : '#' + r.place;
+    $('btn-again').textContent = r.duel ? 'REMATCH' : 'QUEUE NEW MATCH';
+    $('end-sub').textContent = r.duel ? r.by : r.win ? `Last one standing out of ${r.total}.` : `${r.by} · out of ${r.total}`;
     $('end-kills').textContent = r.kills;
     $('end-dmg').textContent = Math.round(r.damage);
     $('end-time').textContent = fmtTime(r.time);

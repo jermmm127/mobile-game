@@ -16,9 +16,10 @@ const PAL = {
 };
 
 BR.World = class World {
-  constructor(seed) {
+  constructor(seed, opts) {
     const M = BR.CONFIG.map;
-    this.size = M.size;
+    this.arena = !!(opts && opts.arena);
+    this.size = this.arena ? 72 : M.size;
     this.half = M.size / 2;
     this.cell = M.cell;
     this.n = Math.ceil(this.size / this.cell) + 2;
@@ -38,7 +39,84 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    this.generate();
+    if (this.arena) this.generateArena(); else this.generate();
+  }
+
+  // ------------------------------------------------------------------ duel arena
+  // "The Yard": a compact walled 1v1 arena (52 x 34 m), mirrored end to end so both
+  // spawns are fair. Blue end at -X, red end at +X. Central two-level platform with
+  // stairs, raised side catwalks reached by jump pads, wall-run walls, wall-chain
+  // pillars, low cover, and floodlights. Everything is grappleable.
+  generateArena() {
+    const W = 26, D = 17, WH = 9;
+    const CON = 0x7a808a, CON2 = 0x666c75, BLUE = 0x2f6fd8, RED = 0xd8443a, STEEL = 0x4a5160, Y = 0xf2b234;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    const mirror = fn => { fn(1); fn(-1); };            // build once for each half (x -> -x)
+    this.pois = [{ x: 0, z: 0, name: 'The Yard', type: 'arena' }];
+    this.towns = [];
+    this.spawns = [{ x: -22, z: 0, yaw: -Math.PI / 2 }, { x: 22, z: 0, yaw: Math.PI / 2 }];
+    // perimeter walls (tall, grappleable) + coping + barbed wire
+    B(-W - 3, 0, -D - 3, W + 3, WH, -D, CON, { tag: 'edge' }); B(-W - 3, 0, D, W + 3, WH, D + 3, CON, { tag: 'edge' });
+    B(-W - 3, 0, -D, -W, WH, D, CON, { tag: 'edge' }); B(W, 0, -D, W + 3, WH, D, CON, { tag: 'edge' });
+    Dc(-W, WH, -D - 0.2, W, WH + 0.25, -D + 0.2, CON2); Dc(-W, WH, D - 0.2, W, WH + 0.25, D + 0.2, CON2);
+    for (const z of [-D, D]) for (let x = -W; x <= W; x += 4) Dc(x - 0.05, WH, z - 0.05, x + 0.05, WH + 1.1, z + 0.05, STEEL);
+    for (const z of [-D, D]) for (const yy of [WH + 0.5, WH + 0.95]) Dc(-W, yy, z - 0.02, W, yy + 0.03, z + 0.02, 0x2a2d33);
+    // painted floor: centre line, spawn boxes, lane arrows
+    Dc(-0.15, 0, -D, 0.15, 0.015, D, 0xe8e4dc);
+    mirror(sx => {
+      const tc = sx < 0 ? BLUE : RED;
+      for (const [a, b, c, d] of [[18.5, 25.5, -3.5, -3.2], [18.5, 25.5, 3.2, 3.5], [18.5, 18.8, -3.5, 3.5]]) Dc(sx * a, 0, c, sx * b, 0.015, d, tc);
+      // team colour band + big number on the end wall
+      Dc(sx * (W - 0.02), 1.0, -D, sx * (W - 0.12), 2.2, D, tc);
+      Dc(sx * (W - 0.02), 3.0, -2.5, sx * (W - 0.14), 7.0, 2.5, tc);
+      Dc(sx * (W - 0.02), 3.6, -1.6, sx * (W - 0.16), 6.4, 1.6, 0xe8e4dc);
+      Dc(sx * (W - 0.02), 3.9, -0.4, sx * (W - 0.18), 6.1, 0.4, tc);
+      // spawn cover: a low wall in front of each spawn
+      B(sx * 17.5, 0, -2.8, sx * 18.2, 1.25, 2.8, CON2);
+      Dc(sx * 17.45, 1.25, -2.85, sx * 18.25, 1.32, 2.85, tc);
+      // wall-run walls flanking the mid lane
+      for (const zz of [[4.5, 12], [-12, -4.5]]) {
+        B(sx * 10.7, 0.6, zz[0], sx * 11.3, 5, zz[1], STEEL);
+        Dc(sx * 10.65, 4.6, zz[0], sx * 11.35, 4.75, zz[1], Y);
+      }
+      // wall-chain pillars near each spawn
+      for (const zz of [-6.5, 6.5]) { B(sx * 16 - 0.8, 0, zz - 0.8, sx * 16 + 0.8, 5.5, zz + 0.8, CON2); Dc(sx * 16 - 0.82, 5.3, zz - 0.82, sx * 16 + 0.82, 5.5, zz + 0.82, tc); }
+      // crates / cover
+      for (const [x, z, h] of [[6.5, 7, 1.2], [6.5, -7, 1.2], [14, 11.5, 2.4], [14, -11.5, 1.2], [21, 9.5, 1.2], [21, -9.5, 2.4]]) {
+        B(sx * x - 0.65, 0, z - 0.65, sx * x + 0.65, h, z + 0.65, 0xa77b4f);
+        if (h > 2) B(sx * x - 0.65 - sx * 1.3, 0, z - 0.65, sx * x + 0.65 - sx * 1.3, 1.2, z + 0.65, 0xa77b4f);
+      }
+      // jump pads up to the catwalks
+      for (const zz of [-12.2, 12.2]) this.jumpPad(sx * 19, zz);
+      // floodlight towers in the corners
+      for (const zz of [-D + 1, D - 1]) {
+        const fx = sx * (W - 1);
+        B(fx - 0.2, 0, zz - 0.2, fx + 0.2, 11, zz + 0.2, STEEL);
+        Dc(fx - 0.9, 11, zz - 0.5, fx + 0.9, 11.9, zz + 0.5, 0x2a2d33);
+        Dc(fx - 0.75, 11.15, zz - (zz > 0 ? 0.52 : -0.48), fx + 0.75, 11.75, zz - (zz > 0 ? 0.48 : -0.52), 0xfff4c8);
+      }
+    });
+    // side catwalks (3.6 m up) along both long walls with railings
+    for (const sz of [1, -1]) {
+      const z0 = sz * 13.5, z1 = sz * (D - 0.01);
+      B(-13, 3.3, z0, 13, 3.6, z1, STEEL);
+      for (let x = -12; x <= 12; x += 4) B(x - 0.15, 0, z0 + sz * 0.2, x + 0.15, 3.3, z0 + sz * 0.5, STEEL);
+      Dc(-13, 4.5, z0 - 0.04, 13, 4.58, z0 + 0.04, Y); Dc(-13, 4.0, z0 - 0.03, 13, 4.05, z0 + 0.03, Y);
+      for (let x = -13; x <= 13; x += 2.6) Dc(x - 0.03, 3.6, z0 - 0.03, x + 0.03, 4.58, z0 + 0.03, Y);
+      this.lootSpots.length = 0;
+    }
+    // central platform: pillars + deck at 3.2 m, stairs up from both long sides, cover on top
+    for (const [x, z] of [[-2.6, -2.6], [2.6, -2.6], [-2.6, 2.6], [2.6, 2.6]]) B(x - 0.35, 0, z - 0.35, x + 0.35, 2.9, z + 0.35, CON2);
+    B(-3.2, 2.9, -3.2, 3.2, 3.2, 3.2, STEEL);
+    Dc(-3.25, 3.2, -3.25, 3.25, 3.24, -3.05, Y); Dc(-3.25, 3.2, 3.05, 3.25, 3.24, 3.25, Y);
+    for (const sz of [1, -1]) for (let i = 0; i < 6; i++) {
+      const y = (i + 1) * 0.5, z = sz * (3.2 + (6 - i) * 0.55);
+      B(-1.1, 0, Math.min(z, z - sz * 0.55), 1.1, Math.min(y, 3.2), Math.max(z, z - sz * 0.55), CON2);
+    }
+    B(-0.3, 3.2, -1.6, 0.3, 4.3, 1.6, CON);                       // cover wall on the deck
+    // the ground is concrete here
+    this.groundCols = [0x8a8a86, 0x7c7d7a, 0x9a958a];
   }
 
   // ---------------------------------------------------------------- storage
@@ -1005,11 +1083,12 @@ BR.World = class World {
   // Ground with painted grass/dirt variation (vertex colors) under a tiled detail texture.
   buildGround(scene) {
     const gt = makeTileTexture(true);
-    gt.repeat.set(this.size / 5, this.size / 5);
-    const segs = 160, S = this.size + 12;
+    const S = this.arena ? 420 : this.size + 12, segs = this.arena ? 60 : 160;
+    gt.repeat.set(S / 5, S / 5);
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
-    const grass = new THREE.Color(0x7d9a5a), grass2 = new THREE.Color(0x6a8a4a), dry = new THREE.Color(0xa4a35e), dirt = new THREE.Color(0x9c8460);
+    const GC = this.groundCols || [0x7d9a5a, 0x6a8a4a, 0xa4a35e];
+    const grass = new THREE.Color(GC[0]), grass2 = new THREE.Color(GC[1]), dry = new THREE.Color(GC[2]), dirt = new THREE.Color(0x9c8460);
     const c = new THREE.Color();
     const towns = this.towns || [];
     for (let i = 0; i < pos.count; i++) {
@@ -1158,7 +1237,7 @@ BR.World = class World {
     inst(new THREE.ConeGeometry(0.05, 1, 3), new THREE.MeshLambertMaterial({ color: 0x5a7a32 }), reeds, q => { o.position.set(q.x, q.h / 2, q.z); o.scale.set(1, q.h, 1); o.rotation.set((R() - 0.5) * 0.3, 0, (R() - 0.5) * 0.3); });
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
-    const nB = Math.floor(700 * detail), nG = Math.floor(5000 * detail);
+    const nB = this.arena ? 0 : Math.floor(700 * detail), nG = this.arena ? 0 : Math.floor(5000 * detail);
     const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x55803e, flatShading: true }), nB);
     const tuft = new THREE.InstancedMesh(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
     let bi = 0, gi = 0;
@@ -1178,7 +1257,7 @@ BR.World = class World {
     bush.count = bi; tuft.count = gi;
     scene.add(bush, tuft);
     // Wildflower patches
-    const nF = Math.floor(2400 * detail), FC = [0xf4f4f4, 0xf2d24a, 0xe0546a, 0x9a6ad9, 0xf28a3c];
+    const nF = this.arena ? 0 : Math.floor(2400 * detail), FC = [0xf4f4f4, 0xf2d24a, 0xe0546a, 0x9a6ad9, 0xf28a3c];
     if (nF > 0) {
       const fl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), nF);
       let fi = 0;

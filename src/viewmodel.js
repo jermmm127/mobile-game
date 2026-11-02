@@ -376,6 +376,7 @@
       }
 
       this.placeArms(holder, model, ud, leftTarget, leftHidden, rightTarget);
+      BR.Models.animate(model, performance.now() / 1000);     // Mythic blueprints: rings, orbiters, hue cycling
     }
 
     // Hands follow anchors on the weapon; sleeves run from the wrist to an elbow

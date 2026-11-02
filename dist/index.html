@@ -557,6 +557,42 @@ body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--acc
   background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #fff; font: 600 18px var(--ui); line-height: 1; cursor: pointer; z-index: 2; }
 .xbtn:active { transform: scale(0.92); background: rgba(255,255,255,0.18); }
 
+/* Mythic shop cards: animated rainbow edge */
+.card.mythic { position: relative; background: linear-gradient(160deg, rgba(255, 61, 242, 0.16), rgba(29, 233, 255, 0.08) 55%, rgba(255, 255, 255, 0.02)); border-color: transparent; }
+.card.mythic::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: linear-gradient(var(--mythA, 0deg), #ff3df2, #ffd84a, #39ff88, #1de9ff, #b48cff, #ff3df2);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: mythspin 3s linear infinite; }
+@property --mythA { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes mythspin { to { --mythA: 360deg; } }
+.card.mythic .rar { background: linear-gradient(90deg, #ff3df2, #ffd84a, #1de9ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* ---- 1v1 duel ---- */
+#topbar .dp { display: none; }
+body.duel #topbar .pill:not(.dp) { display: none; }
+body.duel #topbar .dp { display: flex; }
+#topbar .dp.you .num { color: #6fb1ff; } #topbar .dp.bot .num { color: #ff7a6b; }
+#topbar .dp.dtime.low .num { color: var(--danger); animation: dlow 0.5s ease-in-out infinite alternate; }
+@keyframes dlow { to { opacity: 0.45; } }
+#duelcount { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%) scale(0.6); font: 800 84px var(--ui); letter-spacing: 0.04em; color: #fff;
+  text-shadow: 0 4px 30px rgba(0,0,0,0.6), 0 0 24px rgba(255,178,36,0.6); opacity: 0; pointer-events: none; }
+#duelcount.on { animation: dcount 0.95s ease-out forwards; }
+@keyframes dcount { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); } }
+#duelbanner { position: absolute; left: 50%; top: 20%; transform: translate(-50%, -10px); display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 28px; border-radius: 14px; background: rgba(12,14,20,0.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12); opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; }
+#duelbanner.on { opacity: 1; transform: translate(-50%, 0); }
+#duelbanner b { font: 800 30px var(--ui); letter-spacing: 0.12em; }
+#duelbanner span { font: 500 13px var(--ui); color: var(--muted); letter-spacing: 0.06em; }
+#duelbanner.win b { color: #6fdc8c; } #duelbanner.lose b { color: var(--danger); } #duelbanner.info b { color: #fff; }
+.panel.duel { max-height: calc(100vh - 32px); overflow-y: auto; }
+.dm-sub { color: var(--muted); font-size: 13px; margin-top: -4px; }
+.dm-setup .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dm-setup .row label { font: 600 11px var(--ui); letter-spacing: 0.2em; color: var(--muted); }
+.dm-guns .mbtn.sel { background: rgba(255, 178, 36, 0.22); border-color: var(--accent); color: #fff; }
+.dm-note { font-size: 12px; color: var(--muted); }
+#duelmenu.round .dm-setup { display: none; }
+.mbtn.duel-btn { border-color: rgba(111, 177, 255, 0.45); background: linear-gradient(90deg, rgba(47,111,216,0.25), rgba(216,68,58,0.25)); }
+
 </style>
 </head>
 <body>
@@ -580,7 +616,7 @@ body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--acc
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '0.9.4',
+  version: '1.0.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -969,9 +1005,10 @@ const PAL = {
 };
 
 BR.World = class World {
-  constructor(seed) {
+  constructor(seed, opts) {
     const M = BR.CONFIG.map;
-    this.size = M.size;
+    this.arena = !!(opts && opts.arena);
+    this.size = this.arena ? 72 : M.size;
     this.half = M.size / 2;
     this.cell = M.cell;
     this.n = Math.ceil(this.size / this.cell) + 2;
@@ -991,7 +1028,84 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    this.generate();
+    if (this.arena) this.generateArena(); else this.generate();
+  }
+
+  // ------------------------------------------------------------------ duel arena
+  // "The Yard": a compact walled 1v1 arena (52 x 34 m), mirrored end to end so both
+  // spawns are fair. Blue end at -X, red end at +X. Central two-level platform with
+  // stairs, raised side catwalks reached by jump pads, wall-run walls, wall-chain
+  // pillars, low cover, and floodlights. Everything is grappleable.
+  generateArena() {
+    const W = 26, D = 17, WH = 9;
+    const CON = 0x7a808a, CON2 = 0x666c75, BLUE = 0x2f6fd8, RED = 0xd8443a, STEEL = 0x4a5160, Y = 0xf2b234;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    const mirror = fn => { fn(1); fn(-1); };            // build once for each half (x -> -x)
+    this.pois = [{ x: 0, z: 0, name: 'The Yard', type: 'arena' }];
+    this.towns = [];
+    this.spawns = [{ x: -22, z: 0, yaw: -Math.PI / 2 }, { x: 22, z: 0, yaw: Math.PI / 2 }];
+    // perimeter walls (tall, grappleable) + coping + barbed wire
+    B(-W - 3, 0, -D - 3, W + 3, WH, -D, CON, { tag: 'edge' }); B(-W - 3, 0, D, W + 3, WH, D + 3, CON, { tag: 'edge' });
+    B(-W - 3, 0, -D, -W, WH, D, CON, { tag: 'edge' }); B(W, 0, -D, W + 3, WH, D, CON, { tag: 'edge' });
+    Dc(-W, WH, -D - 0.2, W, WH + 0.25, -D + 0.2, CON2); Dc(-W, WH, D - 0.2, W, WH + 0.25, D + 0.2, CON2);
+    for (const z of [-D, D]) for (let x = -W; x <= W; x += 4) Dc(x - 0.05, WH, z - 0.05, x + 0.05, WH + 1.1, z + 0.05, STEEL);
+    for (const z of [-D, D]) for (const yy of [WH + 0.5, WH + 0.95]) Dc(-W, yy, z - 0.02, W, yy + 0.03, z + 0.02, 0x2a2d33);
+    // painted floor: centre line, spawn boxes, lane arrows
+    Dc(-0.15, 0, -D, 0.15, 0.015, D, 0xe8e4dc);
+    mirror(sx => {
+      const tc = sx < 0 ? BLUE : RED;
+      for (const [a, b, c, d] of [[18.5, 25.5, -3.5, -3.2], [18.5, 25.5, 3.2, 3.5], [18.5, 18.8, -3.5, 3.5]]) Dc(sx * a, 0, c, sx * b, 0.015, d, tc);
+      // team colour band + big number on the end wall
+      Dc(sx * (W - 0.02), 1.0, -D, sx * (W - 0.12), 2.2, D, tc);
+      Dc(sx * (W - 0.02), 3.0, -2.5, sx * (W - 0.14), 7.0, 2.5, tc);
+      Dc(sx * (W - 0.02), 3.6, -1.6, sx * (W - 0.16), 6.4, 1.6, 0xe8e4dc);
+      Dc(sx * (W - 0.02), 3.9, -0.4, sx * (W - 0.18), 6.1, 0.4, tc);
+      // spawn cover: a low wall in front of each spawn
+      B(sx * 17.5, 0, -2.8, sx * 18.2, 1.25, 2.8, CON2);
+      Dc(sx * 17.45, 1.25, -2.85, sx * 18.25, 1.32, 2.85, tc);
+      // wall-run walls flanking the mid lane
+      for (const zz of [[4.5, 12], [-12, -4.5]]) {
+        B(sx * 10.7, 0.6, zz[0], sx * 11.3, 5, zz[1], STEEL);
+        Dc(sx * 10.65, 4.6, zz[0], sx * 11.35, 4.75, zz[1], Y);
+      }
+      // wall-chain pillars near each spawn
+      for (const zz of [-6.5, 6.5]) { B(sx * 16 - 0.8, 0, zz - 0.8, sx * 16 + 0.8, 5.5, zz + 0.8, CON2); Dc(sx * 16 - 0.82, 5.3, zz - 0.82, sx * 16 + 0.82, 5.5, zz + 0.82, tc); }
+      // crates / cover
+      for (const [x, z, h] of [[6.5, 7, 1.2], [6.5, -7, 1.2], [14, 11.5, 2.4], [14, -11.5, 1.2], [21, 9.5, 1.2], [21, -9.5, 2.4]]) {
+        B(sx * x - 0.65, 0, z - 0.65, sx * x + 0.65, h, z + 0.65, 0xa77b4f);
+        if (h > 2) B(sx * x - 0.65 - sx * 1.3, 0, z - 0.65, sx * x + 0.65 - sx * 1.3, 1.2, z + 0.65, 0xa77b4f);
+      }
+      // jump pads up to the catwalks
+      for (const zz of [-12.2, 12.2]) this.jumpPad(sx * 19, zz);
+      // floodlight towers in the corners
+      for (const zz of [-D + 1, D - 1]) {
+        const fx = sx * (W - 1);
+        B(fx - 0.2, 0, zz - 0.2, fx + 0.2, 11, zz + 0.2, STEEL);
+        Dc(fx - 0.9, 11, zz - 0.5, fx + 0.9, 11.9, zz + 0.5, 0x2a2d33);
+        Dc(fx - 0.75, 11.15, zz - (zz > 0 ? 0.52 : -0.48), fx + 0.75, 11.75, zz - (zz > 0 ? 0.48 : -0.52), 0xfff4c8);
+      }
+    });
+    // side catwalks (3.6 m up) along both long walls with railings
+    for (const sz of [1, -1]) {
+      const z0 = sz * 13.5, z1 = sz * (D - 0.01);
+      B(-13, 3.3, z0, 13, 3.6, z1, STEEL);
+      for (let x = -12; x <= 12; x += 4) B(x - 0.15, 0, z0 + sz * 0.2, x + 0.15, 3.3, z0 + sz * 0.5, STEEL);
+      Dc(-13, 4.5, z0 - 0.04, 13, 4.58, z0 + 0.04, Y); Dc(-13, 4.0, z0 - 0.03, 13, 4.05, z0 + 0.03, Y);
+      for (let x = -13; x <= 13; x += 2.6) Dc(x - 0.03, 3.6, z0 - 0.03, x + 0.03, 4.58, z0 + 0.03, Y);
+      this.lootSpots.length = 0;
+    }
+    // central platform: pillars + deck at 3.2 m, stairs up from both long sides, cover on top
+    for (const [x, z] of [[-2.6, -2.6], [2.6, -2.6], [-2.6, 2.6], [2.6, 2.6]]) B(x - 0.35, 0, z - 0.35, x + 0.35, 2.9, z + 0.35, CON2);
+    B(-3.2, 2.9, -3.2, 3.2, 3.2, 3.2, STEEL);
+    Dc(-3.25, 3.2, -3.25, 3.25, 3.24, -3.05, Y); Dc(-3.25, 3.2, 3.05, 3.25, 3.24, 3.25, Y);
+    for (const sz of [1, -1]) for (let i = 0; i < 6; i++) {
+      const y = (i + 1) * 0.5, z = sz * (3.2 + (6 - i) * 0.55);
+      B(-1.1, 0, Math.min(z, z - sz * 0.55), 1.1, Math.min(y, 3.2), Math.max(z, z - sz * 0.55), CON2);
+    }
+    B(-0.3, 3.2, -1.6, 0.3, 4.3, 1.6, CON);                       // cover wall on the deck
+    // the ground is concrete here
+    this.groundCols = [0x8a8a86, 0x7c7d7a, 0x9a958a];
   }
 
   // ---------------------------------------------------------------- storage
@@ -1958,11 +2072,12 @@ BR.World = class World {
   // Ground with painted grass/dirt variation (vertex colors) under a tiled detail texture.
   buildGround(scene) {
     const gt = makeTileTexture(true);
-    gt.repeat.set(this.size / 5, this.size / 5);
-    const segs = 160, S = this.size + 12;
+    const S = this.arena ? 420 : this.size + 12, segs = this.arena ? 60 : 160;
+    gt.repeat.set(S / 5, S / 5);
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
-    const grass = new THREE.Color(0x7d9a5a), grass2 = new THREE.Color(0x6a8a4a), dry = new THREE.Color(0xa4a35e), dirt = new THREE.Color(0x9c8460);
+    const GC = this.groundCols || [0x7d9a5a, 0x6a8a4a, 0xa4a35e];
+    const grass = new THREE.Color(GC[0]), grass2 = new THREE.Color(GC[1]), dry = new THREE.Color(GC[2]), dirt = new THREE.Color(0x9c8460);
     const c = new THREE.Color();
     const towns = this.towns || [];
     for (let i = 0; i < pos.count; i++) {
@@ -2111,7 +2226,7 @@ BR.World = class World {
     inst(new THREE.ConeGeometry(0.05, 1, 3), new THREE.MeshLambertMaterial({ color: 0x5a7a32 }), reeds, q => { o.position.set(q.x, q.h / 2, q.z); o.scale.set(1, q.h, 1); o.rotation.set((R() - 0.5) * 0.3, 0, (R() - 0.5) * 0.3); });
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
-    const nB = Math.floor(700 * detail), nG = Math.floor(5000 * detail);
+    const nB = this.arena ? 0 : Math.floor(700 * detail), nG = this.arena ? 0 : Math.floor(5000 * detail);
     const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x55803e, flatShading: true }), nB);
     const tuft = new THREE.InstancedMesh(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
     let bi = 0, gi = 0;
@@ -2131,7 +2246,7 @@ BR.World = class World {
     bush.count = bi; tuft.count = gi;
     scene.add(bush, tuft);
     // Wildflower patches
-    const nF = Math.floor(2400 * detail), FC = [0xf4f4f4, 0xf2d24a, 0xe0546a, 0x9a6ad9, 0xf28a3c];
+    const nF = this.arena ? 0 : Math.floor(2400 * detail), FC = [0xf4f4f4, 0xf2d24a, 0xe0546a, 0x9a6ad9, 0xf28a3c];
     if (nF > 0) {
       const fl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), nF);
       let fi = 0;
@@ -3356,6 +3471,30 @@ BR.Models = (function () {
       c.fillStyle = g; c.fillRect(0, 0, s, s);
       for (let i = 0; i < 90; i++) { c.fillStyle = `rgba(160,220,255,${Math.random()})`; c.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); } }) }),
   };
+  // ---- Mythic helpers: animated parts. Each pushes fn(t) onto g.userData.anim; the viewmodel
+  // and the shop call BR.Models.animate(model, t) every frame.
+  const anim = (g, fn) => (g.userData.anim || (g.userData.anim = [])).push(fn);
+  const liveGlow = (c) => new THREE.MeshBasicMaterial({ color: c });                  // own material, safe to animate
+  const hueCycle = (g, mat, h0, h1, speed, l) => anim(g, t => mat.color.setHSL(h0 + (h1 - h0) * (0.5 + 0.5 * Math.sin(t * speed)), 1, l || 0.6));
+  const chrome = (c) => new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: 150, emissive: new THREE.Color(c).multiplyScalar(0.12) });
+  const crystal = (c) => new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: 160, transparent: true, opacity: 0.78, emissive: new THREE.Color(c).multiplyScalar(0.35) });
+  function ring(g, r, tube, mat, x, y, z) {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 8, 32), mat); m.position.set(x, y, z); g.add(m); return m;
+  }
+  function orbiters(g, n, geo, mat, cx, cy, cz, r, speed, axis) {
+    const pivot = new THREE.Group(); pivot.position.set(cx, cy, cz); g.add(pivot);
+    for (let i = 0; i < n; i++) { const o = new THREE.Mesh(geo, mat); const a = i / n * Math.PI * 2; if (axis === 'z') o.position.set(Math.cos(a) * r, Math.sin(a) * r, 0); else o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); pivot.add(o); }
+    anim(g, t => { if (axis === 'z') pivot.rotation.z = t * speed; else pivot.rotation.y = t * speed; pivot.children.forEach((o, i) => o.rotation.set(t * 3 + i, t * 2, 0)); });
+    return pivot;
+  }
+  BLADES.gamma = () => new THREE.MeshPhongMaterial({ shininess: 160, specular: 0xb0ffd0, side: THREE.DoubleSide, emissive: 0x05301a, map: bladeTex('gamma', (c, s) => {
+    const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#003b1f'); g.addColorStop(0.4, '#00c46a'); g.addColorStop(0.7, '#7dffb8'); g.addColorStop(1, '#00361c');
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    for (let i = 0; i < 120; i++) { c.fillStyle = `rgba(200,255,220,${Math.random()})`; c.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); } }) });
+  BLADES.ruby = () => new THREE.MeshPhongMaterial({ shininess: 170, specular: 0xffc0c8, side: THREE.DoubleSide, emissive: 0x300008, map: bladeTex('ruby', (c, s) => {
+    const g = c.createRadialGradient(s * 0.4, s * 0.4, 4, s * 0.5, s * 0.5, s * 0.7); g.addColorStop(0, '#ff5a72'); g.addColorStop(0.5, '#d1002a'); g.addColorStop(1, '#3a0008');
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    for (let i = 0; i < 60; i++) { c.fillStyle = `rgba(255,190,200,${Math.random() * 0.8})`; c.fillRect(Math.random() * s, Math.random() * s, 1.2, 1.2); } }) });
   const glowStrip = (k, G, len, x, y, z, axis) => axis === 'y' ? k.box(0.003, len, 0.003, x, y, z, G) : k.box(0.003, 0.004, len, x, y, z, G);
 
   const BLUEPRINTS = {
@@ -3470,6 +3609,102 @@ BR.Models = (function () {
       doppler: { name: 'Doppler', rarity: 'Legendary', price: 1200, body: 0x101014, accent: 0x101014, glow: 0x4a8bff, blade: 'doppler' },
     },
   };
+  // ---- Mythic blueprints: vibrant chrome + animated parts (spinning rings, orbiting gems,
+  // hue-cycling glow). Shown with a rainbow card in the shop.
+  const MYTHIC = {
+    rifle: {
+      neonviper: { name: 'Neon Viper', rarity: 'Mythic', price: 2000, body: 0xff2fa8, bodyGloss: 2, accent: 0x1de9ff, accentGloss: 2, glow: 0x1de9ff,
+        mod(g, k, P) {
+          const C = chrome(0x1de9ff), G = liveGlow(0x1de9ff); hueCycle(g, G, 0.5, 0.92, 2.2);
+          k.box(0.084, 0.09, 0.3, 0, 0.035, -0.35, C);                                        // chrome shroud
+          for (let i = 0; i < 6; i++) { const f = k.box(0.006, 0.06, 0.05, 0, 0.1, -0.22 - i * 0.05, chrome(0xff2fa8)); f.rotation.x = -0.7; }   // dorsal fins
+          for (const x of [-0.045, 0.045]) { k.box(0.004, 0.012, 0.32, x, 0.035, -0.35, G); k.box(0.004, 0.008, 0.36, x * 0.75, -0.005, 0.02, G); }
+          const rings = [-0.56, -0.64, -0.72].map((z, i) => { const r = ring(g, 0.05 - i * 0.006, 0.0045, G, 0, 0.035, z); return r; });
+          anim(g, t => rings.forEach((r, i) => { r.rotation.x = t * (2 + i); r.rotation.y = t * (1.4 - i * 0.5); r.scale.setScalar(1 + 0.12 * Math.sin(t * 6 + i)); }));
+          k.box(0.05, 0.004, 0.08, 0, -0.08, -0.12, G);                                       // mag glow line
+        } },
+    },
+    holoar: {
+      solarflare: { name: 'Solar Flare', rarity: 'Mythic', price: 2000, body: 0xffc400, bodyGloss: 2, accent: 0xfff4d6, accentGloss: 2, glow: 0xff7a00,
+        mod(g, k, P) {
+          const G = liveGlow(0xff7a00); hueCycle(g, G, 0.02, 0.13, 3, 0.55);
+          const sun = new THREE.Group(); sun.position.set(0, 0.035, -0.6); g.add(sun);
+          sun.add(new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.008, 8, 28), chrome(0xffd84a)));
+          for (let i = 0; i < 12; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.045, 5), G); const a = i / 12 * Math.PI * 2; c.position.set(Math.cos(a) * 0.08, Math.sin(a) * 0.08, 0); c.rotation.z = a - Math.PI / 2; sun.add(c); }
+          anim(g, t => { sun.rotation.z = t * 1.5; sun.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); });
+          for (let i = 0; i < 5; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.07, 6), G); f.position.set(0, 0.095, -0.3 + i * 0.05); g.add(f);
+            anim(g, t => { f.scale.y = 0.7 + 0.5 * (0.5 + 0.5 * Math.sin(t * 9 + i * 1.3)); }); }                         // flickering flames
+          for (const x of [-0.04, 0.04]) k.box(0.004, 0.014, 0.4, x, 0.035, -0.12, G);
+        } },
+    },
+    smg: {
+      glitch: { name: 'Glitch', rarity: 'Mythic', price: 1800, body: 0x0d0d12, bodyGloss: 2, accent: 0xff2bd6, accentGloss: 2, glow: 0x39ff14,
+        mod(g, k, P) {
+          const G = liveGlow(0x39ff14), M2 = liveGlow(0xff2bd6);
+          anim(g, t => { const f = Math.floor(t * 8) % 5 === 0; G.color.setHex(f ? 0xff2bd6 : 0x39ff14); M2.color.setHex(f ? 0x39ff14 : 0xff2bd6); });
+          for (const x of [-0.034, 0.034]) { k.box(0.004, 0.01, 0.3, x, 0.03, -0.12, G); k.box(0.004, 0.01, 0.2, x, -0.02, -0.08, M2); }
+          const cubes = [];
+          for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.014, 0.014), i % 2 ? G : M2); g.add(c); cubes.push({ c, ox: (Math.random() - 0.5) * 0.12, oy: 0.07 + Math.random() * 0.06, oz: -0.35 + Math.random() * 0.4, s: Math.random() * 10 }); }
+          anim(g, t => cubes.forEach(q => { const j = Math.floor(t * 10 + q.s) % 7 === 0 ? 0.02 : 0; q.c.position.set(q.ox + j, q.oy + Math.sin(t * 3 + q.s) * 0.01, q.oz); q.c.rotation.set(t + q.s, t * 2, 0); }));
+          k.box(0.066, 0.07, 0.12, 0, 0.032, -0.33, chrome(0x1a1a24));
+          for (let i = 0; i < 4; i++) k.box(0.068, 0.008, 0.012, 0, 0.04, -0.37 + i * 0.03, i % 2 ? G : M2);
+        } },
+    },
+    shotgun: {
+      frostbite: { name: 'Frostbite', rarity: 'Mythic', price: 1900, body: 0xbfe9ff, bodyGloss: 2, accent: 0xffffff, accentGloss: 2, glow: 0x6ff0ff,
+        mod(g, k, P) {
+          const G = liveGlow(0x6ff0ff); hueCycle(g, G, 0.5, 0.58, 2.5, 0.65);
+          const ice = crystal(0x8fe8ff);
+          for (let i = 0; i < 7; i++) { const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.02 + (i % 3) * 0.008, 0), ice); c.scale.y = 2.2; c.position.set((i % 2 ? 0.02 : -0.02), 0.1 + (i % 3) * 0.01, -0.12 - i * 0.06); c.rotation.z = (i % 2 ? -0.4 : 0.4); g.add(c); }
+          for (let i = 0; i < 4; i++) k.box(0.106, 0.008, 0.03, 0, 0.082, -0.24 - i * 0.07, G);
+          orbiters(g, 6, new THREE.OctahedronGeometry(0.008, 0), G, 0, 0.04, -0.6, 0.07, 2.5, 'z');      // snow swirling round the muzzle
+          k.box(0.12, 0.075, 0.05, 0, 0.055, -0.585, ice);
+        } },
+    },
+    sniper: {
+      celestial: { name: 'Celestial', rarity: 'Mythic', price: 2200, body: 0x0b1440, bodyGloss: 2, accent: 0xffd36a, accentGloss: 2, glow: 0xb48cff,
+        mod(g, k, P) {
+          const G = liveGlow(0xb48cff); hueCycle(g, G, 0.62, 0.82, 1.6, 0.68);
+          const gold = chrome(0xffd36a);
+          const h1 = ring(g, 0.06, 0.004, gold, 0, 0.13, -0.06), h2 = ring(g, 0.07, 0.003, G, 0, 0.13, -0.06);
+          anim(g, t => { h1.rotation.set(t * 1.2, t * 0.7, 0); h2.rotation.set(-t * 0.9, 0, t * 1.1); });
+          orbiters(g, 5, new THREE.OctahedronGeometry(0.01, 0), gold, 0, 0.04, -0.7, 0.06, -1.8, 'z');     // stars round the barrel
+          glowStrip(k, G, 0.55, 0, 0.058, -0.55);
+          for (const x of [-0.032, 0.032]) k.box(0.003, 0.01, 0.3, x, 0.03, 0.0, G);
+          k.box(0.066, 0.05, 0.1, 0, 0.04, -0.88, gold);
+          for (let i = 0; i < 18; i++) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.003, 0.003), liveGlow(0xffffff)); st.position.set((i % 2 ? 0.031 : -0.031), -0.01 + Math.random() * 0.07, -0.15 + Math.random() * 0.5); g.add(st); }
+        } },
+    },
+    hunter: {
+      aurora: { name: 'Aurora', rarity: 'Mythic', price: 1800, body: 0x062a24, bodyGloss: 2, accent: 0x00ffa6, accentGloss: 2, glow: 0x00ffa6,
+        mod(g, k, P) {
+          const G = liveGlow(0x00ffa6); hueCycle(g, G, 0.38, 0.8, 1.4, 0.6);
+          const veil = new THREE.MeshBasicMaterial({ color: 0x00ffa6, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
+          anim(g, t => { veil.color.copy(G.color); veil.opacity = 0.25 + 0.15 * Math.sin(t * 2.3); });
+          for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.05), veil); f.position.set(0, 0.1, -0.28 + i * 0.11); f.rotation.y = Math.PI / 2; g.add(f);
+            anim(g, t => { f.position.y = 0.1 + Math.sin(t * 2 + i) * 0.01; f.rotation.z = Math.sin(t * 1.5 + i) * 0.2; }); }
+          for (const x of [-0.027, 0.027]) { k.box(0.002, 0.012, 0.36, x, 0.0, -0.05, G); k.box(0.002, 0.03, 0.18, x, -0.03, 0.3, G); }
+          k.box(0.008, 0.008, 0.008, 0, 0.09, -0.555, G);
+        } },
+    },
+    pistol: {
+      plasma: { name: 'Plasma Core', rarity: 'Mythic', price: 1600, body: 0x5a1bff, bodyGloss: 2, accent: 0xe6e9ff, accentGloss: 2, glow: 0xff3df2,
+        mod(g, k, P) {
+          const G = liveGlow(0xff3df2); hueCycle(g, G, 0.75, 0.95, 3);
+          const core = new THREE.Mesh(new THREE.SphereGeometry(0.022, 14, 10), G); core.position.set(0, 0.098, -0.06); g.add(core);
+          const cage = ring(g, 0.03, 0.003, chrome(0xe6e9ff), 0, 0.098, -0.06); anim(g, t => { cage.rotation.y = t * 2; cage.rotation.x = t * 1.3; });
+          anim(g, t => core.scale.setScalar(1 + 0.25 * Math.sin(t * 8)));
+          orbiters(g, 3, new THREE.SphereGeometry(0.006, 8, 6), liveGlow(0xffffff), 0, 0.098, -0.06, 0.045, 4, 'y');
+          k.box(0.058, 0.004, 0.18, 0, 0.078, -0.09, G);
+          k.box(0.056, 0.054, 0.05, 0, 0.05, -0.2, chrome(0xe6e9ff));
+        } },
+    },
+    knife: {
+      gamma: { name: 'Gamma Doppler', rarity: 'Mythic', price: 2400, body: 0x0c1410, accent: 0x0c1410, glow: 0x39ff88, blade: 'gamma' },
+      ruby: { name: 'Ruby', rarity: 'Mythic', price: 2600, body: 0x120608, accent: 0x120608, glow: 0xff2a4a, blade: 'ruby' },
+    },
+  };
+  for (const w in MYTHIC) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, MYTHIC[w]);
   for (const w in BLUEPRINTS) BLUEPRINTS[w] = Object.assign({ default: { name: 'Standard Issue', rarity: 'Base', price: 0 } }, BLUEPRINTS[w]);
 
   // ------------------------------------------------------------------ gloves
@@ -3577,6 +3812,8 @@ BR.Models = (function () {
       return g;
     },
     charm,
+    // Run a model's animated parts (Mythic blueprints). Cheap no-op for everything else.
+    animate(model, t) { const a = model && model.userData.anim; if (a) for (let i = 0; i < a.length; i++) a[i](t); },
     tracerColor(id, t) {
       const tr = TRACERS[id] || TRACERS.default;
       if (tr.color >= 0) return tr.color;
@@ -3965,6 +4202,7 @@ BR.Models = (function () {
       }
 
       this.placeArms(holder, model, ud, leftTarget, leftHidden, rightTarget);
+      BR.Models.animate(model, performance.now() / 1000);     // Mythic blueprints: rings, orbiters, hue cycling
     }
 
     // Hands follow anchors on the weapon; sleeves run from the wrist to an elbow
@@ -4632,6 +4870,15 @@ BR.BotBrain = class BotBrain {
         if (dist > d.viewDist * 1.4 || g.time - this.targetSeenT > 3) this.target = null;
       }
     }
+    // Duel: there's only one opponent - always hunt them (no zone, no loot)
+    if (g.duel) {
+      const P = g.player;
+      this.target = P && P.alive ? P : null;
+      if (this.target && this.canSee(this.target)) this.targetSeenT = g.time;
+      this.state = this.target ? 'fight' : 'roam';
+      this.pickWeapon();
+      return;
+    }
     // Look for someone to fight. Early on bots focus on looting and only fight
     // up close; late in the match they hunt from further away.
     const early = Math.max(0, 1 - g.time / BR.CONFIG.match.botLootPhase);
@@ -4655,19 +4902,7 @@ BR.BotBrain = class BotBrain {
       this.targetSeenT = g.time;
     }
 
-    // Pick the best weapon for the range
-    if (this.target) {
-      const dist = a.pos.distanceTo(this.target.pos);
-      let bi = a.cur, bs = -1;
-      bi = 2; bs = -1; // karambit only if no gun has ammo
-      a.slots.forEach((w, i) => {
-        if (!w || w.def.melee || (w.mag === 0 && a.ammo[w.def.ammo] === 0)) return;
-        const pd = PREF_DIST[w.id];
-        const s = 100 - Math.abs(dist - pd) * (w.id === 'sniper' ? 0.8 : 2) + w.def.tier * 5;
-        if (s > bs) { bs = s; bi = i; }
-      });
-      if (bi !== a.cur) a.switchTo(bi);
-    }
+    this.pickWeapon();
 
     // Zone logic
     const z = g.zone;
@@ -4689,6 +4924,22 @@ BR.BotBrain = class BotBrain {
       this.goal = { x: z.nextX + Math.cos(ang) * rr, y: 0, z: z.nextZ + Math.sin(ang) * rr };
     }
     this.state = 'roam';
+  }
+
+  // Pick the best weapon for the range to the current target
+  pickWeapon() {
+    const a = this.a;
+    if (!this.target) return;
+      const dist = a.pos.distanceTo(this.target.pos);
+      let bi = a.cur, bs = -1;
+      bi = 2; bs = -1; // karambit only if no gun has ammo
+      a.slots.forEach((w, i) => {
+        if (!w || w.def.melee || (w.mag === 0 && a.ammo[w.def.ammo] === 0)) return;
+        const pd = PREF_DIST[w.id];
+        const s = 100 - Math.abs(dist - pd) * (w.id === 'sniper' ? 0.8 : 2) + w.def.tier * 5;
+        if (s > bs) { bs = s; bi = i; }
+      });
+      if (bi !== a.cur) a.switchTo(bi);
   }
 
   fight(dt) {
@@ -5949,7 +6200,7 @@ BR.Profile = {
 };
 
 const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['pistol', 'Pistol'], ['knife', 'Karambit']];
-const RARITY = { Base: '#8d97a5', Epic: '#b26bff', Legendary: '#ffb224' };
+const RARITY = { Base: '#8d97a5', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2' };
 
 BR.Shop = class Shop {
   // Catalog for a category. Blueprints are per weapon; ids look like "rifle:vandal".
@@ -6061,7 +6312,7 @@ BR.Shop = class Shop {
     for (const id in items) {
       const it = items[id], own = P.owns(cat, id), eq = P.isEquipped(cat, id);
       const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
-      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : '<i class="coin"></i>' + it.price}</span></button>`);
+      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : '<i class="coin"></i>' + it.price}</span></button>`);
     }
     this.el.grid.innerHTML = html.join('');
     const it = items[this.sel];
@@ -6145,7 +6396,12 @@ BR.HUD = class HUD {
     <div class="pill"><span class="lbl">ALIVE</span><span id="alive" class="num">20</span></div>
     <div class="pill"><span class="lbl">KILLS</span><span id="kills" class="num">0</span></div>
     <div class="pill zone"><span class="lbl" id="zone-lbl">ZONE</span><span id="zone-time" class="num">0:45</span></div>
+    <div class="pill dp you"><span class="lbl">YOU</span><span id="d-you" class="num">0</span></div>
+    <div class="pill dp dtime"><span class="lbl" id="d-round">R1 · FT5</span><span id="d-time" class="num">1:30</span></div>
+    <div class="pill dp bot"><span class="lbl">BOT</span><span id="d-bot" class="num">0</span></div>
   </div>
+  <div id="duelcount"></div>
+  <div id="duelbanner"><b></b><span></span></div>
   <button class="btn pause" data-act="pause" aria-label="Pause">${ICON.pause}</button>
   <div id="killfeed"></div>
   <button class="btn mapbtn" data-act="map" aria-label="Minimap"><canvas id="minimap" width="220" height="220"></canvas></button>
@@ -6212,6 +6468,7 @@ BR.HUD = class HUD {
     </div>
     <nav class="menu-nav">
       <button id="btn-play" class="mbtn big hot"><svg viewBox="0 0 24 24" class="play-ic"><path d="M8 5l11 7-11 7z"/></svg>Play</button>
+      <button id="btn-duel" class="mbtn duel-btn">1V1 DUEL</button>
       <button id="btn-practice" class="mbtn">PRACTICE</button>
       <button id="btn-shop" class="mbtn">SHOP</button>
       <button id="btn-settings" class="mbtn">SETTINGS</button>
@@ -6381,6 +6638,23 @@ BR.HUD = class HUD {
   </div>
 </div>
 
+<div id="duelmenu" class="overlay hidden">
+  <div class="panel metal wide duel">
+    <button id="dm-x" class="xbtn" aria-label="Close">✕</button>
+    <div class="ptitle" id="dm-title">1V1 DUEL</div>
+    <div class="dm-sub" id="dm-sub">The Yard · you vs a bot · pick your loadout</div>
+    <div class="dm-setup">
+      <div class="row"><label>OPPONENT</label><div class="seg" id="dm-diff"><button data-v="easy">EASY</button><button data-v="normal">MEDIUM</button><button data-v="hard">HARD</button></div></div>
+      <div class="row"><label>FIRST TO</label><div class="seg" id="dm-target"><button data-v="3">3</button><button data-v="5">5</button><button data-v="7">7</button></div></div>
+      <div class="row"><label>ROUND TIME</label><div class="seg" id="dm-time"><button data-v="60">60s</button><button data-v="90">90s</button><button data-v="120">120s</button></div></div>
+    </div>
+    <div class="sp-sec">PRIMARY</div><div class="sp-grid dm-guns" id="dm-g0"></div>
+    <div class="sp-sec">SECONDARY</div><div class="sp-grid dm-guns" id="dm-g1"></div>
+    <div class="dm-note">Karambit, stim and grapple always come with you. Everyone gets 100 HP + 50 shield.</div>
+    <button id="dm-go" class="mbtn hot">START DUEL</button>
+  </div>
+</div>
+
 <div id="end" class="overlay hidden">
   <div class="panel metal">
     <div class="eyebrow" id="end-eyebrow">ELIMINATED</div>
@@ -6443,6 +6717,14 @@ BR.HUD = class HUD {
 
   update(game, dt) {
     const p = game.player, e = this.el;
+    if (game.duel) {
+      const D = game.duel, $ = this.$;
+      this.set('dyou', $('d-you'), D.score[0]); this.set('dbot', $('d-bot'), D.score[1]);
+      this.set('dround', $('d-round'), `R${D.round} · FIRST TO ${D.target}`);
+      const tl = D.phase === 'fight' ? Math.max(0, D.t) : D.phase === 'countdown' ? D.roundTime : 0;
+      this.set('dtime', $('d-time'), fmtTime(tl));
+      this.set('dlow', $('d-time').parentNode, D.phase === 'fight' && D.t < 10, (el, v) => el.classList.toggle('low', v));
+    }
     this.set('alive', e.alive, game.aliveCount());
     this.set('kills', e.kills, p.kills);
     const z = game.zone;
@@ -6552,6 +6834,21 @@ BR.HUD = class HUD {
     while (this.el.killfeed.children.length > 5) this.el.killfeed.lastChild.remove();
     setTimeout(() => d.classList.add('fade'), 5000);
     setTimeout(() => d.remove(), 6000);
+  }
+
+  // Big centre countdown (3, 2, 1, FIGHT!)
+  duelCount(text) {
+    const el = this.$('duelcount');
+    el.textContent = text;
+    el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  }
+  // Round banner: kind = win | lose | info
+  duelBanner(title, sub, kind) {
+    const el = this.$('duelbanner');
+    el.querySelector('b').textContent = title; el.querySelector('span').textContent = sub || '';
+    el.className = kind || 'info';
+    void el.offsetWidth; el.classList.add('on');
+    clearTimeout(this._dbTO); this._dbTO = setTimeout(() => el.classList.remove('on'), 2300);
   }
 
   toast(text, ms) {
@@ -6701,9 +6998,10 @@ BR.HUD = class HUD {
 
   showEnd(r) {
     const $ = this.$;
-    $('end-eyebrow').textContent = r.win ? 'VICTORY' : 'ELIMINATED';
-    $('end-place').textContent = r.win ? '#1' : '#' + r.place;
-    $('end-sub').textContent = r.win ? `Last one standing out of ${r.total}.` : `${r.by} · out of ${r.total}`;
+    $('end-eyebrow').textContent = r.duel ? (r.win ? 'DUEL WON' : 'DUEL LOST') : r.win ? 'VICTORY' : 'ELIMINATED';
+    $('end-place').textContent = r.duel ? `${r.score[0]} – ${r.score[1]}` : r.win ? '#1' : '#' + r.place;
+    $('btn-again').textContent = r.duel ? 'REMATCH' : 'QUEUE NEW MATCH';
+    $('end-sub').textContent = r.duel ? r.by : r.win ? `Last one standing out of ${r.total}.` : `${r.by} · out of ${r.total}`;
     $('end-kills').textContent = r.kills;
     $('end-dmg').textContent = Math.round(r.damage);
     $('end-time').textContent = fmtTime(r.time);
@@ -6806,7 +7104,7 @@ BR.Game = class Game {
   }
 
   // ------------------------------------------------------------ scene setup
-  buildScene(seed, demo) {
+  buildScene(seed, demo, opts) {
     if (this.scene) this.disposeScene();
     const fogCol = 0xc4dbe9;
     this.scene = new THREE.Scene();
@@ -6816,7 +7114,7 @@ BR.Game = class Game {
     const sun = new THREE.DirectionalLight(0xfff1d6, 0.8);
     sun.position.set(0.6, 1, 0.35);
     this.scene.add(sun);
-    this.world = new BR.World(seed);
+    this.world = new BR.World(seed, opts);
     this.world.buildMeshes(this.scene, this.detail);
     this.hud.setStaticMap(this.world.renderMinimap(1024));
     this.fx = new BR.Effects(this.scene);
@@ -6880,6 +7178,7 @@ BR.Game = class Game {
   // opts.practice: no bots, no storm, spawn menu, respawn on death
   startMatch(opts) {
     const S = this.settings, C = BR.CONFIG;
+    this.duel = null; document.body.classList.remove('duel');
     const practiceMode = !!(opts && opts.practice);
     this.buildScene(Math.floor(Math.random() * 1e9), false);
     this.diff = C.difficulty[S.difficulty] || C.difficulty.normal;
@@ -6917,6 +7216,127 @@ BR.Game = class Game {
     this.hud.show('play', true);
     this.hud.toast(this.practice ? 'Practice mode: tap SPAWN for guns, items and bots' : 'Freefall! Tap JUMP to open your parachute', 2800);
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
+  }
+
+  // ---- 1v1 duel -------------------------------------------------------------
+  // cfg: { diff: 'easy'|'normal'|'hard', target: rounds to win, roundTime: s, loadout: [gunA, gunB] }
+  // Rounds: 3 s countdown -> fight until one dies or time runs out (more HP + shield wins,
+  // equal is a draw) -> 2.6 s banner -> pick a new loadout -> next round. First to `target`.
+  startDuel(cfg) {
+    const C = BR.CONFIG;
+    this.buildScene(Math.floor(Math.random() * 1e9), false, { arena: true });
+    this.duel = { diff: cfg.diff, target: cfg.target, roundTime: cfg.roundTime, loadout: cfg.loadout.slice(),
+      score: [0, 0], round: 0, phase: 'countdown', t: 0, damage: 0, kills: 0, time: 0, draws: 0 };
+    this.diff = C.difficulty[cfg.diff] || C.difficulty.normal;
+    this.practice = false;
+    document.body.classList.remove('practice');
+    document.body.classList.add('duel');
+    this.zone.mesh.visible = false;
+    this.result = null;
+    this.hud.toggleMap(false);
+    this.hud.show('menu', false); this.hud.show('end', false); this.hud.show('pause', false); this.hud.show('duelmenu', false);
+    this.hud.show('play', true);
+    this.startRound();
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
+  }
+
+  // Fresh actors every round: full health + 50 shield, the chosen guns, full ammo, no cooldowns.
+  startRound() {
+    const D = this.duel, C = BR.CONFIG, W = this.world;
+    D.round++;
+    for (const a of this.actors) if (a.mesh && a.mesh.parent) this.scene.remove(a.mesh);
+    this.loot.clear();
+    this.actors = [];
+    const arm = (a, guns, sp) => {
+      a.mover.dropping = false; a.mover.vel.set(0, 0, 0);
+      a.mover.pos.set(sp.x, 0, sp.z);
+      a.yaw = sp.yaw; a.pitch = 0;
+      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create('knife')];
+      a.cur = 0;
+      for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
+      a.health = C.actor.maxHealth; a.shield = 50;
+    };
+    // which end you start at alternates each round
+    const flip = D.round % 2 === 0, sp = W.spawns;
+    const p = this.player = new BR.Actor(this, { id: 0, name: 'You', isPlayer: true });
+    arm(p, D.loadout, flip ? sp[1] : sp[0]);
+    this.actors.push(p);
+    const pool = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['holoar', 'shotgun'], ['sniper', 'pistol']];
+    const bl = pool[Math.floor(Math.random() * pool.length)];
+    const b = this.duelBot = new BR.Actor(this, { id: 1, name: (D.diff === 'hard' ? 'Viper' : D.diff === 'easy' ? 'Rookie' : 'Duelist') + ' (' + D.diff.toUpperCase() + ')', color: 0xd8443a });
+    arm(b, bl, flip ? sp[0] : sp[1]);
+    b.brain = new BR.BotBrain(b, this, this.diff);
+    b.brain.landedT = 99;
+    b.brain.target = p;
+    this.scene.add(b.mesh);
+    this.actors.push(b);
+    D.botLoadout = bl;
+    this.total = 2;
+    this.swapItem = null; this.lastWeapon = null; this.lastPoi = W.pois[0];
+    this.input.reset();
+    this.cam.off = C.actor.standHeight - C.actor.eyeFromTop;
+    this.cam.fov = this.baseFov();
+    D.phase = 'countdown'; D.t = 3; D.lastN = 0;
+    this.state = 'playing';
+    this.last = performance.now();
+    this.hud.duelBanner(`ROUND ${D.round}`, `${BR.CONFIG.weapons[bl[0]].name} + ${BR.CONFIG.weapons[bl[1]].name} on the other side`, 'info');
+  }
+
+  updateDuel(dt) {
+    const D = this.duel, p = this.player, b = this.duelBot;
+    if (this.state !== 'playing') return;
+    D.t -= dt;
+    if (D.phase === 'countdown') {
+      const n = Math.ceil(D.t);
+      if (n !== D.lastN && n > 0) { D.lastN = n; this.hud.duelCount(String(n)); BR.Audio.click(); }
+      if (D.t <= 0) { D.phase = 'fight'; D.t = D.roundTime; this.hud.duelCount('FIGHT!'); BR.Audio.pad(); }
+    } else if (D.phase === 'fight') {
+      D.time += dt;
+      let w = null;
+      if (!p.alive && !b.alive) w = 'draw';
+      else if (!p.alive) w = 'bot';
+      else if (!b.alive) w = 'you';
+      else if (D.t <= 0) { const hp = p.health + p.shield, hb = b.health + b.shield; w = hp > hb + 0.5 ? 'you' : hb > hp + 0.5 ? 'bot' : 'draw'; }
+      if (w) this.endRound(w, D.t <= 0);
+    } else if (D.phase === 'roundEnd') {
+      if (D.t <= 0) {
+        if (D.score[0] >= D.target || D.score[1] >= D.target) this.endDuel();
+        else this.openDuelLoadout();
+      }
+    }
+  }
+
+  endRound(w, timeout) {
+    const D = this.duel, p = this.player;
+    D.phase = 'roundEnd'; D.t = 2.6;
+    D.damage += p.damageDealt; D.kills += p.kills;
+    if (w === 'you') D.score[0]++; else if (w === 'bot') D.score[1]++; else D.draws++;
+    const sc = `${D.score[0]} – ${D.score[1]}`;
+    if (w === 'you') { this.hud.duelBanner('ROUND WON', (timeout ? 'Time! More health left · ' : '') + sc, 'win'); BR.Audio.coin(); }
+    else if (w === 'bot') this.hud.duelBanner('ROUND LOST', (timeout ? 'Time! They had more health · ' : '') + sc, 'lose');
+    else this.hud.duelBanner('DRAW', sc, 'info');
+  }
+
+  openDuelLoadout() {
+    this.state = 'loadout';
+    this.input.reset(); this.input.unlock();
+    this.fx.rope(null);
+    this.hud.prompt(null);
+    BR.openDuelMenu && BR.openDuelMenu('round');
+  }
+
+  endDuel() {
+    const D = this.duel, win = D.score[0] > D.score[1];
+    this.state = 'end';
+    this.input.unlock();
+    this.hud.prompt(null);
+    this.fx.rope(null);
+    this.result = { duel: true, win, place: win ? 1 : 2, total: 2, score: D.score.slice(), diff: D.diff, kills: D.kills, damage: D.damage, time: D.time,
+      by: `vs ${D.diff.toUpperCase()} bot · first to ${D.target}` };
+    this.result.coins = BR.Profile.award(this.result);
+    this.lastDuel = { diff: D.diff, target: D.target, roundTime: D.roundTime, loadout: D.loadout.slice() };
+    this.hud.showEnd(this.result);
+    BR.updateCoins();
   }
 
   // ---- practice spawn menu ---------------------------------------------------
@@ -7000,6 +7420,7 @@ BR.Game = class Game {
   }
   toMenu() {
     this.state = 'menu';
+    if (this.duel) { this.duel = null; document.body.classList.remove('duel'); this.hud.show('duelmenu', false); }
     this.input.unlock();
     this.hud.show('pause', false);
     this.hud.show('end', false);
@@ -7027,7 +7448,8 @@ BR.Game = class Game {
   // Everything that happens in the world, with or without a player.
   simulate(dt) {
     this.time += dt;
-    for (const a of this.actors) if (a.brain && a.alive) a.brain.update(dt);
+    const frozen = this.duel && this.duel.phase === 'countdown';
+    for (const a of this.actors) if (a.brain && a.alive && !frozen) a.brain.update(dt);
     for (const a of this.actors) a.update(dt);
     for (const a of this.actors) {
       if (!a.alive || a.mover.dropping) continue;
@@ -7038,7 +7460,7 @@ BR.Game = class Game {
         if (a === this.player) this.swapItem = s;
       }
     }
-    if (!this.practice) {
+    if (!this.practice && !this.duel) {
       this.zone.update(dt);
       const dps = this.zone.dps;
       for (const a of this.actors) {
@@ -7098,7 +7520,8 @@ BR.Game = class Game {
     this.hud.fps(this.fpsVal, this.settings.showFps);
 
     // Match end
-    if (this.state === 'playing') {
+    if (this.duel) this.updateDuel(dt);
+    else if (this.state === 'playing') {
       if (!p.alive && this.practice) {
         // Practice: respawn where you fell after a moment
         this.respawnT = (this.respawnT ?? 2) - dt;
@@ -7149,6 +7572,8 @@ BR.Game = class Game {
     if (target) sens *= 1 - L.aimAssist * 0.6;
     p.yaw -= dx * sens;
     p.pitch = BR.util.clamp(p.pitch - dy * sens, -1.45, 1.45);
+    // Duel countdown: look around, but no moving or shooting yet
+    if (this.duel && this.duel.phase !== 'fight') { p.input.mx = p.input.mz = 0; p.fireHeld = false; inp.consume('jump'); inp.consume('crouch'); return; }
 
     p.input.mx = inp.moveX;
     p.input.mz = inp.moveY;
@@ -7492,6 +7917,7 @@ BR.Game = class Game {
     this.shopPivot.rotation.y += dt * 0.5;
     this.shopPivot.position.y = this.shopBaseY + Math.sin(this.time * 1.4) * 0.03;
     this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
+    if (this.shopGun) BR.Models.animate(this.shopGun, this.time);
     const ch = this.shopGun && this.shopGun.userData.charmObj;
     if (ch) ch.rotation.z = Math.sin(this.time * 3) * 0.4;
     // Tracer preview: slow, bright streaks sweeping past the gun
@@ -7575,12 +8001,13 @@ BR.Game = class Game {
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, aimSmooth: 0.3, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
   const settings = Object.assign({}, DEFAULTS, stored);
   settings.xh = Object.assign({}, DEFAULTS.xh, stored.xh || {});
+  settings.duel = Object.assign({}, DEFAULTS.duel, stored.duel || {});
   const save = () => BR.util.save('velocity-royale.settings', settings);
   BR.Accounts.load();
   BR.Profile.load();
@@ -7793,7 +8220,57 @@ BR.Game = class Game {
   $('sp-close').addEventListener('click', () => game.closeSpawnMenu());
   $('sp-x').addEventListener('click', () => game.closeSpawnMenu());
   $('btn-play').addEventListener('click', play);
-  $('btn-again').addEventListener('click', play);
+  $('btn-again').addEventListener('click', () => {
+    if (game.result && game.result.duel && game.lastDuel) { BR.Audio.init(); game.startDuel(game.lastDuel); }   // rematch, same settings
+    else play();
+  });
+
+  // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts
+  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'shotgun', 'sniper', 'hunter', 'pistol'];
+  let dmMode = 'setup', dmTimer = null;
+  const dmSeg = (id, key, num) => {
+    const el = $(id), sync = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', String(DS[key]) === b.dataset.v));
+    el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; DS[key] = num ? +b.dataset.v : b.dataset.v; save(); sync(); });
+    sync();
+  };
+  dmSeg('dm-diff', 'diff'); dmSeg('dm-target', 'target', true); dmSeg('dm-time', 'roundTime', true);
+  const dmGuns = () => {
+    for (const k of [0, 1]) $('dm-g' + k).innerHTML = GUNS.map(id => `<button class="mbtn sm${DS.loadout[k] === id ? ' sel' : ''}" data-slot="${k}" data-gun="${id}">${BR.CONFIG.weapons[id].name.toUpperCase()}</button>`).join('');
+  };
+  $('duelmenu').addEventListener('click', e => {
+    const b = e.target.closest('[data-gun]');
+    if (!b) return;
+    const k = +b.dataset.slot, o = 1 - k;
+    if (DS.loadout[o] === b.dataset.gun) DS.loadout[o] = DS.loadout[k];      // same gun in both slots -> swap them
+    DS.loadout[k] = b.dataset.gun; save(); dmGuns(); BR.Audio.click();
+  });
+  const dmClose = () => { clearInterval(dmTimer); dmTimer = null; game.hud.show('duelmenu', false); };
+  const dmGo = () => {
+    BR.Audio.init();
+    if (dmMode === 'setup') { dmClose(); tryFullscreen(); game.startDuel({ diff: DS.diff, target: DS.target, roundTime: DS.roundTime, loadout: DS.loadout }); }
+    else if (game.duel) { dmClose(); game.duel.loadout = DS.loadout.slice(); game.startRound(); }
+  };
+  BR.openDuelMenu = mode => {
+    dmMode = mode; dmGuns();
+    const m = $('duelmenu'); m.classList.toggle('round', mode === 'round');
+    $('dm-x').style.display = mode === 'round' ? 'none' : '';
+    if (mode === 'round') {
+      const D = game.duel;
+      $('dm-title').textContent = `ROUND ${D.round + 1}`;
+      $('dm-sub').textContent = `YOU ${D.score[0]} – ${D.score[1]} BOT · first to ${D.target} · change your loadout`;
+      let left = 12; $('dm-go').textContent = `READY (${left})`;
+      clearInterval(dmTimer);
+      dmTimer = setInterval(() => { left--; if (left <= 0) dmGo(); else $('dm-go').textContent = `READY (${left})`; }, 1000);
+    } else {
+      $('dm-title').textContent = '1V1 DUEL';
+      $('dm-sub').textContent = 'The Yard · you vs a bot · pick your loadout';
+      $('dm-go').textContent = 'START DUEL';
+    }
+    game.hud.show('duelmenu', true);
+  };
+  $('btn-duel').addEventListener('click', () => { BR.Audio.init(); BR.openDuelMenu('setup'); });
+  $('dm-go').addEventListener('click', dmGo);
+  $('dm-x').addEventListener('click', dmClose);
   $('btn-menu').addEventListener('click', () => game.toMenu());
   $('btn-resume').addEventListener('click', () => game.resume());
   $('btn-quit').addEventListener('click', () => game.toMenu());

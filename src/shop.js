@@ -81,7 +81,7 @@ BR.Profile = {
 };
 
 const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['pistol', 'Pistol'], ['knife', 'Karambit']];
-const RARITY = { Base: '#8d97a5', Epic: '#b26bff', Legendary: '#ffb224' };
+const RARITY = { Base: '#8d97a5', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2' };
 
 BR.Shop = class Shop {
   // Catalog for a category. Blueprints are per weapon; ids look like "rifle:vandal".
@@ -193,7 +193,7 @@ BR.Shop = class Shop {
     for (const id in items) {
       const it = items[id], own = P.owns(cat, id), eq = P.isEquipped(cat, id);
       const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
-      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : '<i class="coin"></i>' + it.price}</span></button>`);
+      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : '<i class="coin"></i>' + it.price}</span></button>`);
     }
     this.el.grid.innerHTML = html.join('');
     const it = items[this.sel];

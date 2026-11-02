@@ -113,6 +113,15 @@ BR.BotBrain = class BotBrain {
         if (dist > d.viewDist * 1.4 || g.time - this.targetSeenT > 3) this.target = null;
       }
     }
+    // Duel: there's only one opponent - always hunt them (no zone, no loot)
+    if (g.duel) {
+      const P = g.player;
+      this.target = P && P.alive ? P : null;
+      if (this.target && this.canSee(this.target)) this.targetSeenT = g.time;
+      this.state = this.target ? 'fight' : 'roam';
+      this.pickWeapon();
+      return;
+    }
     // Look for someone to fight. Early on bots focus on looting and only fight
     // up close; late in the match they hunt from further away.
     const early = Math.max(0, 1 - g.time / BR.CONFIG.match.botLootPhase);
@@ -136,19 +145,7 @@ BR.BotBrain = class BotBrain {
       this.targetSeenT = g.time;
     }
 
-    // Pick the best weapon for the range
-    if (this.target) {
-      const dist = a.pos.distanceTo(this.target.pos);
-      let bi = a.cur, bs = -1;
-      bi = 2; bs = -1; // karambit only if no gun has ammo
-      a.slots.forEach((w, i) => {
-        if (!w || w.def.melee || (w.mag === 0 && a.ammo[w.def.ammo] === 0)) return;
-        const pd = PREF_DIST[w.id];
-        const s = 100 - Math.abs(dist - pd) * (w.id === 'sniper' ? 0.8 : 2) + w.def.tier * 5;
-        if (s > bs) { bs = s; bi = i; }
-      });
-      if (bi !== a.cur) a.switchTo(bi);
-    }
+    this.pickWeapon();
 
     // Zone logic
     const z = g.zone;
@@ -170,6 +167,22 @@ BR.BotBrain = class BotBrain {
       this.goal = { x: z.nextX + Math.cos(ang) * rr, y: 0, z: z.nextZ + Math.sin(ang) * rr };
     }
     this.state = 'roam';
+  }
+
+  // Pick the best weapon for the range to the current target
+  pickWeapon() {
+    const a = this.a;
+    if (!this.target) return;
+      const dist = a.pos.distanceTo(this.target.pos);
+      let bi = a.cur, bs = -1;
+      bi = 2; bs = -1; // karambit only if no gun has ammo
+      a.slots.forEach((w, i) => {
+        if (!w || w.def.melee || (w.mag === 0 && a.ammo[w.def.ammo] === 0)) return;
+        const pd = PREF_DIST[w.id];
+        const s = 100 - Math.abs(dist - pd) * (w.id === 'sniper' ? 0.8 : 2) + w.def.tier * 5;
+        if (s > bs) { bs = s; bi = i; }
+      });
+      if (bi !== a.cur) a.switchTo(bi);
   }
 
   fight(dt) {

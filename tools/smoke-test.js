@@ -268,6 +268,38 @@ const server = http.createServer((req, res) => {
     const shown = !document.getElementById('queue').classList.contains('hidden'), st = g.state;
     setTimeout(() => res({ shown, stillEnded: st === 'end', state: g.state, alive: g.player.alive, hidden: document.getElementById('queue').classList.contains('hidden') }), 3800);
   }));
+  // 1v1 duel: arena, loadouts, rounds, timeout rule, first-to-N, rematch
+  const duel = await page.evaluate(() => {
+    const g = BR.game, o = {};
+    g.startDuel({ diff: 'hard', target: 3, roundTime: 60, loadout: ['sniper', 'smg'] });
+    o.arena = g.world.arena && g.world.size < 100 && g.actors.length === 2;
+    o.loadout = g.player.slots.map(s => s && s.id).join(',');
+    o.frozen = (() => { const x = g.player.pos.x; g.input.moveY = 1; for (let i = 0; i < 30; i++) g.update(1 / 30); g.input.moveY = 0; return Math.abs(g.player.pos.x - x) < 0.05 && g.duel.phase === 'countdown'; })();
+    for (let i = 0; i < 80; i++) g.update(1 / 30);
+    o.fighting = g.duel.phase === 'fight' && g.duelBot.brain.target === g.player;
+    g.kill(g.duelBot, g.player, 'sniper', true); g.update(1 / 30);
+    o.round1 = g.duel.score.join('-');
+    for (let i = 0; i < 100 && g.state === 'playing'; i++) g.update(1 / 30);
+    o.loadoutMenu = g.state === 'loadout' && !document.getElementById('duelmenu').classList.contains('hidden');
+    g.duel.loadout = ['shotgun', 'pistol']; g.hud.show('duelmenu', false); g.startRound();
+    o.newLoadout = g.player.slots.map(s => s && s.id).join(',') === 'shotgun,pistol,knife' && g.duel.round === 2;
+    g.duel.phase = 'fight'; g.duel.t = 0.01; g.duelBot.health = 30; g.update(1 / 30);
+    o.timeout = g.duel.score.join('-') === '2-0';
+    for (let k = 0; k < 6 && g.state !== 'end'; k++) {
+      for (let i = 0; i < 100 && g.state === 'playing'; i++) g.update(1 / 30);
+      if (g.state === 'loadout') { g.hud.show('duelmenu', false); g.startRound(); g.duel.phase = 'fight'; g.duel.t = 30; g.kill(g.player, g.duelBot, 'rifle', false); g.update(1 / 30); }
+    }
+    o.end = g.state === 'end' && g.result.duel && document.getElementById('btn-again').textContent === 'REMATCH';
+    o.final = g.duel.score.join('-');
+    // mythic blueprints animate
+    const m = BR.Models.weapon('rifle', 'default', 'none', 'neonviper');
+    const before = JSON.stringify(m.children.map(c => c.rotation.x.toFixed(3)));
+    BR.Models.animate(m, 2.5);
+    o.mythic = Object.values(BR.Models.BLUEPRINTS).reduce((n, w) => n + Object.values(w).filter(b => b.rarity === 'Mythic').length, 0);
+    o.mythicAnim = (m.userData.anim || []).length > 0 && JSON.stringify(m.children.map(c => c.rotation.x.toFixed(3))) !== before;
+    g.settings.bots = 19; g.startMatch();       // back to a battle royale for the next check
+    return o;
+  });
   const match = await page.evaluate(() => {
     const g = BR.game;
     g.player.takeDamage = () => false;           // idle player can't die, so the bots finish the match
@@ -330,10 +362,14 @@ const server = http.createServer((req, res) => {
     ['map is dressed (frames, props, ponds, barrels, logs)', extra.newstuff.decor > 3000 && extra.newstuff.ponds >= 4 && extra.newstuff.barrels > 10 && extra.newstuff.logs > 20],
     ['dying ends your match (no respawn)', death.state === 'end' && !death.alive && death.endShown],
     ['queue screen finds a new match', queue.shown && queue.stillEnded && queue.state === 'playing' && queue.alive && queue.hidden && /QUEUE/.test(death.btn)],
+    ['duel: arena + chosen loadout, frozen countdown, bot hunts you', duel.arena && duel.loadout === 'sniper,smg,knife' && duel.frozen && duel.fighting],
+    ['duel: rounds score, loadout menu between rounds, new loadout applies', duel.round1 === '1-0' && duel.loadoutMenu && duel.newLoadout],
+    ['duel: time-out goes to more HP; first to N ends with rematch', duel.timeout && duel.end],
+    ['mythic blueprints exist for every weapon and animate', duel.mythic >= 9 && duel.mythicAnim],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ mech, combat, acct, extra, death, queue, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ mech, combat, acct, extra, death, queue, duel, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

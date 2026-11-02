@@ -490,6 +490,30 @@ BR.Models = (function () {
       c.fillStyle = g; c.fillRect(0, 0, s, s);
       for (let i = 0; i < 90; i++) { c.fillStyle = `rgba(160,220,255,${Math.random()})`; c.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); } }) }),
   };
+  // ---- Mythic helpers: animated parts. Each pushes fn(t) onto g.userData.anim; the viewmodel
+  // and the shop call BR.Models.animate(model, t) every frame.
+  const anim = (g, fn) => (g.userData.anim || (g.userData.anim = [])).push(fn);
+  const liveGlow = (c) => new THREE.MeshBasicMaterial({ color: c });                  // own material, safe to animate
+  const hueCycle = (g, mat, h0, h1, speed, l) => anim(g, t => mat.color.setHSL(h0 + (h1 - h0) * (0.5 + 0.5 * Math.sin(t * speed)), 1, l || 0.6));
+  const chrome = (c) => new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: 150, emissive: new THREE.Color(c).multiplyScalar(0.12) });
+  const crystal = (c) => new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: 160, transparent: true, opacity: 0.78, emissive: new THREE.Color(c).multiplyScalar(0.35) });
+  function ring(g, r, tube, mat, x, y, z) {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 8, 32), mat); m.position.set(x, y, z); g.add(m); return m;
+  }
+  function orbiters(g, n, geo, mat, cx, cy, cz, r, speed, axis) {
+    const pivot = new THREE.Group(); pivot.position.set(cx, cy, cz); g.add(pivot);
+    for (let i = 0; i < n; i++) { const o = new THREE.Mesh(geo, mat); const a = i / n * Math.PI * 2; if (axis === 'z') o.position.set(Math.cos(a) * r, Math.sin(a) * r, 0); else o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); pivot.add(o); }
+    anim(g, t => { if (axis === 'z') pivot.rotation.z = t * speed; else pivot.rotation.y = t * speed; pivot.children.forEach((o, i) => o.rotation.set(t * 3 + i, t * 2, 0)); });
+    return pivot;
+  }
+  BLADES.gamma = () => new THREE.MeshPhongMaterial({ shininess: 160, specular: 0xb0ffd0, side: THREE.DoubleSide, emissive: 0x05301a, map: bladeTex('gamma', (c, s) => {
+    const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#003b1f'); g.addColorStop(0.4, '#00c46a'); g.addColorStop(0.7, '#7dffb8'); g.addColorStop(1, '#00361c');
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    for (let i = 0; i < 120; i++) { c.fillStyle = `rgba(200,255,220,${Math.random()})`; c.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); } }) });
+  BLADES.ruby = () => new THREE.MeshPhongMaterial({ shininess: 170, specular: 0xffc0c8, side: THREE.DoubleSide, emissive: 0x300008, map: bladeTex('ruby', (c, s) => {
+    const g = c.createRadialGradient(s * 0.4, s * 0.4, 4, s * 0.5, s * 0.5, s * 0.7); g.addColorStop(0, '#ff5a72'); g.addColorStop(0.5, '#d1002a'); g.addColorStop(1, '#3a0008');
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    for (let i = 0; i < 60; i++) { c.fillStyle = `rgba(255,190,200,${Math.random() * 0.8})`; c.fillRect(Math.random() * s, Math.random() * s, 1.2, 1.2); } }) });
   const glowStrip = (k, G, len, x, y, z, axis) => axis === 'y' ? k.box(0.003, len, 0.003, x, y, z, G) : k.box(0.003, 0.004, len, x, y, z, G);
 
   const BLUEPRINTS = {
@@ -604,6 +628,102 @@ BR.Models = (function () {
       doppler: { name: 'Doppler', rarity: 'Legendary', price: 1200, body: 0x101014, accent: 0x101014, glow: 0x4a8bff, blade: 'doppler' },
     },
   };
+  // ---- Mythic blueprints: vibrant chrome + animated parts (spinning rings, orbiting gems,
+  // hue-cycling glow). Shown with a rainbow card in the shop.
+  const MYTHIC = {
+    rifle: {
+      neonviper: { name: 'Neon Viper', rarity: 'Mythic', price: 2000, body: 0xff2fa8, bodyGloss: 2, accent: 0x1de9ff, accentGloss: 2, glow: 0x1de9ff,
+        mod(g, k, P) {
+          const C = chrome(0x1de9ff), G = liveGlow(0x1de9ff); hueCycle(g, G, 0.5, 0.92, 2.2);
+          k.box(0.084, 0.09, 0.3, 0, 0.035, -0.35, C);                                        // chrome shroud
+          for (let i = 0; i < 6; i++) { const f = k.box(0.006, 0.06, 0.05, 0, 0.1, -0.22 - i * 0.05, chrome(0xff2fa8)); f.rotation.x = -0.7; }   // dorsal fins
+          for (const x of [-0.045, 0.045]) { k.box(0.004, 0.012, 0.32, x, 0.035, -0.35, G); k.box(0.004, 0.008, 0.36, x * 0.75, -0.005, 0.02, G); }
+          const rings = [-0.56, -0.64, -0.72].map((z, i) => { const r = ring(g, 0.05 - i * 0.006, 0.0045, G, 0, 0.035, z); return r; });
+          anim(g, t => rings.forEach((r, i) => { r.rotation.x = t * (2 + i); r.rotation.y = t * (1.4 - i * 0.5); r.scale.setScalar(1 + 0.12 * Math.sin(t * 6 + i)); }));
+          k.box(0.05, 0.004, 0.08, 0, -0.08, -0.12, G);                                       // mag glow line
+        } },
+    },
+    holoar: {
+      solarflare: { name: 'Solar Flare', rarity: 'Mythic', price: 2000, body: 0xffc400, bodyGloss: 2, accent: 0xfff4d6, accentGloss: 2, glow: 0xff7a00,
+        mod(g, k, P) {
+          const G = liveGlow(0xff7a00); hueCycle(g, G, 0.02, 0.13, 3, 0.55);
+          const sun = new THREE.Group(); sun.position.set(0, 0.035, -0.6); g.add(sun);
+          sun.add(new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.008, 8, 28), chrome(0xffd84a)));
+          for (let i = 0; i < 12; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.045, 5), G); const a = i / 12 * Math.PI * 2; c.position.set(Math.cos(a) * 0.08, Math.sin(a) * 0.08, 0); c.rotation.z = a - Math.PI / 2; sun.add(c); }
+          anim(g, t => { sun.rotation.z = t * 1.5; sun.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); });
+          for (let i = 0; i < 5; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.07, 6), G); f.position.set(0, 0.095, -0.3 + i * 0.05); g.add(f);
+            anim(g, t => { f.scale.y = 0.7 + 0.5 * (0.5 + 0.5 * Math.sin(t * 9 + i * 1.3)); }); }                         // flickering flames
+          for (const x of [-0.04, 0.04]) k.box(0.004, 0.014, 0.4, x, 0.035, -0.12, G);
+        } },
+    },
+    smg: {
+      glitch: { name: 'Glitch', rarity: 'Mythic', price: 1800, body: 0x0d0d12, bodyGloss: 2, accent: 0xff2bd6, accentGloss: 2, glow: 0x39ff14,
+        mod(g, k, P) {
+          const G = liveGlow(0x39ff14), M2 = liveGlow(0xff2bd6);
+          anim(g, t => { const f = Math.floor(t * 8) % 5 === 0; G.color.setHex(f ? 0xff2bd6 : 0x39ff14); M2.color.setHex(f ? 0x39ff14 : 0xff2bd6); });
+          for (const x of [-0.034, 0.034]) { k.box(0.004, 0.01, 0.3, x, 0.03, -0.12, G); k.box(0.004, 0.01, 0.2, x, -0.02, -0.08, M2); }
+          const cubes = [];
+          for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.014, 0.014), i % 2 ? G : M2); g.add(c); cubes.push({ c, ox: (Math.random() - 0.5) * 0.12, oy: 0.07 + Math.random() * 0.06, oz: -0.35 + Math.random() * 0.4, s: Math.random() * 10 }); }
+          anim(g, t => cubes.forEach(q => { const j = Math.floor(t * 10 + q.s) % 7 === 0 ? 0.02 : 0; q.c.position.set(q.ox + j, q.oy + Math.sin(t * 3 + q.s) * 0.01, q.oz); q.c.rotation.set(t + q.s, t * 2, 0); }));
+          k.box(0.066, 0.07, 0.12, 0, 0.032, -0.33, chrome(0x1a1a24));
+          for (let i = 0; i < 4; i++) k.box(0.068, 0.008, 0.012, 0, 0.04, -0.37 + i * 0.03, i % 2 ? G : M2);
+        } },
+    },
+    shotgun: {
+      frostbite: { name: 'Frostbite', rarity: 'Mythic', price: 1900, body: 0xbfe9ff, bodyGloss: 2, accent: 0xffffff, accentGloss: 2, glow: 0x6ff0ff,
+        mod(g, k, P) {
+          const G = liveGlow(0x6ff0ff); hueCycle(g, G, 0.5, 0.58, 2.5, 0.65);
+          const ice = crystal(0x8fe8ff);
+          for (let i = 0; i < 7; i++) { const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.02 + (i % 3) * 0.008, 0), ice); c.scale.y = 2.2; c.position.set((i % 2 ? 0.02 : -0.02), 0.1 + (i % 3) * 0.01, -0.12 - i * 0.06); c.rotation.z = (i % 2 ? -0.4 : 0.4); g.add(c); }
+          for (let i = 0; i < 4; i++) k.box(0.106, 0.008, 0.03, 0, 0.082, -0.24 - i * 0.07, G);
+          orbiters(g, 6, new THREE.OctahedronGeometry(0.008, 0), G, 0, 0.04, -0.6, 0.07, 2.5, 'z');      // snow swirling round the muzzle
+          k.box(0.12, 0.075, 0.05, 0, 0.055, -0.585, ice);
+        } },
+    },
+    sniper: {
+      celestial: { name: 'Celestial', rarity: 'Mythic', price: 2200, body: 0x0b1440, bodyGloss: 2, accent: 0xffd36a, accentGloss: 2, glow: 0xb48cff,
+        mod(g, k, P) {
+          const G = liveGlow(0xb48cff); hueCycle(g, G, 0.62, 0.82, 1.6, 0.68);
+          const gold = chrome(0xffd36a);
+          const h1 = ring(g, 0.06, 0.004, gold, 0, 0.13, -0.06), h2 = ring(g, 0.07, 0.003, G, 0, 0.13, -0.06);
+          anim(g, t => { h1.rotation.set(t * 1.2, t * 0.7, 0); h2.rotation.set(-t * 0.9, 0, t * 1.1); });
+          orbiters(g, 5, new THREE.OctahedronGeometry(0.01, 0), gold, 0, 0.04, -0.7, 0.06, -1.8, 'z');     // stars round the barrel
+          glowStrip(k, G, 0.55, 0, 0.058, -0.55);
+          for (const x of [-0.032, 0.032]) k.box(0.003, 0.01, 0.3, x, 0.03, 0.0, G);
+          k.box(0.066, 0.05, 0.1, 0, 0.04, -0.88, gold);
+          for (let i = 0; i < 18; i++) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.003, 0.003), liveGlow(0xffffff)); st.position.set((i % 2 ? 0.031 : -0.031), -0.01 + Math.random() * 0.07, -0.15 + Math.random() * 0.5); g.add(st); }
+        } },
+    },
+    hunter: {
+      aurora: { name: 'Aurora', rarity: 'Mythic', price: 1800, body: 0x062a24, bodyGloss: 2, accent: 0x00ffa6, accentGloss: 2, glow: 0x00ffa6,
+        mod(g, k, P) {
+          const G = liveGlow(0x00ffa6); hueCycle(g, G, 0.38, 0.8, 1.4, 0.6);
+          const veil = new THREE.MeshBasicMaterial({ color: 0x00ffa6, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
+          anim(g, t => { veil.color.copy(G.color); veil.opacity = 0.25 + 0.15 * Math.sin(t * 2.3); });
+          for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.05), veil); f.position.set(0, 0.1, -0.28 + i * 0.11); f.rotation.y = Math.PI / 2; g.add(f);
+            anim(g, t => { f.position.y = 0.1 + Math.sin(t * 2 + i) * 0.01; f.rotation.z = Math.sin(t * 1.5 + i) * 0.2; }); }
+          for (const x of [-0.027, 0.027]) { k.box(0.002, 0.012, 0.36, x, 0.0, -0.05, G); k.box(0.002, 0.03, 0.18, x, -0.03, 0.3, G); }
+          k.box(0.008, 0.008, 0.008, 0, 0.09, -0.555, G);
+        } },
+    },
+    pistol: {
+      plasma: { name: 'Plasma Core', rarity: 'Mythic', price: 1600, body: 0x5a1bff, bodyGloss: 2, accent: 0xe6e9ff, accentGloss: 2, glow: 0xff3df2,
+        mod(g, k, P) {
+          const G = liveGlow(0xff3df2); hueCycle(g, G, 0.75, 0.95, 3);
+          const core = new THREE.Mesh(new THREE.SphereGeometry(0.022, 14, 10), G); core.position.set(0, 0.098, -0.06); g.add(core);
+          const cage = ring(g, 0.03, 0.003, chrome(0xe6e9ff), 0, 0.098, -0.06); anim(g, t => { cage.rotation.y = t * 2; cage.rotation.x = t * 1.3; });
+          anim(g, t => core.scale.setScalar(1 + 0.25 * Math.sin(t * 8)));
+          orbiters(g, 3, new THREE.SphereGeometry(0.006, 8, 6), liveGlow(0xffffff), 0, 0.098, -0.06, 0.045, 4, 'y');
+          k.box(0.058, 0.004, 0.18, 0, 0.078, -0.09, G);
+          k.box(0.056, 0.054, 0.05, 0, 0.05, -0.2, chrome(0xe6e9ff));
+        } },
+    },
+    knife: {
+      gamma: { name: 'Gamma Doppler', rarity: 'Mythic', price: 2400, body: 0x0c1410, accent: 0x0c1410, glow: 0x39ff88, blade: 'gamma' },
+      ruby: { name: 'Ruby', rarity: 'Mythic', price: 2600, body: 0x120608, accent: 0x120608, glow: 0xff2a4a, blade: 'ruby' },
+    },
+  };
+  for (const w in MYTHIC) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, MYTHIC[w]);
   for (const w in BLUEPRINTS) BLUEPRINTS[w] = Object.assign({ default: { name: 'Standard Issue', rarity: 'Base', price: 0 } }, BLUEPRINTS[w]);
 
   // ------------------------------------------------------------------ gloves
@@ -711,6 +831,8 @@ BR.Models = (function () {
       return g;
     },
     charm,
+    // Run a model's animated parts (Mythic blueprints). Cheap no-op for everything else.
+    animate(model, t) { const a = model && model.userData.anim; if (a) for (let i = 0; i < a.length; i++) a[i](t); },
     tracerColor(id, t) {
       const tr = TRACERS[id] || TRACERS.default;
       if (tr.color >= 0) return tr.color;

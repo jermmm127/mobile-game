@@ -78,7 +78,7 @@ BR.Game = class Game {
   }
 
   // ------------------------------------------------------------ scene setup
-  buildScene(seed, demo) {
+  buildScene(seed, demo, opts) {
     if (this.scene) this.disposeScene();
     const fogCol = 0xc4dbe9;
     this.scene = new THREE.Scene();
@@ -88,7 +88,7 @@ BR.Game = class Game {
     const sun = new THREE.DirectionalLight(0xfff1d6, 0.8);
     sun.position.set(0.6, 1, 0.35);
     this.scene.add(sun);
-    this.world = new BR.World(seed);
+    this.world = new BR.World(seed, opts);
     this.world.buildMeshes(this.scene, this.detail);
     this.hud.setStaticMap(this.world.renderMinimap(1024));
     this.fx = new BR.Effects(this.scene);
@@ -152,6 +152,7 @@ BR.Game = class Game {
   // opts.practice: no bots, no storm, spawn menu, respawn on death
   startMatch(opts) {
     const S = this.settings, C = BR.CONFIG;
+    this.duel = null; document.body.classList.remove('duel');
     const practiceMode = !!(opts && opts.practice);
     this.buildScene(Math.floor(Math.random() * 1e9), false);
     this.diff = C.difficulty[S.difficulty] || C.difficulty.normal;
@@ -189,6 +190,127 @@ BR.Game = class Game {
     this.hud.show('play', true);
     this.hud.toast(this.practice ? 'Practice mode: tap SPAWN for guns, items and bots' : 'Freefall! Tap JUMP to open your parachute', 2800);
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
+  }
+
+  // ---- 1v1 duel -------------------------------------------------------------
+  // cfg: { diff: 'easy'|'normal'|'hard', target: rounds to win, roundTime: s, loadout: [gunA, gunB] }
+  // Rounds: 3 s countdown -> fight until one dies or time runs out (more HP + shield wins,
+  // equal is a draw) -> 2.6 s banner -> pick a new loadout -> next round. First to `target`.
+  startDuel(cfg) {
+    const C = BR.CONFIG;
+    this.buildScene(Math.floor(Math.random() * 1e9), false, { arena: true });
+    this.duel = { diff: cfg.diff, target: cfg.target, roundTime: cfg.roundTime, loadout: cfg.loadout.slice(),
+      score: [0, 0], round: 0, phase: 'countdown', t: 0, damage: 0, kills: 0, time: 0, draws: 0 };
+    this.diff = C.difficulty[cfg.diff] || C.difficulty.normal;
+    this.practice = false;
+    document.body.classList.remove('practice');
+    document.body.classList.add('duel');
+    this.zone.mesh.visible = false;
+    this.result = null;
+    this.hud.toggleMap(false);
+    this.hud.show('menu', false); this.hud.show('end', false); this.hud.show('pause', false); this.hud.show('duelmenu', false);
+    this.hud.show('play', true);
+    this.startRound();
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
+  }
+
+  // Fresh actors every round: full health + 50 shield, the chosen guns, full ammo, no cooldowns.
+  startRound() {
+    const D = this.duel, C = BR.CONFIG, W = this.world;
+    D.round++;
+    for (const a of this.actors) if (a.mesh && a.mesh.parent) this.scene.remove(a.mesh);
+    this.loot.clear();
+    this.actors = [];
+    const arm = (a, guns, sp) => {
+      a.mover.dropping = false; a.mover.vel.set(0, 0, 0);
+      a.mover.pos.set(sp.x, 0, sp.z);
+      a.yaw = sp.yaw; a.pitch = 0;
+      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create('knife')];
+      a.cur = 0;
+      for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
+      a.health = C.actor.maxHealth; a.shield = 50;
+    };
+    // which end you start at alternates each round
+    const flip = D.round % 2 === 0, sp = W.spawns;
+    const p = this.player = new BR.Actor(this, { id: 0, name: 'You', isPlayer: true });
+    arm(p, D.loadout, flip ? sp[1] : sp[0]);
+    this.actors.push(p);
+    const pool = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['holoar', 'shotgun'], ['sniper', 'pistol']];
+    const bl = pool[Math.floor(Math.random() * pool.length)];
+    const b = this.duelBot = new BR.Actor(this, { id: 1, name: (D.diff === 'hard' ? 'Viper' : D.diff === 'easy' ? 'Rookie' : 'Duelist') + ' (' + D.diff.toUpperCase() + ')', color: 0xd8443a });
+    arm(b, bl, flip ? sp[0] : sp[1]);
+    b.brain = new BR.BotBrain(b, this, this.diff);
+    b.brain.landedT = 99;
+    b.brain.target = p;
+    this.scene.add(b.mesh);
+    this.actors.push(b);
+    D.botLoadout = bl;
+    this.total = 2;
+    this.swapItem = null; this.lastWeapon = null; this.lastPoi = W.pois[0];
+    this.input.reset();
+    this.cam.off = C.actor.standHeight - C.actor.eyeFromTop;
+    this.cam.fov = this.baseFov();
+    D.phase = 'countdown'; D.t = 3; D.lastN = 0;
+    this.state = 'playing';
+    this.last = performance.now();
+    this.hud.duelBanner(`ROUND ${D.round}`, `${BR.CONFIG.weapons[bl[0]].name} + ${BR.CONFIG.weapons[bl[1]].name} on the other side`, 'info');
+  }
+
+  updateDuel(dt) {
+    const D = this.duel, p = this.player, b = this.duelBot;
+    if (this.state !== 'playing') return;
+    D.t -= dt;
+    if (D.phase === 'countdown') {
+      const n = Math.ceil(D.t);
+      if (n !== D.lastN && n > 0) { D.lastN = n; this.hud.duelCount(String(n)); BR.Audio.click(); }
+      if (D.t <= 0) { D.phase = 'fight'; D.t = D.roundTime; this.hud.duelCount('FIGHT!'); BR.Audio.pad(); }
+    } else if (D.phase === 'fight') {
+      D.time += dt;
+      let w = null;
+      if (!p.alive && !b.alive) w = 'draw';
+      else if (!p.alive) w = 'bot';
+      else if (!b.alive) w = 'you';
+      else if (D.t <= 0) { const hp = p.health + p.shield, hb = b.health + b.shield; w = hp > hb + 0.5 ? 'you' : hb > hp + 0.5 ? 'bot' : 'draw'; }
+      if (w) this.endRound(w, D.t <= 0);
+    } else if (D.phase === 'roundEnd') {
+      if (D.t <= 0) {
+        if (D.score[0] >= D.target || D.score[1] >= D.target) this.endDuel();
+        else this.openDuelLoadout();
+      }
+    }
+  }
+
+  endRound(w, timeout) {
+    const D = this.duel, p = this.player;
+    D.phase = 'roundEnd'; D.t = 2.6;
+    D.damage += p.damageDealt; D.kills += p.kills;
+    if (w === 'you') D.score[0]++; else if (w === 'bot') D.score[1]++; else D.draws++;
+    const sc = `${D.score[0]} – ${D.score[1]}`;
+    if (w === 'you') { this.hud.duelBanner('ROUND WON', (timeout ? 'Time! More health left · ' : '') + sc, 'win'); BR.Audio.coin(); }
+    else if (w === 'bot') this.hud.duelBanner('ROUND LOST', (timeout ? 'Time! They had more health · ' : '') + sc, 'lose');
+    else this.hud.duelBanner('DRAW', sc, 'info');
+  }
+
+  openDuelLoadout() {
+    this.state = 'loadout';
+    this.input.reset(); this.input.unlock();
+    this.fx.rope(null);
+    this.hud.prompt(null);
+    BR.openDuelMenu && BR.openDuelMenu('round');
+  }
+
+  endDuel() {
+    const D = this.duel, win = D.score[0] > D.score[1];
+    this.state = 'end';
+    this.input.unlock();
+    this.hud.prompt(null);
+    this.fx.rope(null);
+    this.result = { duel: true, win, place: win ? 1 : 2, total: 2, score: D.score.slice(), diff: D.diff, kills: D.kills, damage: D.damage, time: D.time,
+      by: `vs ${D.diff.toUpperCase()} bot · first to ${D.target}` };
+    this.result.coins = BR.Profile.award(this.result);
+    this.lastDuel = { diff: D.diff, target: D.target, roundTime: D.roundTime, loadout: D.loadout.slice() };
+    this.hud.showEnd(this.result);
+    BR.updateCoins();
   }
 
   // ---- practice spawn menu ---------------------------------------------------
@@ -272,6 +394,7 @@ BR.Game = class Game {
   }
   toMenu() {
     this.state = 'menu';
+    if (this.duel) { this.duel = null; document.body.classList.remove('duel'); this.hud.show('duelmenu', false); }
     this.input.unlock();
     this.hud.show('pause', false);
     this.hud.show('end', false);
@@ -299,7 +422,8 @@ BR.Game = class Game {
   // Everything that happens in the world, with or without a player.
   simulate(dt) {
     this.time += dt;
-    for (const a of this.actors) if (a.brain && a.alive) a.brain.update(dt);
+    const frozen = this.duel && this.duel.phase === 'countdown';
+    for (const a of this.actors) if (a.brain && a.alive && !frozen) a.brain.update(dt);
     for (const a of this.actors) a.update(dt);
     for (const a of this.actors) {
       if (!a.alive || a.mover.dropping) continue;
@@ -310,7 +434,7 @@ BR.Game = class Game {
         if (a === this.player) this.swapItem = s;
       }
     }
-    if (!this.practice) {
+    if (!this.practice && !this.duel) {
       this.zone.update(dt);
       const dps = this.zone.dps;
       for (const a of this.actors) {
@@ -370,7 +494,8 @@ BR.Game = class Game {
     this.hud.fps(this.fpsVal, this.settings.showFps);
 
     // Match end
-    if (this.state === 'playing') {
+    if (this.duel) this.updateDuel(dt);
+    else if (this.state === 'playing') {
       if (!p.alive && this.practice) {
         // Practice: respawn where you fell after a moment
         this.respawnT = (this.respawnT ?? 2) - dt;
@@ -421,6 +546,8 @@ BR.Game = class Game {
     if (target) sens *= 1 - L.aimAssist * 0.6;
     p.yaw -= dx * sens;
     p.pitch = BR.util.clamp(p.pitch - dy * sens, -1.45, 1.45);
+    // Duel countdown: look around, but no moving or shooting yet
+    if (this.duel && this.duel.phase !== 'fight') { p.input.mx = p.input.mz = 0; p.fireHeld = false; inp.consume('jump'); inp.consume('crouch'); return; }
 
     p.input.mx = inp.moveX;
     p.input.mz = inp.moveY;
@@ -764,6 +891,7 @@ BR.Game = class Game {
     this.shopPivot.rotation.y += dt * 0.5;
     this.shopPivot.position.y = this.shopBaseY + Math.sin(this.time * 1.4) * 0.03;
     this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
+    if (this.shopGun) BR.Models.animate(this.shopGun, this.time);
     const ch = this.shopGun && this.shopGun.userData.charmObj;
     if (ch) ch.rotation.z = Math.sin(this.time * 3) * 0.4;
     // Tracer preview: slow, bright streaks sweeping past the gun

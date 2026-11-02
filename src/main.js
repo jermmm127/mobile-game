@@ -3,12 +3,13 @@
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, sens: 1.0, aimSmooth: 0.3, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
   const settings = Object.assign({}, DEFAULTS, stored);
   settings.xh = Object.assign({}, DEFAULTS.xh, stored.xh || {});
+  settings.duel = Object.assign({}, DEFAULTS.duel, stored.duel || {});
   const save = () => BR.util.save('velocity-royale.settings', settings);
   BR.Accounts.load();
   BR.Profile.load();
@@ -221,7 +222,57 @@
   $('sp-close').addEventListener('click', () => game.closeSpawnMenu());
   $('sp-x').addEventListener('click', () => game.closeSpawnMenu());
   $('btn-play').addEventListener('click', play);
-  $('btn-again').addEventListener('click', play);
+  $('btn-again').addEventListener('click', () => {
+    if (game.result && game.result.duel && game.lastDuel) { BR.Audio.init(); game.startDuel(game.lastDuel); }   // rematch, same settings
+    else play();
+  });
+
+  // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts
+  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'shotgun', 'sniper', 'hunter', 'pistol'];
+  let dmMode = 'setup', dmTimer = null;
+  const dmSeg = (id, key, num) => {
+    const el = $(id), sync = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', String(DS[key]) === b.dataset.v));
+    el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; DS[key] = num ? +b.dataset.v : b.dataset.v; save(); sync(); });
+    sync();
+  };
+  dmSeg('dm-diff', 'diff'); dmSeg('dm-target', 'target', true); dmSeg('dm-time', 'roundTime', true);
+  const dmGuns = () => {
+    for (const k of [0, 1]) $('dm-g' + k).innerHTML = GUNS.map(id => `<button class="mbtn sm${DS.loadout[k] === id ? ' sel' : ''}" data-slot="${k}" data-gun="${id}">${BR.CONFIG.weapons[id].name.toUpperCase()}</button>`).join('');
+  };
+  $('duelmenu').addEventListener('click', e => {
+    const b = e.target.closest('[data-gun]');
+    if (!b) return;
+    const k = +b.dataset.slot, o = 1 - k;
+    if (DS.loadout[o] === b.dataset.gun) DS.loadout[o] = DS.loadout[k];      // same gun in both slots -> swap them
+    DS.loadout[k] = b.dataset.gun; save(); dmGuns(); BR.Audio.click();
+  });
+  const dmClose = () => { clearInterval(dmTimer); dmTimer = null; game.hud.show('duelmenu', false); };
+  const dmGo = () => {
+    BR.Audio.init();
+    if (dmMode === 'setup') { dmClose(); tryFullscreen(); game.startDuel({ diff: DS.diff, target: DS.target, roundTime: DS.roundTime, loadout: DS.loadout }); }
+    else if (game.duel) { dmClose(); game.duel.loadout = DS.loadout.slice(); game.startRound(); }
+  };
+  BR.openDuelMenu = mode => {
+    dmMode = mode; dmGuns();
+    const m = $('duelmenu'); m.classList.toggle('round', mode === 'round');
+    $('dm-x').style.display = mode === 'round' ? 'none' : '';
+    if (mode === 'round') {
+      const D = game.duel;
+      $('dm-title').textContent = `ROUND ${D.round + 1}`;
+      $('dm-sub').textContent = `YOU ${D.score[0]} – ${D.score[1]} BOT · first to ${D.target} · change your loadout`;
+      let left = 12; $('dm-go').textContent = `READY (${left})`;
+      clearInterval(dmTimer);
+      dmTimer = setInterval(() => { left--; if (left <= 0) dmGo(); else $('dm-go').textContent = `READY (${left})`; }, 1000);
+    } else {
+      $('dm-title').textContent = '1V1 DUEL';
+      $('dm-sub').textContent = 'The Yard · you vs a bot · pick your loadout';
+      $('dm-go').textContent = 'START DUEL';
+    }
+    game.hud.show('duelmenu', true);
+  };
+  $('btn-duel').addEventListener('click', () => { BR.Audio.init(); BR.openDuelMenu('setup'); });
+  $('dm-go').addEventListener('click', dmGo);
+  $('dm-x').addEventListener('click', dmClose);
   $('btn-menu').addEventListener('click', () => game.toMenu());
   $('btn-resume').addEventListener('click', () => game.resume());
   $('btn-quit').addEventListener('click', () => game.toMenu());
