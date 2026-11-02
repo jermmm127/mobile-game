@@ -226,6 +226,14 @@ const server = http.createServer((req, res) => {
     let lift = 0, back = 0;
     for (let i = 0; i < 60; i++) { vm.update(1 / 60, 0, 0); lift = Math.max(lift, hm.bolt.rotation.z); back = Math.max(back, hm.bolt.position.z - hm.boltZ0); }
     for (let i = 0; i < 60; i++) vm.update(1 / 60, 0, 0);
+    // first-person stim + grapple animations
+    let injSeen = false, launchSeen = false;
+    vm.onStim(); for (let i = 0; i < 40; i++) { vm.update(1 / 60, 0, 0); if (vm.injector.visible) injSeen = true; }
+    for (let i = 0; i < 60; i++) vm.update(1 / 60, 0, 0);
+    const injGone = !vm.injector.visible;
+    vm.onGrapple(); for (let i = 0; i < 12; i++) { vm.update(1 / 60, 0, 0); if (vm.launcher.visible && vm.ropeValid) launchSeen = true; }
+    for (let i = 0; i < 60; i++) vm.update(1 / 60, 0, 0);
+    r.fpAnims = { injSeen, injGone, launchSeen, launchGone: !vm.launcher.visible };
     const Wd = g.world;
     r.newstuff = { knifeSpeed, bolts: !!(C.sniper.bolt && C.hunter.bolt), hunterIrons: !C.hunter.scope && !!hm.sight, sniperBolt: !!vm.models.sniper.userData.model.userData.bolt,
       lift, back, settled: Math.abs(hm.bolt.rotation.z) < 1e-3 && Math.abs(hm.bolt.position.z - hm.boltZ0) < 1e-3,
@@ -311,6 +319,7 @@ const server = http.createServer((req, res) => {
     ['stretched res widens the picture; saturation filters the 3D view', extra.video.asp1 < extra.video.asp0 / 1.5 && /saturate\(1\.6\)/.test(extra.video.filt) && extra.video.reset],
     ['karambit gives a movement speed boost', extra.newstuff.knifeSpeed > BR_RUN * 1.15],
     ['sniper + hunting rifle are bolt actions (bolt lifts, pulls back, returns)', extra.newstuff.bolts && extra.newstuff.sniperBolt && extra.newstuff.lift > 0.8 && extra.newstuff.back > 0.05 && extra.newstuff.settled],
+    ['stim + grapple have first-person arm animations', extra.fpAnims.injSeen && extra.fpAnims.injGone && extra.fpAnims.launchSeen && extra.fpAnims.launchGone],
     ['hunting rifle uses iron sights (no scope)', extra.newstuff.hunterIrons],
     ['map is dressed (frames, props, ponds, barrels, logs)', extra.newstuff.decor > 3000 && extra.newstuff.ponds >= 4 && extra.newstuff.barrels > 10 && extra.newstuff.logs > 20],
     ['dying ends your match (no respawn)', death.state === 'end' && !death.alive && death.endShown],

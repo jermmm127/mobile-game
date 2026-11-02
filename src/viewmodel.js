@@ -50,6 +50,10 @@
       this.charmA = 0; this.charmV = 0;
       this.lastWeapon = null; this.lastReloadK = 0;
       this.scale = 1;
+      this.grapW = 0; this.grapT = 0; this.stimT = 0; this.stimDur = 1; this.stimW = 0; this.stimK = 0;
+      this.ropeFrom = new THREE.Vector3(); this.ropeValid = false;
+      for (const k of ['_sx', '_sv', '_sy', '_sz', '_sp0', '_sp1', '_sp2', '_spo']) this[k] = new THREE.Vector3();
+      this._sq1 = new THREE.Quaternion(); this._sq2 = new THREE.Quaternion(); this._sm = new THREE.Matrix4();
       this._v = new THREE.Vector3(); this._v2 = new THREE.Vector3(); this._q = new THREE.Quaternion(); this._e = new THREE.Euler();
       this.rebuild();
     }
@@ -96,6 +100,27 @@
         return { hand, fore };
       };
       this.arms = { R: mk(false), L: mk(true) };
+      // Wrist grapple launcher (child of the left hand: aims where the fingers point)
+      const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
+      const orange = new THREE.MeshLambertMaterial({ color: 0xffa31a, emissive: 0x552200 });
+      const ln = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.026, 0.07), dark); body.position.set(0, 0.03, 0.03); ln.add(body);
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.018), dark); strap.position.set(0, 0.0, 0.05); ln.add(strap);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.06, 8), steel); barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.035, -0.03); ln.add(barrel);
+      const light = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.004, 0.02), new THREE.MeshBasicMaterial({ color: 0x8fe6ff })); light.position.set(0.012, 0.044, 0.035); ln.add(light);
+      const tip = new THREE.Mesh(new THREE.OctahedronGeometry(0.009, 0), orange); tip.position.set(0, 0.035, -0.065); ln.add(tip);
+      ln.userData.tip = tip; ln.visible = false;
+      this.arms.L.hand.add(ln); this.launcher = ln;
+      // Stim pen injector (needle along +X, plunger at -X by the thumb)
+      if (this.injector) this.scene.remove(this.injector);
+      const inj = new THREE.Group();
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.12, 10), new THREE.MeshLambertMaterial({ color: 0xe8ecef })); tube.rotation.z = Math.PI / 2; inj.add(tube);
+      const win = new THREE.Mesh(new THREE.CylinderGeometry(0.0135, 0.0135, 0.04, 10), new THREE.MeshBasicMaterial({ color: 0x5dff9a })); win.rotation.z = Math.PI / 2; win.position.x = 0.01; inj.add(win);
+      const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.011, 0.03, 10), new THREE.MeshLambertMaterial({ color: 0x2f9a5a })); plunger.rotation.z = Math.PI / 2; plunger.position.x = -0.075; inj.add(plunger);
+      const needle = new THREE.Mesh(new THREE.CylinderGeometry(0.0015, 0.0015, 0.03, 6), steel); needle.rotation.z = Math.PI / 2; needle.position.x = 0.075; inj.add(needle);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.012, 0.04, 10), orange); cap.rotation.z = Math.PI / 2; cap.position.x = 0.08; inj.add(cap);
+      inj.userData.cap = cap; inj.scale.setScalar(1.3); inj.visible = false;
+      this.scene.add(inj); this.injector = inj;
       this.lastWeapon = null;
     }
 
@@ -118,7 +143,7 @@
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.def.melee ? 2.4 : 2.1; }
 
-    hide() { this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -219,6 +244,30 @@
         ox += dr * (0.05 * wind - 0.2 * arc); oy += 0.03 * wind - 0.05 * arc;
         orz += dr * (0.35 * wind - 1.05 * arc); ory += dr * 0.6 * arc; orx += -0.5 * arc + 0.15 * wind;
       }
+      // Grapple: off hand throws out toward the hook; the gun drops to a one-handed hold
+      this.ropeValid = false;
+      const hooked = !!m.grapple;
+      if (this.grapT > 0) this.grapT = Math.max(0, this.grapT - dt);
+      this.grapW = U.damp(this.grapW, hooked || this.grapT > 0 ? 1 : 0, hooked || this.grapT > 0 ? 18 : 8, dt);
+      // Stim (Warzone-style): pen comes up, cap flicked off, jabbed into the thigh
+      if (this.stimT > 0) {
+        this.stimT = Math.max(0, this.stimT - dt);
+        this.stimK = 1 - this.stimT / this.stimDur;
+        const passedS = x => this.lastStimK < x && this.stimK >= x;
+        if (passedS(0.3)) BR.Audio.click();
+        if (passedS(0.5)) {   // needle goes in: the whole view flinches
+          const c = this.game.cam; c.kick = Math.max(c.kick, 0.07); c.punchV = (c.punchV || 0) - 0.9; c.rollV = (c.rollV || 0) + 0.6;
+          this.rot.z.vel += 1.4; this.pos.y.vel -= 0.6; BR.Audio.swish(true);
+        }
+        this.lastStimK = this.stimK;
+      }
+      this.stimW = U.damp(this.stimW, this.stimT > 0 && this.stimK < 0.86 ? 1 : 0, this.stimT > 0 && this.stimK < 0.86 ? 16 : 9, dt);
+      const busy = Math.max(this.grapW, this.stimW);
+      if (busy > 0.01) {
+        oy -= 0.05 * busy; ox += 0.04 * busy; orz -= 0.22 * busy; orx -= 0.1 * this.stimW;
+        if (this.stimW > 0.01) leftTarget = null;
+      }
+
       // Bolt action: right hand leaves the grip, lifts the bolt, rips it back, drives it
       // home, locks it down and returns. The gun cants toward you while you work it.
       let rightTarget = null, boltLift = 0, boltBack = 0;
@@ -370,15 +419,89 @@
       this.limb(R.fore, R.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), elbowR);
       // left hand on the foregrip / mag / charging handle
       const lt = leftTarget || ud.fore;
-      if (!lt || leftHidden) { L.hand.visible = L.fore.visible = false; return; }
-      const lp = model.localToWorld(this._v.copy(lt));
-      L.hand.position.copy(lp);
-      L.hand.quaternion.copy(wq).multiply(this._qFore || (this._qFore = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, Math.PI, 'YXZ'))));
-      L.hand.translateY(0.024);
+      const special = this.specialLeft();          // grapple / stim pose (or null)
+      this.launcher.visible = false; this.injector.visible = false;
+      if ((!lt || leftHidden) && !special) { L.hand.visible = L.fore.visible = false; return; }
+      if (lt && !leftHidden) {
+        const lp = model.localToWorld(this._v.copy(lt));
+        L.hand.position.copy(lp);
+        L.hand.quaternion.copy(wq).multiply(this._qFore || (this._qFore = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, Math.PI, 'YXZ'))));
+        L.hand.translateY(0.024);
+      } else {
+        // no off hand on this weapon (karambit): come in from below the screen
+        L.hand.position.set(-0.3, -0.62, -0.25);
+        L.hand.quaternion.copy(special.q);
+      }
+      if (special) {
+        L.hand.position.lerp(special.p, special.w);
+        L.hand.quaternion.slerp(special.q, special.w);
+        this.launcher.visible = special.kind === 'grapple' && special.w > 0.05;
+        if (special.kind === 'stim') {
+          // pen injector held in the fist, needle along the hand's X axis
+          this.injector.visible = special.w > 0.05;
+          this.injector.position.copy(L.hand.position).add(this._v2.set(0, -0.026, -0.05).multiplyScalar(1.3).applyQuaternion(L.hand.quaternion));
+          this.injector.quaternion.copy(L.hand.quaternion);
+          this.injector.userData.cap.visible = special.capOn;
+        }
+      }
       L.hand.visible = true;
       const elbowL = new THREE.Vector3(U.lerp(-0.28, -0.16, A) * s, U.lerp(-0.6, -0.52, A), -0.06);
+      if (special) elbowL.lerp(this._v2.set(-0.34, -0.7, 0.05), special.w);
       this.limb(L.fore, L.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), elbowL);
+      // where the grapple rope leaves the launcher, mapped into the game camera's world
+      if (this.launcher.visible) {
+        const tip = this.launcher.userData.tip.getWorldPosition(this._v);
+        tip.project(this.camera);
+        const gc = this.game.camera, dir = this._v2.set(tip.x, tip.y, 0.5).unproject(gc).sub(gc.position).normalize();
+        this.ropeFrom.copy(gc.position).addScaledVector(dir, 0.7);
+        this.ropeValid = true;
+      }
     }
+
+    // ---- grapple + stim poses for the left hand (camera space) ----------------
+    // Returns {kind, w, p, q, capOn} or null.
+    specialLeft() {
+      const B = (X, Zref, out) => {          // basis: hand X axis + wrist direction hint -> quaternion
+        const Z = this._sz.copy(Zref); Z.addScaledVector(X, -Z.dot(X)).normalize();
+        const Y = this._sy.crossVectors(Z, X);
+        return out.setFromRotationMatrix(this._sm.makeBasis(X, Y, Z));
+      };
+      if (this.stimW > 0.01) {
+        const k = this.stimK, q = this._sq1;
+        // enter from below -> present the pen (thumb flicks the cap) -> drive it down into the thigh -> hold
+        const P0 = this._sp0.set(-0.28, -0.6, -0.22), P1 = this._sp1.set(-0.1, -0.12, -0.36), P2 = this._sp2.set(-0.2, -0.66, -0.2);
+        const present = smooth(k / 0.16), plunge = smooth((k - 0.4) / 0.1);
+        const p = this._spo.copy(P0).lerp(P1, present).lerp(P2, plunge);
+        if (k > 0.24 && k < 0.34) p.y += Math.sin((k - 0.24) / 0.1 * Math.PI) * 0.015;     // cap flick
+        p.x += Math.sin(k * 9) * 0.006 * (1 - plunge);
+        const needle = this._sx.set(0.25, -0.6, -0.75).normalize().lerp(this._sv.set(0.05, -1, 0.15), plunge).normalize();
+        return { kind: 'stim', w: this.stimW, p, q: B(needle, this._sv.set(-0.55, -0.55, 0.6), q), capOn: k < 0.3 };
+      }
+      if (this.grapW > 0.01) {
+        // arm thrown out toward the hook, fingers pointing at it, launcher on the wrist
+        const g = this.game, m = g.player.mover, cam = g.camera;
+        const d = this._sx.set(0, 0, -1);
+        if (m.grapple) {
+          d.set(m.grapple.x, m.grapple.y, m.grapple.z).sub(cam.position).normalize()
+            .applyQuaternion(this._sq2.copy(cam.quaternion).invert());
+          if (d.z > -0.35) { d.z = -0.35; d.normalize(); }
+        }
+        d.x = U.clamp(d.x, -0.6, 0.45); d.y = U.clamp(d.y, -0.35, 0.7); d.normalize();
+        const fire = this.grapT > 0 ? Math.sin(U.clamp(1 - this.grapT / 0.3, 0, 1) * Math.PI) : 0;
+        const p = this._spo.set(-0.16 + d.x * 0.1, -0.12 + d.y * 0.09, -0.4)
+          .addScaledVector(d, 0.05 - fire * 0.04);                                                    // recoil kicks the hand back
+        if (m.grapple) p.add(this._sv.set((Math.random() - 0.5) * 0.004, (Math.random() - 0.5) * 0.004, Math.min(0.06, m.grapple.t * 0.05)));   // rope tension
+        // fingers along -Z point at the hook: Z = -d; back of the hand up
+        const q = this._sq1, Z = this._sz.copy(d).negate(), Y = this._sy.set(0.15, 1, 0); Y.addScaledVector(Z, -Y.dot(Z)).normalize();
+        const X = this._sv.crossVectors(Y, Z);
+        q.setFromRotationMatrix(this._sm.makeBasis(X, Y, Z));
+        return { kind: 'grapple', w: this.grapW, p, q };
+      }
+      return null;
+    }
+
+    onGrapple() { this.grapT = 0.3; }
+    onStim() { this.stimT = this.stimDur = 0.95; this.lastStimK = 0; }
 
     limb(mesh, a, b) {
       const d = this._d || (this._d = new THREE.Vector3());

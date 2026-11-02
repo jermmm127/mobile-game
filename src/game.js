@@ -350,7 +350,14 @@ BR.Game = class Game {
     if (pc.visible) { pc.position.set(p.pos.x, p.pos.y + 1.5, p.pos.z); pc.rotation.y = p.yaw; pc.rotation.z = Math.sin(this.time * 1.5) * 0.05; }
 
     // Grapple rope
-    if (p.mover.grapple) this.fx.rope(this.muzzlePoint(p, this._v4), p.mover.grapple);
+    if (p.mover.grapple) {
+      // rope leaves the wrist launcher and shoots out to the hook over ~0.12 s
+      this.ropeT = (this.ropeT ?? 1) + dt;
+      const from = this.vmr.ropeValid ? this.vmr.ropeFrom : this.muzzlePoint(p, this._v4), G = p.mover.grapple;
+      const e = Math.min(1, this.ropeT / 0.12), end = this._ropeEnd || (this._ropeEnd = new THREE.Vector3());
+      end.set(from.x + (G.x - from.x) * e, from.y + (G.y - from.y) * e, from.z + (G.z - from.z) * e);
+      this.fx.rope(from, end);
+    }
     else this.fx.rope(null);
 
     // Location banner when entering a named place
@@ -419,8 +426,8 @@ BR.Game = class Game {
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
     if (inp.consume('crouch')) p.input.crouch = true;
-    if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
-    if (inp.consume('grapple')) { if (p.tryGrapple()) BR.Audio.grapple(); else BR.Audio.click(); }
+    if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.vmr.onStim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
+    if (inp.consume('grapple')) { if (p.tryGrapple()) { BR.Audio.grapple(); this.vmr.onGrapple(); this.ropeT = 0; } else BR.Audio.click(); }
     if (inp.consume('reload') && BR.Weapons.startReload(w, p)) BR.Audio.reload();
     const sw = i => { if (i === p.cur) this.startInspect(); else if (p.switchTo(i)) inp.ads = false; };
     if (inp.consume('swap')) {
