@@ -4,6 +4,19 @@
 // it. Only touches the DOM when a value actually changed.
 // Visual style: chunky beveled metal panels + pixel fonts (old-school arena shooter).
 // =============================================================================
+// Weapon silhouettes for the slot cards (viewBox 0 0 64 24, filled with currentColor)
+const WICON_PATHS = {
+  pistol: 'M8 6h30v7H24l-2 9h-8l2-9h-8z M38 8h4v3h-4z',
+  smg: 'M4 7h40v6H31v3h-4l-1 7h-7l1-7h-3l-2-3H4z M44 9h12v2H44z M18 3h10v4H18z',
+  shotgun: 'M2 8h58v5H26l-2 9h-8l2-9H2z M30 14h22v3H30z',
+  rifle: 'M2 8h60v4H42v3h-9v8h-6l-1-8H18l-3 7H7l3-7H2z M26 4h8v4h-8z',
+  holoar: 'M2 9h60v4H42v3h-9v7h-6l-1-7H18l-3 7H7l3-7H2z M22 2h14v7H22z M25 4h8v3h-8z',
+  sniper: 'M0 10h64v3H40v2h-6l-1 8h-6l-1-8H16l-3 6H6l3-6H0z M18 4h22v5H18z',
+  hunter: 'M0 10h62v2H40c-7 0-11 3-15 9h-9c3-4 7-8 10-9H0z M30 8h6v2h-6z',
+  knife: 'M28 6a4 4 0 1 1 0.1 0z M24 9l8 2c-2 8-8 12-18 12 7-3 10-8 10-14z',
+};
+const WICON = id => `<svg viewBox="0 0 64 24"><path d="${WICON_PATHS[id] || WICON_PATHS.pistol}" fill-rule="evenodd"/></svg>`;
+
 const ICON = {
   fire: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>',
   jump: '<svg viewBox="0 0 24 24"><path d="M5 14l7-7 7 7M5 20l7-7 7 7"/></svg>',
@@ -74,9 +87,9 @@ BR.HUD = class HUD {
   <div id="state-tag"></div>
   <div id="tech"></div>
 
-  <div class="slot s0" data-act="slot0" aria-label="Weapon slot 1"><span class="skey">1</span><span class="sname">—</span><span class="sammo"></span></div>
-  <div class="slot s1" data-act="slot1" aria-label="Weapon slot 2"><span class="skey">2</span><span class="sname">—</span><span class="sammo"></span></div>
-  <div class="slot s2 knife" data-act="slot2" aria-label="Karambit slot"><span class="skey">3</span><span class="sname">Karambit</span><span class="sammo">MELEE</span></div>
+  <div class="slot s0" data-act="slot0" aria-label="Weapon slot 1"><span class="skey">1</span><i class="sicon"></i><span class="sline"><span class="sname">—</span><span class="sammo"></span></span><b class="sbar"><i></i></b></div>
+  <div class="slot s1" data-act="slot1" aria-label="Weapon slot 2"><span class="skey">2</span><i class="sicon"></i><span class="sline"><span class="sname">—</span><span class="sammo"></span></span><b class="sbar"><i></i></b></div>
+  <div class="slot s2 knife" data-act="slot2" aria-label="Karambit slot"><span class="skey">3</span><i class="sicon"></i><span class="sline"><span class="sname">Karambit</span><span class="sammo"></span></span><b class="sbar"><i></i></b></div>
   <div id="bottom">
     <div id="ammo"><span id="mag" class="num">0</span><span class="sep">/</span><span id="reserve" class="num">0</span><div id="reload-bar"><i></i></div></div>
     <div id="vitals">
@@ -437,8 +450,11 @@ BR.HUD = class HUD {
       this.set('slot' + i, e.slots[i], key, el => {
         el.classList.toggle('active', i === p.cur && !!s);
         el.classList.toggle('empty', !s);
-        el.children[1].textContent = s ? s.def.name : 'EMPTY';
-        el.children[2].textContent = s ? (s.def.melee ? 'MELEE' : `${s.mag}/${s.def.mag}`) : '';
+        el.querySelector('.sicon').innerHTML = s ? WICON(s.id) : '';
+        el.querySelector('.sname').textContent = s ? (s.def.melee ? 'KNIFE' : s.def.name.toUpperCase()) : 'EMPTY';
+        el.querySelector('.sammo').textContent = s && !s.def.melee ? s.mag : '';
+        el.querySelector('.sbar i').style.transform = `scaleX(${s && !s.def.melee ? s.mag / s.def.mag : s ? 1 : 0})`;
+        el.classList.toggle('low', !!(s && !s.def.melee && s.mag <= s.def.mag * 0.25));
       });
     });
     this.set('ads', e.adsBtn, p.ads, (el, v) => el.classList.toggle('on-toggle', v));
@@ -638,15 +654,24 @@ BR.HUD = class HUD {
 
   // Shared map painter: draws the world image, storm, names and player into a
   // square view centred on (cx, cz) that is `view` meters wide.
-  paintMap(c, S, game, cx, cz, view, labels) {
+  paintMap(c, S, game, cx, cz, view, labels, round) {
     const w = game.world, H = w.half, k = S / view;
     const X = x => (x - cx) * k + S / 2, Z = z => (z - cz) * k + S / 2;
     c.clearRect(0, 0, S, S);
-    c.fillStyle = '#26331f'; c.fillRect(0, 0, S, S);
+    c.save();
+    if (round) { c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 1, 0, Math.PI * 2); c.clip(); }
+    c.fillStyle = round ? '#141a14' : '#26331f'; c.fillRect(0, 0, S, S);
     if (this.mapImg) {
-      const ik = this.mapImg.width / w.size;
-      const sx = (cx - view / 2 + H) * ik, sz = (cz - view / 2 + H) * ik;
-      c.drawImage(this.mapImg, sx, sz, view * ik, view * ik, 0, 0, S, S);
+      // source window clipped to the image (Safari won't draw an out-of-bounds source rect)
+      const im = this.mapImg, ik = im.width / w.size;
+      let sx = (cx - view / 2 + H) * ik, sz = (cz - view / 2 + H) * ik, sw = view * ik, sh = view * ik;
+      let dx = 0, dz = 0, dw = S, dh = S;
+      const f = S / sw;
+      if (sx < 0) { dx -= sx * f; dw += sx * f; sw += sx; sx = 0; }
+      if (sz < 0) { dz -= sz * f; dh += sz * f; sh += sz; sz = 0; }
+      if (sx + sw > im.width) { const o = sx + sw - im.width; sw -= o; dw -= o * f; }
+      if (sz + sh > im.height) { const o = sz + sh - im.height; sh -= o; dh -= o * f; }
+      if (sw > 0 && sh > 0) c.drawImage(im, sx, sz, sw, sh, dx, dz, dw, dh);
     }
     const z = game.zone;
     if (!game.practice) {
@@ -677,6 +702,15 @@ BR.HUD = class HUD {
       c.fillRect(X(s.x) - 2, Z(s.z) - 2, 4, 4);
     }
     const p = game.player, sz = Math.max(7, S / 40);
+    if (round) {
+      // view cone + soft vignette inside the circle
+      c.save(); c.translate(X(p.pos.x), Z(p.pos.z)); c.rotate(-p.yaw);
+      const cone = c.createRadialGradient(0, 0, 2, 0, 0, S * 0.45); cone.addColorStop(0, 'rgba(255,214,120,0.35)'); cone.addColorStop(1, 'rgba(255,214,120,0)');
+      c.fillStyle = cone; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, S * 0.45, -Math.PI / 2 - 0.55, -Math.PI / 2 + 0.55); c.closePath(); c.fill();
+      c.restore();
+      const vg = c.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S / 2); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+      c.fillStyle = vg; c.fillRect(0, 0, S, S);
+    }
     c.save();
     c.translate(X(p.pos.x), Z(p.pos.z));
     c.rotate(-p.yaw);
@@ -684,15 +718,16 @@ BR.HUD = class HUD {
     c.beginPath(); c.moveTo(0, -sz); c.lineTo(sz * 0.7, sz * 0.75); c.lineTo(0, sz * 0.38); c.lineTo(-sz * 0.7, sz * 0.75); c.closePath();
     c.fill(); c.stroke();
     c.restore();
+    c.restore();
   }
 
   drawMinimap(game) {
     this._mmT = (this._mmT || 0) + 1;
     if (this._mmT % 3) return; // 20 Hz is plenty
     const p = game.player, w = game.world, view = 220, H = w.half;
-    // Zoomed window that follows you (clamped to the map)
-    const cx = BR.util.clamp(p.pos.x, -H + view / 2, H - view / 2), cz = BR.util.clamp(p.pos.z, -H + view / 2, H - view / 2);
-    this.paintMap(this.mm, 220, game, cx, cz, view, false);
+    // Round minimap centred on you (zoomed in tighter for the small duel arena)
+    const vw = w.arena ? 70 : 160;
+    this.paintMap(this.mm, 220, game, p.pos.x, p.pos.z, vw, false, true);
     if (this.bigOpen) this.paintMap(this.bm, 720, game, 0, 0, w.size, true);
   }
 

@@ -535,22 +535,11 @@ BR.World = class World {
     const w = axis === 'x' ? L : W, d = axis === 'x' ? W : L;
     if (!this.clear(x - w / 2, z - d / 2, x + w / 2, z + d / 2, 0.8)) return;
     this.claim(x - w / 2, z - d / 2, x + w / 2, z + d / 2);
-    const B = (a0, y0, b0, a1, y1, b1, c, solid) => axis === 'x'
-      ? this.addBox(x + a0, y0, z + b0, x + a1, y1, z + b1, c, solid ? null : { decor: true })
-      : this.addBox(x + b0, y0, z + a0, x + b1, y1, z + a1, c, solid ? null : { decor: true });
-    const dark = new THREE.Color(color).multiplyScalar(0.7).getHex();
-    B(-L / 2, 0.32, -W / 2, L / 2, 1.0, W / 2, color, true);                  // body (cover)
-    B(-0.9, 1.0, -W / 2 + 0.12, 1.1, 1.62, W / 2 - 0.12, color, true);        // cabin
-    B(-0.85, 1.08, -W / 2 + 0.1, 1.05, 1.52, W / 2 - 0.1, 0x34465a);           // side windows
-    B(1.1, 1.05, -W / 2 + 0.18, 1.14, 1.55, W / 2 - 0.18, 0x34465a);           // windscreen
-    B(-0.94, 1.05, -W / 2 + 0.18, -0.9, 1.55, W / 2 - 0.18, 0x34465a);         // rear window
-    B(-L / 2 - 0.05, 0.3, -W / 2, L / 2 + 0.05, 0.45, W / 2, 0x2a2d33);         // bumpers / skirt
-    B(L / 2, 0.62, -W / 2 + 0.15, L / 2 + 0.03, 0.8, -W / 2 + 0.45, 0xfff2c0);  // headlights
-    B(L / 2, 0.62, W / 2 - 0.45, L / 2 + 0.03, 0.8, W / 2 - 0.15, 0xfff2c0);
-    B(-L / 2 - 0.03, 0.66, -W / 2 + 0.15, -L / 2, 0.82, -W / 2 + 0.45, 0xd02a2a); // tail lights
-    B(-L / 2 - 0.03, 0.66, W / 2 - 0.45, -L / 2, 0.82, W / 2 - 0.15, 0xd02a2a);
-    B(-L / 2 + 0.2, 0.98, -W / 2 - 0.01, L / 2 - 0.2, 1.0, W / 2 + 0.01, dark);  // belt line
-    for (const a of [-1.3, 1.3]) for (const b of [-W / 2 - 0.02, W / 2 - 0.26]) B(a - 0.36, 0, b, a + 0.36, 0.66, b + 0.28, 0x18191b);  // wheels
+    // collision only (the car itself is a modelled mesh, see buildScenery / carGeometry)
+    if (axis === 'x') { this.addBox(x - L / 2, 0.3, z - W / 2, x + L / 2, 1.0, z + W / 2, color, { hidden: true }); this.addBox(x - 0.9, 1.0, z - W / 2 + 0.12, x + 1.1, 1.55, z + W / 2 - 0.12, color, { hidden: true }); }
+    else { this.addBox(x - W / 2, 0.3, z - L / 2, x + W / 2, 1.0, z + L / 2, color, { hidden: true }); this.addBox(x - W / 2 + 0.12, 1.0, z - 0.9, x + W / 2 - 0.12, 1.55, z + 1.1, color, { hidden: true }); }
+    this.props.cars = this.props.cars || [];
+    this.props.cars.push({ x, z, axis, color, flip: this.rand() < 0.5 });
   }
   barrelCluster(x, z, R) {
     const n = 1 + Math.floor(R() * 4);
@@ -890,8 +879,8 @@ BR.World = class World {
   tree(x, z) {
     const R = this.rand, U = BR.util;
     const h = U.rand(R, 3.5, 6);
-    this.addBox(x - 0.3, 0, z - 0.3, x + 0.3, h, z + 0.3, PAL.trunk);
-    this.trees.push({ x, z, h, s: U.rand(R, 1.6, 2.6), pine: R() < 0.35 });
+    this.addBox(x - 0.3, 0, z - 0.3, x + 0.3, h, z + 0.3, PAL.trunk, { hidden: true });   // drawn as a tapered trunk
+    this.trees.push({ x, z, h, s: U.rand(R, 1.6, 2.6), pine: R() < 0.35, tone: R() });
   }
 
   // Two tall parallel walls: the movement playground. Run along them, jump between.
@@ -1117,13 +1106,19 @@ BR.World = class World {
   // Sky dome, far mountains, clouds, tree canopies, bushes and grass tufts. All visual.
   buildScenery(scene, detail) {
     const R = BR.util.rng(this.seed + 5), H = this.half;
-    // Sky dome with a vertical gradient + sun
-    const skyG = new THREE.SphereGeometry(900, 24, 12);
+    // ---- Sky: gradient dome tinted toward the sun, sun disc + glow halos, layered mountains,
+    // fluffy cumulus clusters and high cirrus streaks. All fog-free and drawn behind the world.
+    const SUN = new THREE.Vector3(420, 300, 300).normalize();
+    const skyG = new THREE.SphereGeometry(900, 32, 16);
     const sp = skyG.attributes.position, sc = new Float32Array(sp.count * 3);
-    const top = new THREE.Color(0x3d7cc9), hor = new THREE.Color(0xcfe3f0), c = new THREE.Color();
+    const zen = new THREE.Color(0x1d58c0), mid = new THREE.Color(0x4f9be6), hor = new THREE.Color(0xc9e4f6), warm = new THREE.Color(0xffc98f), c = new THREE.Color(), v = new THREE.Vector3();
     for (let i = 0; i < sp.count; i++) {
-      const k = BR.util.clamp(sp.getY(i) / 900, 0, 1);
-      c.copy(hor).lerp(top, Math.pow(k, 0.6));
+      v.set(sp.getX(i), sp.getY(i), sp.getZ(i)).normalize();
+      const k = BR.util.clamp(v.y, 0, 1);
+      c.copy(hor).lerp(mid, Math.pow(k, 0.5)).lerp(zen, Math.pow(k, 1.6));
+      const toSun = Math.max(0, v.dot(SUN));
+      c.lerp(warm, Math.pow(toSun, 6) * (1 - k) * 0.85);                          // warm glow low near the sun
+      if (v.y < 0) c.copy(hor).lerp(new THREE.Color(0x9fb8c8), Math.min(1, -v.y * 3));
       sc[i * 3] = c.r; sc[i * 3 + 1] = c.g; sc[i * 3 + 2] = c.b;
     }
     skyG.setAttribute('color', new THREE.BufferAttribute(sc, 3));
@@ -1131,59 +1126,152 @@ BR.World = class World {
     sky.renderOrder = -10;
     scene.add(sky);
     this.sky = sky;
-    const sun = new THREE.Mesh(new THREE.CircleGeometry(16, 20), new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false }));
-    sun.position.set(420, 560, 300); sun.scale.setScalar(1.8); sun.lookAt(0, 0, 0);
-    scene.add(sun);
-
-    // Mountain ring beyond the map edge
-    const mg = new THREE.ConeGeometry(1, 1, 5);
-    const mtn = new THREE.InstancedMesh(mg, new THREE.MeshBasicMaterial({ color: 0x8aa0b4, fog: false }), 30);
-    const o = new THREE.Object3D();
-    for (let i = 0; i < 30; i++) {
-      const a = i / 30 * Math.PI * 2 + R() * 0.2, r = H + 160 + R() * 120;
-      o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-      const hgt = 90 + R() * 110, wid = 90 + R() * 70;
-      o.scale.set(wid, hgt, wid); o.position.y = hgt / 2 - 2; o.rotation.y = R() * 6;
-      o.updateMatrix(); mtn.setMatrixAt(i, o.matrix);
+    const glowTex = (inner, outer) => { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d');
+      const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, inner); gr.addColorStop(0.25, outer); gr.addColorStop(1, 'rgba(255,200,120,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(cv); };
+    const sunPos = SUN.clone().multiplyScalar(800);
+    const sun = new THREE.Mesh(new THREE.CircleGeometry(22, 32), new THREE.MeshBasicMaterial({ color: 0xfffaea, fog: false, depthWrite: false }));
+    sun.position.copy(sunPos); sun.lookAt(0, 0, 0); sun.renderOrder = -9; scene.add(sun);
+    for (const [sz, tex, op] of [[150, glowTex('rgba(255,250,230,1)', 'rgba(255,220,150,0.55)'), 0.9], [360, glowTex('rgba(255,230,180,0.45)', 'rgba(255,190,120,0.12)'), 0.5]]) {
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: op, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+      halo.position.copy(sunPos).multiplyScalar(0.98); halo.scale.set(sz, sz, 1); halo.renderOrder = -8; scene.add(halo);
     }
-    scene.add(mtn);
 
-    // Clouds
-    const cl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshBasicMaterial({ color: 0xf4f7fb, fog: false }), 30);
-    for (let i = 0; i < 30; i++) {
-      o.position.set((R() * 2 - 1) * 700, 140 + R() * 60, (R() * 2 - 1) * 700);
-      o.scale.set(20 + R() * 30, 5 + R() * 5, 12 + R() * 16); o.rotation.set(0, R() * 6, 0);
+    // Mountains: far snow-capped blue range + nearer green hills (jittered cones, vertex colours)
+    const o = new THREE.Object3D();
+    const mountainGeo = (snow, base, peak) => {
+      const g = new THREE.ConeGeometry(1, 1, 9, 4).toNonIndexed(); const p = g.attributes.position, cl = new Float32Array(p.count * 3), cc = new THREE.Color();
+      const rr = BR.util.rng(this.seed + (snow ? 31 : 37));
+      const jit = {}; const key = (x, y, z) => `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
+      for (let i = 0; i < p.count; i++) {
+        const k0 = key(p.getX(i), p.getY(i), p.getZ(i));
+        if (!jit[k0]) jit[k0] = [(rr() - 0.5) * 0.18, (rr() - 0.5) * 0.08];
+        const y = p.getY(i), h = y + 0.5;
+        if (h > 0.02 && h < 0.98) { p.setX(i, p.getX(i) * (1 + jit[k0][0])); p.setZ(i, p.getZ(i) * (1 + jit[k0][0])); p.setY(i, y + jit[k0][1]); }
+        cc.setHex(base).lerp(new THREE.Color(peak), h);
+        if (snow && h > 0.68) cc.setHex(0xf4f8ff);
+        cl[i * 3] = cc.r; cl[i * 3 + 1] = cc.g; cl[i * 3 + 2] = cc.b;
+      }
+      g.computeVertexNormals();
+      const nn = g.attributes.normal, haze = new THREE.Color(0xc9e4f6);      // bake sun shading + aerial haze (no fog on these)
+      for (let i = 0; i < p.count; i++) {
+        const lit = 0.72 + 0.38 * Math.max(0, nn.getX(i) * SUN.x + nn.getY(i) * SUN.y + nn.getZ(i) * SUN.z);
+        cc.setRGB(cl[i * 3] * lit, cl[i * 3 + 1] * lit, cl[i * 3 + 2] * lit).lerp(haze, snow ? 0.18 : 0.28);
+        cl[i * 3] = cc.r; cl[i * 3 + 1] = cc.g; cl[i * 3 + 2] = cc.b;
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(cl, 3)); return g;
+    };
+    const far = new THREE.InstancedMesh(mountainGeo(true, 0x6f86a8, 0x9db0cc), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), 26);
+    for (let i = 0; i < 26; i++) {
+      const a = i / 26 * Math.PI * 2 + R() * 0.2, r = H + 240 + R() * 140, hgt = 130 + R() * 150, wid = 110 + R() * 80;
+      o.position.set(Math.cos(a) * r, hgt / 2 - 4, Math.sin(a) * r); o.scale.set(wid, hgt, wid); o.rotation.set(0, R() * 6, 0);
+      o.updateMatrix(); far.setMatrixAt(i, o.matrix);
+    }
+    scene.add(far);
+    const near = new THREE.InstancedMesh(mountainGeo(false, 0x4a7048, 0x86a37a), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), 22);
+    for (let i = 0; i < 22; i++) {
+      const a = i / 22 * Math.PI * 2 + R() * 0.25, r = H + 120 + R() * 70, hgt = 50 + R() * 60, wid = 90 + R() * 60;
+      o.position.set(Math.cos(a) * r, hgt / 2 - 3, Math.sin(a) * r); o.scale.set(wid, hgt, wid); o.rotation.set(0, R() * 6, 0);
+      o.updateMatrix(); near.setMatrixAt(i, o.matrix);
+    }
+    scene.add(near);
+
+    // Cumulus clouds: one merged cluster geometry (soft blobs, shaded underside), instanced
+    const blob = new THREE.IcosahedronGeometry(1, 1).toNonIndexed();
+    const parts = [[0, 0, 0, 1], [1.1, -0.15, 0.2, 0.8], [-1.05, -0.2, -0.1, 0.75], [0.45, 0.45, -0.2, 0.7], [-0.5, 0.35, 0.25, 0.65], [1.9, -0.35, 0, 0.5], [-1.8, -0.35, 0.1, 0.5]];
+    const cp = [], ccol = [], cc2 = new THREE.Color();
+    for (const [x, y, z, r] of parts) {
+      const bp = blob.attributes.position;
+      for (let i = 0; i < bp.count; i++) {
+        const px = bp.getX(i) * r + x, py = bp.getY(i) * r * 0.8 + y, pz = bp.getZ(i) * r + z;
+        cp.push(px, py, pz);
+        const shade = BR.util.clamp((py + 0.9) / 1.6, 0, 1);
+        cc2.setHex(0xb9c6d6).lerp(new THREE.Color(0xffffff), shade);
+        ccol.push(cc2.r, cc2.g, cc2.b);
+      }
+    }
+    const cloudG = new THREE.BufferGeometry();
+    cloudG.setAttribute('position', new THREE.Float32BufferAttribute(cp, 3));
+    cloudG.setAttribute('color', new THREE.Float32BufferAttribute(ccol, 3));
+    const cl = new THREE.InstancedMesh(cloudG, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), 34);
+    for (let i = 0; i < 34; i++) {
+      const a = R() * Math.PI * 2, r = 250 + R() * 520;
+      o.position.set(Math.cos(a) * r, 150 + R() * 90, Math.sin(a) * r);
+      const sz = 14 + R() * 18; o.scale.set(sz * (1.2 + R() * 0.8), sz * (0.7 + R() * 0.4), sz); o.rotation.set(0, R() * 6, 0);
       o.updateMatrix(); cl.setMatrixAt(i, o.matrix);
     }
     scene.add(cl);
+    this.clouds = cl;
+    // high cirrus streaks
+    const cirrusTex = (() => { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const x = cv.getContext('2d');
+      for (let i = 0; i < 40; i++) { const gy = 8 + Math.random() * 48, gx = Math.random() * 180; const gr = x.createLinearGradient(gx, 0, gx + 80, 0);
+        gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, `rgba(255,255,255,${0.15 + Math.random() * 0.25})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        x.fillStyle = gr; x.fillRect(gx, gy, 80, 1.5 + Math.random() * 2.5); }
+      return new THREE.CanvasTexture(cv); })();
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(520, 130), new THREE.MeshBasicMaterial({ map: cirrusTex, transparent: true, opacity: 0.7, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+      m.position.set((R() - 0.5) * 900, 330 + R() * 60, (R() - 0.5) * 900); m.rotation.set(-Math.PI / 2, 0, R() * 3); m.renderOrder = -7;
+      scene.add(m);
+    }
 
-    // Tree canopies: leafy trees get two stacked blobs (two greens), pines get stacked cones
-    const cg = new THREE.IcosahedronGeometry(1, 0);
-    const greens = [0x4f7d3c, 0x3f6b33];
-    const leafy = this.trees.filter(t => !t.pine), pines = this.trees.filter(t => t.pine);
-    for (let gi = 0; gi < 2; gi++) {
-      const inst = new THREE.InstancedMesh(cg, new THREE.MeshLambertMaterial({ color: greens[gi], flatShading: true }), Math.max(1, leafy.length));
-      inst.count = leafy.length;
-      leafy.forEach((t, i) => {
-        const s = gi ? t.s * 0.7 : t.s;
-        o.position.set(t.x + (gi ? 0.3 : 0), t.h + t.s * (gi ? 1.2 : 0.4), t.z);
-        o.scale.set(s, s * 1.2, s); o.rotation.set(0, i + gi, 0);
-        o.updateMatrix(); inst.setMatrixAt(i, o.matrix);
+    // Trees: tapered trunks with a root flare, leafy trees get a cluster of rounded blobs in
+    // varied greens, pines get four drooping tiers. All instanced, colour-varied per tree.
+    const leafy = this.trees.filter(t => !t.pine), pines = this.trees.filter(t => t.pine), tc = new THREE.Color();
+    if (this.trees.length) {
+      const trunkG = new THREE.CylinderGeometry(0.17, 0.3, 1, 7); trunkG.translate(0, 0.5, 0);
+      const flareG = new THREE.CylinderGeometry(0.3, 0.46, 0.35, 7); flareG.translate(0, 0.175, 0);
+      const trunk = new THREE.InstancedMesh(trunkG, new THREE.MeshLambertMaterial({ color: 0x6a4a2e, flatShading: true }), this.trees.length);
+      const flare = new THREE.InstancedMesh(flareG, new THREE.MeshLambertMaterial({ color: 0x5a3e26, flatShading: true }), this.trees.length);
+      this.trees.forEach((t, i) => {
+        o.position.set(t.x, 0, t.z); o.rotation.set(0, t.tone * 6, 0); o.scale.set(1, t.h + 0.6, 1); o.updateMatrix(); trunk.setMatrixAt(i, o.matrix);
+        o.scale.set(1, 1, 1); o.updateMatrix(); flare.setMatrixAt(i, o.matrix);
       });
-      scene.add(inst);
+      scene.add(trunk, flare);
+    }
+    if (leafy.length) {
+      const blobG = new THREE.IcosahedronGeometry(1, 1);
+      const lv = new THREE.InstancedMesh(blobG, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), leafy.length * 5);
+      const GR = [0x4f8a3a, 0x3f7a34, 0x5e9a40, 0x6aa648, 0x4a7f3e];
+      const lay = [[0, 0.35, 0, 1], [0.55, 0.05, 0.25, 0.68], [-0.5, 0.1, -0.3, 0.7], [0.15, 0.95, -0.05, 0.62], [-0.2, 0.0, 0.55, 0.6]];
+      let k = 0;
+      leafy.forEach((t, i) => {
+        const base = GR[Math.floor(t.tone * GR.length)];
+        lay.forEach(([dx, dy, dz, sc], j) => {
+          const sz = t.s * sc;
+          o.position.set(t.x + dx * t.s, t.h + dy * t.s, t.z + dz * t.s); o.scale.set(sz, sz * 0.92, sz); o.rotation.set(j, i + j, 0);
+          o.updateMatrix(); lv.setMatrixAt(k, o.matrix);
+          lv.setColorAt(k++, tc.setHex(base).multiplyScalar(0.88 + (j === 3 ? 0.22 : j * 0.04)));
+        });
+      });
+      lv.instanceColor.needsUpdate = true;
+      scene.add(lv);
     }
     if (pines.length) {
-      const cone = new THREE.ConeGeometry(1, 1, 7);
-      const pm = new THREE.InstancedMesh(cone, new THREE.MeshLambertMaterial({ color: 0x2f5a35, flatShading: true }), pines.length * 3);
+      const cone = new THREE.ConeGeometry(1, 1, 8, 1, false);
+      const cp2 = cone.attributes.position;
+      for (let i = 0; i < cp2.count; i++) if (cp2.getY(i) < 0) cp2.setY(i, cp2.getY(i) + (Math.hypot(cp2.getX(i), cp2.getZ(i)) > 0.5 ? -0.12 : 0));   // droopy tips
+      cone.computeVertexNormals();
+      const pm = new THREE.InstancedMesh(cone, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), pines.length * 4);
+      const PG = [0x2f5a35, 0x2a5232, 0x376640, 0x2c5e3c];
       let k = 0;
       pines.forEach((t, i) => {
-        for (let tier = 0; tier < 3; tier++) {
-          const w = t.s * (1.15 - tier * 0.3), hh = t.s * (1.5 - tier * 0.25);
-          o.position.set(t.x, t.h * 0.55 + tier * t.s * 0.8 + hh / 2, t.z); o.scale.set(w, hh, w); o.rotation.set(0, i + tier, 0);
-          o.updateMatrix(); pm.setMatrixAt(k++, o.matrix);
+        for (let tier = 0; tier < 4; tier++) {
+          const w = t.s * (1.2 - tier * 0.24), hh = t.s * (1.25 - tier * 0.15);
+          o.position.set(t.x, t.h * 0.45 + tier * t.s * 0.62 + hh / 2, t.z); o.scale.set(w, hh, w); o.rotation.set(0, i + tier * 0.7, 0);
+          o.updateMatrix(); pm.setMatrixAt(k, o.matrix);
+          pm.setColorAt(k++, tc.setHex(PG[Math.floor(t.tone * PG.length)]).multiplyScalar(0.9 + tier * 0.06));
         }
       });
+      pm.instanceColor.needsUpdate = true;
       scene.add(pm);
+    }
+
+    // Cars: one modelled, vertex-coloured mesh per car (shared geometry per paint colour)
+    for (const c of (this.props.cars || [])) {
+      const m = new THREE.Mesh(carGeometry(c.color), carMat());
+      m.position.set(c.x, 0, c.z); m.rotation.y = (c.axis === 'x' ? 0 : Math.PI / 2) + (c.flip ? Math.PI : 0);
+      m.matrixAutoUpdate = false; m.updateMatrix();
+      scene.add(m);
     }
 
     // Props from the dressing pass (instanced: one draw call each)
@@ -1238,16 +1326,20 @@ BR.World = class World {
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
     const nB = this.arena ? 0 : Math.floor(700 * detail), nG = this.arena ? 0 : Math.floor(5000 * detail);
-    const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x55803e, flatShading: true }), nB);
+    const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), nB * 3);
+    const BG = [0x55803e, 0x4a7a3a, 0x5f8f42, 0x6b9446, 0x47703a], bc = new THREE.Color();
     const tuft = new THREE.InstancedMesh(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
     let bi = 0, gi = 0;
     for (let tries = 0; tries < (nB + nG) * 2 && (bi < nB || gi < nG); tries++) {
       const x = (R() * 2 - 1) * (H - 4), z = (R() * 2 - 1) * (H - 4);
       if (!this.free(x - 0.6, z - 0.6, x + 0.6, z + 0.6, 0)) continue;
-      if (bi < nB && R() < 0.12) {
-        const s = 0.5 + R() * 0.7;
-        o.position.set(x, s * 0.5, z); o.scale.set(s * 1.3, s, s * 1.3); o.rotation.set(0, R() * 6, 0);
-        o.updateMatrix(); bush.setMatrixAt(bi++, o.matrix);
+      if (bi < nB * 3 && R() < 0.12) {
+        const s = 0.45 + R() * 0.6, base = BG[Math.floor(R() * BG.length)];
+        for (let j = 0; j < 3; j++) {
+          const a = j * 2.1 + R(), r = j ? s * 0.55 : 0, ss = s * (j ? 0.72 : 1);
+          o.position.set(x + Math.cos(a) * r, ss * 0.55, z + Math.sin(a) * r); o.scale.set(ss * 1.15, ss * 0.85, ss * 1.15); o.rotation.set(R(), R() * 6, 0);
+          o.updateMatrix(); bush.setMatrixAt(bi, o.matrix); bush.setColorAt(bi++, bc.setHex(base).multiplyScalar(0.85 + j * 0.1));
+        }
       } else if (gi < nG) {
         const s = 0.25 + R() * 0.35;
         o.position.set(x, s * 0.5, z); o.scale.set(1, s, 1); o.rotation.set((R() - 0.5) * 0.4, R() * 6, 0);
@@ -1255,6 +1347,7 @@ BR.World = class World {
       }
     }
     bush.count = bi; tuft.count = gi;
+    if (bush.instanceColor) bush.instanceColor.needsUpdate = true;
     scene.add(bush, tuft);
     // Wildflower patches
     const nF = this.arena ? 0 : Math.floor(2400 * detail), FC = [0xf4f4f4, 0xf2d24a, 0xe0546a, 0x9a6ad9, 0xf28a3c];
@@ -1292,6 +1385,52 @@ BR.World = class World {
     return cv;
   }
 };
+
+// ---- Car model: extruded side profile body, glasshouse, wheels with rims, lights, grille,
+// bumpers and mirrors - merged into one vertex-coloured geometry per paint colour.
+const CAR_CACHE = {};
+let CAR_MAT = null;
+function carMat() { return CAR_MAT || (CAR_MAT = new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x666666, shininess: 70 })); }
+function carGeometry(paint) {
+  if (CAR_CACHE[paint]) return CAR_CACHE[paint];
+  const parts = [];                                   // [geometry, colorHex]
+  const W = 1.82;
+  const extrude = (pts, depth, bevel) => {
+    const sh = new THREE.Shape(); sh.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) sh.lineTo(pts[i][0], pts[i][1]); sh.closePath();
+    const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: !!bevel, bevelThickness: bevel || 0, bevelSize: bevel || 0, bevelSegments: 2, curveSegments: 6 });
+    g.translate(0, 0, -depth / 2); return g;
+  };
+  // body side profile (x = length, y = height), front at +x
+  parts.push([extrude([[-2.12, 0.34], [-2.16, 0.62], [-2.08, 0.92], [-1.25, 1.0], [1.2, 1.0], [2.02, 0.9], [2.16, 0.7], [2.14, 0.34]], W - 0.1, 0.05), paint]);
+  // glasshouse (slightly narrower), then the roof skin on top of it
+  parts.push([extrude([[-1.18, 0.98], [-0.78, 1.5], [0.52, 1.52], [1.14, 0.98]], W - 0.26, 0.03), 0x1e2a36]);
+  parts.push([extrude([[-0.74, 1.49], [0.5, 1.51], [0.47, 1.57], [-0.7, 1.56]], W - 0.22, 0.02), paint]);
+  const box = (w, h, d, x, y, z, c) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); parts.push([g, c]); };
+  box(0.06, 0.12, W - 0.5, 2.16, 0.55, 0, 0x15171a);                                        // grille
+  for (const zz of [-0.62, 0.62]) { box(0.05, 0.12, 0.34, 2.14, 0.74, zz, 0xfff6d8); box(0.05, 0.12, 0.3, -2.15, 0.76, zz, 0xd8202a); }
+  box(0.22, 0.14, W - 0.02, 2.12, 0.4, 0, 0x26292e); box(0.22, 0.14, W - 0.02, -2.1, 0.4, 0, 0x26292e);   // bumpers
+  box(4.0, 0.06, 0.02, 0, 0.62, W / 2 - 0.04, 0x8a9098); box(4.0, 0.06, 0.02, 0, 0.62, -W / 2 + 0.04, 0x8a9098);  // chrome strips
+  for (const zz of [-1, 1]) box(0.14, 0.08, 0.12, 1.02, 1.02, zz * (W / 2 + 0.02), paint);              // mirrors
+  // wheels: tyre + rim + hub
+  for (const xx of [-1.3, 1.3]) for (const zz of [-1, 1]) {
+    const tyre = new THREE.CylinderGeometry(0.36, 0.36, 0.26, 16); tyre.rotateX(Math.PI / 2); tyre.translate(xx, 0.36, zz * (W / 2 - 0.1)); parts.push([tyre, 0x18191b]);
+    const rim = new THREE.CylinderGeometry(0.22, 0.22, 0.04, 12); rim.rotateX(Math.PI / 2); rim.translate(xx, 0.36, zz * (W / 2 + 0.03)); parts.push([rim, 0xb9c0c8]);
+    const hub = new THREE.CylinderGeometry(0.07, 0.07, 0.05, 8); hub.rotateX(Math.PI / 2); hub.translate(xx, 0.36, zz * (W / 2 + 0.05)); parts.push([hub, 0x5a6068]);
+  }
+  // merge into one coloured geometry
+  const pos = [], nor = [], col = [], c = new THREE.Color();
+  for (const [g0, hex] of parts) {
+    const g = g0.index ? g0.toNonIndexed() : g0; if (!g.attributes.normal) g.computeVertexNormals();
+    c.setHex(hex); const p = g.attributes.position, n = g.attributes.normal;
+    for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); nor.push(n.getX(i), n.getY(i), n.getZ(i)); col.push(c.r, c.g, c.b); }
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  out.computeBoundingSphere(); out._shared = true;
+  return (CAR_CACHE[paint] = out);
+}
 
 function makeTileTexture(grass) {
   const s = 128;

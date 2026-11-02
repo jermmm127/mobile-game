@@ -978,26 +978,94 @@ BR.Models = (function () {
     else main = G.gloss ? new THREE.MeshPhongMaterial({ color: G.color, specular: 0xffffff, shininess: 70 }) : new THREE.MeshLambertMaterial({ color: G.color });
     return (cache.mat[key] = { main, pad: G.fx ? new THREE.MeshPhongMaterial({ color: G.pad, specular: 0xffffff, shininess: 120 }) : new THREE.MeshLambertMaterial({ color: G.pad }), glow: G.glow ? glowMat(G.glow) : null, fx: !!G.fx });
   }
+  // Merge a group's meshes into one mesh per material (fewer draw calls). Keeps uvs for textures.
+  function mergeByMaterial(g) {
+    g.updateMatrixWorld(true);
+    const buckets = new Map();
+    g.traverse(o => {
+      if (!o.isMesh) return;
+      let geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      geo.applyMatrix4(o.matrixWorld);
+      if (!buckets.has(o.material)) buckets.set(o.material, []);
+      buckets.get(o.material).push(geo);
+    });
+    const out = new THREE.Group();
+    for (const [mat, geos] of buckets) {
+      let n = 0; for (const q of geos) n += q.attributes.position.count;
+      const P = new Float32Array(n * 3), N = new Float32Array(n * 3), UV = new Float32Array(n * 2);
+      let o = 0;
+      for (const q of geos) {
+        P.set(q.attributes.position.array, o * 3); N.set(q.attributes.normal.array, o * 3);
+        if (q.attributes.uv) UV.set(q.attributes.uv.array, o * 2);
+        o += q.attributes.position.count;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(P, 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+      geo.setAttribute('uv', new THREE.BufferAttribute(UV, 2));
+      geo.computeBoundingSphere();
+      out.add(new THREE.Mesh(geo, mat));
+    }
+    return out;
+  }
+
   // A gloved hand, fingers along -Z curling down (-Y), thumb on +X (mirrored for the left hand).
+  // Three-segment fingers with knuckles, two-part thumb, rounded palm, knuckle guard, back plate,
+  // round cuff with a strap. Merged per material and cached per glove + side.
+  const handCache = {};
   function hand(id, left) {
-    const m = gloveMats(id), g = new THREE.Group(), sx = left ? -1 : 1;
-    const box = (w, h, d, x, y, z, mat, rx) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); b.position.set(x * sx, y, z); if (rx) b.rotation.x = rx; g.add(b); return b; };
-    box(0.052, 0.03, 0.07, 0, 0, 0, m.main);                    // palm
-    box(0.044, 0.008, 0.045, 0, 0.018, -0.004, m.pad);           // back-of-hand armour
-    if (m.glow) box(0.03, 0.003, 0.003, 0, 0.023, -0.02, m.glow);
-    for (let i = 0; i < 4; i++) {                                // fingers, two segments each, curled
-      const x = -0.019 + i * 0.0128;
-      box(0.011, 0.013, 0.03, x, -0.004, -0.046, m.main, 0.5);
-      box(0.0105, 0.012, 0.022, x, -0.024, -0.058, m.main, 1.4);
-    }
-    const th = box(0.013, 0.014, 0.04, 0.03, -0.006, -0.02, m.main); th.rotation.y = -0.5 * sx; th.rotation.x = 0.3;  // thumb
-    box(0.056, 0.034, 0.02, 0, 0, 0.042, m.pad);                 // cuff
-    if (m.fx && m.glow) {                                        // flashy gloves: glowing knuckle studs, cuff band, finger lines
-      for (let i = 0; i < 4; i++) box(0.007, 0.004, 0.007, -0.019 + i * 0.0128, 0.006, -0.04, m.glow);
-      box(0.058, 0.005, 0.022, 0, 0.012, 0.042, m.glow);
-      box(0.004, 0.003, 0.03, 0.022, 0.024, -0.005, m.glow); box(0.004, 0.003, 0.03, -0.022, 0.024, -0.005, m.glow);
-    }
+    const key = (id || 'default') + (left ? 'L' : 'R');
+    if (!handCache[key]) handCache[key] = buildHand(id, left);
+    const g = new THREE.Group();
+    for (const m of handCache[key].children) g.add(new THREE.Mesh(m.geometry, m.material));
     return g;
+  }
+  function buildHand(id, left) {
+    const m = gloveMats(id), g = new THREE.Group(), sx = left ? -1 : 1;
+    const put = (geo, mat, x, y, z, rx, ry, rz, par) => { const o = new THREE.Mesh(geo, mat); o.position.set(x * sx, y, z); o.rotation.set(rx || 0, (ry || 0) * sx, (rz || 0) * sx); (par || g).add(o); return o; };
+    const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+    const cyl = (r1, r2, len, seg) => new THREE.CylinderGeometry(r1, r2, len, seg || 8);
+    const sph = (r) => new THREE.SphereGeometry(r, 10, 8);
+    // palm: core + rounded heel + slightly domed back
+    put(box(0.05, 0.026, 0.062), m.main, 0, 0, 0);
+    const heel = put(sph(0.026), m.main, 0, -0.004, 0.018); heel.scale.set(1.0, 0.55, 0.75);
+    const dome = put(sph(0.028), m.main, 0, 0.006, -0.006); dome.scale.set(0.95, 0.45, 1.15);
+    // fingers: three phalanges each, chained so the curl reads naturally
+    const lens = [0.023, 0.017, 0.013], radii = [0.0066, 0.006, 0.0056], curl = [0.55, 0.95, 0.75];
+    for (let i = 0; i < 4; i++) {
+      const fx = -0.0195 + i * 0.013, fy = 0.002 + (i === 1 || i === 2 ? 0.0015 : 0), lenK = i === 0 ? 0.85 : i === 3 ? 0.95 : 1;
+      let par = new THREE.Group(); par.position.set(fx * sx, fy, -0.03); g.add(par);
+      put(sph(radii[0] * 1.15), m.main, 0, 0, 0, 0, 0, 0, par);                               // knuckle
+      for (let k = 0; k < 3; k++) {
+        const joint = new THREE.Group(); joint.rotation.x = -curl[k]; par.add(joint);
+        const L = lens[k] * lenK;
+        const seg = put(cyl(radii[k], radii[k] * 0.92, L, 8), m.main, 0, 0, -L / 2, Math.PI / 2, 0, 0, joint);
+        seg.position.x = 0;
+        put(sph(radii[k] * 0.98), m.main, 0, 0, -L, 0, 0, 0, joint).position.x = 0;            // joint / fingertip
+        const next = new THREE.Group(); next.position.z = -L; joint.add(next); par = next;
+      }
+    }
+    // thumb: two segments angled across the front of the fist
+    const tb = new THREE.Group(); tb.position.set(0.026 * sx, -0.008, -0.004); tb.rotation.set(0.35, -0.75 * sx, 0.2 * sx); g.add(tb);
+    put(sph(0.0085), m.main, 0, 0, 0, 0, 0, 0, tb).position.x = 0;
+    put(cyl(0.0082, 0.0076, 0.022, 8), m.main, 0, 0, -0.011, Math.PI / 2, 0, 0, tb).position.x = 0;
+    const t2 = new THREE.Group(); t2.position.z = -0.022; t2.rotation.x = -0.45; tb.add(t2);
+    put(cyl(0.0074, 0.0068, 0.016, 8), m.main, 0, 0, -0.008, Math.PI / 2, 0, 0, t2).position.x = 0;
+    put(sph(0.0068), m.main, 0, 0, -0.016, 0, 0, 0, t2).position.x = 0;
+    // armour: knuckle guard + back plate
+    put(cyl(0.0075, 0.0075, 0.054, 10), m.pad, 0, 0.0085, -0.031, 0, 0, Math.PI / 2);
+    const plate = put(box(0.042, 0.007, 0.036), m.pad, 0, 0.0175, -0.002, -0.08, 0, 0);
+    for (const px of [-0.012, 0.012]) put(box(0.012, 0.003, 0.03), m.pad, px, 0.022, -0.002, -0.08, 0, 0);
+    // cuff + strap + velcro tab
+    put(cyl(0.03, 0.032, 0.032, 16), m.pad, 0, 0.0, 0.046, Math.PI / 2, 0, 0);
+    put(cyl(0.0325, 0.0325, 0.008, 16), m.glow || m.main, 0, 0.0, 0.04, Math.PI / 2, 0, 0);
+    put(box(0.022, 0.006, 0.016), m.main, 0, 0.032, 0.046);
+    if (m.fx && m.glow) {                                                      // flashy gloves: glowing studs + seams
+      for (let i = 0; i < 4; i++) put(box(0.0065, 0.004, 0.0065), m.glow, -0.0195 + i * 0.013, 0.0165, -0.031);
+      for (const px of [-0.022, 0.022]) put(box(0.003, 0.003, 0.034), m.glow, px, 0.0185, -0.002);
+    } else if (m.glow) put(box(0.03, 0.003, 0.003), m.glow, 0, 0.0215, -0.016);
+    void plate;
+    return mergeByMaterial(g);
   }
 
   // Parachute: striped canopy + suspension lines. Origin = the wearer's shoulders.

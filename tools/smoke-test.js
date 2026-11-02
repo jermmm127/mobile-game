@@ -261,6 +261,26 @@ const server = http.createServer((req, res) => {
         mythicBp: Object.values(M.BLUEPRINTS).reduce((n, w) => n + Object.values(w).filter(b => b.rarity === 'Mythic').length, 0) };
       M.tick(3); r.animCamo = M.weapon('rifle', 'molten', 'none').children.some(c => c.material && c.material.emissiveMap && c.material.emissiveMap.offset.y > 0);
     }
+    // karambit ring roll: mid-deploy the index fingertip sits in the ring
+    {
+      const v = g.vmr, P3 = g.player; P3.switchTo(2); v.lastWeapon = P3.weapon; v.drawDur = 1.05;
+      let best = 9;
+      for (const k of [0.2, 0.3, 0.4]) {
+        for (let i = 0; i < 40; i++) { v.drawT = 1.05 * (1 - k); v.update(1 / 60, 0, 0); }
+        const H = v.knifeHands.R, ring = v.models.knife.userData.spin.obj.getWorldPosition(new THREE.Vector3());
+        const tip = new THREE.Vector3(-0.0194, -0.02, -0.056).multiplyScalar(1.3).applyQuaternion(H.quaternion).add(H.position);
+        best = Math.min(best, tip.distanceTo(ring));
+      }
+      r.ringRoll = best;
+      // dropped weapon: tossed, bounces, settles on the floor; has a name tag
+      const D2 = g.player.pos;
+      const it2 = g.loot.add({ kind: 'weapon', wid: 'rifle', mag: 30, reserve: 0 }, D2.x + 1, D2.y + 1.2, D2.z + 1, new THREE.Vector3(2, 5, 0));
+      let maxY2 = it2.pos.y; for (let i = 0; i < 240; i++) { g.loot.update(1 / 60, D2); maxY2 = Math.max(maxY2, it2.pos.y); }
+      r.drop = { label: !!it2.mesh.userData.label, rose: maxY2 > D2.y + 1.5, settled: !it2.air && Math.abs(it2.pos.y - g.world.groundAt(it2.pos.x, it2.pos.z, it2.pos.y + 0.6)) < 0.01 };
+      g.loot.remove(it2);
+      r.handMeshes = BR.Models.hand('default', false).children.length;
+      r.cars = (g.world.props.cars || []).length; r.roundMap = getComputedStyle(document.getElementById('minimap')).borderRadius;
+    }
     const Wd = g.world;
     r.newstuff = { knifeSpeed, bolts: !!(C.sniper.bolt && C.hunter.bolt), hunterIrons: !C.hunter.scope && !!hm.sight, sniperBolt: !!vm.models.sniper.userData.model.userData.bolt,
       lift, back, settled: Math.abs(hm.bolt.rotation.z) < 1e-3 && Math.abs(hm.bolt.position.z - hm.boltZ0) < 1e-3,
@@ -383,6 +403,9 @@ const server = http.createServer((req, res) => {
     ['styled tracers (helix/spark/lightning/dual) render extra beads', extra.styledTracer],
     ['damage numbers stack per target and mark headshots', extra.dmgStack],
     ['more camos, gloves and Mythic blueprints (animated camos scroll)', extra.cosmetics.camos >= 19 && extra.cosmetics.gloves >= 16 && extra.cosmetics.mythicBp >= 18 && extra.animCamo],
+    ['karambit deploy rolls on the index finger in the ring', extra.ringRoll < 0.03],
+    ['dropped weapons toss, bounce, settle and show a name tag', extra.drop.label && extra.drop.rose && extra.drop.settled],
+    ['gloves merged (few draw calls), modelled cars, round minimap', extra.handMeshes <= 4 && extra.cars > 0 && extra.roundMap === '50%'],
     ['hunting rifle uses iron sights (no scope)', extra.newstuff.hunterIrons],
     ['map is dressed (frames, props, ponds, barrels, logs)', extra.newstuff.decor > 3000 && extra.newstuff.ponds >= 4 && extra.newstuff.barrels > 10 && extra.newstuff.logs > 20],
     ['dying ends your match (no respawn)', death.state === 'end' && !death.alive && death.endShown],

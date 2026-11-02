@@ -66,8 +66,26 @@ BR.Loot = class Loot {
     if (kind === 'shield') return this.add({ kind: 'shield', amount: C.loot.shieldAmount }, x, y, z);
   }
 
-  add(data, x, y, z) {
+  // Name tag for dropped weapons: rarity-coloured text on a dark pill (cached per weapon)
+  label(wid) {
+    this.labels = this.labels || {};
+    if (this.labels[wid]) return this.labels[wid];
+    const def = BR.CONFIG.weapons[wid], col = '#' + TIER_COLORS[def.tier].toString(16).padStart(6, '0');
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const c = cv.getContext('2d');
+    c.font = '700 30px "Saira Semi Condensed", "Arial Narrow", sans-serif'; const text = def.name.toUpperCase(), tw = Math.min(232, c.measureText(text).width + 34);
+    const x0 = (256 - tw) / 2; c.fillStyle = 'rgba(10,12,18,0.72)';
+    c.beginPath(); if (c.roundRect) c.roundRect(x0, 8, tw, 48, 24); else c.rect(x0, 8, tw, 48); c.fill();
+    c.fillStyle = col; c.fillRect(x0 + 14, 26, 6, 12);
+    c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, 128 + 6, 33);
+    c.strokeStyle = col; c.globalAlpha = 0.6; c.lineWidth = 2; c.beginPath(); if (c.roundRect) c.roundRect(x0 + 1, 9, tw - 2, 46, 23); else c.rect(x0 + 1, 9, tw - 2, 46); c.stroke();
+    const tex = new THREE.CanvasTexture(cv);
+    return (this.labels[wid] = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: true }));
+  }
+
+  // vel (optional): toss the item out - it flies, spins fast, bounces and settles
+  add(data, x, y, z, vel) {
     const item = Object.assign({ id: this.nextId++, taken: false, phase: Math.random() * 6 }, data);
+    if (vel) { item.vel = vel; item.spinV = 9 + Math.random() * 6; item.air = true; }
     item.pos = new THREE.Vector3(x, y, z);
     item.mesh = this.buildMesh(item);
     item.mesh.position.set(x, item.kind === 'chest' ? y : y + 0.45, z);
@@ -91,6 +109,8 @@ BR.Loot = class Loot {
       ring.scale.setScalar(1.4);
       g.add(ring);
       g.userData.ring = ring;
+      const tag = new THREE.Sprite(this.label(item.wid)); tag.scale.set(1.25, 0.31, 1); tag.position.y = 0.62; tag.renderOrder = 5; tag.visible = false;
+      g.add(tag); g.userData.label = tag;
     } else if (item.kind === 'chest') {
       const wood = this.mat('chest', 0x8a5a2b), gold = this.mat('gold', 0xffc04a);
       const base = new THREE.Mesh(G.chest, wood); base.position.y = 0.25;
@@ -129,14 +149,43 @@ BR.Loot = class Loot {
     this.cullT -= dt;
     const doCull = this.cullT <= 0;
     if (doCull) this.cullT = 0.3;
+    const W = this.game.world;
     for (const it of this.items) {
-      if (doCull) it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 70 && Math.abs(it.pos.z - viewer.z) < 70;
+      if (it.air) this.toss(it, dt, W);
+      if (doCull) {
+        it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 70 && Math.abs(it.pos.z - viewer.z) < 70;
+        const lb = it.mesh.userData.label;
+        if (lb) lb.visible = it.mesh.visible && Math.abs(it.pos.x - viewer.x) + Math.abs(it.pos.z - viewer.z) < 18 && Math.abs(it.pos.y - viewer.y) < 6;
+      }
       if (!it.mesh.visible) continue;
       if (it.kind === 'chest') { it.mesh.userData.ring.material.opacity = 0.45 + Math.sin(t * 4) * 0.3; continue; }
-      it.mesh.rotation.y = t * 1.4 + it.phase;
-      it.mesh.position.y = it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;
+      if (it.air) { it.spinA = (it.spinA || 0) + it.spinV * dt; it.mesh.rotation.y = it.spinA; it.mesh.position.set(it.pos.x, it.pos.y + 0.3, it.pos.z); continue; }
+      it.spinA = (it.spinA || t * 1.4 + it.phase) + 1.6 * dt;
+      it.mesh.rotation.y = it.spinA;
+      // weapons do a little bounce on the ground; other items bob
+      it.mesh.position.y = it.kind === 'weapon' ? it.pos.y + 0.3 + Math.abs(Math.sin(t * 2.6 + it.phase)) * 0.2 : it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;
       if (it.mesh.userData.ring) it.mesh.userData.ring.rotation.z = -it.mesh.rotation.y;
       if (it.mesh.userData.nade) BR.Models.animate(it.mesh.userData.nade, t);
+    }
+  }
+
+  // Physics for tossed items: gravity, bounce off the floor, stop at walls, settle.
+  toss(it, dt, W) {
+    const v = it.vel;
+    v.y -= 20 * dt;
+    const nx = it.pos.x + v.x * dt, nz = it.pos.z + v.z * dt;
+    const h = Math.hypot(v.x, v.z);
+    if (h > 0.01) {
+      const hit = W.raycast(it.pos.x, it.pos.y + 0.25, it.pos.z, v.x / h, 0, v.z / h, h * dt + 0.2);
+      if (hit.t < h * dt + 0.2) { v.x *= -0.3; v.z *= -0.3; }
+      else { it.pos.x = nx; it.pos.z = nz; }
+    }
+    it.pos.y += v.y * dt;
+    const floor = W.groundAt(it.pos.x, it.pos.z, it.pos.y + 0.6);
+    if (it.pos.y <= floor) {
+      it.pos.y = floor;
+      if (Math.abs(v.y) > 2.2) { v.y = -v.y * 0.42; v.x *= 0.6; v.z *= 0.6; it.spinV *= 0.65; if (this.game.player && it.pos.distanceTo(this.game.player.pos) < 25) BR.Audio.land(Math.abs(v.y) * 0.6); }
+      else { it.air = false; it.vel = null; }
     }
   }
 
@@ -218,7 +267,7 @@ BR.Loot = class Loot {
     const ang0 = Math.atan2(actor.pos.z - p.z, actor.pos.x - p.x);
     out.forEach((d, i) => {
       const a = ang0 + (i - (out.length - 1) / 2) * 0.7;
-      this.add(d, p.x + Math.cos(a) * 1.0, p.y, p.z + Math.sin(a) * 1.0);
+      this.add(d, p.x + Math.cos(a) * 0.4, p.y + 0.6, p.z + Math.sin(a) * 0.4, new THREE.Vector3(Math.cos(a) * 2.6, 5.5 + Math.random() * 1.5, Math.sin(a) * 2.6));
     });
     this.game.onChestOpened(actor, chest);
     this.remove(chest);
@@ -230,7 +279,10 @@ BR.Loot = class Loot {
     // Holding the karambit: replace gun slot 0 (or fill an empty one)
     if (actor.cur === 2) actor.cur = actor.slots[0] && !actor.slots[1] ? 1 : 0;
     const old = actor.weapon;
-    if (old) this.add({ kind: 'weapon', wid: old.id, mag: old.mag, reserve: 0 }, actor.pos.x, actor.pos.y, actor.pos.z);
+    if (old) {
+      const fx = -Math.sin(actor.yaw), fz = -Math.cos(actor.yaw);
+      this.add({ kind: 'weapon', wid: old.id, mag: old.mag, reserve: 0 }, actor.pos.x + fx * 0.5, actor.pos.y + 1.0, actor.pos.z + fz * 0.5, new THREE.Vector3(fx * 3.2, 4, fz * 3.2));
+    }
     actor.slots[actor.cur] = BR.Weapons.create(item.wid, item.mag);
     const def = BR.CONFIG.weapons[item.wid];
     actor.ammo[def.ammo] = Math.min(BR.CONFIG.ammoCap[def.ammo], actor.ammo[def.ammo] + item.reserve);
@@ -264,7 +316,7 @@ BR.Loot = class Loot {
   dropAll(actor) {
     const p = actor.pos;
     let k = 0;
-    const spot = () => { const a = k++ * 2.1; return [p.x + Math.cos(a) * 0.9, p.y, p.z + Math.sin(a) * 0.9]; };
+    const spot = () => { const a = k++ * 2.1 + Math.random() * 0.4; return [p.x + Math.cos(a) * 0.3, p.y + 0.9, p.z + Math.sin(a) * 0.3, new THREE.Vector3(Math.cos(a) * (2 + Math.random() * 1.5), 4.5 + Math.random() * 2, Math.sin(a) * (2 + Math.random() * 1.5))]; };
     for (const w of actor.guns()) if (w) this.add({ kind: 'weapon', wid: w.id, mag: w.mag, reserve: 0 }, ...spot());
     for (const t in actor.ammo) if (actor.ammo[t] > 0) this.add({ kind: 'ammo', ammoType: t, amount: actor.ammo[t] }, ...spot());
     if (actor.shield > 0 || Math.random() < 0.5) this.add({ kind: 'shield', amount: BR.CONFIG.loot.shieldAmount }, ...spot());

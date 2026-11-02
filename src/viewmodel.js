@@ -219,7 +219,7 @@
 
       // ---- keyframed overlays (added after the springs) -------------------------
       let ox = 0, oy = 0, oz = 0, orx = 0, ory = 0, orz = 0;
-      let leftTarget = null, magOff = null, magVis = true, spinAng = 0, leftHidden = !!def.melee;
+      let leftTarget = null, magOff = null, magVis = true, spinAng = 0, ringW = 0, leftHidden = !!def.melee;
       // Draw
       if (this.drawT > 0) {
         const t = 1 - this.drawT / this.drawDur;
@@ -230,6 +230,7 @@
           ox += -out * rise * 0.06; oz += -out * 0.14;
           orz += -out * 0.3; orx += out * 0.15;
           spinAng = easeInOut(t / 0.6) * Math.PI * 4;                       // starts right away
+          ringW = win(t, 0, 0.07, 0.52, 0.68);                              // index finger in the ring while it rolls
           const turns = Math.floor(spinAng / (Math.PI * 2) + 0.25);
           if (turns > this.spinSwish) { this.spinSwish = turns; BR.Audio.swish(false); }
         } else {
@@ -242,6 +243,7 @@
         const t = 1 - this.inspectT / this.inspectDur;
         if (def.melee) {
           spinAng = easeInOut(t / 0.42) * Math.PI * 4;
+          ringW = win(t, 0, 0.06, 0.36, 0.48);
           const sh = win(t, 0.42, 0.55, 0.85, 1);
           ory += sh * 1.15; orz += sh * 0.65; ox -= sh * 0.12; oy += sh * 0.06; orx += Math.sin(t * Math.PI * 3) * 0.05 * sh;
         } else {
@@ -362,7 +364,7 @@
       g.scale.setScalar(s);
 
       // Karambit ring twirl
-      if (holder.userData.spin) { holder.userData.spin.obj.quaternion.setFromAxisAngle(holder.userData.spin.axis, -spinAng); holder.userData.spin.ang = spinAng; }
+      if (holder.userData.spin) { holder.userData.spin.obj.quaternion.setFromAxisAngle(holder.userData.spin.axis, -spinAng); holder.userData.spin.ang = spinAng; holder.userData.spin.ringW = ringW; }
       // Mag + muzzle flash
       if (ud.mag) { ud.mag.position.copy(magOff || this._v.set(0, 0, 0)); ud.mag.visible = magVis; }
       ud.flash.visible = this.flashT > 0 && A < 0.5;
@@ -411,6 +413,17 @@
         const fist = this._v2.set(0, -0.026, -0.05).multiplyScalar(1.3).applyQuaternion(gripQ);
         H.position.copy(a.lerp(b, 0.5)).sub(fist);
         H.quaternion.copy(gripQ);
+        // Twirls: the hand opens off the handle so the index finger sits in the ring, and the
+        // knife rolls around that finger; it closes back onto the handle for the final pose.
+        const rw = spin.ringW || 0;
+        if (rw > 0.001) {
+          const ringC = spin.obj.getWorldPosition(this._kv1 || (this._kv1 = new THREE.Vector3()));
+          const tip = this._v2.set(-0.0194, -0.02, -0.056).multiplyScalar(1.3).applyQuaternion(gripQ);   // mirrored glove: index on -X
+          H.position.lerp(ringC.sub(tip), rw);
+          const tilt = this._kq3 || (this._kq3 = new THREE.Quaternion());
+          tilt.setFromAxisAngle(X, -0.35 * rw);                                // fingers relax open a little
+          H.quaternion.premultiply(tilt);
+        }
       } else {
         R.hand.position.copy(gp);
         R.hand.quaternion.copy(wq).multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
