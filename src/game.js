@@ -92,6 +92,7 @@ BR.Game = class Game {
     this.world.buildMeshes(this.scene, this.detail);
     this.hud.setStaticMap(this.world.renderMinimap(1024));
     this.fx = new BR.Effects(this.scene);
+    this.shock = new BR.Shockwave(this);
     this.loot = new BR.Loot(this);
     this.loot.spawnFromWorld(this.world);
     this.zone = new BR.Zone(this, this.world);
@@ -220,6 +221,7 @@ BR.Game = class Game {
     D.round++;
     for (const a of this.actors) if (a.mesh && a.mesh.parent) this.scene.remove(a.mesh);
     this.loot.clear();
+    this.shock.clear();
     this.actors = [];
     const arm = (a, guns, sp) => {
       a.mover.dropping = false; a.mover.vel.set(0, 0, 0);
@@ -229,6 +231,7 @@ BR.Game = class Game {
       a.cur = 0;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = 50;
+      a.nades = 2;
     };
     // which end you start at alternates each round
     const flip = D.round % 2 === 0, sp = W.spawns;
@@ -331,6 +334,7 @@ BR.Game = class Game {
       p.ammo[def.ammo] = C.ammoCap[def.ammo];
       this.hud.toast(def.name, 900);
     } else if (kind === 'ammo') { for (const t in p.ammo) p.ammo[t] = C.ammoCap[t]; this.hud.toast('Ammo full', 900); }
+    else if (kind === 'nades') { p.nades = C.shockwave.maxCarry; this.hud.toast('Shockwave grenades ×' + p.nades, 900); }
     else if (kind === 'heal') { p.health = C.actor.maxHealth; p.shield = C.actor.maxShield; this.hud.toast('Health + shield full', 900); }
     else if (kind === 'item') { const q = this.frontPoint(3); this.loot.spawnKind(arg, q.x, q.y, q.z, Math.random); }
     else if (kind === 'chest') { const q = this.frontPoint(4); this.loot.add({ kind: 'chest', tier: 2 }, q.x, q.y, q.z); }
@@ -454,6 +458,7 @@ BR.Game = class Game {
     while (this.recentShots.length && this.time - this.recentShots[0].t > 2) this.recentShots.shift();
     this.loot.update(dt, cp);
     this.fx.update(dt);
+    if (this.shock) this.shock.update(dt);
   }
 
   update(dt) {
@@ -553,6 +558,7 @@ BR.Game = class Game {
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
     if (inp.consume('crouch')) p.input.crouch = true;
+    if (inp.consume('grenade')) { if (this.shock.throw(p)) { BR.Audio.throwNade(); this.vmr.onThrow(); } else BR.Audio.click(); }
     if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.vmr.onStim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
     if (inp.consume('grapple')) { if (p.tryGrapple()) { BR.Audio.grapple(); this.vmr.onGrapple(); this.ropeT = 0; } else BR.Audio.click(); }
     if (inp.consume('reload') && BR.Weapons.startReload(w, p)) BR.Audio.reload();
@@ -680,6 +686,11 @@ BR.Game = class Game {
     return out.set(m.pos.x + c * 0.26 - s * 0.72, m.pos.y + m.h - 0.62, m.pos.z - s * 0.26 - c * 0.72);
   }
 
+  tracerOpts(actor) {
+    if (!actor.isPlayer) return null;
+    return BR.Models.tracerOpts(BR.Profile.data.equip.tracers, this.time);
+  }
+
   tracerColor(actor) {
     if (!actor.isPlayer) return 0xff9a6b;
     return BR.Models.tracerColor(BR.Profile.data.equip.tracers, this.time);
@@ -689,7 +700,9 @@ BR.Game = class Game {
     if (!victim.alive) return;
     if (victim.isPlayer && attacker && !attacker.isPlayer) dmg *= this.diff.playerDamageMult;
     else if (!victim.isPlayer && attacker && !attacker.isPlayer) dmg *= BR.CONFIG.match.botVsBotDamage;
+    const shieldBefore = victim.shield;
     const died = victim.takeDamage(dmg);
+    const shieldHit = shieldBefore > 0;
     if (attacker) attacker.damageDealt += dmg;
     victim.lastAttacker = attacker;
     victim.lastHurtT = this.time;
@@ -698,8 +711,13 @@ BR.Game = class Game {
     victim.flash();
     if (attacker && attacker === this.player) {
       this.hud.hitmarker(head, died);
-      this.hud.damageNumber(this._v3, dmg, head);
-      BR.Audio.hit(head);
+      this.hud.damageNumber(this._v3, dmg, head, victim, shieldHit);
+      if (!died) BR.Audio.hit(head);
+      // impact sparks: gold crit burst on the head, team-colour/shield-blue on the body
+      this.fx.burst(this._v3, head ? [0xffd24a, 0xffffff, 0xff9a1f] : shieldHit ? [0x6fc8ff, 0xffffff] : [0xff4a5a, 0xffffff], head ? 14 : 7, head ? 7 : 4.5, head ? 0.07 : 0.05, head ? 0.45 : 0.3);
+      // headshots punch the view a touch (FOV squeeze + tiny shake)
+      if (head) { this.cam.hitFov = Math.min(4, (this.cam.hitFov || 0) + 2.5); this.cam.shake = Math.max(this.cam.shake, 0.06); }
+      if (died) { this.cam.hitFov = Math.min(5, (this.cam.hitFov || 0) + (head ? 4 : 2)); }
     }
     if (victim === this.player) {
       this.hud.damageFrom(attacker);
@@ -722,10 +740,11 @@ BR.Game = class Game {
     if (this.demo) return;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const nm = a => `<b class="${a.isPlayer ? 'me' : ''}">${esc(a.name)}</b>`;
-    const how = weaponId === 'storm' ? 'storm' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');
+    const how = weaponId === 'storm' ? 'storm' : weaponId === 'shockwave' ? 'Shockwave' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');
     this.hud.killfeed(killer ? `${nm(killer)} <i>${esc(how)}</i> ${nm(victim)}` : `${nm(victim)} <i>${esc(how)}</i>`);
     if (killer && killer === this.player) {
-      BR.Audio.kill();
+      BR.Audio.kill(head);
+      if (head) this.hud.tech('HEADSHOT');
       this.hud.toast(`Eliminated ${victim.name}  ·  +${BR.CONFIG.coins.perKill} coins`, 1400);
     }
     if (victim === this.player) {
@@ -901,7 +920,7 @@ BR.Game = class Game {
         this.shopTracerT = 0.28;
         const cx = this.shopPivot.position.x, y = this.shopBaseY - 0.3 + Math.random() * 0.7, z = 0.2 + Math.random() * 0.5;
         const from = this._v1.set(cx - 3.2, y, z), to = this._v2.set(cx + 3.2, y + (Math.random() - 0.5) * 0.4, z - 0.4);
-        this.shopFx.tracer(from, to, true, BR.Models.tracerColor(this.shopPrev.tracer, this.time), { speed: 9, streak: 2.2 });
+        this.shopFx.tracer(from, to, true, BR.Models.tracerColor(this.shopPrev.tracer, this.time), Object.assign({ speed: 9, streak: 2.2 }, BR.Models.tracerOpts(this.shopPrev.tracer, this.time) || {}));
       }
     }
     this.shopFx.update(dt);
@@ -946,7 +965,9 @@ BR.Game = class Game {
     const speedK = U.clamp((sp - C.move.runSpeed) / 8, 0, 1);
     const fovT = (this.baseFov() + C.camera.fovSpeedBoost * speedK) / zoom;
     c.fov = U.damp(c.fov, fovT, 10, dt);
-    if (Math.abs(cam.fov - c.fov) > 0.01) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
+    c.hitFov = U.damp(c.hitFov || 0, 0, 12, dt);
+    const fovNow = c.fov - c.hitFov;
+    if (Math.abs(cam.fov - fovNow) > 0.01) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
 
     const ld = this.lookD || [0, 0];
     this.vmr.update(dt, ld[0], ld[1]);
@@ -956,6 +977,7 @@ BR.Game = class Game {
   refreshCosmetics() { this.vmr.rebuild(); }
 
   render() {
+    BR.Models.tick(performance.now() / 1000);       // animated camo / glove textures
     const r = this.renderer;
     r.clear();
     if (this.state === 'shop') { r.render(this.shopScene, this.shopCam); return; }

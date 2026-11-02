@@ -110,7 +110,7 @@ BR.Weapons = {
       } else if (hit.t < maxRange) {
         game.fx.impact(end, false);
       }
-      if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor));
+      if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
     }
     hits.forEach((h, victim) => game.applyDamage(victim, actor, h.dmg, h.head, h, w.id));
 

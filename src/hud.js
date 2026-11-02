@@ -15,6 +15,7 @@ const ICON = {
   fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   knife: '<svg viewBox="0 0 24 24"><path d="M4 20c2-1 4-1 6-3l9-11c1-1 1-2 0-3-3 2-7 6-10 9l-2 4"/><circle cx="5.5" cy="18.5" r="1.6"/></svg>',
   spawn: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>',
+  nade: '<svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="6"/><path d="M12 8V5M10 5h4M17 9l2-2"/><circle cx="12" cy="14" r="2.2"/></svg>',
   stim: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7l-9 9-3 1 1-3 9-9"/><path d="M12 9l3 3M4 20l2-2"/></svg>',
   grapple: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7L6 18"/><path d="M6 18l-2 2M9 21l-3-3 3-3"/><circle cx="17" cy="7" r="2"/></svg>',
 };
@@ -45,9 +46,11 @@ BR.HUD = class HUD {
   <div id="speedvig"></div>
   <div id="speedfx"></div>
   <div id="stimfx"></div>
+  <div id="shockfx"></div>
   <div id="scope"><div class="scope-ring"></div></div>
   <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
+  <div id="hitcrit"></div>
   <div id="dmg-dirs"></div>
   <div id="dmg-nums"></div>
 
@@ -90,6 +93,7 @@ BR.HUD = class HUD {
   <button class="btn act jump touch-only" data-act="jump" aria-label="Jump">${ICON.jump}<span>JUMP</span></button>
   <button class="btn act crouch cdable touch-only" data-act="crouch" aria-label="Crouch / Slide">${ICON.crouch}<span>CROUCH</span></button>
   <button class="btn act grapple cdable touch-only" data-act="grapple" aria-label="Grapple">${ICON.grapple}<span>HOOK</span><em class="cd"></em></button>
+  <button class="btn act nade touch-only" data-act="grenade" aria-label="Shockwave grenade">${ICON.nade}<span>NADE</span><em class="cnt">0</em></button>
   <button class="btn act stim cdable touch-only" data-act="stim" aria-label="Stim">${ICON.stim}<span>STIM</span><em class="cd"></em></button>
   <button class="btn act reload touch-only" data-act="reload" aria-label="Reload">${ICON.reload}</button>
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>AIM</span></button>
@@ -121,18 +125,36 @@ BR.HUD = class HUD {
   <button id="acct-chip" class="acct-chip glass"><span id="acct-avatar" class="avatar">G</span><span class="acct-text"><b id="acct-name">Guest</b><small id="acct-sub">Sign in</small></span></button>
   <div class="menu-main">
     <div class="logo">
-      <div class="logo-small">Prototype v${V} · Offline vs bots</div>
+      <div class="logo-small"><i class="dot"></i>Season 1 · v${V}</div>
       <h1 class="logo-title"><span>Velocity</span><span class="accent">Royale</span></h1>
       <div class="tagline">Slide. Wall-run. Grapple. Be the last one standing.</div>
     </div>
     <nav class="menu-nav">
-      <button id="btn-play" class="mbtn big hot"><svg viewBox="0 0 24 24" class="play-ic"><path d="M8 5l11 7-11 7z"/></svg>Play</button>
-      <button id="btn-duel" class="mbtn duel-btn">1V1 DUEL</button>
-      <button id="btn-practice" class="mbtn">PRACTICE</button>
-      <button id="btn-shop" class="mbtn">SHOP</button>
-      <button id="btn-settings" class="mbtn">SETTINGS</button>
-      <button id="btn-hud" class="mbtn">CUSTOMIZE HUD</button>
-      <button id="btn-fs" class="mbtn">FULLSCREEN</button>
+      <div class="modes">
+        <button id="btn-play" class="mode hero">
+          <span class="m-tag">BATTLE ROYALE</span>
+          <span class="m-title">PLAY</span>
+          <span class="m-sub">Solo · one life · last one standing</span>
+          <span class="m-go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span>
+        </button>
+        <button id="btn-duel" class="mode duel">
+          <span class="m-tag">NEW MODE</span>
+          <span class="m-title">1V1 DUEL</span>
+          <span class="m-sub">The Yard · first to 5</span>
+          <span class="m-vs"><b>VS</b></span>
+        </button>
+        <button id="btn-practice" class="mode practice">
+          <span class="m-tag">TRAINING</span>
+          <span class="m-title">PRACTICE</span>
+          <span class="m-sub">No bots · spawn anything</span>
+        </button>
+      </div>
+      <div class="dock">
+        <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span><em>NEW</em></button>
+        <button id="btn-settings" class="dk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>SETTINGS</span></button>
+        <button id="btn-hud" class="dk"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="8" cy="12" r="1.6"/><circle cx="16" cy="12" r="1.6"/></svg><span>HUD</span></button>
+        <button id="btn-fs" class="dk"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>FULL</span></button>
+      </div>
     </nav>
   </div>
   <div class="rec"><b></b>Live match</div>
@@ -246,6 +268,8 @@ BR.HUD = class HUD {
     <div class="sp-grid">
       <button class="mbtn sm" data-sp="ammo">FULL AMMO</button>
       <button class="mbtn sm" data-sp="heal">FULL HEALTH + SHIELD</button>
+      <button class="mbtn sm" data-sp="nades">SHOCKWAVE NADES ×3</button>
+      <button class="mbtn sm" data-sp="item" data-arg="shock">DROP SHOCKWAVE</button>
       <button class="mbtn sm" data-sp="item" data-arg="heal">MEDKIT</button>
       <button class="mbtn sm" data-sp="item" data-arg="shield">SHIELD CELL</button>
       <button class="mbtn sm" data-sp="item" data-arg="ammo">AMMO BOX</button>
@@ -351,7 +375,7 @@ BR.HUD = class HUD {
       const d = document.createElement('div');
       d.className = 'dnum';
       this.el.dmgNums.appendChild(d);
-      this.numPool.push({ el: d, life: 0, pos: new THREE.Vector3(), vy: 0 });
+      this.numPool.push({ el: d, life: 0, pos: new THREE.Vector3(), vy: 0, age: 9, total: 0, dx: 0, victim: null });
     }
     this.dirPool = [];
     for (let i = 0; i < 4; i++) {
@@ -427,6 +451,9 @@ BR.HUD = class HUD {
       el.style.setProperty('--cd', v > 0 ? (v / G.cooldown * 360).toFixed(0) + 'deg' : '0deg');
       el.querySelector('.cd').textContent = v > 0 ? Math.ceil(v) : '';
     });
+    // Shockwave grenade count
+    const nb = this._nadeBtn || (this._nadeBtn = document.querySelector('.btn.nade'));
+    this.set('nades', nb, p.nades || 0, (el, v) => { el.querySelector('.cnt').textContent = v; el.classList.toggle('empty', v <= 0); });
     // Stim cooldown sweep + boost glow
     const SC = BR.CONFIG.stim;
     const scd = Math.ceil(p.stimCd * 10) / 10;
@@ -495,6 +522,8 @@ BR.HUD = class HUD {
     setTimeout(() => d.remove(), 6000);
   }
 
+  shockFlash() { const el = this.$('shockfx'); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); }
+
   // Big centre countdown (3, 2, 1, FIGHT!)
   duelCount(text) {
     const el = this.$('duelcount');
@@ -523,6 +552,8 @@ BR.HUD = class HUD {
     h.className = '';
     void h.offsetWidth;
     h.className = 'on' + (head ? ' head' : '') + (kill ? ' kill' : '');
+    const c = this.$('hitcrit');
+    if (c && (head || kill)) { c.className = ''; void c.offsetWidth; c.className = 'on' + (kill ? ' kill' : ''); }
   }
 
   // Movement-tech callout under the crosshair
@@ -538,24 +569,34 @@ BR.HUD = class HUD {
     this.set('prompt', this.el.prompt, text || '', (el, v) => { el.textContent = v; el.classList.toggle('hidden', !v); });
   }
 
-  damageNumber(pos, dmg, head) {
-    const n = this.numPool[this.ni++ % this.numPool.length];
-    n.pos.copy(pos);
-    n.life = 0.8;
-    n.el.textContent = Math.round(dmg);
-    n.el.classList.toggle('head', !!head);
-    n.el.style.opacity = 1;
+  // Damage numbers stack per target (Apex-style): rapid hits on the same enemy add up in
+  // one number that re-pops; headshots are gold crits, shield hits are blue.
+  damageNumber(pos, dmg, head, victim, shield) {
+    let n = victim && this.numPool.find(q => q.victim === victim && q.life > 0.25 && q.age < 1.1);
+    if (n) { n.total += dmg; n.age = Math.min(n.age, 0.2); }
+    else {
+      n = this.numPool[this.ni++ % this.numPool.length];
+      n.victim = victim; n.total = dmg; n.age = 0;
+      n.pos.copy(pos); n.dx = (Math.random() - 0.5) * 40;
+    }
+    n.life = 1.0;
+    n.head = n.head && n.age > 0 ? n.head || head : head;
+    const el = n.el;
+    el.innerHTML = (head ? '<i>✦</i>' : '') + Math.round(n.total);
+    el.className = 'dnum' + (head ? ' head' : shield ? ' shield' : '');
+    void el.offsetWidth; el.classList.add('pop');
+    el.style.opacity = 1;
   }
 
   updateNums(game, dt) {
     const cam = game.camera, v = game._v4, W = window.innerWidth, H = window.innerHeight;
     for (const n of this.numPool) {
       if (n.life <= 0) continue;
-      n.life -= dt;
-      n.pos.y += dt * 0.8;
+      n.life -= dt; n.age += dt;
+      n.pos.y += dt * 0.55;
       v.copy(n.pos).project(cam);
       if (n.life <= 0 || v.z > 1) { n.el.style.opacity = 0; n.life = 0; continue; }
-      n.el.style.transform = `translate(${(v.x * 0.5 + 0.5) * W}px, ${(-v.y * 0.5 + 0.5) * H}px) translate(-50%, -50%)`;
+      n.el.style.transform = `translate(${(v.x * 0.5 + 0.5) * W + n.dx}px, ${(-v.y * 0.5 + 0.5) * H - 26}px) translate(-50%, -50%)`;
       n.el.style.opacity = Math.min(1, n.life * 3);
     }
   }

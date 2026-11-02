@@ -175,10 +175,15 @@ BR.Shop = class Shop {
     }
     if (cat === 'skins') return `<i class="sw" style="background:${it.swatch}"></i>`;
     if (cat === 'tracers') {
-      const c = it.color < 0 ? 'linear-gradient(90deg,#ff1f3d,#ffcc00,#39ff14,#00e5ff,#b026ff)' : hex(it.color);
+      const rb = 'linear-gradient(90deg,#ff1f3d,#ffcc00,#39ff14,#00e5ff,#b026ff)';
+      const c = it.color < 0 ? rb : it.color2 !== undefined ? `linear-gradient(90deg,${hex(it.color)},${hex(it.color2)},${hex(it.color)})` : hex(it.color);
       return `<i class="sw tr" style="background:${c};--c:${it.color < 0 ? '#fff' : hex(it.color)}"></i>`;
     }
-    if (cat === 'gloves') return `<i class="sw gl" style="--c:${it.color !== undefined ? hex(it.color) : '#666'};--p:${hex(it.pad)}">✋</i>`;
+    if (cat === 'gloves') {
+      const GS = { hyper: '#ff2fa8', scales: '#1fa37a', bloodmoon: '#a3001a', circuit: '#0b3a2a', molten: '#ff5a00', electric: '#1a3a8a', prism: 'linear-gradient(135deg,#ff3df2,#ffd84a,#1de9ff)', arctic: '#dfe6eb', carbon: '#22252a', tiger: '#e07a1f', neon: '#0c2a30', galaxy: '#3b1a7a' };
+      const bg = it.color !== undefined ? hex(it.color) : GS[id] || '#666';
+      return `<i class="sw gl" style="--c:${bg};background:${bg};${it.glow ? 'box-shadow:0 0 10px ' + hex(it.glow) : ''}">✋</i>`;
+    }
     return `<i class="sw ch">${id === 'none' ? '—' : '◆'}</i>`;
   }
 

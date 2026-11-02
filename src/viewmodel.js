@@ -79,8 +79,8 @@
           // blade out the outer side sweeping up-right with the hook curving up, flat facing you.
           // model Z (handle -> ring) -> left, model -Y (hook) -> up, model X -> toward the camera's -Z
           m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, -1, 0), new THREE.Vector3(-1, 0, 0)));
-          m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.15, 0.3, 0.3, 'YXZ')));
-          m.scale.setScalar(0.95);
+          m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0.25, -0.32, 'YXZ')));
+          m.scale.setScalar(0.8);
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
           const P = new THREE.Vector3(0, 0.066, 0.12).applyMatrix4(m.matrix);   // ring centre
@@ -132,6 +132,8 @@
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.012, 0.04, 10), orange); cap.rotation.z = Math.PI / 2; cap.position.x = 0.08; inj.add(cap);
       inj.userData.cap = cap; inj.scale.setScalar(1.3); inj.visible = false;
       this.scene.add(inj); this.injector = inj;
+      if (this.vmNade) this.scene.remove(this.vmNade);
+      this.vmNade = BR.Shockwave.model(); this.vmNade.scale.setScalar(0.55); this.vmNade.visible = false; this.scene.add(this.vmNade);
 
       this.lastWeapon = null;
     }
@@ -155,7 +157,7 @@
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.def.melee ? 2.4 : 2.1; }
 
-    hide() { if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -191,7 +193,7 @@
       const sprinting = m.onGround && !m.sliding && sp > run * 0.92 && !p.ads && !p.fireHeld && !reloading && this.drawT <= 0 && this.inspectT <= 0;
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
-      if (def.melee) { hx = 0.11 * s; hy = -0.075; hz = -0.4; }      // karambit low in the right of the view, like CS
+      if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) - sg.z; }
       const A = this.adsW, nA = 1 - A * 0.85;
       // Bob: figure-eight while moving on the ground
@@ -256,6 +258,7 @@
         ox += dr * (0.05 * wind - 0.2 * arc); oy += 0.03 * wind - 0.05 * arc;
         orz += dr * (0.35 * wind - 1.05 * arc); ory += dr * 0.6 * arc; orx += -0.5 * arc + 0.15 * wind;
       }
+      if (this.throwT > 0) this.throwT = Math.max(0, this.throwT - dt);
       // Grapple: off hand throws out toward the hook; the gun drops to a one-handed hold
       this.ropeValid = false;
       const hooked = !!m.grapple;
@@ -277,7 +280,7 @@
       // look down at the chest while stabbing (the game camera tilts by the same amount)
       this.lookDown = this.stimT > 0 ? 0.22 * win(this.stimK, 0.26, 0.4, 0.66, 0.84) : 0;
       if (this.injector) this.injector.userData.plunger.position.x = -0.075 + (this.stimK > 0.48 && this.stimT > 0 ? Math.min(1, (this.stimK - 0.48) / 0.15) * 0.022 : 0);
-      const busy = Math.max(this.grapW, this.stimW);
+      const busy = Math.max(this.grapW, this.stimW, this.throwT > 0 ? 0.7 : 0);
       if (busy > 0.01) {
         oy -= 0.05 * busy; ox += 0.04 * busy; orz -= 0.22 * busy; orx -= 0.1 * this.stimW;
         if (this.stimW > 0.01) leftTarget = null;
@@ -401,7 +404,7 @@
         spin.obj.quaternion.copy(sq); spin.obj.updateMatrixWorld(true);
         // mirrored glove (thumb on -X): -X points at the ring, wrist down toward you, back of hand up
         const X = (this._kx || (this._kx = new THREE.Vector3())).subVectors(a, b).normalize();
-        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.35, -0.9, -0.15).normalize();
+        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.6, -0.78, -0.05).normalize();
         Z.addScaledVector(X, -Z.dot(X)).normalize();
         const Y = (this._ky || (this._ky = new THREE.Vector3())).crossVectors(Z, X);
         const gripQ = (this._kq2 || (this._kq2 = new THREE.Quaternion())).setFromRotationMatrix((this._km || (this._km = new THREE.Matrix4())).makeBasis(X, Y, Z));
@@ -428,12 +431,12 @@
         }
       }
       H.visible = true;
-      const elbowR = spin ? this._v2.set(0.3 * s, -0.7, -0.45) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
+      const elbowR = spin ? this._v2.set(0.5 * s, -0.68, -0.3) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
       this.limb(R.fore, H.localToWorld(new THREE.Vector3(0, 0, spin ? 0.075 : 0.05)), elbowR, spin ? 0.72 : 1);
       // left hand on the foregrip / mag / charging handle
       const lt = leftTarget || ud.fore;
       const special = this.specialLeft();          // grapple / stim pose (or null)
-      this.launcher.visible = false; this.injector.visible = false;
+      this.launcher.visible = false; this.injector.visible = false; this.vmNade.visible = false;
       if (spin && !(special && special.w > 0.05)) {
         // empty left fist, mirroring the knife hand (like CS)
         L.hand.visible = false;
@@ -461,6 +464,11 @@
         L.hand.position.lerp(special.p, special.w);
         L.hand.quaternion.slerp(special.q, special.w);
         this.launcher.visible = special.kind === 'grapple' && special.w > 0.05;
+        if (special.kind === 'throw' && special.held) {
+          this.vmNade.visible = true;
+          this.vmNade.position.copy(L.hand.position).add(this._v2.set(0, -0.03, -0.055).multiplyScalar(1.3).applyQuaternion(L.hand.quaternion));
+          BR.Models.animate(this.vmNade, performance.now() / 1000);
+        }
         if (special.kind === 'stim') {
           // pen injector held in the fist, needle along the hand's X axis
           this.injector.visible = special.w > 0.05;
@@ -491,6 +499,16 @@
         const Y = this._sy.crossVectors(Z, X);
         return out.setFromRotationMatrix(this._sm.makeBasis(X, Y, Z));
       };
+      if (this.throwT > 0) {
+        // grenade throw: hand comes up behind the shoulder line, then whips forward and releases
+        const k = 1 - this.throwT / this.throwDur, q = this._sq1;
+        const up = smooth(k / 0.35), fwd = smooth((k - 0.4) / 0.22), out = smooth((k - 0.7) / 0.3);
+        const p = this._spo.set(-0.3, -0.55, -0.2).lerp(this._sv.set(-0.15, -0.06, -0.24), up).lerp(this._sx.set(-0.05, -0.02, -0.62), fwd).lerp(this._sy.set(-0.25, -0.5, -0.3), out);
+        const X = this._sx.set(0.3, 1, 0.2).normalize();
+        const Z = this._sz.set(-0.3, -0.4, 0.85).lerp(this._sv.set(-0.1, -0.2, 0.97), fwd); Z.addScaledVector(X, -Z.dot(X)).normalize();
+        q.setFromRotationMatrix(this._sm.makeBasis(X, this._sy.crossVectors(Z, X), Z));
+        return { kind: 'throw', w: Math.min(1, Math.min(k / 0.12, (1 - k) / 0.2)), p, q, held: k < 0.58 };
+      }
       if (this.stimW > 0.01) {
         const k = this.stimK, q = this._sq1;
         // enter from below -> present the pen and flick the cap -> turn the needle on yourself ->
@@ -539,6 +557,7 @@
     }
 
     onGrapple() { this.grapT = 0.3; }
+    onThrow() { this.throwT = this.throwDur = 0.42; }
     onStim() { this.stimT = this.stimDur = 0.95; this.lastStimK = 0; }
 
     limb(mesh, a, b, thick) {

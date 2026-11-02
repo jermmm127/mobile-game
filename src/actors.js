@@ -77,6 +77,7 @@ BR.Actor = class Actor {
     this.cur = 2;
     this.grappleCd = 0;
     this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0;
+    this.nades = 0; this.nadeCd = 0;      // shockwave grenades carried
     this.lunge = null;
     this.ammo = { light: 0, heavy: 0, shells: 0 };
     this.kills = 0;

@@ -240,6 +240,27 @@ const server = http.createServer((req, res) => {
     vm.onGrapple(); for (let i = 0; i < 12; i++) { vm.update(1 / 60, 0, 0); if (vm.launcher.visible && vm.ropeValid) launchSeen = true; }
     for (let i = 0; i < 60; i++) vm.update(1 / 60, 0, 0);
     r.fpAnims = { injSeen, injGone, launchSeen, launchGone: !vm.launcher.visible };
+    // shockwave grenade: throw at your feet -> launched; pickup refills; styled tracer beads; damage-number stacking
+    {
+      const P2 = g.player; P2.mover.world = flat; P2.mover.pos.set(0, 0, 0); P2.mover.vel.set(0, 0, 0); P2.mover.onGround = true;
+      g.practiceSpawn('nades'); const n0 = P2.nades; P2.pitch = -1.35; P2.nadeCd = 0;
+      const y0 = P2.pos.y; let maxY = y0; g.input.press('grenade');
+      for (let i = 0; i < 120; i++) { g.update(1 / 60); maxY = Math.max(maxY, P2.pos.y); }
+      P2.mover.world = realWorld; P2.mover.pos.copy(realPos); P2.mover.vel.set(0, 0, 0);
+      const it = g.loot.spawnKind('shock', P2.pos.x, P2.pos.y, P2.pos.z, Math.random); const before = P2.nades;
+      g.loot.autoPickup(P2);
+      r.shock = { n0, used: n0 - before > 0, rise: maxY - y0, picked: P2.nades === before + 1, model: !!it.mesh.userData.nade };
+      const fxT = g.fx; fxT.tracer(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 2, -30), true, 0xffffff, BR.Models.tracerOpts('thunder', 0));
+      const tt = fxT.tracers[(fxT.ti - 1) % fxT.tracers.length]; fxT.update(0.02);
+      r.styledTracer = !!(tt.fx && tt.fx.some(b => b.visible)) && Object.values(BR.Models.TRACERS).filter(x => x.style).length >= 8;
+      const hud = g.hud, dummy = {}; hud.damageNumber(new THREE.Vector3(0, 1, -5), 20, false, dummy, false); hud.damageNumber(new THREE.Vector3(0, 1, -5), 30, true, dummy, false);
+      const shown = hud.numPool.filter(q => q.victim === dummy && q.life > 0);
+      r.dmgStack = shown.length === 1 && Math.round(shown[0].total) === 50 && shown[0].el.classList.contains('head');
+      const M = BR.Models;
+      r.cosmetics = { camos: Object.keys(M.SKINS).length, gloves: Object.keys(M.GLOVES).length,
+        mythicBp: Object.values(M.BLUEPRINTS).reduce((n, w) => n + Object.values(w).filter(b => b.rarity === 'Mythic').length, 0) };
+      M.tick(3); r.animCamo = M.weapon('rifle', 'molten', 'none').children.some(c => c.material && c.material.emissiveMap && c.material.emissiveMap.offset.y > 0);
+    }
     const Wd = g.world;
     r.newstuff = { knifeSpeed, bolts: !!(C.sniper.bolt && C.hunter.bolt), hunterIrons: !C.hunter.scope && !!hm.sight, sniperBolt: !!vm.models.sniper.userData.model.userData.bolt,
       lift, back, settled: Math.abs(hm.bolt.rotation.z) < 1e-3 && Math.abs(hm.bolt.position.z - hm.boltZ0) < 1e-3,
@@ -358,6 +379,10 @@ const server = http.createServer((req, res) => {
     ['karambit gives a movement speed boost', extra.newstuff.knifeSpeed > BR_RUN * 1.15],
     ['sniper + hunting rifle are bolt actions (bolt lifts, pulls back, returns)', extra.newstuff.bolts && extra.newstuff.sniperBolt && extra.newstuff.lift > 0.8 && extra.newstuff.back > 0.05 && extra.newstuff.settled],
     ['stim + grapple have first-person arm animations', extra.fpAnims.injSeen && extra.fpAnims.injGone && extra.fpAnims.launchSeen && extra.fpAnims.launchGone],
+    ['shockwave grenade launches you; pickups refill; purple model', extra.shock.used && extra.shock.rise > 3 && extra.shock.picked && extra.shock.model],
+    ['styled tracers (helix/spark/lightning/dual) render extra beads', extra.styledTracer],
+    ['damage numbers stack per target and mark headshots', extra.dmgStack],
+    ['more camos, gloves and Mythic blueprints (animated camos scroll)', extra.cosmetics.camos >= 19 && extra.cosmetics.gloves >= 16 && extra.cosmetics.mythicBp >= 18 && extra.animCamo],
     ['hunting rifle uses iron sights (no scope)', extra.newstuff.hunterIrons],
     ['map is dressed (frames, props, ponds, barrels, logs)', extra.newstuff.decor > 3000 && extra.newstuff.ponds >= 4 && extra.newstuff.barrels > 10 && extra.newstuff.logs > 20],
     ['dying ends your match (no respawn)', death.state === 'end' && !death.alive && death.endShown],

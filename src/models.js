@@ -21,7 +21,72 @@ BR.Models = (function () {
     return (cache.tex[key] = t);
   }
   const rnd = BR.util.rng(77);
+  // Animated textures: fn(tex, t) runs every frame from BR.Models.tick (scrolling lava, shimmering prism...)
+  const ANIM_TEX = [];
+  const animTex = (tex, fn) => { if (!tex._anim) { tex._anim = fn; ANIM_TEX.push(tex); } return tex; };
   const TEX = {
+    molten: () => animTex(canvasTex('molten', (c, s) => {
+      c.fillStyle = '#120806'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 26; i++) {                         // glowing cracks
+        let x = rnd() * s, y = rnd() * s; c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 6; k++) { x += (rnd() - 0.5) * 40; y += (rnd() - 0.5) * 40; c.lineTo(x, y); }
+        c.strokeStyle = rnd() < 0.5 ? '#ff5a00' : '#ffb000'; c.lineWidth = 1.5 + rnd() * 3; c.shadowColor = '#ff3a00'; c.shadowBlur = 8; c.stroke();
+      }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.set(t * 0.02, t * 0.035); }),
+    prism: () => animTex(canvasTex('prism', (c, s) => {
+      const g = c.createLinearGradient(0, 0, s, s);
+      ['#ff3df2', '#ffd84a', '#39ff88', '#1de9ff', '#7b2cff', '#ff3df2'].forEach((col, i) => g.addColorStop(i / 5, col));
+      c.fillStyle = g; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 40; i++) { c.fillStyle = `rgba(255,255,255,${rnd() * 0.35})`; c.fillRect(rnd() * s, rnd() * s, 3 + rnd() * 20, 1 + rnd() * 2); }
+    }, 256), (tx, t) => { tx.offset.set(t * 0.12, t * 0.05); }),
+    electric: () => animTex(canvasTex('electric', (c, s) => {
+      c.fillStyle = '#060a1a'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 14; i++) {
+        let x = rnd() * s, y = 0; c.beginPath(); c.moveTo(x, y);
+        while (y < s) { x += (rnd() - 0.5) * 30; y += 8 + rnd() * 14; c.lineTo(x, y); }
+        c.strokeStyle = i % 3 ? '#6fc8ff' : '#ffffff'; c.lineWidth = i % 3 ? 1.5 : 1; c.shadowColor = '#3aa0ff'; c.shadowBlur = 10; c.stroke();
+      }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.y = Math.floor(t * 12) * 0.137; }),
+    hyper: () => canvasTex('hyper', (c, s) => {
+      c.fillStyle = '#ff2fa8'; c.fillRect(0, 0, s, s);
+      const cols = ['#1de9ff', '#ffe14d', '#7b2cff', '#111111'];
+      for (let i = 0; i < 34; i++) { c.fillStyle = cols[i % 4]; c.beginPath(); const x = rnd() * s, y = rnd() * s, r = 4 + rnd() * 16;
+        for (let k = 0; k < 9; k++) { const a = k / 9 * 6.28, rr = r * (0.6 + rnd() * 0.6); c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); c.fill();
+        c.strokeStyle = '#111'; c.lineWidth = 2; c.stroke(); }
+    }, 256),
+    scales: () => canvasTex('scales', (c, s) => {
+      c.fillStyle = '#0b1f1a'; c.fillRect(0, 0, s, s);
+      for (let y = 0; y < s + 16; y += 14) for (let x = (y / 14) % 2 ? 8 : 0; x < s + 16; x += 16) {
+        const g = c.createRadialGradient(x, y - 4, 1, x, y, 11); g.addColorStop(0, '#9dffcf'); g.addColorStop(0.5, '#1fa37a'); g.addColorStop(1, '#3b1a7a');
+        c.fillStyle = g; c.beginPath(); c.arc(x, y, 9, 0, Math.PI); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.5)'; c.stroke(); }
+    }, 256),
+    damascus: () => canvasTex('damascus', (c, s) => {
+      for (let y = 0; y < s; y++) for (let x = 0; x < s; x += 2) {
+        const v = Math.sin((x * 0.09) + Math.sin(y * 0.05) * 3 + Math.sin(x * 0.03 + y * 0.02) * 2) * 0.5 + 0.5;
+        const l = 70 + v * 120; c.fillStyle = `rgb(${l},${l + 4},${l + 10})`; c.fillRect(x, y, 2, 1); }
+    }, 128),
+    circuit: () => animTex(canvasTex('circuit', (c, s) => {
+      c.fillStyle = '#05140f'; c.fillRect(0, 0, s, s);
+      c.strokeStyle = '#2bffb0'; c.lineWidth = 2; c.shadowColor = '#2bffb0'; c.shadowBlur = 6;
+      for (let i = 0; i < 30; i++) { let x = Math.round(rnd() * 16) * 16, y = Math.round(rnd() * 16) * 16; c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 4; k++) { if (rnd() < 0.5) x += (rnd() < 0.5 ? -1 : 1) * 32; else y += (rnd() < 0.5 ? -1 : 1) * 32; c.lineTo(x, y); } c.stroke();
+        c.fillStyle = '#b6ffe6'; c.fillRect(x - 3, y - 3, 6, 6); }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.x = t * 0.05; }),
+    candy: () => canvasTex('candy', (c, s) => {
+      const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#ff9ad5'); g.addColorStop(0.5, '#c8b6ff'); g.addColorStop(1, '#8fe3ff');
+      c.fillStyle = g; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 18; i++) { c.fillStyle = `rgba(255,255,255,${0.25 + rnd() * 0.3})`; c.beginPath(); c.arc(rnd() * s, rnd() * s, 6 + rnd() * 18, 0, 7); c.fill(); }
+    }, 256),
+    bloodmoon: () => canvasTex('bloodmoon', (c, s) => {
+      c.fillStyle = '#2a0005'; c.fillRect(0, 0, s, s);
+      c.strokeStyle = '#ff1f3d'; c.lineWidth = 1.4; c.shadowColor = '#ff1f3d'; c.shadowBlur = 6;
+      for (let r = 12; r < s; r += 18) { c.beginPath(); c.arc(s / 2, s / 2, r, 0, 7); c.stroke(); }
+      for (let a = 0; a < 12; a++) { c.beginPath(); c.moveTo(s / 2, s / 2); c.lineTo(s / 2 + Math.cos(a / 12 * 6.28) * s, s / 2 + Math.sin(a / 12 * 6.28) * s); c.stroke(); }
+      c.shadowBlur = 0;
+    }, 256),
     carbon: () => canvasTex('carbon', (c, s) => {
       c.fillStyle = '#1b1d21'; c.fillRect(0, 0, s, s);
       for (let y = 0; y < s; y += 8) for (let x = 0; x < s; x += 8) {
@@ -75,6 +140,15 @@ BR.Models = (function () {
     galaxy:  { name: 'Galaxy', price: 550, swatch: '#3b1a7a' },
     gold:    { name: 'Solid Gold', price: 800, swatch: '#e8b830' },
     chrome:  { name: 'Chrome', price: 900, swatch: '#e8eef4' },
+    damascus:{ name: 'Damascus Steel', price: 700, swatch: 'repeating-linear-gradient(115deg,#6e737a 0 4px,#c4cad2 4px 7px,#8a9098 7px 11px)', rarity: 'Epic' },
+    candy:   { name: 'Cotton Candy', price: 700, swatch: 'linear-gradient(135deg,#ff9ad5,#c8b6ff,#8fe3ff)', rarity: 'Epic' },
+    scales:  { name: 'Dragonscale', price: 900, swatch: 'radial-gradient(circle at 40% 35%,#9dffcf,#1fa37a 45%,#3b1a7a)', rarity: 'Legendary' },
+    hyper:   { name: 'Hyper Beast', price: 950, swatch: 'linear-gradient(135deg,#ff2fa8 0 40%,#1de9ff 40% 60%,#ffe14d 60%)', rarity: 'Legendary' },
+    bloodmoon:{ name: 'Blood Moon', price: 1000, swatch: 'radial-gradient(circle,#ff1f3d 0 12%,#2a0005 13% 30%,#ff1f3d 31% 33%,#2a0005 34%)', rarity: 'Legendary' },
+    circuit: { name: 'Overclock', price: 1100, swatch: 'linear-gradient(90deg,#05140f 0 30%,#2bffb0 30% 34%,#05140f 34% 70%,#2bffb0 70% 74%,#05140f 74%)', rarity: 'Mythic' },
+    electric:{ name: 'Electric Storm', price: 1200, swatch: 'linear-gradient(160deg,#060a1a,#3aa0ff 50%,#060a1a)', rarity: 'Mythic' },
+    molten:  { name: 'Molten Core', price: 1300, swatch: 'radial-gradient(circle at 30% 40%,#ffb000,#ff3a00 30%,#120806 70%)', rarity: 'Mythic' },
+    prism:   { name: 'Prism', price: 1500, swatch: 'linear-gradient(135deg,#ff3df2,#ffd84a,#39ff88,#1de9ff,#7b2cff)', rarity: 'Mythic' },
   };
   const TRACERS = {
     default: { name: 'Standard', price: 0, color: 0xffe9a8 },
@@ -86,6 +160,15 @@ BR.Models = (function () {
     purple:  { name: 'Void Purple', price: 200, color: 0xb026ff },
     gold:    { name: 'Gold', price: 300, color: 0xffcc00 },
     rainbow: { name: 'Rainbow', price: 500, color: -1 },
+    // Styled tracers: helix (twin spiral strands), spark (sparkler trail), lightning (jagged bolt), dual (two-tone glow)
+    solar:   { name: 'Solar Flare', price: 600, color: 0xffd24a, color2: 0xff4a00, style: 'dual', rarity: 'Epic' },
+    venom:   { name: 'Toxic Venom', price: 600, color: 0x39ff14, color2: 0xb026ff, style: 'dual', rarity: 'Epic' },
+    plasma:  { name: 'Plasma Helix', price: 750, color: 0x00e5ff, color2: 0xff2bd6, style: 'helix', rarity: 'Legendary' },
+    dragon:  { name: "Dragon's Breath", price: 800, color: 0xffd24a, color2: 0xff3a1f, style: 'spark', rarity: 'Legendary' },
+    stardust:{ name: 'Stardust', price: 800, color: 0xc9a8ff, color2: 0xffffff, style: 'spark', rarity: 'Legendary' },
+    thunder: { name: 'Thunderstrike', price: 900, color: 0xdff4ff, color2: 0x5a8bff, style: 'lightning', rarity: 'Legendary' },
+    voidbolt:{ name: 'Void Bolt', price: 950, color: 0xff5cf0, color2: 0x7b2cff, style: 'lightning', rarity: 'Mythic' },
+    prism:   { name: 'Prism Helix', price: 1200, color: -1, color2: -1, style: 'helix', rarity: 'Mythic' },
   };
   const CHARMS = {
     none:    { name: 'None', price: 0 },
@@ -108,6 +191,12 @@ BR.Models = (function () {
       case 'neon': m = new THREE.MeshLambertMaterial({ color: 0x111418, emissive: 0xffffff, emissiveMap: TEX.neon(), emissiveIntensity: 1 }); break;
       case 'gold': m = new THREE.MeshPhongMaterial({ color: 0xe8b830, specular: 0xfff2b0, shininess: 90, emissive: 0x3a2600 }); break;
       case 'chrome': m = new THREE.MeshPhongMaterial({ color: 0xc9d2da, specular: 0xffffff, shininess: 140, emissive: 0x1a1f24 }); break;
+      case 'damascus': m = new THREE.MeshPhongMaterial({ map: TEX.damascus(), specular: 0xffffff, shininess: 120 }); break;
+      case 'candy': case 'hyper': m = new THREE.MeshPhongMaterial({ map: TEX[skin](), specular: 0xffffff, shininess: 70 }); break;
+      case 'scales': m = new THREE.MeshPhongMaterial({ map: TEX.scales(), specular: 0x9dffcf, shininess: 110, emissive: 0x06201a }); break;
+      case 'bloodmoon': case 'circuit': case 'electric': case 'molten':
+        m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: 0.9, specular: 0x666666, shininess: 50 }); break;
+      case 'prism': m = new THREE.MeshPhongMaterial({ map: TEX.prism(), emissive: 0xffffff, emissiveMap: TEX.prism(), emissiveIntensity: 0.35, specular: 0xffffff, shininess: 150 }); break;
       default: m = new THREE.MeshLambertMaterial({ color: base });
     }
     return (cache.mat[key] = m);
@@ -119,9 +208,15 @@ BR.Models = (function () {
     blade: new THREE.MeshPhongMaterial({ color: 0xc8d0d8, specular: 0xffffff, shininess: 120, side: THREE.DoubleSide }),
     lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false }),
     lensDark: new THREE.MeshPhongMaterial({ color: 0x102030, specular: 0x88ccff, shininess: 120 }),
-    reticle: new THREE.MeshBasicMaterial({ color: 0xff2a3a }),
-    dotHalo: new THREE.MeshBasicMaterial({ color: 0xff2a3a, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }),
+    reticle: new THREE.MeshBasicMaterial({ color: 0xff2236 }),
+    dotHalo: new THREE.MeshBasicMaterial({ color: 0xff3a48, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false }),
     lensRed: new THREE.MeshBasicMaterial({ color: 0xffd2a0, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }),
+    // coated red-dot glass: clear in the middle, blue-violet anti-glare tint toward the rim
+    lensCoat: new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, map: canvasTex('lenscoat', (c, s) => {
+      const g = c.createRadialGradient(s / 2, s / 2, s * 0.12, s / 2, s / 2, s / 2);
+      g.addColorStop(0, 'rgba(255,220,200,0.03)'); g.addColorStop(0.6, 'rgba(150,170,255,0.10)'); g.addColorStop(0.9, 'rgba(120,90,255,0.32)'); g.addColorStop(1, 'rgba(40,40,80,0.7)');
+      c.clearRect(0, 0, s, s); c.fillStyle = g; c.fillRect(0, 0, s, s); }, 64) }),
+    dotHalo2: new THREE.MeshBasicMaterial({ color: 0xff2236, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false }),
     scopeTube: new THREE.MeshPhongMaterial({ color: 0x1d2025, specular: 0x555a60, shininess: 40, side: THREE.DoubleSide }),
     sightDot: new THREE.MeshBasicMaterial({ color: 0xff8a1f }),
     shell: new THREE.MeshLambertMaterial({ color: 0xc8202a }),
@@ -223,18 +318,29 @@ BR.Models = (function () {
       k.box(0.012, 0.012, 0.18, 0.02, 0.02, 0.15, M.metal);       // stock rods
       k.box(0.012, 0.012, 0.18, -0.02, 0.02, 0.15, M.metal);
       k.box(0.05, 0.07, 0.015, 0, 0.0, 0.24, M.grip);             // butt plate
-      // Tube red dot: mount, open tube with rims, faint tinted lens, crisp dot + halo
-      k.box(0.026, 0.012, 0.042, 0, 0.1, -0.062, M.dark);
-      k.box(0.012, 0.012, 0.016, 0.02, 0.122, -0.066, M.dark);                         // windage turret
-      k.box(0.012, 0.012, 0.016, 0, 0.142, -0.066, M.dark);                            // elevation turret
-      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.046, 24, 1, true), M.scopeTube);
-      tube.rotation.x = Math.PI / 2; tube.position.set(0, 0.122, -0.07); g.add(tube);
-      for (const z of [-0.093, -0.047]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.0024, 6, 24), M.metal); r.position.set(0, 0.122, z); g.add(r); }
-      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.016, 24), M.lensRed); lens.position.set(0, 0.122, -0.092); g.add(lens);
-      const halo = new THREE.Mesh(new THREE.CircleGeometry(0.0042, 16), M.dotHalo); halo.position.set(0, 0.122, -0.0915); g.add(halo);
-      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0015, 12), M.reticle); rd.position.set(0, 0.122, -0.091); g.add(rd);
-      const ss = new THREE.Object3D(); ss.position.set(0, 0.122, -0.07); g.add(ss);
-      g.userData.sight = ss; g.userData.sightDist = 0.36;
+      // Micro red dot (T2-style): QD mount, housing with a front hood + lip, rear rim, capped
+      // turrets, battery cap, coated lens (clear centre, blue-violet edge) and a crisp dot with glow
+      const RY = 0.126, RZ = -0.07;
+      k.box(0.034, 0.014, 0.05, 0, 0.1, RZ + 0.004, M.dark);                                  // mount base
+      k.box(0.006, 0.01, 0.022, 0.02, 0.098, RZ + 0.012, M.metal);                           // QD lever
+      k.box(0.026, 0.016, 0.034, 0, 0.108, RZ + 0.002, M.scopeTube);                          // body saddle
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.0215, 0.0215, 0.05, 32, 1, true), M.scopeTube);
+      body.rotation.x = Math.PI / 2; body.position.set(0, RY, RZ); g.add(body);
+      const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.0235, 0.0225, 0.014, 32, 1, true), M.scopeTube);
+      hood.rotation.x = Math.PI / 2; hood.position.set(0, RY, RZ - 0.031); g.add(hood);
+      const lip = new THREE.Mesh(new THREE.TorusGeometry(0.0235, 0.0018, 8, 32), M.metal); lip.position.set(0, RY, RZ - 0.038); g.add(lip);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.0215, 0.0024, 8, 32), M.dark); rim.position.set(0, RY, RZ + 0.025); g.add(rim);
+      for (const [x, y, rx, rz] of [[0, RY + 0.025, 0, 0], [0.025, RY, 0, Math.PI / 2]]) {                           // turrets + caps
+        const t = new THREE.Mesh(new THREE.CylinderGeometry(0.0075, 0.0075, 0.012, 14), M.scopeTube); t.position.set(x, y, RZ + 0.004); t.rotation.set(rx, 0, rz); g.add(t);
+        const cp = new THREE.Mesh(new THREE.CylinderGeometry(0.0078, 0.0078, 0.003, 14), M.metal); cp.position.set(x * 1.24, x ? y : y + 0.007, RZ + 0.004); cp.rotation.set(rx, 0, rz); g.add(cp);
+      }
+      const bat = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.008, 14), M.metal); bat.rotation.z = Math.PI / 2; bat.position.set(-0.024, RY - 0.004, RZ + 0.006); g.add(bat);
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.0212, 32), M.lensCoat); lens.position.set(0, RY, RZ - 0.03); g.add(lens);
+      const glow2 = new THREE.Mesh(new THREE.CircleGeometry(0.009, 20), M.dotHalo2); glow2.position.set(0, RY, RZ - 0.0298); g.add(glow2);
+      const halo = new THREE.Mesh(new THREE.CircleGeometry(0.0042, 20), M.dotHalo); halo.position.set(0, RY, RZ - 0.0296); g.add(halo);
+      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0021, 16), M.reticle); rd.position.set(0, RY, RZ - 0.0294); g.add(rd);
+      const ss = new THREE.Object3D(); ss.position.set(0, RY, RZ); g.add(ss);
+      g.userData.sight = ss; g.userData.sightDist = 0.37;
       anchors(g, -0.34, 0.035, [-0.04, -0.01, 0.03]);
     },
     shotgun(g, S, M) {
@@ -723,6 +829,122 @@ BR.Models = (function () {
       ruby: { name: 'Ruby', rarity: 'Mythic', price: 2600, body: 0x120608, accent: 0x120608, glow: 0xff2a4a, blade: 'ruby' },
     },
   };
+  // ---- Mythic wave 2
+  const MYTHIC2 = {
+    rifle: {
+      dragonlord: { name: 'Dragon Lord', rarity: 'Mythic', price: 2400, body: 0x5a0b0b, bodyGloss: 2, accent: 0xffc93a, accentGloss: 2, glow: 0xff5a1f,
+        mod(g, k, P) {
+          const G = liveGlow(0xff5a1f); hueCycle(g, G, 0.0, 0.1, 4, 0.55);
+          const gold = chrome(0xffc93a);
+          const wings = [];
+          for (const sx of [-1, 1]) {
+            const w = new THREE.Group(); w.position.set(sx * 0.04, 0.06, -0.12); g.add(w); wings.push({ w, sx });
+            for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.012, 0.09 - i * 0.015), i % 2 ? gold : chrome(0x8a1010)); f.position.set(sx * (0.02 + i * 0.018), 0.02 + i * 0.012, 0.02 - i * 0.012); f.rotation.x = -0.5; w.add(f); }
+          }
+          anim(g, t => wings.forEach(({ w, sx }) => { w.rotation.z = sx * (0.25 + 0.25 * Math.sin(t * 3)); }));
+          k.box(0.09, 0.075, 0.08, 0, 0.035, -0.74, gold);                                    // dragon-head brake
+          for (const x of [-0.03, 0.03]) k.box(0.014, 0.01, 0.006, x, 0.06, -0.782, G);       // eyes
+          for (let i = 0; i < 4; i++) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.05, 5), gold); h.position.set((i % 2 ? 0.025 : -0.025), 0.09, -0.72 + Math.floor(i / 2) * 0.03); h.rotation.x = 0.6; g.add(h); }
+          orbiters(g, 4, new THREE.OctahedronGeometry(0.008, 0), G, 0, 0.035, -0.82, 0.03, 6, 'z');   // embers at the mouth
+          for (const x of [-0.042, 0.042]) k.box(0.004, 0.012, 0.32, x, 0.035, -0.33, G);
+        } },
+    },
+    holoar: {
+      quantum: { name: 'Quantum', rarity: 'Mythic', price: 2400, body: 0xf2f6ff, bodyGloss: 2, accent: 0x1a2240, accentGloss: 2, glow: 0x3aa0ff,
+        mod(g, k, P) {
+          const G = liveGlow(0x3aa0ff); hueCycle(g, G, 0.55, 0.68, 2.5, 0.62);
+          const hexMat = new THREE.MeshBasicMaterial({ color: 0x6fc8ff, transparent: true, opacity: 0.45, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+          const pv = new THREE.Group(); pv.position.set(0, 0.04, -0.1); g.add(pv);
+          for (let i = 0; i < 5; i++) { const h = new THREE.Mesh(new THREE.CircleGeometry(0.03, 6), hexMat); const a = i / 5 * Math.PI * 2; h.position.set(Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0); h.lookAt(0, 0, 0); pv.add(h); }
+          anim(g, t => { pv.rotation.z = t * 0.8; hexMat.opacity = 0.3 + 0.2 * Math.sin(t * 5); });
+          for (const x of [-0.035, 0.035]) { k.box(0.004, 0.006, 0.42, x, 0.06, -0.14, G); k.box(0.004, 0.006, 0.42, x, 0.0, -0.14, G); }
+          const coil = []; for (let i = 0; i < 4; i++) coil.push(ring(g, 0.033, 0.004, G, 0, 0.035, -0.52 - i * 0.05));
+          anim(g, t => coil.forEach((c, i) => c.scale.setScalar(1 + 0.25 * Math.max(0, Math.sin(t * 8 - i)))));
+        } },
+    },
+    smg: {
+      synthwave: { name: 'Synthwave', rarity: 'Mythic', price: 2200, body: 0x2a0b4a, bodyGloss: 2, accent: 0xff2fa8, accentGloss: 2, glow: 0xff2fa8,
+        mod(g, k, P) {
+          const sun = liveGlow(0xffb000), pink = liveGlow(0xff2fa8), cyan = liveGlow(0x1de9ff);
+          for (let i = 0; i < 4; i++) k.box(0.064, 0.006, 0.07 - i * 0.012, 0, 0.0 + i * 0.012, 0.0, i % 2 ? pink : sun);   // sunset stripes
+          const bars = [];
+          for (let i = 0; i < 7; i++) for (const x of [-0.033, 0.033]) { const b = k.box(0.004, 0.04, 0.012, x, 0.02, -0.2 + i * 0.022, i % 2 ? cyan : pink); bars.push({ b, i }); }
+          anim(g, t => bars.forEach(({ b, i }) => { const v = 0.3 + 0.7 * Math.abs(Math.sin(t * 7 + i * 0.9) * Math.sin(t * 3.1 + i)); b.scale.y = v; b.position.y = 0.0 + v * 0.02; }));    // equalizer
+          k.box(0.07, 0.004, 0.3, 0, 0.073, -0.1, cyan);
+          k.box(0.05, 0.05, 0.05, 0, 0.035, -0.36, chrome(0xff2fa8));
+        } },
+    },
+    shotgun: {
+      volcano: { name: 'Volcano', rarity: 'Mythic', price: 2300, body: 0x1a0a06, bodyGloss: 1, accent: 0x2a1208, glow: 0xff5a00,
+        mod(g, k, P) {
+          const lava = new THREE.MeshPhongMaterial({ map: TEX.molten(), emissive: 0xffffff, emissiveMap: TEX.molten(), emissiveIntensity: 1 });
+          k.box(0.112, 0.05, 0.36, 0, 0.06, -0.38, lava); k.box(0.082, 0.105, 0.33, 0, 0.03, -0.06, lava);
+          const G = liveGlow(0xff7a00); hueCycle(g, G, 0.02, 0.1, 5, 0.55);
+          const drops = [];
+          for (let i = 0; i < 6; i++) { const d = k.box(0.01, 0.016, 0.01, (i % 2 ? 0.03 : -0.03), 0, -0.15 - i * 0.07, G); drops.push({ d, o: Math.random() }); }
+          anim(g, t => drops.forEach(({ d, o }) => { const f = (t * 0.7 + o) % 1; d.position.y = -0.005 - f * 0.08; d.scale.setScalar(1 - f * 0.7); }));
+          const smoke = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.4, depthWrite: false });
+          orbiters(g, 5, new THREE.IcosahedronGeometry(0.014, 0), smoke, 0, 0.09, -0.6, 0.04, 1.5, 'z');
+        } },
+    },
+    sniper: {
+      thunder: { name: 'Thunderstrike', rarity: 'Mythic', price: 2600, body: 0x0d1430, bodyGloss: 2, accent: 0xe8eef8, accentGloss: 2, glow: 0x6fc8ff,
+        mod(g, k, P) {
+          const G = liveGlow(0x9fe8ff);
+          const coils = [-0.3, -0.45, -0.6, -0.75].map(z => ring(g, 0.03, 0.005, chrome(0xe8eef8), 0, 0.04, z));
+          const arcs = [];
+          for (let i = 0; i < 9; i++) { const a = k.box(0.003, 0.003, 0.05, 0, 0.04, -0.3 - i * 0.05, G); arcs.push(a); }
+          anim(g, t => {                                                                        // crackling arcs between the coils
+            const f = Math.floor(t * 20);
+            arcs.forEach((a, i) => { const r = Math.sin(f * 12.9898 + i * 78.233) * 43758.5453; const u = r - Math.floor(r); const ang = u * 6.28;
+              a.position.set(Math.cos(ang) * 0.03, 0.04 + Math.sin(ang) * 0.03, -0.32 - i * 0.05); a.rotation.set(u * 2 - 1, u * 3, 0); a.visible = u > 0.25; });
+            G.color.setHSL(0.55, 1, 0.65 + 0.2 * Math.sin(t * 30));
+          });
+          glowStrip(k, G, 0.5, 0, 0.06, -0.5);
+          for (const x of [-0.032, 0.032]) k.box(0.003, 0.012, 0.3, x, 0.02, 0.0, G);
+        } },
+    },
+    hunter: {
+      phantom: { name: 'Phantom', rarity: 'Mythic', price: 2200, body: 0x9fd8ff, bodyGloss: 2, accent: 0xe8f6ff, accentGloss: 2, glow: 0xbfeaff,
+        mod(g, k, P) {
+          const ghost = new THREE.MeshPhongMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.5, specular: 0xffffff, shininess: 140, emissive: 0x204a6a, depthWrite: false });
+          k.box(0.06, 0.11, 0.24, 0, -0.03, 0.31, ghost); k.box(0.056, 0.066, 0.32, 0, 0.0, 0.0, ghost);                     // ethereal stock + fore-stock shells
+          const wisp = new THREE.MeshBasicMaterial({ color: 0xdff6ff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+          orbiters(g, 4, new THREE.SphereGeometry(0.01, 8, 6), wisp, 0, 0.04, -0.2, 0.07, 1.6, 'z');
+          anim(g, t => { ghost.opacity = 0.4 + 0.15 * Math.sin(t * 2.2); wisp.opacity = 0.5 + 0.3 * Math.sin(t * 4); });
+          const G = liveGlow(0xbfeaff); for (const x of [-0.03, 0.03]) k.box(0.002, 0.008, 0.4, x, 0.045, -0.1, G);
+        } },
+    },
+    pistol: {
+      kitsune: { name: 'Kitsune', rarity: 'Mythic', price: 2000, body: 0xf4f1ea, bodyGloss: 2, accent: 0xd1132a, accentGloss: 2, glow: 0xff3a5c,
+        mod(g, k, P) {
+          const red = chrome(0xd1132a), G = liveGlow(0xff3a5c); hueCycle(g, G, 0.95, 1.02, 3, 0.6);
+          for (let i = 0; i < 4; i++) k.box(0.058, 0.004, 0.01, 0, 0.078, -0.16 + i * 0.04, red);      // lacquer bands
+          const spirits = new THREE.Group(); spirits.position.set(0, 0.04, -0.05); g.add(spirits);
+          for (let i = 0; i < 3; i++) {                                                               // fox-fire spirits with flame tails
+            const sp = new THREE.Group(); const a = i / 3 * Math.PI * 2; sp.position.set(Math.cos(a) * 0.09, Math.sin(a) * 0.09, 0);
+            sp.add(new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), G));
+            const tail = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.04, 8), G); tail.rotation.z = Math.PI / 2 + a; tail.position.set(Math.sin(a) * 0.02, -Math.cos(a) * 0.02, 0); sp.add(tail);
+            spirits.add(sp);
+          }
+          anim(g, t => { spirits.rotation.z = t * 2.2; spirits.children.forEach((c, i) => c.scale.setScalar(0.85 + 0.25 * Math.sin(t * 9 + i))); });
+          const tassel = k.box(0.006, 0.05, 0.006, 0, -0.14, 0.05, red); anim(g, t => { tassel.rotation.z = Math.sin(t * 3) * 0.4; });
+        } },
+    },
+    knife: {
+      sapphire: { name: 'Sapphire', rarity: 'Mythic', price: 2800, body: 0x050a1a, accent: 0x050a1a, glow: 0x2a6bff, blade: 'sapphire' },
+      blackpearl: { name: 'Black Pearl', rarity: 'Mythic', price: 3000, body: 0x0a0612, accent: 0x0a0612, glow: 0xb48cff, blade: 'blackpearl' },
+    },
+  };
+  for (const w in MYTHIC2) MYTHIC[w] = Object.assign(MYTHIC[w] || {}, MYTHIC2[w]);
+  BLADES.sapphire = () => new THREE.MeshPhongMaterial({ shininess: 180, specular: 0xbfd8ff, side: THREE.DoubleSide, emissive: 0x020a30, map: bladeTex('sapphire', (c, s) => {
+    const g = c.createRadialGradient(s * 0.35, s * 0.4, 2, s * 0.5, s * 0.5, s * 0.75); g.addColorStop(0, '#9fc4ff'); g.addColorStop(0.35, '#1f4fff'); g.addColorStop(1, '#020830');
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    for (let i = 0; i < 70; i++) { c.fillStyle = `rgba(200,225,255,${Math.random() * 0.7})`; c.fillRect(Math.random() * s, Math.random() * s, 1.2, 1.2); } }) });
+  BLADES.blackpearl = () => new THREE.MeshPhongMaterial({ shininess: 170, specular: 0xd8b8ff, side: THREE.DoubleSide, emissive: 0x10051c, map: bladeTex('blackpearl', (c, s) => {
+    const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#120a24'); g.addColorStop(0.3, '#5a2bb0'); g.addColorStop(0.55, '#1a1040'); g.addColorStop(0.8, '#2b6bb0'); g.addColorStop(1, '#0a0614');
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    for (let i = 0; i < 10; i++) { c.strokeStyle = `rgba(200,170,255,${0.15 + Math.random() * 0.2})`; c.beginPath(); c.arc(Math.random() * s, Math.random() * s, 10 + Math.random() * 40, 0, 3); c.stroke(); } }) });
   for (const w in MYTHIC) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, MYTHIC[w]);
   for (const w in BLUEPRINTS) BLUEPRINTS[w] = Object.assign({ default: { name: 'Standard Issue', rarity: 'Base', price: 0 } }, BLUEPRINTS[w]);
 
@@ -737,6 +959,13 @@ BR.Models = (function () {
     neon:    { name: 'Neon Grid', price: 450, tex: 'neon', pad: 0x0c0e10, glow: 0x2ff3ff },
     galaxy:  { name: 'Galaxy', price: 550, tex: 'galaxy', pad: 0x120a26, glow: 0xb48cff },
     gold:    { name: 'Gilded', price: 750, color: 0xe6b422, pad: 0x3a2a05, gloss: true, glow: 0xfff0b0 },
+    hyper:   { name: 'Vice', price: 800, tex: 'hyper', pad: 0x1de9ff, glow: 0x1de9ff, fx: true, rarity: 'Legendary' },
+    scales:  { name: 'Wyvern', price: 850, tex: 'scales', pad: 0x0b1f1a, glow: 0x9dffcf, fx: true, rarity: 'Legendary' },
+    bloodmoon:{ name: 'Crimson Web', price: 900, tex: 'bloodmoon', emissive: 0.9, pad: 0x120002, glow: 0xff1f3d, fx: true, rarity: 'Legendary' },
+    circuit: { name: 'Overclock', price: 1000, tex: 'circuit', emissive: 1, pad: 0x05140f, glow: 0x2bffb0, fx: true, rarity: 'Mythic' },
+    molten:  { name: 'Magma Fist', price: 1100, tex: 'molten', emissive: 1, pad: 0x1a0a04, glow: 0xff7a00, fx: true, rarity: 'Mythic' },
+    electric:{ name: 'Storm Caller', price: 1100, tex: 'electric', emissive: 1, pad: 0x0a1030, glow: 0x6fc8ff, fx: true, rarity: 'Mythic' },
+    prism:   { name: 'Prismatic', price: 1300, tex: 'prism', emissive: 0.45, gloss: true, pad: 0xffffff, glow: 0xffffff, fx: true, rarity: 'Mythic' },
   };
   function gloveMats(id) {
     const key = 'glove-' + id;
@@ -744,9 +973,10 @@ BR.Models = (function () {
     const G = GLOVES[id] || GLOVES.default;
     let main;
     if (G.tex === 'neon') main = skinMaterial('neon');
-    else if (G.tex) main = new THREE.MeshLambertMaterial({ map: TEX[G.tex]() });
+    else if (G.tex && G.emissive) main = new THREE.MeshPhongMaterial({ map: TEX[G.tex](), emissive: 0xffffff, emissiveMap: TEX[G.tex](), emissiveIntensity: G.emissive, specular: 0x888888, shininess: G.gloss ? 110 : 40 });
+    else if (G.tex) main = G.gloss || G.fx ? new THREE.MeshPhongMaterial({ map: TEX[G.tex](), specular: 0xffffff, shininess: 80 }) : new THREE.MeshLambertMaterial({ map: TEX[G.tex]() });
     else main = G.gloss ? new THREE.MeshPhongMaterial({ color: G.color, specular: 0xffffff, shininess: 70 }) : new THREE.MeshLambertMaterial({ color: G.color });
-    return (cache.mat[key] = { main, pad: new THREE.MeshLambertMaterial({ color: G.pad }), glow: G.glow ? glowMat(G.glow) : null });
+    return (cache.mat[key] = { main, pad: G.fx ? new THREE.MeshPhongMaterial({ color: G.pad, specular: 0xffffff, shininess: 120 }) : new THREE.MeshLambertMaterial({ color: G.pad }), glow: G.glow ? glowMat(G.glow) : null, fx: !!G.fx });
   }
   // A gloved hand, fingers along -Z curling down (-Y), thumb on +X (mirrored for the left hand).
   function hand(id, left) {
@@ -762,6 +992,11 @@ BR.Models = (function () {
     }
     const th = box(0.013, 0.014, 0.04, 0.03, -0.006, -0.02, m.main); th.rotation.y = -0.5 * sx; th.rotation.x = 0.3;  // thumb
     box(0.056, 0.034, 0.02, 0, 0, 0.042, m.pad);                 // cuff
+    if (m.fx && m.glow) {                                        // flashy gloves: glowing knuckle studs, cuff band, finger lines
+      for (let i = 0; i < 4; i++) box(0.007, 0.004, 0.007, -0.019 + i * 0.0128, 0.006, -0.04, m.glow);
+      box(0.058, 0.005, 0.022, 0, 0.012, 0.042, m.glow);
+      box(0.004, 0.003, 0.03, 0.022, 0.024, -0.005, m.glow); box(0.004, 0.003, 0.03, -0.022, 0.024, -0.005, m.glow);
+    }
     return g;
   }
 
@@ -832,7 +1067,14 @@ BR.Models = (function () {
     },
     charm,
     // Run a model's animated parts (Mythic blueprints). Cheap no-op for everything else.
+    tick(t) { for (let i = 0; i < ANIM_TEX.length; i++) ANIM_TEX[i]._anim(ANIM_TEX[i], t); },
     animate(model, t) { const a = model && model.userData.anim; if (a) for (let i = 0; i < a.length; i++) a[i](t); },
+    tracerOpts(id, t) {
+      const tr = TRACERS[id] || TRACERS.default;
+      if (!tr.style) return null;
+      const c2 = tr.color2 < 0 ? new THREE.Color().setHSL((t * 0.7 + 0.5) % 1, 1, 0.6).getHex() : tr.color2;
+      return { style: tr.style, color2: c2 };
+    },
     tracerColor(id, t) {
       const tr = TRACERS[id] || TRACERS.default;
       if (tr.color >= 0) return tr.color;

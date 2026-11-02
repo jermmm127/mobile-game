@@ -80,8 +80,20 @@ BR.Audio = {
     if (dist < 8) this.tone(160, 45, dur * 0.8, v * 0.5 * near, 'sine');
   },
 
-  hit(head) { this.tone(head ? 1650 : 980, head ? 1400 : 900, 0.06, head ? 0.22 : 0.14, 'square'); },
-  kill() { this.tone(520, 1300, 0.18, 0.2, 'triangle'); },
+  // Hits: a crisp tick + low thump; headshots add a bright metallic "ting" (two inharmonic partials)
+  hit(head) {
+    this.tone(head ? 1450 : 1150, head ? 1250 : 950, 0.035, head ? 0.16 : 0.14, 'square');
+    this.burst(2600, 1.4, 0.04, 0.12, 0, 'bandpass');
+    this.tone(170, 70, 0.07, 0.18, 'sine');
+    if (head) { this.tone(2637, 2600, 0.32, 0.2, 'sine'); this.tone(3951, 3900, 0.22, 0.1, 'sine'); this.tone(5274, 5200, 0.12, 0.05, 'sine'); }
+  },
+  // Kills: punchy thump + rising two-note chime (bigger on a headshot kill)
+  kill(head) {
+    this.tone(140, 45, 0.22, 0.35, 'sine'); this.burst(900, 0.8, 0.12, 0.2);
+    this.tone(880, 880, 0.09, 0.16, 'triangle');
+    setTimeout(() => this.tone(1320, 1320, 0.16, 0.16, 'triangle'), 70);
+    if (head) setTimeout(() => { this.tone(1760, 1760, 0.24, 0.14, 'triangle'); this.tone(3520, 3500, 0.3, 0.08, 'sine'); }, 140);
+  },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },
   pickup() { this.tone(660, 990, 0.09, 0.12, 'sine'); },
   click() { this.tone(1800, 1700, 0.03, 0.08, 'square'); },
@@ -94,6 +106,13 @@ BR.Audio = {
   chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
   grapple() { this.tone(300, 1200, 0.12, 0.14, 'sawtooth'); this.burst(2400, 0.6, 0.15, 0.08, 0, 'bandpass'); },
   stim() { this.burst(6000, 1.5, 0.18, 0.15, 0, 'highpass'); this.tone(500, 1400, 0.18, 0.12, 'sine'); setTimeout(() => this.tone(1400, 1800, 0.12, 0.06, 'sine'), 120); },
+  // Shockwave: deep whoomp + rising zap + airy shimmer
+  shockwave(dist) {
+    const v = Math.max(0.15, 1 - (dist || 0) / 60);
+    this.tone(90, 30, 0.55, 0.6 * v, 'sine'); this.burst(600, 0.7, 0.45, 0.45 * v, 0, 'lowpass');
+    this.tone(300, 1800, 0.35, 0.18 * v, 'sawtooth'); this.burst(5000, 2, 0.5, 0.12 * v, 0, 'highpass');
+  },
+  throwNade() { this.burst(2400, 1.2, 0.12, 0.1, 0, 'bandpass'); this.tone(900, 1500, 0.06, 0.06, 'square'); },
   pad() { this.tone(200, 900, 0.3, 0.2, 'square'); },
   blast() { this.burst(500, 0.6, 0.5, 0.5); this.tone(90, 35, 0.35, 0.45, 'sine'); },
   swish(hit) { this.burst(3000, 0.8, 0.14, 0.12, 0, 'bandpass'); if (hit) this.tone(220, 120, 0.1, 0.25, 'square'); },

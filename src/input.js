@@ -160,6 +160,7 @@ BR.Input = class Input {
       if (e.code === 'KeyR') this.press('reload');
       if (e.code === 'KeyE') this.press('interact');
       if (e.code === 'KeyF') this.press('stim');
+      if (e.code === 'KeyT') this.press('grenade');
       if (e.code === 'KeyQ') this.press('swap');
       if (e.code === 'Digit1') this.press('slot0');
       if (e.code === 'Digit2') this.press('slot1');

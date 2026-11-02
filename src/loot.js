@@ -61,6 +61,7 @@ BR.Loot = class Loot {
       const t = BR.util.pick(['light', 'light', 'heavy', 'heavy', 'shells'], R);
       return this.add({ kind: 'ammo', ammoType: t, amount: C.ammoPickup[t] }, x, y, z);
     }
+    if (kind === 'shock') return this.add({ kind: 'shock', amount: 1 }, x, y, z);
     if (kind === 'heal') return this.add({ kind: 'heal', amount: C.loot.healAmount }, x, y, z);
     if (kind === 'shield') return this.add({ kind: 'shield', amount: C.loot.shieldAmount }, x, y, z);
   }
@@ -104,6 +105,9 @@ BR.Loot = class Loot {
       g.userData.ring = ring;
     } else if (item.kind === 'ammo') {
       g.add(new THREE.Mesh(G.ammo, this.mat('a_' + item.ammoType, AMMO_COLORS[item.ammoType])));
+    } else if (item.kind === 'shock') {
+      const n = BR.Shockwave.model(); n.scale.setScalar(2.6); g.add(n); g.userData.nade = n;
+      const ring = new THREE.Mesh(G.ring, this.mat('ringShock', 0xb04bff, true)); ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4; g.add(ring); g.userData.ring = ring;
     } else if (item.kind === 'heal') {
       g.add(new THREE.Mesh(G.heal, this.mat('heal', 0xf4f4f0)));
       g.add(new THREE.Mesh(G.cross, this.mat('healx', 0x3ccf6e)));
@@ -132,6 +136,7 @@ BR.Loot = class Loot {
       it.mesh.rotation.y = t * 1.4 + it.phase;
       it.mesh.position.y = it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;
       if (it.mesh.userData.ring) it.mesh.userData.ring.rotation.z = -it.mesh.rotation.y;
+      if (it.mesh.userData.nade) BR.Models.animate(it.mesh.userData.nade, t);
     }
   }
 
@@ -155,7 +160,8 @@ BR.Loot = class Loot {
       if (it.kind === 'ammo') {
         const cap = C.ammoCap[it.ammoType];
         if (actor.ammo[it.ammoType] < cap) { actor.ammo[it.ammoType] = Math.min(cap, actor.ammo[it.ammoType] + it.amount); took = true; }
-      } else if (it.kind === 'heal') took = actor.heal(it.amount);
+      } else if (it.kind === 'shock') { if ((actor.nades || 0) < C.shockwave.maxCarry) { actor.nades = (actor.nades || 0) + it.amount; took = true; } }
+      else if (it.kind === 'heal') took = actor.heal(it.amount);
       else if (it.kind === 'shield') took = actor.addShield(it.amount);
       else if (it.kind === 'weapon') {
         const def = C.weapons[it.wid];

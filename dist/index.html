@@ -593,6 +593,106 @@ body.duel #topbar .dp { display: flex; }
 #duelmenu.round .dm-setup { display: none; }
 .mbtn.duel-btn { border-color: rgba(111, 177, 255, 0.45); background: linear-gradient(90deg, rgba(47,111,216,0.25), rgba(216,68,58,0.25)); }
 
+/* ---- hit feedback v2 ---- */
+#hitmarker { width: 30px; height: 30px; }
+#hitmarker::before { left: 14px; width: 2.5px; height: 30px; }
+#hitmarker::after { top: 14px; height: 2.5px; width: 30px; }
+#hitmarker::before, #hitmarker::after { box-shadow: 0 0 6px rgba(0,0,0,0.6); }
+#hitmarker.head { width: 38px; height: 38px; }
+#hitmarker.head::before { left: 17.5px; width: 3px; height: 38px; background: #ffd24a; box-shadow: 0 0 10px rgba(255,190,40,0.9); }
+#hitmarker.head::after { top: 17.5px; height: 3px; width: 38px; background: #ffd24a; box-shadow: 0 0 10px rgba(255,190,40,0.9); }
+#hitmarker.kill::before, #hitmarker.kill::after { background: #ff3048; box-shadow: 0 0 10px rgba(255,40,70,0.9); }
+#hitmarker.on { animation: hm2 0.28s cubic-bezier(.2,1.6,.4,1); }
+@keyframes hm2 { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(1.6); } 35% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(0.92); } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(45deg) scale(1.05); } }
+#hitcrit { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; border-radius: 50%; transform: translate(-50%, -50%); opacity: 0; pointer-events: none;
+  border: 2px solid #ffd24a; box-shadow: 0 0 14px rgba(255,200,60,0.8), inset 0 0 10px rgba(255,200,60,0.5); }
+#hitcrit.kill { border-color: #ff3048; box-shadow: 0 0 16px rgba(255,40,70,0.9), inset 0 0 10px rgba(255,40,70,0.5); }
+#hitcrit.on { animation: crit 0.4s ease-out; }
+@keyframes crit { 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.4); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.9); } }
+#dmg-nums .dnum { font: 800 20px var(--ui); letter-spacing: 0.02em; color: #fff; white-space: nowrap;
+  text-shadow: -1.5px -1.5px 0 #0b0d12, 1.5px -1.5px 0 #0b0d12, -1.5px 1.5px 0 #0b0d12, 1.5px 1.5px 0 #0b0d12, 0 3px 8px rgba(0,0,0,0.6); }
+#dmg-nums .dnum.shield { color: #7fd0ff; }
+#dmg-nums .dnum.head { font-size: 27px; background: linear-gradient(180deg, #fff6c2 0%, #ffd24a 45%, #ff8a1f 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-stroke: 1.2px #2a1400; text-shadow: 0 0 12px rgba(255,170,40,0.55); }
+#dmg-nums .dnum.head i { font-style: normal; font-size: 0.7em; margin-right: 3px; vertical-align: 0.15em; }
+#dmg-nums .dnum.pop { animation: dpop 0.32s cubic-bezier(.2,1.8,.4,1); }
+@keyframes dpop { 0% { scale: 1.9; } 60% { scale: 0.92; } 100% { scale: 1; } }
+
+/* ---- shockwave grenade ---- */
+.btn.nade { width: 50px; height: 50px; right: calc(196px + var(--sr)); bottom: calc(148px + var(--sb)); color: #d79bff; border-color: rgba(176, 75, 255, 0.55); }
+.btn.nade .cnt { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: #8a2be2; color: #fff; font: 700 11px/18px var(--ui); font-style: normal; text-align: center; box-shadow: 0 0 8px rgba(176,75,255,0.8); }
+.btn.nade.empty { opacity: 0.4; }
+.btn.nade.empty .cnt { background: #444; box-shadow: none; }
+#shockfx { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(180, 80, 255, 0.0) 35%, rgba(150, 60, 255, 0.45) 100%); }
+#shockfx.on { animation: shockfx 0.7s ease-out; }
+@keyframes shockfx { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ============================================================ main menu v2 */
+.overlay.menu::before {
+  background:
+    radial-gradient(120% 90% at 0% 100%, rgba(8, 10, 16, 0.92) 0%, rgba(8, 10, 16, 0.55) 45%, transparent 70%),
+    linear-gradient(90deg, rgba(8, 10, 16, 0.75) 0%, rgba(8, 10, 16, 0.25) 45%, transparent 70%),
+    linear-gradient(0deg, rgba(8, 10, 16, 0.6), transparent 35%);
+}
+.menu-main { width: auto; max-width: 100%; justify-content: space-between; gap: 12px;
+  padding: calc(18px + var(--st)) max(20px, calc(var(--sr) + 16px)) calc(18px + var(--sb)) max(28px, calc(var(--sl) + 18px)); }
+.logo-small { display: flex; align-items: center; gap: 8px; }
+.logo-small .dot { width: 7px; height: 7px; border-radius: 50%; background: #4fdc8a; box-shadow: 0 0 8px #4fdc8a; }
+.logo-title { flex-direction: row; gap: 0.25em; font-size: clamp(34px, 5.6vw, 64px); filter: drop-shadow(0 6px 18px rgba(0,0,0,0.5)); }
+.tagline { margin-top: 6px; font-size: 14px; }
+.menu-nav { width: min(760px, 100%); gap: 10px; }
+.modes { display: grid; grid-template-columns: 1.45fr 1fr 1fr; gap: 10px; }
+.mode { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 2px; text-align: left;
+  min-height: 132px; padding: 14px 16px; border-radius: 18px; cursor: pointer; color: #fff; font-family: var(--ui);
+  background: linear-gradient(160deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.14);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.mode:hover, .mode:focus-visible { transform: translateY(-2px); border-color: rgba(255,255,255,0.32); }
+.mode:active { transform: scale(0.98); }
+.mode::before { content: ''; position: absolute; inset: 0; opacity: 0.9; pointer-events: none; }
+.mode > * { position: relative; }
+.mode .m-tag { font: 700 10px var(--ui); letter-spacing: 0.22em; color: rgba(255,255,255,0.7); }
+.mode .m-title { font: 800 italic 30px/1 var(--display); letter-spacing: -0.01em; }
+.mode .m-sub { font-size: 12px; color: rgba(255,255,255,0.75); }
+.mode.hero { min-height: 150px; border-color: rgba(255, 200, 80, 0.55); box-shadow: 0 14px 36px rgba(255, 150, 20, 0.25); }
+.mode.hero::before { background: radial-gradient(120% 120% at 100% 0%, rgba(255, 214, 120, 0.55), transparent 55%), linear-gradient(135deg, #ffb224 0%, #ff7a1f 55%, #c2410c 100%); }
+.mode.hero .m-title { font-size: 46px; color: #1a0f00; } .mode.hero .m-tag, .mode.hero .m-sub { color: rgba(30, 14, 0, 0.8); }
+.mode.hero .m-go { position: absolute; right: 14px; top: 14px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #1a0f00; box-shadow: 0 0 0 6px rgba(26,15,0,0.15); }
+.mode.hero .m-go svg { width: 20px; height: 20px; fill: #ffb224; }
+.mode.hero::after { content: ''; position: absolute; top: -50%; left: -60%; width: 40%; height: 200%; transform: rotate(20deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent); animation: sheen 3.2s ease-in-out infinite; pointer-events: none; }
+@keyframes sheen { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+.mode.duel::before { background: linear-gradient(135deg, rgba(47,111,216,0.55) 0%, rgba(47,111,216,0.15) 49.5%, rgba(216,68,58,0.15) 50.5%, rgba(216,68,58,0.55) 100%); }
+.mode.duel .m-vs { position: absolute; right: 12px; top: 10px; }
+.mode.duel .m-vs b { font: 800 italic 22px var(--display); color: rgba(255,255,255,0.9); text-shadow: 0 0 14px rgba(255,255,255,0.4); }
+.mode.practice::before { background: linear-gradient(160deg, rgba(79, 220, 138, 0.35), rgba(79, 220, 138, 0.05) 70%); }
+.dock { display: flex; gap: 8px; }
+.dk { position: relative; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; cursor: pointer; color: #e8ecf2;
+  font: 700 11px var(--ui); letter-spacing: 0.16em; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: background .15s, transform .15s; }
+.dk:hover { background: rgba(255,255,255,0.14); } .dk:active { transform: scale(0.96); }
+.dk svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dk.shop { color: #ffd776; border-color: rgba(255, 200, 80, 0.35); }
+.dk em { position: absolute; top: -7px; right: -6px; padding: 1px 6px; border-radius: 6px; font: 800 9px var(--ui); font-style: normal; letter-spacing: 0.1em; color: #fff;
+  background: linear-gradient(90deg, #ff3df2, #7b2cff); box-shadow: 0 0 10px rgba(255, 61, 242, 0.6); }
+@media (max-height: 430px) {
+  .menu-main { gap: 8px; }
+  .logo-title { font-size: clamp(28px, 5vw, 44px); }
+  .tagline { display: none; }
+  .mode { min-height: 104px; padding: 10px 12px; border-radius: 16px; }
+  .mode.hero { min-height: 112px; } .mode.hero .m-title { font-size: 36px; }
+  .mode .m-title { font-size: 22px; } .mode .m-sub { font-size: 11px; }
+  .mode.hero .m-go { width: 36px; height: 36px; }
+  .dk { padding: 8px 12px; }
+}
+@media (orientation: portrait) {
+  .menu-main { justify-content: flex-end; padding-bottom: calc(64px + var(--sb)); }
+  .modes { grid-template-columns: 1fr 1fr; }
+  .mode.hero { grid-column: 1 / -1; }
+  .dock { flex-wrap: wrap; }
+  .dk { flex: 1; justify-content: center; }
+}
+
 </style>
 </head>
 <body>
@@ -616,7 +716,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.0.0',
+  version: '1.1.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -634,6 +734,17 @@ BR.CONFIG = {
   },
 
   // Stim shot: HUD button / F key. Speed boost + heal over time.
+  // Shockwave grenade (trickshot item): T / NADE button. Launches everyone in range.
+  shockwave: {
+    radius: 8,          // blast radius (m)
+    launch: 21,         // outward push at the centre (m/s)
+    lift: 17,           // minimum upward speed given at the centre (m/s)
+    damage: 15,         // to enemies only (you take none from your own)
+    fuse: 2.4,          // detonates on contact, or after this long
+    throwSpeed: 19, throwLift: 4, gravity: 20,
+    maxCarry: 3, throwCooldown: 0.5,
+  },
+
   stim: {
     cooldown: 4,        // seconds between stims
     speedTime: 3,       // movement boost duration
@@ -759,9 +870,9 @@ BR.CONFIG = {
   // Loot rolls by spot tier. Weights are relative.
   loot: {
     tables: [
-      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, ammo: 45, heal: 16, shield: 12 },     // tier 0: open ground
-      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, ammo: 40, heal: 18, shield: 16 },   // tier 1: inside buildings
-      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, ammo: 30, heal: 16, shield: 22 },             // tier 2: roofs / towers
+      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
+      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
+      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
     ],
     healAmount: 50,
     shieldAmount: 50,
@@ -962,8 +1073,20 @@ BR.Audio = {
     if (dist < 8) this.tone(160, 45, dur * 0.8, v * 0.5 * near, 'sine');
   },
 
-  hit(head) { this.tone(head ? 1650 : 980, head ? 1400 : 900, 0.06, head ? 0.22 : 0.14, 'square'); },
-  kill() { this.tone(520, 1300, 0.18, 0.2, 'triangle'); },
+  // Hits: a crisp tick + low thump; headshots add a bright metallic "ting" (two inharmonic partials)
+  hit(head) {
+    this.tone(head ? 1450 : 1150, head ? 1250 : 950, 0.035, head ? 0.16 : 0.14, 'square');
+    this.burst(2600, 1.4, 0.04, 0.12, 0, 'bandpass');
+    this.tone(170, 70, 0.07, 0.18, 'sine');
+    if (head) { this.tone(2637, 2600, 0.32, 0.2, 'sine'); this.tone(3951, 3900, 0.22, 0.1, 'sine'); this.tone(5274, 5200, 0.12, 0.05, 'sine'); }
+  },
+  // Kills: punchy thump + rising two-note chime (bigger on a headshot kill)
+  kill(head) {
+    this.tone(140, 45, 0.22, 0.35, 'sine'); this.burst(900, 0.8, 0.12, 0.2);
+    this.tone(880, 880, 0.09, 0.16, 'triangle');
+    setTimeout(() => this.tone(1320, 1320, 0.16, 0.16, 'triangle'), 70);
+    if (head) setTimeout(() => { this.tone(1760, 1760, 0.24, 0.14, 'triangle'); this.tone(3520, 3500, 0.3, 0.08, 'sine'); }, 140);
+  },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },
   pickup() { this.tone(660, 990, 0.09, 0.12, 'sine'); },
   click() { this.tone(1800, 1700, 0.03, 0.08, 'square'); },
@@ -976,6 +1099,13 @@ BR.Audio = {
   chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
   grapple() { this.tone(300, 1200, 0.12, 0.14, 'sawtooth'); this.burst(2400, 0.6, 0.15, 0.08, 0, 'bandpass'); },
   stim() { this.burst(6000, 1.5, 0.18, 0.15, 0, 'highpass'); this.tone(500, 1400, 0.18, 0.12, 'sine'); setTimeout(() => this.tone(1400, 1800, 0.12, 0.06, 'sine'), 120); },
+  // Shockwave: deep whoomp + rising zap + airy shimmer
+  shockwave(dist) {
+    const v = Math.max(0.15, 1 - (dist || 0) / 60);
+    this.tone(90, 30, 0.55, 0.6 * v, 'sine'); this.burst(600, 0.7, 0.45, 0.45 * v, 0, 'lowpass');
+    this.tone(300, 1800, 0.35, 0.18 * v, 'sawtooth'); this.burst(5000, 2, 0.5, 0.12 * v, 0, 'highpass');
+  },
+  throwNade() { this.burst(2400, 1.2, 0.12, 0.1, 0, 'bandpass'); this.tone(900, 1500, 0.06, 0.06, 'square'); },
   pad() { this.tone(200, 900, 0.3, 0.2, 'square'); },
   blast() { this.burst(500, 0.6, 0.5, 0.5); this.tone(90, 35, 0.35, 0.45, 'sine'); },
   swish(hit) { this.burst(3000, 0.8, 0.14, 0.12, 0, 'bandpass'); if (hit) this.tone(220, 120, 0.1, 0.25, 'square'); },
@@ -2896,7 +3026,7 @@ BR.Weapons = {
       } else if (hit.t < maxRange) {
         game.fx.impact(end, false);
       }
-      if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor));
+      if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
     }
     hits.forEach((h, victim) => game.applyDamage(victim, actor, h.dmg, h.head, h, w.id));
 
@@ -3002,7 +3132,72 @@ BR.Models = (function () {
     return (cache.tex[key] = t);
   }
   const rnd = BR.util.rng(77);
+  // Animated textures: fn(tex, t) runs every frame from BR.Models.tick (scrolling lava, shimmering prism...)
+  const ANIM_TEX = [];
+  const animTex = (tex, fn) => { if (!tex._anim) { tex._anim = fn; ANIM_TEX.push(tex); } return tex; };
   const TEX = {
+    molten: () => animTex(canvasTex('molten', (c, s) => {
+      c.fillStyle = '#120806'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 26; i++) {                         // glowing cracks
+        let x = rnd() * s, y = rnd() * s; c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 6; k++) { x += (rnd() - 0.5) * 40; y += (rnd() - 0.5) * 40; c.lineTo(x, y); }
+        c.strokeStyle = rnd() < 0.5 ? '#ff5a00' : '#ffb000'; c.lineWidth = 1.5 + rnd() * 3; c.shadowColor = '#ff3a00'; c.shadowBlur = 8; c.stroke();
+      }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.set(t * 0.02, t * 0.035); }),
+    prism: () => animTex(canvasTex('prism', (c, s) => {
+      const g = c.createLinearGradient(0, 0, s, s);
+      ['#ff3df2', '#ffd84a', '#39ff88', '#1de9ff', '#7b2cff', '#ff3df2'].forEach((col, i) => g.addColorStop(i / 5, col));
+      c.fillStyle = g; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 40; i++) { c.fillStyle = `rgba(255,255,255,${rnd() * 0.35})`; c.fillRect(rnd() * s, rnd() * s, 3 + rnd() * 20, 1 + rnd() * 2); }
+    }, 256), (tx, t) => { tx.offset.set(t * 0.12, t * 0.05); }),
+    electric: () => animTex(canvasTex('electric', (c, s) => {
+      c.fillStyle = '#060a1a'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 14; i++) {
+        let x = rnd() * s, y = 0; c.beginPath(); c.moveTo(x, y);
+        while (y < s) { x += (rnd() - 0.5) * 30; y += 8 + rnd() * 14; c.lineTo(x, y); }
+        c.strokeStyle = i % 3 ? '#6fc8ff' : '#ffffff'; c.lineWidth = i % 3 ? 1.5 : 1; c.shadowColor = '#3aa0ff'; c.shadowBlur = 10; c.stroke();
+      }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.y = Math.floor(t * 12) * 0.137; }),
+    hyper: () => canvasTex('hyper', (c, s) => {
+      c.fillStyle = '#ff2fa8'; c.fillRect(0, 0, s, s);
+      const cols = ['#1de9ff', '#ffe14d', '#7b2cff', '#111111'];
+      for (let i = 0; i < 34; i++) { c.fillStyle = cols[i % 4]; c.beginPath(); const x = rnd() * s, y = rnd() * s, r = 4 + rnd() * 16;
+        for (let k = 0; k < 9; k++) { const a = k / 9 * 6.28, rr = r * (0.6 + rnd() * 0.6); c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); c.fill();
+        c.strokeStyle = '#111'; c.lineWidth = 2; c.stroke(); }
+    }, 256),
+    scales: () => canvasTex('scales', (c, s) => {
+      c.fillStyle = '#0b1f1a'; c.fillRect(0, 0, s, s);
+      for (let y = 0; y < s + 16; y += 14) for (let x = (y / 14) % 2 ? 8 : 0; x < s + 16; x += 16) {
+        const g = c.createRadialGradient(x, y - 4, 1, x, y, 11); g.addColorStop(0, '#9dffcf'); g.addColorStop(0.5, '#1fa37a'); g.addColorStop(1, '#3b1a7a');
+        c.fillStyle = g; c.beginPath(); c.arc(x, y, 9, 0, Math.PI); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.5)'; c.stroke(); }
+    }, 256),
+    damascus: () => canvasTex('damascus', (c, s) => {
+      for (let y = 0; y < s; y++) for (let x = 0; x < s; x += 2) {
+        const v = Math.sin((x * 0.09) + Math.sin(y * 0.05) * 3 + Math.sin(x * 0.03 + y * 0.02) * 2) * 0.5 + 0.5;
+        const l = 70 + v * 120; c.fillStyle = `rgb(${l},${l + 4},${l + 10})`; c.fillRect(x, y, 2, 1); }
+    }, 128),
+    circuit: () => animTex(canvasTex('circuit', (c, s) => {
+      c.fillStyle = '#05140f'; c.fillRect(0, 0, s, s);
+      c.strokeStyle = '#2bffb0'; c.lineWidth = 2; c.shadowColor = '#2bffb0'; c.shadowBlur = 6;
+      for (let i = 0; i < 30; i++) { let x = Math.round(rnd() * 16) * 16, y = Math.round(rnd() * 16) * 16; c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 4; k++) { if (rnd() < 0.5) x += (rnd() < 0.5 ? -1 : 1) * 32; else y += (rnd() < 0.5 ? -1 : 1) * 32; c.lineTo(x, y); } c.stroke();
+        c.fillStyle = '#b6ffe6'; c.fillRect(x - 3, y - 3, 6, 6); }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.x = t * 0.05; }),
+    candy: () => canvasTex('candy', (c, s) => {
+      const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#ff9ad5'); g.addColorStop(0.5, '#c8b6ff'); g.addColorStop(1, '#8fe3ff');
+      c.fillStyle = g; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 18; i++) { c.fillStyle = `rgba(255,255,255,${0.25 + rnd() * 0.3})`; c.beginPath(); c.arc(rnd() * s, rnd() * s, 6 + rnd() * 18, 0, 7); c.fill(); }
+    }, 256),
+    bloodmoon: () => canvasTex('bloodmoon', (c, s) => {
+      c.fillStyle = '#2a0005'; c.fillRect(0, 0, s, s);
+      c.strokeStyle = '#ff1f3d'; c.lineWidth = 1.4; c.shadowColor = '#ff1f3d'; c.shadowBlur = 6;
+      for (let r = 12; r < s; r += 18) { c.beginPath(); c.arc(s / 2, s / 2, r, 0, 7); c.stroke(); }
+      for (let a = 0; a < 12; a++) { c.beginPath(); c.moveTo(s / 2, s / 2); c.lineTo(s / 2 + Math.cos(a / 12 * 6.28) * s, s / 2 + Math.sin(a / 12 * 6.28) * s); c.stroke(); }
+      c.shadowBlur = 0;
+    }, 256),
     carbon: () => canvasTex('carbon', (c, s) => {
       c.fillStyle = '#1b1d21'; c.fillRect(0, 0, s, s);
       for (let y = 0; y < s; y += 8) for (let x = 0; x < s; x += 8) {
@@ -3056,6 +3251,15 @@ BR.Models = (function () {
     galaxy:  { name: 'Galaxy', price: 550, swatch: '#3b1a7a' },
     gold:    { name: 'Solid Gold', price: 800, swatch: '#e8b830' },
     chrome:  { name: 'Chrome', price: 900, swatch: '#e8eef4' },
+    damascus:{ name: 'Damascus Steel', price: 700, swatch: 'repeating-linear-gradient(115deg,#6e737a 0 4px,#c4cad2 4px 7px,#8a9098 7px 11px)', rarity: 'Epic' },
+    candy:   { name: 'Cotton Candy', price: 700, swatch: 'linear-gradient(135deg,#ff9ad5,#c8b6ff,#8fe3ff)', rarity: 'Epic' },
+    scales:  { name: 'Dragonscale', price: 900, swatch: 'radial-gradient(circle at 40% 35%,#9dffcf,#1fa37a 45%,#3b1a7a)', rarity: 'Legendary' },
+    hyper:   { name: 'Hyper Beast', price: 950, swatch: 'linear-gradient(135deg,#ff2fa8 0 40%,#1de9ff 40% 60%,#ffe14d 60%)', rarity: 'Legendary' },
+    bloodmoon:{ name: 'Blood Moon', price: 1000, swatch: 'radial-gradient(circle,#ff1f3d 0 12%,#2a0005 13% 30%,#ff1f3d 31% 33%,#2a0005 34%)', rarity: 'Legendary' },
+    circuit: { name: 'Overclock', price: 1100, swatch: 'linear-gradient(90deg,#05140f 0 30%,#2bffb0 30% 34%,#05140f 34% 70%,#2bffb0 70% 74%,#05140f 74%)', rarity: 'Mythic' },
+    electric:{ name: 'Electric Storm', price: 1200, swatch: 'linear-gradient(160deg,#060a1a,#3aa0ff 50%,#060a1a)', rarity: 'Mythic' },
+    molten:  { name: 'Molten Core', price: 1300, swatch: 'radial-gradient(circle at 30% 40%,#ffb000,#ff3a00 30%,#120806 70%)', rarity: 'Mythic' },
+    prism:   { name: 'Prism', price: 1500, swatch: 'linear-gradient(135deg,#ff3df2,#ffd84a,#39ff88,#1de9ff,#7b2cff)', rarity: 'Mythic' },
   };
   const TRACERS = {
     default: { name: 'Standard', price: 0, color: 0xffe9a8 },
@@ -3067,6 +3271,15 @@ BR.Models = (function () {
     purple:  { name: 'Void Purple', price: 200, color: 0xb026ff },
     gold:    { name: 'Gold', price: 300, color: 0xffcc00 },
     rainbow: { name: 'Rainbow', price: 500, color: -1 },
+    // Styled tracers: helix (twin spiral strands), spark (sparkler trail), lightning (jagged bolt), dual (two-tone glow)
+    solar:   { name: 'Solar Flare', price: 600, color: 0xffd24a, color2: 0xff4a00, style: 'dual', rarity: 'Epic' },
+    venom:   { name: 'Toxic Venom', price: 600, color: 0x39ff14, color2: 0xb026ff, style: 'dual', rarity: 'Epic' },
+    plasma:  { name: 'Plasma Helix', price: 750, color: 0x00e5ff, color2: 0xff2bd6, style: 'helix', rarity: 'Legendary' },
+    dragon:  { name: "Dragon's Breath", price: 800, color: 0xffd24a, color2: 0xff3a1f, style: 'spark', rarity: 'Legendary' },
+    stardust:{ name: 'Stardust', price: 800, color: 0xc9a8ff, color2: 0xffffff, style: 'spark', rarity: 'Legendary' },
+    thunder: { name: 'Thunderstrike', price: 900, color: 0xdff4ff, color2: 0x5a8bff, style: 'lightning', rarity: 'Legendary' },
+    voidbolt:{ name: 'Void Bolt', price: 950, color: 0xff5cf0, color2: 0x7b2cff, style: 'lightning', rarity: 'Mythic' },
+    prism:   { name: 'Prism Helix', price: 1200, color: -1, color2: -1, style: 'helix', rarity: 'Mythic' },
   };
   const CHARMS = {
     none:    { name: 'None', price: 0 },
@@ -3089,6 +3302,12 @@ BR.Models = (function () {
       case 'neon': m = new THREE.MeshLambertMaterial({ color: 0x111418, emissive: 0xffffff, emissiveMap: TEX.neon(), emissiveIntensity: 1 }); break;
       case 'gold': m = new THREE.MeshPhongMaterial({ color: 0xe8b830, specular: 0xfff2b0, shininess: 90, emissive: 0x3a2600 }); break;
       case 'chrome': m = new THREE.MeshPhongMaterial({ color: 0xc9d2da, specular: 0xffffff, shininess: 140, emissive: 0x1a1f24 }); break;
+      case 'damascus': m = new THREE.MeshPhongMaterial({ map: TEX.damascus(), specular: 0xffffff, shininess: 120 }); break;
+      case 'candy': case 'hyper': m = new THREE.MeshPhongMaterial({ map: TEX[skin](), specular: 0xffffff, shininess: 70 }); break;
+      case 'scales': m = new THREE.MeshPhongMaterial({ map: TEX.scales(), specular: 0x9dffcf, shininess: 110, emissive: 0x06201a }); break;
+      case 'bloodmoon': case 'circuit': case 'electric': case 'molten':
+        m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: 0.9, specular: 0x666666, shininess: 50 }); break;
+      case 'prism': m = new THREE.MeshPhongMaterial({ map: TEX.prism(), emissive: 0xffffff, emissiveMap: TEX.prism(), emissiveIntensity: 0.35, specular: 0xffffff, shininess: 150 }); break;
       default: m = new THREE.MeshLambertMaterial({ color: base });
     }
     return (cache.mat[key] = m);
@@ -3100,9 +3319,15 @@ BR.Models = (function () {
     blade: new THREE.MeshPhongMaterial({ color: 0xc8d0d8, specular: 0xffffff, shininess: 120, side: THREE.DoubleSide }),
     lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false }),
     lensDark: new THREE.MeshPhongMaterial({ color: 0x102030, specular: 0x88ccff, shininess: 120 }),
-    reticle: new THREE.MeshBasicMaterial({ color: 0xff2a3a }),
-    dotHalo: new THREE.MeshBasicMaterial({ color: 0xff2a3a, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }),
+    reticle: new THREE.MeshBasicMaterial({ color: 0xff2236 }),
+    dotHalo: new THREE.MeshBasicMaterial({ color: 0xff3a48, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false }),
     lensRed: new THREE.MeshBasicMaterial({ color: 0xffd2a0, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }),
+    // coated red-dot glass: clear in the middle, blue-violet anti-glare tint toward the rim
+    lensCoat: new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, map: canvasTex('lenscoat', (c, s) => {
+      const g = c.createRadialGradient(s / 2, s / 2, s * 0.12, s / 2, s / 2, s / 2);
+      g.addColorStop(0, 'rgba(255,220,200,0.03)'); g.addColorStop(0.6, 'rgba(150,170,255,0.10)'); g.addColorStop(0.9, 'rgba(120,90,255,0.32)'); g.addColorStop(1, 'rgba(40,40,80,0.7)');
+      c.clearRect(0, 0, s, s); c.fillStyle = g; c.fillRect(0, 0, s, s); }, 64) }),
+    dotHalo2: new THREE.MeshBasicMaterial({ color: 0xff2236, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false }),
     scopeTube: new THREE.MeshPhongMaterial({ color: 0x1d2025, specular: 0x555a60, shininess: 40, side: THREE.DoubleSide }),
     sightDot: new THREE.MeshBasicMaterial({ color: 0xff8a1f }),
     shell: new THREE.MeshLambertMaterial({ color: 0xc8202a }),
@@ -3204,18 +3429,29 @@ BR.Models = (function () {
       k.box(0.012, 0.012, 0.18, 0.02, 0.02, 0.15, M.metal);       // stock rods
       k.box(0.012, 0.012, 0.18, -0.02, 0.02, 0.15, M.metal);
       k.box(0.05, 0.07, 0.015, 0, 0.0, 0.24, M.grip);             // butt plate
-      // Tube red dot: mount, open tube with rims, faint tinted lens, crisp dot + halo
-      k.box(0.026, 0.012, 0.042, 0, 0.1, -0.062, M.dark);
-      k.box(0.012, 0.012, 0.016, 0.02, 0.122, -0.066, M.dark);                         // windage turret
-      k.box(0.012, 0.012, 0.016, 0, 0.142, -0.066, M.dark);                            // elevation turret
-      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.046, 24, 1, true), M.scopeTube);
-      tube.rotation.x = Math.PI / 2; tube.position.set(0, 0.122, -0.07); g.add(tube);
-      for (const z of [-0.093, -0.047]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.0024, 6, 24), M.metal); r.position.set(0, 0.122, z); g.add(r); }
-      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.016, 24), M.lensRed); lens.position.set(0, 0.122, -0.092); g.add(lens);
-      const halo = new THREE.Mesh(new THREE.CircleGeometry(0.0042, 16), M.dotHalo); halo.position.set(0, 0.122, -0.0915); g.add(halo);
-      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0015, 12), M.reticle); rd.position.set(0, 0.122, -0.091); g.add(rd);
-      const ss = new THREE.Object3D(); ss.position.set(0, 0.122, -0.07); g.add(ss);
-      g.userData.sight = ss; g.userData.sightDist = 0.36;
+      // Micro red dot (T2-style): QD mount, housing with a front hood + lip, rear rim, capped
+      // turrets, battery cap, coated lens (clear centre, blue-violet edge) and a crisp dot with glow
+      const RY = 0.126, RZ = -0.07;
+      k.box(0.034, 0.014, 0.05, 0, 0.1, RZ + 0.004, M.dark);                                  // mount base
+      k.box(0.006, 0.01, 0.022, 0.02, 0.098, RZ + 0.012, M.metal);                           // QD lever
+      k.box(0.026, 0.016, 0.034, 0, 0.108, RZ + 0.002, M.scopeTube);                          // body saddle
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.0215, 0.0215, 0.05, 32, 1, true), M.scopeTube);
+      body.rotation.x = Math.PI / 2; body.position.set(0, RY, RZ); g.add(body);
+      const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.0235, 0.0225, 0.014, 32, 1, true), M.scopeTube);
+      hood.rotation.x = Math.PI / 2; hood.position.set(0, RY, RZ - 0.031); g.add(hood);
+      const lip = new THREE.Mesh(new THREE.TorusGeometry(0.0235, 0.0018, 8, 32), M.metal); lip.position.set(0, RY, RZ - 0.038); g.add(lip);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.0215, 0.0024, 8, 32), M.dark); rim.position.set(0, RY, RZ + 0.025); g.add(rim);
+      for (const [x, y, rx, rz] of [[0, RY + 0.025, 0, 0], [0.025, RY, 0, Math.PI / 2]]) {                           // turrets + caps
+        const t = new THREE.Mesh(new THREE.CylinderGeometry(0.0075, 0.0075, 0.012, 14), M.scopeTube); t.position.set(x, y, RZ + 0.004); t.rotation.set(rx, 0, rz); g.add(t);
+        const cp = new THREE.Mesh(new THREE.CylinderGeometry(0.0078, 0.0078, 0.003, 14), M.metal); cp.position.set(x * 1.24, x ? y : y + 0.007, RZ + 0.004); cp.rotation.set(rx, 0, rz); g.add(cp);
+      }
+      const bat = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.008, 14), M.metal); bat.rotation.z = Math.PI / 2; bat.position.set(-0.024, RY - 0.004, RZ + 0.006); g.add(bat);
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.0212, 32), M.lensCoat); lens.position.set(0, RY, RZ - 0.03); g.add(lens);
+      const glow2 = new THREE.Mesh(new THREE.CircleGeometry(0.009, 20), M.dotHalo2); glow2.position.set(0, RY, RZ - 0.0298); g.add(glow2);
+      const halo = new THREE.Mesh(new THREE.CircleGeometry(0.0042, 20), M.dotHalo); halo.position.set(0, RY, RZ - 0.0296); g.add(halo);
+      const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0021, 16), M.reticle); rd.position.set(0, RY, RZ - 0.0294); g.add(rd);
+      const ss = new THREE.Object3D(); ss.position.set(0, RY, RZ); g.add(ss);
+      g.userData.sight = ss; g.userData.sightDist = 0.37;
       anchors(g, -0.34, 0.035, [-0.04, -0.01, 0.03]);
     },
     shotgun(g, S, M) {
@@ -3704,6 +3940,122 @@ BR.Models = (function () {
       ruby: { name: 'Ruby', rarity: 'Mythic', price: 2600, body: 0x120608, accent: 0x120608, glow: 0xff2a4a, blade: 'ruby' },
     },
   };
+  // ---- Mythic wave 2
+  const MYTHIC2 = {
+    rifle: {
+      dragonlord: { name: 'Dragon Lord', rarity: 'Mythic', price: 2400, body: 0x5a0b0b, bodyGloss: 2, accent: 0xffc93a, accentGloss: 2, glow: 0xff5a1f,
+        mod(g, k, P) {
+          const G = liveGlow(0xff5a1f); hueCycle(g, G, 0.0, 0.1, 4, 0.55);
+          const gold = chrome(0xffc93a);
+          const wings = [];
+          for (const sx of [-1, 1]) {
+            const w = new THREE.Group(); w.position.set(sx * 0.04, 0.06, -0.12); g.add(w); wings.push({ w, sx });
+            for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.012, 0.09 - i * 0.015), i % 2 ? gold : chrome(0x8a1010)); f.position.set(sx * (0.02 + i * 0.018), 0.02 + i * 0.012, 0.02 - i * 0.012); f.rotation.x = -0.5; w.add(f); }
+          }
+          anim(g, t => wings.forEach(({ w, sx }) => { w.rotation.z = sx * (0.25 + 0.25 * Math.sin(t * 3)); }));
+          k.box(0.09, 0.075, 0.08, 0, 0.035, -0.74, gold);                                    // dragon-head brake
+          for (const x of [-0.03, 0.03]) k.box(0.014, 0.01, 0.006, x, 0.06, -0.782, G);       // eyes
+          for (let i = 0; i < 4; i++) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.05, 5), gold); h.position.set((i % 2 ? 0.025 : -0.025), 0.09, -0.72 + Math.floor(i / 2) * 0.03); h.rotation.x = 0.6; g.add(h); }
+          orbiters(g, 4, new THREE.OctahedronGeometry(0.008, 0), G, 0, 0.035, -0.82, 0.03, 6, 'z');   // embers at the mouth
+          for (const x of [-0.042, 0.042]) k.box(0.004, 0.012, 0.32, x, 0.035, -0.33, G);
+        } },
+    },
+    holoar: {
+      quantum: { name: 'Quantum', rarity: 'Mythic', price: 2400, body: 0xf2f6ff, bodyGloss: 2, accent: 0x1a2240, accentGloss: 2, glow: 0x3aa0ff,
+        mod(g, k, P) {
+          const G = liveGlow(0x3aa0ff); hueCycle(g, G, 0.55, 0.68, 2.5, 0.62);
+          const hexMat = new THREE.MeshBasicMaterial({ color: 0x6fc8ff, transparent: true, opacity: 0.45, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+          const pv = new THREE.Group(); pv.position.set(0, 0.04, -0.1); g.add(pv);
+          for (let i = 0; i < 5; i++) { const h = new THREE.Mesh(new THREE.CircleGeometry(0.03, 6), hexMat); const a = i / 5 * Math.PI * 2; h.position.set(Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0); h.lookAt(0, 0, 0); pv.add(h); }
+          anim(g, t => { pv.rotation.z = t * 0.8; hexMat.opacity = 0.3 + 0.2 * Math.sin(t * 5); });
+          for (const x of [-0.035, 0.035]) { k.box(0.004, 0.006, 0.42, x, 0.06, -0.14, G); k.box(0.004, 0.006, 0.42, x, 0.0, -0.14, G); }
+          const coil = []; for (let i = 0; i < 4; i++) coil.push(ring(g, 0.033, 0.004, G, 0, 0.035, -0.52 - i * 0.05));
+          anim(g, t => coil.forEach((c, i) => c.scale.setScalar(1 + 0.25 * Math.max(0, Math.sin(t * 8 - i)))));
+        } },
+    },
+    smg: {
+      synthwave: { name: 'Synthwave', rarity: 'Mythic', price: 2200, body: 0x2a0b4a, bodyGloss: 2, accent: 0xff2fa8, accentGloss: 2, glow: 0xff2fa8,
+        mod(g, k, P) {
+          const sun = liveGlow(0xffb000), pink = liveGlow(0xff2fa8), cyan = liveGlow(0x1de9ff);
+          for (let i = 0; i < 4; i++) k.box(0.064, 0.006, 0.07 - i * 0.012, 0, 0.0 + i * 0.012, 0.0, i % 2 ? pink : sun);   // sunset stripes
+          const bars = [];
+          for (let i = 0; i < 7; i++) for (const x of [-0.033, 0.033]) { const b = k.box(0.004, 0.04, 0.012, x, 0.02, -0.2 + i * 0.022, i % 2 ? cyan : pink); bars.push({ b, i }); }
+          anim(g, t => bars.forEach(({ b, i }) => { const v = 0.3 + 0.7 * Math.abs(Math.sin(t * 7 + i * 0.9) * Math.sin(t * 3.1 + i)); b.scale.y = v; b.position.y = 0.0 + v * 0.02; }));    // equalizer
+          k.box(0.07, 0.004, 0.3, 0, 0.073, -0.1, cyan);
+          k.box(0.05, 0.05, 0.05, 0, 0.035, -0.36, chrome(0xff2fa8));
+        } },
+    },
+    shotgun: {
+      volcano: { name: 'Volcano', rarity: 'Mythic', price: 2300, body: 0x1a0a06, bodyGloss: 1, accent: 0x2a1208, glow: 0xff5a00,
+        mod(g, k, P) {
+          const lava = new THREE.MeshPhongMaterial({ map: TEX.molten(), emissive: 0xffffff, emissiveMap: TEX.molten(), emissiveIntensity: 1 });
+          k.box(0.112, 0.05, 0.36, 0, 0.06, -0.38, lava); k.box(0.082, 0.105, 0.33, 0, 0.03, -0.06, lava);
+          const G = liveGlow(0xff7a00); hueCycle(g, G, 0.02, 0.1, 5, 0.55);
+          const drops = [];
+          for (let i = 0; i < 6; i++) { const d = k.box(0.01, 0.016, 0.01, (i % 2 ? 0.03 : -0.03), 0, -0.15 - i * 0.07, G); drops.push({ d, o: Math.random() }); }
+          anim(g, t => drops.forEach(({ d, o }) => { const f = (t * 0.7 + o) % 1; d.position.y = -0.005 - f * 0.08; d.scale.setScalar(1 - f * 0.7); }));
+          const smoke = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.4, depthWrite: false });
+          orbiters(g, 5, new THREE.IcosahedronGeometry(0.014, 0), smoke, 0, 0.09, -0.6, 0.04, 1.5, 'z');
+        } },
+    },
+    sniper: {
+      thunder: { name: 'Thunderstrike', rarity: 'Mythic', price: 2600, body: 0x0d1430, bodyGloss: 2, accent: 0xe8eef8, accentGloss: 2, glow: 0x6fc8ff,
+        mod(g, k, P) {
+          const G = liveGlow(0x9fe8ff);
+          const coils = [-0.3, -0.45, -0.6, -0.75].map(z => ring(g, 0.03, 0.005, chrome(0xe8eef8), 0, 0.04, z));
+          const arcs = [];
+          for (let i = 0; i < 9; i++) { const a = k.box(0.003, 0.003, 0.05, 0, 0.04, -0.3 - i * 0.05, G); arcs.push(a); }
+          anim(g, t => {                                                                        // crackling arcs between the coils
+            const f = Math.floor(t * 20);
+            arcs.forEach((a, i) => { const r = Math.sin(f * 12.9898 + i * 78.233) * 43758.5453; const u = r - Math.floor(r); const ang = u * 6.28;
+              a.position.set(Math.cos(ang) * 0.03, 0.04 + Math.sin(ang) * 0.03, -0.32 - i * 0.05); a.rotation.set(u * 2 - 1, u * 3, 0); a.visible = u > 0.25; });
+            G.color.setHSL(0.55, 1, 0.65 + 0.2 * Math.sin(t * 30));
+          });
+          glowStrip(k, G, 0.5, 0, 0.06, -0.5);
+          for (const x of [-0.032, 0.032]) k.box(0.003, 0.012, 0.3, x, 0.02, 0.0, G);
+        } },
+    },
+    hunter: {
+      phantom: { name: 'Phantom', rarity: 'Mythic', price: 2200, body: 0x9fd8ff, bodyGloss: 2, accent: 0xe8f6ff, accentGloss: 2, glow: 0xbfeaff,
+        mod(g, k, P) {
+          const ghost = new THREE.MeshPhongMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.5, specular: 0xffffff, shininess: 140, emissive: 0x204a6a, depthWrite: false });
+          k.box(0.06, 0.11, 0.24, 0, -0.03, 0.31, ghost); k.box(0.056, 0.066, 0.32, 0, 0.0, 0.0, ghost);                     // ethereal stock + fore-stock shells
+          const wisp = new THREE.MeshBasicMaterial({ color: 0xdff6ff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+          orbiters(g, 4, new THREE.SphereGeometry(0.01, 8, 6), wisp, 0, 0.04, -0.2, 0.07, 1.6, 'z');
+          anim(g, t => { ghost.opacity = 0.4 + 0.15 * Math.sin(t * 2.2); wisp.opacity = 0.5 + 0.3 * Math.sin(t * 4); });
+          const G = liveGlow(0xbfeaff); for (const x of [-0.03, 0.03]) k.box(0.002, 0.008, 0.4, x, 0.045, -0.1, G);
+        } },
+    },
+    pistol: {
+      kitsune: { name: 'Kitsune', rarity: 'Mythic', price: 2000, body: 0xf4f1ea, bodyGloss: 2, accent: 0xd1132a, accentGloss: 2, glow: 0xff3a5c,
+        mod(g, k, P) {
+          const red = chrome(0xd1132a), G = liveGlow(0xff3a5c); hueCycle(g, G, 0.95, 1.02, 3, 0.6);
+          for (let i = 0; i < 4; i++) k.box(0.058, 0.004, 0.01, 0, 0.078, -0.16 + i * 0.04, red);      // lacquer bands
+          const spirits = new THREE.Group(); spirits.position.set(0, 0.04, -0.05); g.add(spirits);
+          for (let i = 0; i < 3; i++) {                                                               // fox-fire spirits with flame tails
+            const sp = new THREE.Group(); const a = i / 3 * Math.PI * 2; sp.position.set(Math.cos(a) * 0.09, Math.sin(a) * 0.09, 0);
+            sp.add(new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), G));
+            const tail = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.04, 8), G); tail.rotation.z = Math.PI / 2 + a; tail.position.set(Math.sin(a) * 0.02, -Math.cos(a) * 0.02, 0); sp.add(tail);
+            spirits.add(sp);
+          }
+          anim(g, t => { spirits.rotation.z = t * 2.2; spirits.children.forEach((c, i) => c.scale.setScalar(0.85 + 0.25 * Math.sin(t * 9 + i))); });
+          const tassel = k.box(0.006, 0.05, 0.006, 0, -0.14, 0.05, red); anim(g, t => { tassel.rotation.z = Math.sin(t * 3) * 0.4; });
+        } },
+    },
+    knife: {
+      sapphire: { name: 'Sapphire', rarity: 'Mythic', price: 2800, body: 0x050a1a, accent: 0x050a1a, glow: 0x2a6bff, blade: 'sapphire' },
+      blackpearl: { name: 'Black Pearl', rarity: 'Mythic', price: 3000, body: 0x0a0612, accent: 0x0a0612, glow: 0xb48cff, blade: 'blackpearl' },
+    },
+  };
+  for (const w in MYTHIC2) MYTHIC[w] = Object.assign(MYTHIC[w] || {}, MYTHIC2[w]);
+  BLADES.sapphire = () => new THREE.MeshPhongMaterial({ shininess: 180, specular: 0xbfd8ff, side: THREE.DoubleSide, emissive: 0x020a30, map: bladeTex('sapphire', (c, s) => {
+    const g = c.createRadialGradient(s * 0.35, s * 0.4, 2, s * 0.5, s * 0.5, s * 0.75); g.addColorStop(0, '#9fc4ff'); g.addColorStop(0.35, '#1f4fff'); g.addColorStop(1, '#020830');
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    for (let i = 0; i < 70; i++) { c.fillStyle = `rgba(200,225,255,${Math.random() * 0.7})`; c.fillRect(Math.random() * s, Math.random() * s, 1.2, 1.2); } }) });
+  BLADES.blackpearl = () => new THREE.MeshPhongMaterial({ shininess: 170, specular: 0xd8b8ff, side: THREE.DoubleSide, emissive: 0x10051c, map: bladeTex('blackpearl', (c, s) => {
+    const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#120a24'); g.addColorStop(0.3, '#5a2bb0'); g.addColorStop(0.55, '#1a1040'); g.addColorStop(0.8, '#2b6bb0'); g.addColorStop(1, '#0a0614');
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    for (let i = 0; i < 10; i++) { c.strokeStyle = `rgba(200,170,255,${0.15 + Math.random() * 0.2})`; c.beginPath(); c.arc(Math.random() * s, Math.random() * s, 10 + Math.random() * 40, 0, 3); c.stroke(); } }) });
   for (const w in MYTHIC) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, MYTHIC[w]);
   for (const w in BLUEPRINTS) BLUEPRINTS[w] = Object.assign({ default: { name: 'Standard Issue', rarity: 'Base', price: 0 } }, BLUEPRINTS[w]);
 
@@ -3718,6 +4070,13 @@ BR.Models = (function () {
     neon:    { name: 'Neon Grid', price: 450, tex: 'neon', pad: 0x0c0e10, glow: 0x2ff3ff },
     galaxy:  { name: 'Galaxy', price: 550, tex: 'galaxy', pad: 0x120a26, glow: 0xb48cff },
     gold:    { name: 'Gilded', price: 750, color: 0xe6b422, pad: 0x3a2a05, gloss: true, glow: 0xfff0b0 },
+    hyper:   { name: 'Vice', price: 800, tex: 'hyper', pad: 0x1de9ff, glow: 0x1de9ff, fx: true, rarity: 'Legendary' },
+    scales:  { name: 'Wyvern', price: 850, tex: 'scales', pad: 0x0b1f1a, glow: 0x9dffcf, fx: true, rarity: 'Legendary' },
+    bloodmoon:{ name: 'Crimson Web', price: 900, tex: 'bloodmoon', emissive: 0.9, pad: 0x120002, glow: 0xff1f3d, fx: true, rarity: 'Legendary' },
+    circuit: { name: 'Overclock', price: 1000, tex: 'circuit', emissive: 1, pad: 0x05140f, glow: 0x2bffb0, fx: true, rarity: 'Mythic' },
+    molten:  { name: 'Magma Fist', price: 1100, tex: 'molten', emissive: 1, pad: 0x1a0a04, glow: 0xff7a00, fx: true, rarity: 'Mythic' },
+    electric:{ name: 'Storm Caller', price: 1100, tex: 'electric', emissive: 1, pad: 0x0a1030, glow: 0x6fc8ff, fx: true, rarity: 'Mythic' },
+    prism:   { name: 'Prismatic', price: 1300, tex: 'prism', emissive: 0.45, gloss: true, pad: 0xffffff, glow: 0xffffff, fx: true, rarity: 'Mythic' },
   };
   function gloveMats(id) {
     const key = 'glove-' + id;
@@ -3725,9 +4084,10 @@ BR.Models = (function () {
     const G = GLOVES[id] || GLOVES.default;
     let main;
     if (G.tex === 'neon') main = skinMaterial('neon');
-    else if (G.tex) main = new THREE.MeshLambertMaterial({ map: TEX[G.tex]() });
+    else if (G.tex && G.emissive) main = new THREE.MeshPhongMaterial({ map: TEX[G.tex](), emissive: 0xffffff, emissiveMap: TEX[G.tex](), emissiveIntensity: G.emissive, specular: 0x888888, shininess: G.gloss ? 110 : 40 });
+    else if (G.tex) main = G.gloss || G.fx ? new THREE.MeshPhongMaterial({ map: TEX[G.tex](), specular: 0xffffff, shininess: 80 }) : new THREE.MeshLambertMaterial({ map: TEX[G.tex]() });
     else main = G.gloss ? new THREE.MeshPhongMaterial({ color: G.color, specular: 0xffffff, shininess: 70 }) : new THREE.MeshLambertMaterial({ color: G.color });
-    return (cache.mat[key] = { main, pad: new THREE.MeshLambertMaterial({ color: G.pad }), glow: G.glow ? glowMat(G.glow) : null });
+    return (cache.mat[key] = { main, pad: G.fx ? new THREE.MeshPhongMaterial({ color: G.pad, specular: 0xffffff, shininess: 120 }) : new THREE.MeshLambertMaterial({ color: G.pad }), glow: G.glow ? glowMat(G.glow) : null, fx: !!G.fx });
   }
   // A gloved hand, fingers along -Z curling down (-Y), thumb on +X (mirrored for the left hand).
   function hand(id, left) {
@@ -3743,6 +4103,11 @@ BR.Models = (function () {
     }
     const th = box(0.013, 0.014, 0.04, 0.03, -0.006, -0.02, m.main); th.rotation.y = -0.5 * sx; th.rotation.x = 0.3;  // thumb
     box(0.056, 0.034, 0.02, 0, 0, 0.042, m.pad);                 // cuff
+    if (m.fx && m.glow) {                                        // flashy gloves: glowing knuckle studs, cuff band, finger lines
+      for (let i = 0; i < 4; i++) box(0.007, 0.004, 0.007, -0.019 + i * 0.0128, 0.006, -0.04, m.glow);
+      box(0.058, 0.005, 0.022, 0, 0.012, 0.042, m.glow);
+      box(0.004, 0.003, 0.03, 0.022, 0.024, -0.005, m.glow); box(0.004, 0.003, 0.03, -0.022, 0.024, -0.005, m.glow);
+    }
     return g;
   }
 
@@ -3813,7 +4178,14 @@ BR.Models = (function () {
     },
     charm,
     // Run a model's animated parts (Mythic blueprints). Cheap no-op for everything else.
+    tick(t) { for (let i = 0; i < ANIM_TEX.length; i++) ANIM_TEX[i]._anim(ANIM_TEX[i], t); },
     animate(model, t) { const a = model && model.userData.anim; if (a) for (let i = 0; i < a.length; i++) a[i](t); },
+    tracerOpts(id, t) {
+      const tr = TRACERS[id] || TRACERS.default;
+      if (!tr.style) return null;
+      const c2 = tr.color2 < 0 ? new THREE.Color().setHSL((t * 0.7 + 0.5) % 1, 1, 0.6).getHex() : tr.color2;
+      return { style: tr.style, color2: c2 };
+    },
     tracerColor(id, t) {
       const tr = TRACERS[id] || TRACERS.default;
       if (tr.color >= 0) return tr.color;
@@ -3905,8 +4277,8 @@ BR.Models = (function () {
           // blade out the outer side sweeping up-right with the hook curving up, flat facing you.
           // model Z (handle -> ring) -> left, model -Y (hook) -> up, model X -> toward the camera's -Z
           m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, -1, 0), new THREE.Vector3(-1, 0, 0)));
-          m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.15, 0.3, 0.3, 'YXZ')));
-          m.scale.setScalar(0.95);
+          m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0.25, -0.32, 'YXZ')));
+          m.scale.setScalar(0.8);
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
           const P = new THREE.Vector3(0, 0.066, 0.12).applyMatrix4(m.matrix);   // ring centre
@@ -3958,6 +4330,8 @@ BR.Models = (function () {
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.012, 0.04, 10), orange); cap.rotation.z = Math.PI / 2; cap.position.x = 0.08; inj.add(cap);
       inj.userData.cap = cap; inj.scale.setScalar(1.3); inj.visible = false;
       this.scene.add(inj); this.injector = inj;
+      if (this.vmNade) this.scene.remove(this.vmNade);
+      this.vmNade = BR.Shockwave.model(); this.vmNade.scale.setScalar(0.55); this.vmNade.visible = false; this.scene.add(this.vmNade);
 
       this.lastWeapon = null;
     }
@@ -3981,7 +4355,7 @@ BR.Models = (function () {
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.def.melee ? 2.4 : 2.1; }
 
-    hide() { if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -4017,7 +4391,7 @@ BR.Models = (function () {
       const sprinting = m.onGround && !m.sliding && sp > run * 0.92 && !p.ads && !p.fireHeld && !reloading && this.drawT <= 0 && this.inspectT <= 0;
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
-      if (def.melee) { hx = 0.11 * s; hy = -0.075; hz = -0.4; }      // karambit low in the right of the view, like CS
+      if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) - sg.z; }
       const A = this.adsW, nA = 1 - A * 0.85;
       // Bob: figure-eight while moving on the ground
@@ -4082,6 +4456,7 @@ BR.Models = (function () {
         ox += dr * (0.05 * wind - 0.2 * arc); oy += 0.03 * wind - 0.05 * arc;
         orz += dr * (0.35 * wind - 1.05 * arc); ory += dr * 0.6 * arc; orx += -0.5 * arc + 0.15 * wind;
       }
+      if (this.throwT > 0) this.throwT = Math.max(0, this.throwT - dt);
       // Grapple: off hand throws out toward the hook; the gun drops to a one-handed hold
       this.ropeValid = false;
       const hooked = !!m.grapple;
@@ -4103,7 +4478,7 @@ BR.Models = (function () {
       // look down at the chest while stabbing (the game camera tilts by the same amount)
       this.lookDown = this.stimT > 0 ? 0.22 * win(this.stimK, 0.26, 0.4, 0.66, 0.84) : 0;
       if (this.injector) this.injector.userData.plunger.position.x = -0.075 + (this.stimK > 0.48 && this.stimT > 0 ? Math.min(1, (this.stimK - 0.48) / 0.15) * 0.022 : 0);
-      const busy = Math.max(this.grapW, this.stimW);
+      const busy = Math.max(this.grapW, this.stimW, this.throwT > 0 ? 0.7 : 0);
       if (busy > 0.01) {
         oy -= 0.05 * busy; ox += 0.04 * busy; orz -= 0.22 * busy; orx -= 0.1 * this.stimW;
         if (this.stimW > 0.01) leftTarget = null;
@@ -4227,7 +4602,7 @@ BR.Models = (function () {
         spin.obj.quaternion.copy(sq); spin.obj.updateMatrixWorld(true);
         // mirrored glove (thumb on -X): -X points at the ring, wrist down toward you, back of hand up
         const X = (this._kx || (this._kx = new THREE.Vector3())).subVectors(a, b).normalize();
-        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.35, -0.9, -0.15).normalize();
+        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.6, -0.78, -0.05).normalize();
         Z.addScaledVector(X, -Z.dot(X)).normalize();
         const Y = (this._ky || (this._ky = new THREE.Vector3())).crossVectors(Z, X);
         const gripQ = (this._kq2 || (this._kq2 = new THREE.Quaternion())).setFromRotationMatrix((this._km || (this._km = new THREE.Matrix4())).makeBasis(X, Y, Z));
@@ -4254,12 +4629,12 @@ BR.Models = (function () {
         }
       }
       H.visible = true;
-      const elbowR = spin ? this._v2.set(0.3 * s, -0.7, -0.45) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
+      const elbowR = spin ? this._v2.set(0.5 * s, -0.68, -0.3) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
       this.limb(R.fore, H.localToWorld(new THREE.Vector3(0, 0, spin ? 0.075 : 0.05)), elbowR, spin ? 0.72 : 1);
       // left hand on the foregrip / mag / charging handle
       const lt = leftTarget || ud.fore;
       const special = this.specialLeft();          // grapple / stim pose (or null)
-      this.launcher.visible = false; this.injector.visible = false;
+      this.launcher.visible = false; this.injector.visible = false; this.vmNade.visible = false;
       if (spin && !(special && special.w > 0.05)) {
         // empty left fist, mirroring the knife hand (like CS)
         L.hand.visible = false;
@@ -4287,6 +4662,11 @@ BR.Models = (function () {
         L.hand.position.lerp(special.p, special.w);
         L.hand.quaternion.slerp(special.q, special.w);
         this.launcher.visible = special.kind === 'grapple' && special.w > 0.05;
+        if (special.kind === 'throw' && special.held) {
+          this.vmNade.visible = true;
+          this.vmNade.position.copy(L.hand.position).add(this._v2.set(0, -0.03, -0.055).multiplyScalar(1.3).applyQuaternion(L.hand.quaternion));
+          BR.Models.animate(this.vmNade, performance.now() / 1000);
+        }
         if (special.kind === 'stim') {
           // pen injector held in the fist, needle along the hand's X axis
           this.injector.visible = special.w > 0.05;
@@ -4317,6 +4697,16 @@ BR.Models = (function () {
         const Y = this._sy.crossVectors(Z, X);
         return out.setFromRotationMatrix(this._sm.makeBasis(X, Y, Z));
       };
+      if (this.throwT > 0) {
+        // grenade throw: hand comes up behind the shoulder line, then whips forward and releases
+        const k = 1 - this.throwT / this.throwDur, q = this._sq1;
+        const up = smooth(k / 0.35), fwd = smooth((k - 0.4) / 0.22), out = smooth((k - 0.7) / 0.3);
+        const p = this._spo.set(-0.3, -0.55, -0.2).lerp(this._sv.set(-0.15, -0.06, -0.24), up).lerp(this._sx.set(-0.05, -0.02, -0.62), fwd).lerp(this._sy.set(-0.25, -0.5, -0.3), out);
+        const X = this._sx.set(0.3, 1, 0.2).normalize();
+        const Z = this._sz.set(-0.3, -0.4, 0.85).lerp(this._sv.set(-0.1, -0.2, 0.97), fwd); Z.addScaledVector(X, -Z.dot(X)).normalize();
+        q.setFromRotationMatrix(this._sm.makeBasis(X, this._sy.crossVectors(Z, X), Z));
+        return { kind: 'throw', w: Math.min(1, Math.min(k / 0.12, (1 - k) / 0.2)), p, q, held: k < 0.58 };
+      }
       if (this.stimW > 0.01) {
         const k = this.stimK, q = this._sq1;
         // enter from below -> present the pen and flick the cap -> turn the needle on yourself ->
@@ -4365,6 +4755,7 @@ BR.Models = (function () {
     }
 
     onGrapple() { this.grapT = 0.3; }
+    onThrow() { this.throwT = this.throwDur = 0.42; }
     onStim() { this.stimT = this.stimDur = 0.95; this.lastStimK = 0; }
 
     limb(mesh, a, b, thick) {
@@ -4460,6 +4851,7 @@ BR.Actor = class Actor {
     this.cur = 2;
     this.grappleCd = 0;
     this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0;
+    this.nades = 0; this.nadeCd = 0;      // shockwave grenades carried
     this.lunge = null;
     this.ammo = { light: 0, heavy: 0, shells: 0 };
     this.kills = 0;
@@ -5137,6 +5529,7 @@ BR.Loot = class Loot {
       const t = BR.util.pick(['light', 'light', 'heavy', 'heavy', 'shells'], R);
       return this.add({ kind: 'ammo', ammoType: t, amount: C.ammoPickup[t] }, x, y, z);
     }
+    if (kind === 'shock') return this.add({ kind: 'shock', amount: 1 }, x, y, z);
     if (kind === 'heal') return this.add({ kind: 'heal', amount: C.loot.healAmount }, x, y, z);
     if (kind === 'shield') return this.add({ kind: 'shield', amount: C.loot.shieldAmount }, x, y, z);
   }
@@ -5180,6 +5573,9 @@ BR.Loot = class Loot {
       g.userData.ring = ring;
     } else if (item.kind === 'ammo') {
       g.add(new THREE.Mesh(G.ammo, this.mat('a_' + item.ammoType, AMMO_COLORS[item.ammoType])));
+    } else if (item.kind === 'shock') {
+      const n = BR.Shockwave.model(); n.scale.setScalar(2.6); g.add(n); g.userData.nade = n;
+      const ring = new THREE.Mesh(G.ring, this.mat('ringShock', 0xb04bff, true)); ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4; g.add(ring); g.userData.ring = ring;
     } else if (item.kind === 'heal') {
       g.add(new THREE.Mesh(G.heal, this.mat('heal', 0xf4f4f0)));
       g.add(new THREE.Mesh(G.cross, this.mat('healx', 0x3ccf6e)));
@@ -5208,6 +5604,7 @@ BR.Loot = class Loot {
       it.mesh.rotation.y = t * 1.4 + it.phase;
       it.mesh.position.y = it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;
       if (it.mesh.userData.ring) it.mesh.userData.ring.rotation.z = -it.mesh.rotation.y;
+      if (it.mesh.userData.nade) BR.Models.animate(it.mesh.userData.nade, t);
     }
   }
 
@@ -5231,7 +5628,8 @@ BR.Loot = class Loot {
       if (it.kind === 'ammo') {
         const cap = C.ammoCap[it.ammoType];
         if (actor.ammo[it.ammoType] < cap) { actor.ammo[it.ammoType] = Math.min(cap, actor.ammo[it.ammoType] + it.amount); took = true; }
-      } else if (it.kind === 'heal') took = actor.heal(it.amount);
+      } else if (it.kind === 'shock') { if ((actor.nades || 0) < C.shockwave.maxCarry) { actor.nades = (actor.nades || 0) + it.amount; took = true; } }
+      else if (it.kind === 'heal') took = actor.heal(it.amount);
       else if (it.kind === 'shield') took = actor.addShield(it.amount);
       else if (it.kind === 'weapon') {
         const def = C.weapons[it.wid];
@@ -5459,6 +5857,15 @@ BR.Effects = class Effects {
       this.puffs.push({ mesh, life: 0, max: 0.25 });
     }
     this.ti = 0; this.pi = 0;
+    // Sparks: tiny additive cubes with velocity + gravity (hit bursts, headshot crits, shockwaves)
+    this.sparks = [];
+    const sg = new THREE.BoxGeometry(1, 1, 1);
+    for (let i = 0; i < 90; i++) {
+      const m = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+      m.visible = false; m.frustumCulled = false; scene.add(m);
+      this.sparks.push({ m, v: new THREE.Vector3(), life: 0, max: 1, s: 0.05, g: 9 });
+    }
+    this.si = 0;
     // Grapple rope + hook
     const rg = new THREE.BufferGeometry();
     rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
@@ -5517,6 +5924,27 @@ BR.Effects = class Effects {
     t.trail.position.copy(from); t.trail.lookAt(look);
     t.glow.position.copy(from); t.glow.lookAt(look);
     t.streak.visible = t.trail.visible = t.glow.visible = true;
+    // styled tracers: extra additive "beads" (spiral strands, sparks, bolt segments)
+    t.style = opts && opts.style || null;
+    if (t.fx) for (const b of t.fx) b.visible = false;
+    if (t.style) {
+      if (!t.fx) {
+        t.fx = [];
+        for (let i = 0; i < 16; i++) {
+          const b = new THREE.Mesh(this._beadGeo || (this._beadGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0, 0.5)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+          b.frustumCulled = false; b.visible = false; this.scene.add(b); t.fx.push(b);
+        }
+        t.p1 = new THREE.Vector3(); t.p2 = new THREE.Vector3(); t.jit = [];
+      }
+      const c2 = opts.color2 !== undefined ? opts.color2 : c;
+      for (const b of t.fx) { b.material.color.setHex(c2); b.visible = true; }
+      if (t.style === 'dual') t.glow.material.color.setHex(c2);
+      t.p1.crossVectors(t.dir, Math.abs(t.dir.y) > 0.9 ? this._ax || (this._ax = new THREE.Vector3(1, 0, 0)) : this._ay || (this._ay = new THREE.Vector3(0, 1, 0))).normalize();
+      t.p2.crossVectors(t.dir, t.p1).normalize();
+      t.jit.length = 0;
+      for (let i = 0; i < 16; i++) t.jit.push(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random());
+      t.phase = Math.random() * 6;
+    }
     this.placeTracer(t);
   }
 
@@ -5533,7 +5961,60 @@ BR.Effects = class Effects {
     t.trail.material.opacity = 0.4 * Math.max(0, fade);
     t.glow.position.copy(t.streak.position);
     t.glow.scale.set(t.w * 4, t.w * 4, t.streak.scale.z);
-    t.glow.material.opacity = t.t > t.dur ? 0 : 0.28;
+    t.glow.material.opacity = t.t > t.dur ? 0 : t.style === 'dual' ? 0.5 : 0.28;
+    if (t.style) this.placeStyled(t, head, tail, fade);
+  }
+
+  placeStyled(t, head, tail, fade) {
+    const fx = t.fx, n = fx.length, P = this._sp || (this._sp = new THREE.Vector3()), Q = this._sq || (this._sq = new THREE.Vector3());
+    const alive = t.t <= t.dur + 0.12;
+    if (t.style === 'dual') {
+      // a pulsing outer sheath in the second colour
+      const b = fx[0]; for (let i = 1; i < n; i++) fx[i].visible = false;
+      b.position.copy(t.trail.position); b.quaternion.copy(t.trail.quaternion);
+      b.scale.set(t.w * 2.2, t.w * 2.2, Math.max(0.01, head)); b.material.opacity = 0.28 * Math.max(0, fade);
+      return;
+    }
+    if (t.style === 'helix') {
+      // two strands winding around the streak (and lingering on the trail)
+      const len = Math.max(0.01, Math.min(head, 9)), s0 = head - len;
+      for (let i = 0; i < n; i++) {
+        const strand = i & 1, u = (i >> 1) / (n / 2 - 1), s = s0 + u * len;
+        const a = s * 2.4 + t.phase + strand * Math.PI;
+        P.copy(t.from).addScaledVector(t.dir, s).addScaledVector(t.p1, Math.cos(a) * 0.11).addScaledVector(t.p2, Math.sin(a) * 0.11);
+        fx[i].position.copy(P); fx[i].quaternion.copy(t.streak.quaternion);
+        fx[i].scale.set(0.05, 0.05, 0.22);
+        fx[i].material.opacity = alive ? Math.max(0, fade) * (0.4 + 0.6 * u) : 0;
+      }
+      return;
+    }
+    if (t.style === 'spark') {
+      // sparkler: embers shed behind the head drift outward and fade
+      for (let i = 0; i < n; i++) {
+        const u = i / n, s = Math.max(0, head - u * Math.min(head, 7));
+        const drift = (t.t * 1.6 + u) * 0.25;
+        P.copy(t.from).addScaledVector(t.dir, s).addScaledVector(t.p1, t.jit[i * 3] * drift).addScaledVector(t.p2, t.jit[i * 3 + 1] * drift - drift * 0.4);
+        fx[i].position.copy(P); fx[i].quaternion.copy(t.streak.quaternion);
+        const sz = 0.07 * (1 - u * 0.6);
+        fx[i].scale.set(sz, sz, sz);
+        fx[i].material.opacity = alive ? Math.max(0, fade) * (1 - u * 0.7) * (0.6 + 0.4 * Math.sin(t.t * 40 + i)) : 0;
+      }
+      return;
+    }
+    if (t.style === 'lightning') {
+      // jagged bolt along the shot that re-forks every frame
+      const len = Math.max(0.01, head), seg = len / n;
+      P.copy(t.from);
+      for (let i = 0; i < n; i++) {
+        const s1 = (i + 1) * seg, j = i === n - 1 ? 0 : 0.16;
+        Q.copy(t.from).addScaledVector(t.dir, s1).addScaledVector(t.p1, (Math.random() * 2 - 1) * j).addScaledVector(t.p2, (Math.random() * 2 - 1) * j);
+        const b = fx[i];
+        b.position.copy(P); b.lookAt(Q);
+        b.scale.set(0.035, 0.035, P.distanceTo(Q));
+        b.material.opacity = alive ? Math.max(0, fade) : 0;
+        P.copy(Q);
+      }
+    }
   }
 
   impact(p, blood) {
@@ -5544,6 +6025,20 @@ BR.Effects = class Effects {
     f.mesh.visible = true;
     f.mesh.scale.setScalar(1);
     f.life = f.max = 0.25;
+  }
+
+  // Burst of n sparks from p: color, speed, size, life, gravity
+  burst(p, color, n, speed, size, life, grav) {
+    for (let i = 0; i < n; i++) {
+      const s = this.sparks[this.si++ % this.sparks.length];
+      s.m.position.copy(p);
+      s.v.set(Math.random() * 2 - 1, Math.random() * 1.6 - 0.3, Math.random() * 2 - 1).normalize().multiplyScalar(speed * (0.4 + Math.random() * 0.8));
+      s.m.material.color.setHex(Array.isArray(color) ? color[i % color.length] : color);
+      s.s = (size || 0.05) * (0.6 + Math.random() * 0.8);
+      s.life = s.max = (life || 0.35) * (0.7 + Math.random() * 0.6);
+      s.g = grav === undefined ? 9 : grav;
+      s.m.visible = true;
+    }
   }
 
   flash(p) {
@@ -5557,6 +6052,17 @@ BR.Effects = class Effects {
   }
 
   update(dt) {
+    for (const s of this.sparks) {
+      if (s.life <= 0) continue;
+      s.life -= dt;
+      if (s.life <= 0) { s.m.visible = false; continue; }
+      s.v.y -= s.g * dt; s.v.multiplyScalar(1 - dt * 2.5);
+      s.m.position.addScaledVector(s.v, dt);
+      const k = s.life / s.max;
+      s.m.scale.set(s.s, s.s, s.s * (1 + s.v.length() * 0.08));
+      s.m.lookAt(s.m.position.x + s.v.x, s.m.position.y + s.v.y, s.m.position.z + s.v.z);
+      s.m.material.opacity = Math.min(1, k * 1.6);
+    }
     for (const r of this.rings) {
       if (!r.m.visible) continue;
       r.life -= dt;
@@ -5568,7 +6074,7 @@ BR.Effects = class Effects {
     for (const t of this.tracers) {
       if (!t.trail.visible) continue;
       t.t += dt;
-      if (t.t >= t.life) { t.streak.visible = t.trail.visible = t.glow.visible = false; continue; }
+      if (t.t >= t.life) { t.streak.visible = t.trail.visible = t.glow.visible = false; if (t.fx) for (const b of t.fx) b.visible = false; continue; }
       this.placeTracer(t);
     }
     for (const f of this.puffs) {
@@ -5579,6 +6085,155 @@ BR.Effects = class Effects {
       f.mesh.scale.setScalar(f.mesh.scale.x + dt * 4);
       if (f.life <= 0) f.mesh.visible = false;
     }
+  }
+};
+
+</script>
+<script>
+'use strict';
+// =============================================================================
+// SHOCKWAVE GRENADES — a movement item for trickshots. Throw (HUD "NADE" button
+// or T), it arcs and detonates on contact (or after its fuse) in a purple
+// shockwave that launches everyone nearby — you included — away from the blast
+// and up into the air. Enemies take a little damage; you take none.
+//
+//   CONFIG.shockwave: radius, launch strength, carry cap, fuse...
+//   game.shock.throw(actor)   -> true if thrown
+//   game.shock.update(dt)     -> flies grenades + animates blasts
+// =============================================================================
+BR.Shockwave = class Shockwave {
+  constructor(game) {
+    this.game = game;
+    this.nades = [];
+    this.blasts = [];
+    const add = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide };
+    this.geo = {
+      sphere: new THREE.SphereGeometry(1, 24, 16),
+      ring: new THREE.RingGeometry(0.82, 1, 48),
+    };
+    this.pool = [];
+    for (let i = 0; i < 4; i++) {
+      const shell = new THREE.Mesh(this.geo.sphere, new THREE.MeshBasicMaterial(Object.assign({ color: 0xa64bff, opacity: 0 }, add)));
+      const core = new THREE.Mesh(this.geo.sphere, new THREE.MeshBasicMaterial(Object.assign({ color: 0xffd6ff, opacity: 0 }, add)));
+      const r1 = new THREE.Mesh(this.geo.ring, new THREE.MeshBasicMaterial(Object.assign({ color: 0xc77dff, opacity: 0 }, add)));
+      const r2 = new THREE.Mesh(this.geo.ring, new THREE.MeshBasicMaterial(Object.assign({ color: 0xff5cf0, opacity: 0 }, add)));
+      const r3 = new THREE.Mesh(this.geo.ring, new THREE.MeshBasicMaterial(Object.assign({ color: 0x7b2cff, opacity: 0 }, add)));
+      r1.rotation.x = -Math.PI / 2;
+      for (const m of [shell, core, r1, r2, r3]) { m.visible = false; m.frustumCulled = false; game.scene.add(m); }
+      this.pool.push({ shell, core, r1, r2, r3, t: 9, pos: new THREE.Vector3() });
+    }
+    this.pi = 0;
+  }
+
+  // The grenade itself: dark faceted shell, glowing purple core, two spinning bands.
+  static model() {
+    const g = new THREE.Group();
+    const dark = new THREE.MeshPhongMaterial({ color: 0x1c1626, specular: 0xb48cff, shininess: 80, flatShading: true });
+    const glow = new THREE.MeshBasicMaterial({ color: 0xb04bff });
+    const hot = new THREE.MeshBasicMaterial({ color: 0xffb8ff });
+    g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 0), dark));
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.052, 16, 12), glow); g.add(core);
+    const pip = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), hot); g.add(pip);
+    const b1 = new THREE.Mesh(new THREE.TorusGeometry(0.083, 0.008, 8, 28), glow);
+    const b2 = new THREE.Mesh(new THREE.TorusGeometry(0.083, 0.008, 8, 28), glow); b2.rotation.x = Math.PI / 2;
+    g.add(b1, b2);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 0.03, 10), dark); cap.position.y = 0.085; g.add(cap);
+    const ringPin = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.004, 6, 14), new THREE.MeshPhongMaterial({ color: 0xd6d9e0, specular: 0xffffff, shininess: 90 }));
+    ringPin.position.set(0.03, 0.1, 0); g.add(ringPin);
+    g.userData.anim = [t => { b1.rotation.y = t * 4; b2.rotation.z = t * 3; const k = 0.85 + 0.15 * Math.sin(t * 14); core.scale.setScalar(k); glow.color.setHSL(0.78 + 0.04 * Math.sin(t * 6), 1, 0.6); }];
+    return g;
+  }
+
+  throw(actor) {
+    const C = BR.CONFIG.shockwave, g = this.game;
+    if (!actor.alive || (actor.nades || 0) <= 0 || (actor.nadeCd || 0) > 0 || actor.mover.dropping) return false;
+    actor.nades--; actor.nadeCd = C.throwCooldown;
+    const eye = actor.eye(new THREE.Vector3()), dir = actor.aimDir(new THREE.Vector3());
+    const right = new THREE.Vector3(Math.cos(actor.yaw), 0, -Math.sin(actor.yaw));
+    const pos = eye.addScaledVector(dir, 0.55).addScaledVector(right, -0.18).add(new THREE.Vector3(0, -0.12, 0));
+    const vel = dir.clone().multiplyScalar(C.throwSpeed).add(new THREE.Vector3(0, C.throwLift, 0)).addScaledVector(actor.mover.vel, 0.6);
+    const mesh = Shockwave.model(); mesh.scale.setScalar(1.6); mesh.position.copy(pos);
+    g.scene.add(mesh);
+    this.nades.push({ pos, vel, mesh, owner: actor, t: 0, trailT: 0 });
+    return true;
+  }
+
+  update(dt) {
+    const g = this.game, C = BR.CONFIG.shockwave, W = g.world;
+    for (let i = this.nades.length - 1; i >= 0; i--) {
+      const n = this.nades[i];
+      n.t += dt;
+      let boom = n.t > C.fuse;
+      const steps = 2, h = dt / steps;
+      for (let s = 0; s < steps && !boom; s++) {
+        n.vel.y -= C.gravity * h;
+        const len = n.vel.length() * h;
+        if (len < 1e-5) continue;
+        const d = this._d || (this._d = new THREE.Vector3()); d.copy(n.vel).normalize();
+        const hit = g.hitscan(n.owner, n.pos, d, len + 0.12);
+        if (hit.t < len + 0.12) { n.pos.addScaledVector(d, Math.max(0, hit.t - 0.12)); boom = true; break; }
+        n.pos.addScaledVector(n.vel, h);
+      }
+      n.mesh.position.copy(n.pos);
+      n.mesh.rotation.x += dt * 9; n.mesh.rotation.z += dt * 6;
+      BR.Models.animate(n.mesh, g.time);
+      n.trailT -= dt;
+      if (n.trailT <= 0) { n.trailT = 0.025; g.fx.burst(n.pos, [0xb04bff, 0xff7af5], 2, 0.6, 0.05, 0.3, 0); }
+      if (boom) { this.explode(n.pos, n.owner); g.scene.remove(n.mesh); this.nades.splice(i, 1); }
+    }
+    for (const b of this.pool) {
+      if (b.t > 1) continue;
+      b.t += dt;
+      const k = Math.min(1, b.t / 0.45), e = 1 - Math.pow(1 - k, 3), R = C.radius;
+      b.shell.scale.setScalar(0.3 + e * R * 0.95); b.shell.material.opacity = 0.55 * (1 - k);
+      const kc = Math.min(1, b.t / 0.18);
+      b.core.scale.setScalar(0.4 + kc * 2.4); b.core.material.opacity = 0.95 * (1 - kc);
+      const kr = Math.min(1, b.t / 0.6), er = 1 - Math.pow(1 - kr, 2);
+      b.r1.scale.setScalar(0.3 + er * R * 1.35); b.r1.material.opacity = 0.9 * (1 - kr);
+      b.r2.scale.setScalar(0.3 + er * R * 0.9); b.r2.material.opacity = 0.75 * (1 - kr);
+      b.r3.scale.setScalar(0.2 + Math.min(1, b.t / 0.35) * R * 0.7); b.r3.material.opacity = 0.8 * (1 - Math.min(1, b.t / 0.35));
+      if (b.t > 1) for (const m of [b.shell, b.core, b.r1, b.r2, b.r3]) m.visible = false;
+    }
+    for (const a of g.actors) if (a.nadeCd > 0) a.nadeCd -= dt;
+  }
+
+  explode(pos, owner) {
+    const g = this.game, C = BR.CONFIG.shockwave, R = C.radius;
+    // VFX
+    const b = this.pool[this.pi++ % this.pool.length];
+    b.t = 0; b.pos.copy(pos);
+    for (const m of [b.shell, b.core, b.r1, b.r2, b.r3]) { m.visible = true; m.position.copy(pos); }
+    b.r2.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+    b.r3.lookAt(g.camera.position);
+    g.fx.burst(pos, [0xb04bff, 0xff5cf0, 0xffffff, 0x7b2cff], 40, 15, 0.09, 0.7, 4);
+    g.fx.burst(pos, [0xd9a8ff, 0xffffff], 16, 6, 0.06, 0.4, 0);
+    // launch everyone in range away from the blast and up
+    let hitPlayer = false;
+    for (const a of g.actors) {
+      if (!a.alive) continue;
+      const m = a.mover, cx = m.pos.x, cy = m.pos.y + m.h * 0.5, cz = m.pos.z;
+      const dx = cx - pos.x, dy = cy - pos.y, dz = cz - pos.z, d = Math.hypot(dx, dy, dz);
+      if (d > R) continue;
+      if (!g.world.lineOfSight(pos.x, pos.y + 0.2, pos.z, cx, cy, cz)) continue;
+      const k = 1 - d / R, inv = 1 / Math.max(d, 0.001);
+      const push = C.launch * (0.45 + 0.55 * k);
+      if (m.grapple) m.releaseGrapple();
+      m.vel.x += dx * inv * push; m.vel.z += dz * inv * push;
+      m.vel.y = Math.max(m.vel.y + dy * inv * push * 0.6, C.lift * (0.55 + 0.45 * k));
+      m.onGround = false; m.sliding = false;
+      m.pos.y += 0.05;
+      if (a === g.player) hitPlayer = true;
+      if (a !== owner && C.damage > 0) g.applyDamage(a, owner, C.damage * (0.4 + 0.6 * k), false, new THREE.Vector3(cx, cy, cz), 'shockwave');
+    }
+    const cp = g.camera.position, dist = cp.distanceTo(pos);
+    if (dist < 60) BR.Audio.shockwave(dist);
+    if (dist < R * 1.8) { g.cam.shake = Math.max(g.cam.shake, 0.35 * (1 - dist / (R * 1.8)) + 0.05); g.hud.shockFlash(); }
+    if (hitPlayer) { g.hud.tech('SHOCKWAVE'); g.cam.hitFov = Math.min(8, (g.cam.hitFov || 0) - 6); }
+  }
+
+  clear() {
+    for (const n of this.nades) this.game.scene.remove(n.mesh);
+    this.nades.length = 0;
   }
 };
 
@@ -5746,6 +6401,7 @@ BR.Input = class Input {
       if (e.code === 'KeyR') this.press('reload');
       if (e.code === 'KeyE') this.press('interact');
       if (e.code === 'KeyF') this.press('stim');
+      if (e.code === 'KeyT') this.press('grenade');
       if (e.code === 'KeyQ') this.press('swap');
       if (e.code === 'Digit1') this.press('slot0');
       if (e.code === 'Digit2') this.press('slot1');
@@ -6294,10 +6950,15 @@ BR.Shop = class Shop {
     }
     if (cat === 'skins') return `<i class="sw" style="background:${it.swatch}"></i>`;
     if (cat === 'tracers') {
-      const c = it.color < 0 ? 'linear-gradient(90deg,#ff1f3d,#ffcc00,#39ff14,#00e5ff,#b026ff)' : hex(it.color);
+      const rb = 'linear-gradient(90deg,#ff1f3d,#ffcc00,#39ff14,#00e5ff,#b026ff)';
+      const c = it.color < 0 ? rb : it.color2 !== undefined ? `linear-gradient(90deg,${hex(it.color)},${hex(it.color2)},${hex(it.color)})` : hex(it.color);
       return `<i class="sw tr" style="background:${c};--c:${it.color < 0 ? '#fff' : hex(it.color)}"></i>`;
     }
-    if (cat === 'gloves') return `<i class="sw gl" style="--c:${it.color !== undefined ? hex(it.color) : '#666'};--p:${hex(it.pad)}">✋</i>`;
+    if (cat === 'gloves') {
+      const GS = { hyper: '#ff2fa8', scales: '#1fa37a', bloodmoon: '#a3001a', circuit: '#0b3a2a', molten: '#ff5a00', electric: '#1a3a8a', prism: 'linear-gradient(135deg,#ff3df2,#ffd84a,#1de9ff)', arctic: '#dfe6eb', carbon: '#22252a', tiger: '#e07a1f', neon: '#0c2a30', galaxy: '#3b1a7a' };
+      const bg = it.color !== undefined ? hex(it.color) : GS[id] || '#666';
+      return `<i class="sw gl" style="--c:${bg};background:${bg};${it.glow ? 'box-shadow:0 0 10px ' + hex(it.glow) : ''}">✋</i>`;
+    }
     return `<i class="sw ch">${id === 'none' ? '—' : '◆'}</i>`;
   }
 
@@ -6356,6 +7017,7 @@ const ICON = {
   fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   knife: '<svg viewBox="0 0 24 24"><path d="M4 20c2-1 4-1 6-3l9-11c1-1 1-2 0-3-3 2-7 6-10 9l-2 4"/><circle cx="5.5" cy="18.5" r="1.6"/></svg>',
   spawn: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>',
+  nade: '<svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="6"/><path d="M12 8V5M10 5h4M17 9l2-2"/><circle cx="12" cy="14" r="2.2"/></svg>',
   stim: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7l-9 9-3 1 1-3 9-9"/><path d="M12 9l3 3M4 20l2-2"/></svg>',
   grapple: '<svg viewBox="0 0 24 24"><path d="M14 4l6 6M17 7L6 18"/><path d="M6 18l-2 2M9 21l-3-3 3-3"/><circle cx="17" cy="7" r="2"/></svg>',
 };
@@ -6386,9 +7048,11 @@ BR.HUD = class HUD {
   <div id="speedvig"></div>
   <div id="speedfx"></div>
   <div id="stimfx"></div>
+  <div id="shockfx"></div>
   <div id="scope"><div class="scope-ring"></div></div>
   <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
+  <div id="hitcrit"></div>
   <div id="dmg-dirs"></div>
   <div id="dmg-nums"></div>
 
@@ -6431,6 +7095,7 @@ BR.HUD = class HUD {
   <button class="btn act jump touch-only" data-act="jump" aria-label="Jump">${ICON.jump}<span>JUMP</span></button>
   <button class="btn act crouch cdable touch-only" data-act="crouch" aria-label="Crouch / Slide">${ICON.crouch}<span>CROUCH</span></button>
   <button class="btn act grapple cdable touch-only" data-act="grapple" aria-label="Grapple">${ICON.grapple}<span>HOOK</span><em class="cd"></em></button>
+  <button class="btn act nade touch-only" data-act="grenade" aria-label="Shockwave grenade">${ICON.nade}<span>NADE</span><em class="cnt">0</em></button>
   <button class="btn act stim cdable touch-only" data-act="stim" aria-label="Stim">${ICON.stim}<span>STIM</span><em class="cd"></em></button>
   <button class="btn act reload touch-only" data-act="reload" aria-label="Reload">${ICON.reload}</button>
   <button class="btn act ads touch-only" data-act="ads" aria-label="Aim">${ICON.ads}<span>AIM</span></button>
@@ -6462,18 +7127,36 @@ BR.HUD = class HUD {
   <button id="acct-chip" class="acct-chip glass"><span id="acct-avatar" class="avatar">G</span><span class="acct-text"><b id="acct-name">Guest</b><small id="acct-sub">Sign in</small></span></button>
   <div class="menu-main">
     <div class="logo">
-      <div class="logo-small">Prototype v${V} · Offline vs bots</div>
+      <div class="logo-small"><i class="dot"></i>Season 1 · v${V}</div>
       <h1 class="logo-title"><span>Velocity</span><span class="accent">Royale</span></h1>
       <div class="tagline">Slide. Wall-run. Grapple. Be the last one standing.</div>
     </div>
     <nav class="menu-nav">
-      <button id="btn-play" class="mbtn big hot"><svg viewBox="0 0 24 24" class="play-ic"><path d="M8 5l11 7-11 7z"/></svg>Play</button>
-      <button id="btn-duel" class="mbtn duel-btn">1V1 DUEL</button>
-      <button id="btn-practice" class="mbtn">PRACTICE</button>
-      <button id="btn-shop" class="mbtn">SHOP</button>
-      <button id="btn-settings" class="mbtn">SETTINGS</button>
-      <button id="btn-hud" class="mbtn">CUSTOMIZE HUD</button>
-      <button id="btn-fs" class="mbtn">FULLSCREEN</button>
+      <div class="modes">
+        <button id="btn-play" class="mode hero">
+          <span class="m-tag">BATTLE ROYALE</span>
+          <span class="m-title">PLAY</span>
+          <span class="m-sub">Solo · one life · last one standing</span>
+          <span class="m-go"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span>
+        </button>
+        <button id="btn-duel" class="mode duel">
+          <span class="m-tag">NEW MODE</span>
+          <span class="m-title">1V1 DUEL</span>
+          <span class="m-sub">The Yard · first to 5</span>
+          <span class="m-vs"><b>VS</b></span>
+        </button>
+        <button id="btn-practice" class="mode practice">
+          <span class="m-tag">TRAINING</span>
+          <span class="m-title">PRACTICE</span>
+          <span class="m-sub">No bots · spawn anything</span>
+        </button>
+      </div>
+      <div class="dock">
+        <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span><em>NEW</em></button>
+        <button id="btn-settings" class="dk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>SETTINGS</span></button>
+        <button id="btn-hud" class="dk"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="8" cy="12" r="1.6"/><circle cx="16" cy="12" r="1.6"/></svg><span>HUD</span></button>
+        <button id="btn-fs" class="dk"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>FULL</span></button>
+      </div>
     </nav>
   </div>
   <div class="rec"><b></b>Live match</div>
@@ -6587,6 +7270,8 @@ BR.HUD = class HUD {
     <div class="sp-grid">
       <button class="mbtn sm" data-sp="ammo">FULL AMMO</button>
       <button class="mbtn sm" data-sp="heal">FULL HEALTH + SHIELD</button>
+      <button class="mbtn sm" data-sp="nades">SHOCKWAVE NADES ×3</button>
+      <button class="mbtn sm" data-sp="item" data-arg="shock">DROP SHOCKWAVE</button>
       <button class="mbtn sm" data-sp="item" data-arg="heal">MEDKIT</button>
       <button class="mbtn sm" data-sp="item" data-arg="shield">SHIELD CELL</button>
       <button class="mbtn sm" data-sp="item" data-arg="ammo">AMMO BOX</button>
@@ -6692,7 +7377,7 @@ BR.HUD = class HUD {
       const d = document.createElement('div');
       d.className = 'dnum';
       this.el.dmgNums.appendChild(d);
-      this.numPool.push({ el: d, life: 0, pos: new THREE.Vector3(), vy: 0 });
+      this.numPool.push({ el: d, life: 0, pos: new THREE.Vector3(), vy: 0, age: 9, total: 0, dx: 0, victim: null });
     }
     this.dirPool = [];
     for (let i = 0; i < 4; i++) {
@@ -6768,6 +7453,9 @@ BR.HUD = class HUD {
       el.style.setProperty('--cd', v > 0 ? (v / G.cooldown * 360).toFixed(0) + 'deg' : '0deg');
       el.querySelector('.cd').textContent = v > 0 ? Math.ceil(v) : '';
     });
+    // Shockwave grenade count
+    const nb = this._nadeBtn || (this._nadeBtn = document.querySelector('.btn.nade'));
+    this.set('nades', nb, p.nades || 0, (el, v) => { el.querySelector('.cnt').textContent = v; el.classList.toggle('empty', v <= 0); });
     // Stim cooldown sweep + boost glow
     const SC = BR.CONFIG.stim;
     const scd = Math.ceil(p.stimCd * 10) / 10;
@@ -6836,6 +7524,8 @@ BR.HUD = class HUD {
     setTimeout(() => d.remove(), 6000);
   }
 
+  shockFlash() { const el = this.$('shockfx'); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); }
+
   // Big centre countdown (3, 2, 1, FIGHT!)
   duelCount(text) {
     const el = this.$('duelcount');
@@ -6864,6 +7554,8 @@ BR.HUD = class HUD {
     h.className = '';
     void h.offsetWidth;
     h.className = 'on' + (head ? ' head' : '') + (kill ? ' kill' : '');
+    const c = this.$('hitcrit');
+    if (c && (head || kill)) { c.className = ''; void c.offsetWidth; c.className = 'on' + (kill ? ' kill' : ''); }
   }
 
   // Movement-tech callout under the crosshair
@@ -6879,24 +7571,34 @@ BR.HUD = class HUD {
     this.set('prompt', this.el.prompt, text || '', (el, v) => { el.textContent = v; el.classList.toggle('hidden', !v); });
   }
 
-  damageNumber(pos, dmg, head) {
-    const n = this.numPool[this.ni++ % this.numPool.length];
-    n.pos.copy(pos);
-    n.life = 0.8;
-    n.el.textContent = Math.round(dmg);
-    n.el.classList.toggle('head', !!head);
-    n.el.style.opacity = 1;
+  // Damage numbers stack per target (Apex-style): rapid hits on the same enemy add up in
+  // one number that re-pops; headshots are gold crits, shield hits are blue.
+  damageNumber(pos, dmg, head, victim, shield) {
+    let n = victim && this.numPool.find(q => q.victim === victim && q.life > 0.25 && q.age < 1.1);
+    if (n) { n.total += dmg; n.age = Math.min(n.age, 0.2); }
+    else {
+      n = this.numPool[this.ni++ % this.numPool.length];
+      n.victim = victim; n.total = dmg; n.age = 0;
+      n.pos.copy(pos); n.dx = (Math.random() - 0.5) * 40;
+    }
+    n.life = 1.0;
+    n.head = n.head && n.age > 0 ? n.head || head : head;
+    const el = n.el;
+    el.innerHTML = (head ? '<i>✦</i>' : '') + Math.round(n.total);
+    el.className = 'dnum' + (head ? ' head' : shield ? ' shield' : '');
+    void el.offsetWidth; el.classList.add('pop');
+    el.style.opacity = 1;
   }
 
   updateNums(game, dt) {
     const cam = game.camera, v = game._v4, W = window.innerWidth, H = window.innerHeight;
     for (const n of this.numPool) {
       if (n.life <= 0) continue;
-      n.life -= dt;
-      n.pos.y += dt * 0.8;
+      n.life -= dt; n.age += dt;
+      n.pos.y += dt * 0.55;
       v.copy(n.pos).project(cam);
       if (n.life <= 0 || v.z > 1) { n.el.style.opacity = 0; n.life = 0; continue; }
-      n.el.style.transform = `translate(${(v.x * 0.5 + 0.5) * W}px, ${(-v.y * 0.5 + 0.5) * H}px) translate(-50%, -50%)`;
+      n.el.style.transform = `translate(${(v.x * 0.5 + 0.5) * W + n.dx}px, ${(-v.y * 0.5 + 0.5) * H - 26}px) translate(-50%, -50%)`;
       n.el.style.opacity = Math.min(1, n.life * 3);
     }
   }
@@ -7118,6 +7820,7 @@ BR.Game = class Game {
     this.world.buildMeshes(this.scene, this.detail);
     this.hud.setStaticMap(this.world.renderMinimap(1024));
     this.fx = new BR.Effects(this.scene);
+    this.shock = new BR.Shockwave(this);
     this.loot = new BR.Loot(this);
     this.loot.spawnFromWorld(this.world);
     this.zone = new BR.Zone(this, this.world);
@@ -7246,6 +7949,7 @@ BR.Game = class Game {
     D.round++;
     for (const a of this.actors) if (a.mesh && a.mesh.parent) this.scene.remove(a.mesh);
     this.loot.clear();
+    this.shock.clear();
     this.actors = [];
     const arm = (a, guns, sp) => {
       a.mover.dropping = false; a.mover.vel.set(0, 0, 0);
@@ -7255,6 +7959,7 @@ BR.Game = class Game {
       a.cur = 0;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = 50;
+      a.nades = 2;
     };
     // which end you start at alternates each round
     const flip = D.round % 2 === 0, sp = W.spawns;
@@ -7357,6 +8062,7 @@ BR.Game = class Game {
       p.ammo[def.ammo] = C.ammoCap[def.ammo];
       this.hud.toast(def.name, 900);
     } else if (kind === 'ammo') { for (const t in p.ammo) p.ammo[t] = C.ammoCap[t]; this.hud.toast('Ammo full', 900); }
+    else if (kind === 'nades') { p.nades = C.shockwave.maxCarry; this.hud.toast('Shockwave grenades ×' + p.nades, 900); }
     else if (kind === 'heal') { p.health = C.actor.maxHealth; p.shield = C.actor.maxShield; this.hud.toast('Health + shield full', 900); }
     else if (kind === 'item') { const q = this.frontPoint(3); this.loot.spawnKind(arg, q.x, q.y, q.z, Math.random); }
     else if (kind === 'chest') { const q = this.frontPoint(4); this.loot.add({ kind: 'chest', tier: 2 }, q.x, q.y, q.z); }
@@ -7480,6 +8186,7 @@ BR.Game = class Game {
     while (this.recentShots.length && this.time - this.recentShots[0].t > 2) this.recentShots.shift();
     this.loot.update(dt, cp);
     this.fx.update(dt);
+    if (this.shock) this.shock.update(dt);
   }
 
   update(dt) {
@@ -7579,6 +8286,7 @@ BR.Game = class Game {
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
     if (inp.consume('crouch')) p.input.crouch = true;
+    if (inp.consume('grenade')) { if (this.shock.throw(p)) { BR.Audio.throwNade(); this.vmr.onThrow(); } else BR.Audio.click(); }
     if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.vmr.onStim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
     if (inp.consume('grapple')) { if (p.tryGrapple()) { BR.Audio.grapple(); this.vmr.onGrapple(); this.ropeT = 0; } else BR.Audio.click(); }
     if (inp.consume('reload') && BR.Weapons.startReload(w, p)) BR.Audio.reload();
@@ -7706,6 +8414,11 @@ BR.Game = class Game {
     return out.set(m.pos.x + c * 0.26 - s * 0.72, m.pos.y + m.h - 0.62, m.pos.z - s * 0.26 - c * 0.72);
   }
 
+  tracerOpts(actor) {
+    if (!actor.isPlayer) return null;
+    return BR.Models.tracerOpts(BR.Profile.data.equip.tracers, this.time);
+  }
+
   tracerColor(actor) {
     if (!actor.isPlayer) return 0xff9a6b;
     return BR.Models.tracerColor(BR.Profile.data.equip.tracers, this.time);
@@ -7715,7 +8428,9 @@ BR.Game = class Game {
     if (!victim.alive) return;
     if (victim.isPlayer && attacker && !attacker.isPlayer) dmg *= this.diff.playerDamageMult;
     else if (!victim.isPlayer && attacker && !attacker.isPlayer) dmg *= BR.CONFIG.match.botVsBotDamage;
+    const shieldBefore = victim.shield;
     const died = victim.takeDamage(dmg);
+    const shieldHit = shieldBefore > 0;
     if (attacker) attacker.damageDealt += dmg;
     victim.lastAttacker = attacker;
     victim.lastHurtT = this.time;
@@ -7724,8 +8439,13 @@ BR.Game = class Game {
     victim.flash();
     if (attacker && attacker === this.player) {
       this.hud.hitmarker(head, died);
-      this.hud.damageNumber(this._v3, dmg, head);
-      BR.Audio.hit(head);
+      this.hud.damageNumber(this._v3, dmg, head, victim, shieldHit);
+      if (!died) BR.Audio.hit(head);
+      // impact sparks: gold crit burst on the head, team-colour/shield-blue on the body
+      this.fx.burst(this._v3, head ? [0xffd24a, 0xffffff, 0xff9a1f] : shieldHit ? [0x6fc8ff, 0xffffff] : [0xff4a5a, 0xffffff], head ? 14 : 7, head ? 7 : 4.5, head ? 0.07 : 0.05, head ? 0.45 : 0.3);
+      // headshots punch the view a touch (FOV squeeze + tiny shake)
+      if (head) { this.cam.hitFov = Math.min(4, (this.cam.hitFov || 0) + 2.5); this.cam.shake = Math.max(this.cam.shake, 0.06); }
+      if (died) { this.cam.hitFov = Math.min(5, (this.cam.hitFov || 0) + (head ? 4 : 2)); }
     }
     if (victim === this.player) {
       this.hud.damageFrom(attacker);
@@ -7748,10 +8468,11 @@ BR.Game = class Game {
     if (this.demo) return;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const nm = a => `<b class="${a.isPlayer ? 'me' : ''}">${esc(a.name)}</b>`;
-    const how = weaponId === 'storm' ? 'storm' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');
+    const how = weaponId === 'storm' ? 'storm' : weaponId === 'shockwave' ? 'Shockwave' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');
     this.hud.killfeed(killer ? `${nm(killer)} <i>${esc(how)}</i> ${nm(victim)}` : `${nm(victim)} <i>${esc(how)}</i>`);
     if (killer && killer === this.player) {
-      BR.Audio.kill();
+      BR.Audio.kill(head);
+      if (head) this.hud.tech('HEADSHOT');
       this.hud.toast(`Eliminated ${victim.name}  ·  +${BR.CONFIG.coins.perKill} coins`, 1400);
     }
     if (victim === this.player) {
@@ -7927,7 +8648,7 @@ BR.Game = class Game {
         this.shopTracerT = 0.28;
         const cx = this.shopPivot.position.x, y = this.shopBaseY - 0.3 + Math.random() * 0.7, z = 0.2 + Math.random() * 0.5;
         const from = this._v1.set(cx - 3.2, y, z), to = this._v2.set(cx + 3.2, y + (Math.random() - 0.5) * 0.4, z - 0.4);
-        this.shopFx.tracer(from, to, true, BR.Models.tracerColor(this.shopPrev.tracer, this.time), { speed: 9, streak: 2.2 });
+        this.shopFx.tracer(from, to, true, BR.Models.tracerColor(this.shopPrev.tracer, this.time), Object.assign({ speed: 9, streak: 2.2 }, BR.Models.tracerOpts(this.shopPrev.tracer, this.time) || {}));
       }
     }
     this.shopFx.update(dt);
@@ -7972,7 +8693,9 @@ BR.Game = class Game {
     const speedK = U.clamp((sp - C.move.runSpeed) / 8, 0, 1);
     const fovT = (this.baseFov() + C.camera.fovSpeedBoost * speedK) / zoom;
     c.fov = U.damp(c.fov, fovT, 10, dt);
-    if (Math.abs(cam.fov - c.fov) > 0.01) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
+    c.hitFov = U.damp(c.hitFov || 0, 0, 12, dt);
+    const fovNow = c.fov - c.hitFov;
+    if (Math.abs(cam.fov - fovNow) > 0.01) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
 
     const ld = this.lookD || [0, 0];
     this.vmr.update(dt, ld[0], ld[1]);
@@ -7982,6 +8705,7 @@ BR.Game = class Game {
   refreshCosmetics() { this.vmr.rebuild(); }
 
   render() {
+    BR.Models.tick(performance.now() / 1000);       // animated camo / glove textures
     const r = this.renderer;
     r.clear();
     if (this.state === 'shop') { r.render(this.shopScene, this.shopCam); return; }

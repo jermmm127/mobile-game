@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.0.0',
+  version: '1.1.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -25,6 +25,17 @@ BR.CONFIG = {
   },
 
   // Stim shot: HUD button / F key. Speed boost + heal over time.
+  // Shockwave grenade (trickshot item): T / NADE button. Launches everyone in range.
+  shockwave: {
+    radius: 8,          // blast radius (m)
+    launch: 21,         // outward push at the centre (m/s)
+    lift: 17,           // minimum upward speed given at the centre (m/s)
+    damage: 15,         // to enemies only (you take none from your own)
+    fuse: 2.4,          // detonates on contact, or after this long
+    throwSpeed: 19, throwLift: 4, gravity: 20,
+    maxCarry: 3, throwCooldown: 0.5,
+  },
+
   stim: {
     cooldown: 4,        // seconds between stims
     speedTime: 3,       // movement boost duration
@@ -150,9 +161,9 @@ BR.CONFIG = {
   // Loot rolls by spot tier. Weights are relative.
   loot: {
     tables: [
-      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, ammo: 45, heal: 16, shield: 12 },     // tier 0: open ground
-      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, ammo: 40, heal: 18, shield: 16 },   // tier 1: inside buildings
-      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, ammo: 30, heal: 16, shield: 22 },             // tier 2: roofs / towers
+      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
+      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
+      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
     ],
     healAmount: 50,
     shieldAmount: 50,
