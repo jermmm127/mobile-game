@@ -178,6 +178,7 @@ BR.CONFIG = {
   // password is stored. dev: infinite coins + every shop item unlocked.
   seedAccounts: [
     { name: 'jermmm', salt: 'b275785f07d6d05b4bf1e6a734075234', hash: '279c7e735ac93532a6f4af6fbddefe13336a6ebc1232f8687ab94329ad33d20a', dev: true },
+    { name: 'jermdev', salt: 'b1856c19fee53b96456b60e0eee75144', hash: '3997a0cb437595b13d9062c6035befab837e373d2914115d644a6d3fa74f7a32', dev: true },
   ],
   devCodeHash: '89799be69c532868209a761cbdcfbb642286502c419d77f5583bb8fd46e5db2a',
 
