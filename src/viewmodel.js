@@ -11,6 +11,33 @@
 // onShell(), startInspect(), onLand(speed). Read adsW for aim progress.
 // =============================================================================
 (function () {
+  // v1.11 sleeves: a tapered fabric forearm (lathe) with an elastic cuff at the wrist and a
+  // seam band, instead of a plain tube. Unit length along +Y (wrist at -0.5, elbow at +0.5).
+  const KI = { z1: 0.95, y1: -0.15, x1: 0.1, z2: -0.25, y2: -0.55, x2: 0 };      // karambit inspect show poses (wrist turns)
+  let SLEEVE = null;
+  function sleeveParts() {
+    if (SLEEVE) return SLEEVE;
+    const prof = [[0.0, -0.5], [0.031, -0.5], [0.034, -0.492], [0.0345, -0.47], [0.032, -0.455], [0.035, -0.44], [0.039, -0.38], [0.043, -0.25], [0.047, -0.08], [0.05, 0.12], [0.052, 0.35], [0.053, 0.5], [0.0, 0.5]];
+    const geo = new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 20);
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      if (y < -0.452) c.setHex(0x1c2027);                      // elastic cuff
+      else if (y > 0.18 && y < 0.2) c.setHex(0x232831);        // seam band
+      else c.setHex(0xffffff);
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.computeVertexNormals();
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d');
+    x.fillStyle = '#272d35'; x.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 128; i += 2) { x.fillStyle = `rgba(255,255,255,${0.025 + 0.02 * ((i / 2) % 2)})`; x.fillRect(0, i, 128, 1); x.fillStyle = 'rgba(0,0,0,0.05)'; x.fillRect(i, 0, 1, 128); }
+    for (let k = 0; k < 7; k++) { const y = 10 + k * 17 + Math.random() * 6; x.strokeStyle = 'rgba(0,0,0,0.18)'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, y); x.bezierCurveTo(40, y - 5, 80, y + 6, 128, y); x.stroke(); x.strokeStyle = 'rgba(255,255,255,0.06)'; x.beginPath(); x.moveTo(0, y + 2); x.bezierCurveTo(40, y - 3, 80, y + 8, 128, y + 2); x.stroke(); }
+    x.fillStyle = 'rgba(0,0,0,0.25)'; x.fillRect(60, 0, 2, 128);                // side seam
+    const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 3);
+    const sleeve = new THREE.MeshPhongMaterial({ map: tex, vertexColors: true, shininess: 10, specular: 0x222831 });
+    return (SLEEVE = { sleeve, sleeveGeo: geo });
+  }
   const U = BR.util;
   // butterfly hammer grip: relaxed elbow (camera space, x scaled by the side) + which way the thumb faces
   const BF_ARM = new THREE.Vector3(0.36, -0.5, 0.26);         // wrist -> elbow, kept constant so the forearm never swings at the camera
@@ -129,8 +156,7 @@
       }
       // Arms: sleeve + gloved hand for each side, placed every frame in camera space
       if (this.arms) for (const s of ['R', 'L']) this.scene.remove(this.arms[s].hand, this.arms[s].fore);
-      const sleeve = new THREE.MeshLambertMaterial({ color: 0x2c333c });
-      const sleeveGeo = new THREE.CylinderGeometry(0.03, 0.042, 1, 10);
+      const { sleeve, sleeveGeo } = sleeveParts();
       const mk = left => {
         const hand = BR.Models.hand(eq.gloves || 'default', left);
         hand.scale.setScalar(1.3);
@@ -281,7 +307,7 @@
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
-      if (w.id === 'bayonet') { hx = -0.006 * s; hy = -0.146; hz = -0.42; }   // farther from the eye: same spot on screen, smaller
+      if (w.id === 'bayonet') { hx = 0.04 * s; hy = -0.108; hz = -0.42; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
@@ -341,8 +367,10 @@
           const near = 1 - smooth((t - 0.5) / 0.32);
           ox -= 0.07 * near; oy += 0.07 * near; oz -= 0.03 * near;
           bUp = near;
-          const a = easeInOut((t - 0.12) / 0.34);
-          bay = { lift: Math.sin(clamp01((t - 0.12) / 0.34) * Math.PI) * 0.035, flip: Math.PI - Math.PI * a, roll: 0 };
+          // v1.11: one clean end-over-end flip (blade up -> forward over the top -> blade up), tossed a
+          // little above the palm and caught, instead of the half turn from blade-down
+          const a = easeInOut((t - 0.16) / 0.36);
+          bay = { lift: Math.sin(clamp01((t - 0.16) / 0.36) * Math.PI) * 0.055, flip: -Math.PI * 2 * a, roll: 0 };
           const settle = win(t, 0.78, 0.84, 0.84, 0.96); orx -= 0.07 * settle; oy -= 0.012 * settle;
           if (t > 0.14 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
           if (t > 0.46 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.click(); }
@@ -387,22 +415,30 @@
           // Bayonet inspect (reference clip): bring it up upright close to the centre showing one face,
           // a slow look with small wobbles, twist the wrist to show the other face tilted left, twist
           // back to the first face, then drop back into the angled idle. No tosses.
-          const up = win(t, 0, 0.08, 0.86, 0.95);
-          bUp = up; bUp2 = win(t, 0.3, 0.38, 0.62, 0.7);
+          const up = win(t, 0, 0.08, 0.88, 0.97);
+          bUp = up; bUp2 = win(t, 0.26, 0.34, 0.54, 0.62);
           ox -= 0.1 * up + 0.015 * bUp2; oy += 0.11 * up; oz -= 0.06 * up;
           const hold = up * (1 - 0.6 * win(t, 0.28, 0.32, 0.36, 0.4) - 0.6 * win(t, 0.6, 0.64, 0.68, 0.72));
           orz += 0.035 * Math.sin(t * Math.PI * 5) * hold; ory += 0.06 * Math.sin(t * Math.PI * 3.4 + 1) * hold; orx += 0.025 * Math.sin(t * Math.PI * 4.2) * hold;
-          bay = null;
-          if (t > 0.3 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
-          if (t > 0.62 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
+          // v1.11: finish with a flip-and-catch before it drops back into the idle
+          const fa = easeInOut((t - 0.68) / 0.16);
+          bay = fa > 0 && fa < 1 ? { lift: Math.sin(fa * Math.PI) * 0.06, flip: -Math.PI * 2 * fa, roll: 0 } : null;
+          if (t > 0.26 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
+          if (t > 0.54 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
+          if (t > 0.69 && !(this.spinSwish & 4)) { this.spinSwish |= 4; BR.Audio.swish(false); }
+          if (t > 0.84 && !(this.spinSwish & 8)) { this.spinSwish |= 8; BR.Audio.click(); }
         } else if (def.melee) {
           // Karambit inspect: the hand rises to the centre and turns upright while the knife twirls
           // round the ring finger and ends hanging below the fist; hold that show pose with a gentle
           // sway; then a last half-twirl as the hand drops back into the low hold
-          const up = win(t, 0.0, 0.1, 0.76, 0.9);
-          ox -= 0.05 * up; oy += 0.13 * up; oz -= 0.12 * up; orz += 0.5 * up; ory += 0.4 * up; orx -= 0.05 * up;     // up near the centre so the hanging knife stays in view
-          spinAng = easeInOut((t - 0.02) / 0.14) * Math.PI * 3 + easeInOut((t - 0.78) / 0.14) * Math.PI;
-          ringW = win(t, 0, 0.05, 0.9, 0.96);
+          // v1.11 (CS-style): raise it, turn the wrist to show one side of the blade, turn it over to
+          // show the other, then two full spins round the index finger in the ring and catch
+          const up = win(t, 0.0, 0.12, 0.86, 0.97);
+          ox -= 0.07 * up; oy += 0.08 * up; oz -= 0.05 * up;
+          const show = win(t, 0.06, 0.18, 0.38, 0.48), show2 = win(t, 0.4, 0.5, 0.56, 0.62);
+          orz += KI.z1 * show + KI.z2 * show2; ory += KI.y1 * show + KI.y2 * show2; orx += KI.x1 * show + KI.x2 * show2;
+          spinAng = easeInOut((t - 0.62) / 0.22) * Math.PI * 4;
+          ringW = win(t, 0.58, 0.63, 0.84, 0.9);
           const hold = win(t, 0.16, 0.24, 0.72, 0.78);
           orz += 0.035 * Math.sin(t * Math.PI * 3) * hold; ory += 0.03 * Math.sin(t * Math.PI * 2) * hold;
           const turns = Math.floor(spinAng / Math.PI + 0.25);
@@ -774,6 +810,7 @@
       H.visible = true;
       // the butterfly is held high in view, so its elbow sits low and forward (keeps the sleeve end off the camera)
       const elbowR = spin ? this._v2.set(0.5 * s, -0.68, -0.3) : bf ? this._v2.copy(this._bfElbow) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
+      H.updateMatrixWorld(true);
       this.limb(R.fore, H.localToWorld(new THREE.Vector3(0, 0, spin || bf ? 0.075 : 0.05)), elbowR, spin || bf ? 0.72 : 1);
       // left hand on the foregrip / mag / charging handle
       const lt = leftTarget || (ud.pump && ud.fore ? this._pumpFore.copy(ud.fore).setZ(ud.fore.z + ud.pump.position.z) : ud.fore);
@@ -787,16 +824,20 @@
         const LX = this._sx.set(0.9, -0.35, 0.2).normalize(), LZ = this._sz.set(-0.35, -0.9, -0.15).normalize();
         LZ.addScaledVector(LX, -LZ.dot(LX)).normalize();
         KH.L.quaternion.setFromRotationMatrix(this._sm.makeBasis(LX, this._sy.crossVectors(LZ, LX), LZ));
-        KH.L.visible = true;
-        this.limb(L.fore, KH.L.localToWorld(new THREE.Vector3(0, 0, 0.075)), this._sv.set(-0.3 * s, -0.7, -0.45), 0.72);
+        KH.L.visible = false;                  // v1.11: like CS, the off hand stays out of view with the karambit
+        KH.L.updateMatrixWorld(true);
+        L.fore.visible = false;
         return;
       }
       if ((!lt || leftHidden) && !special) { L.hand.visible = L.fore.visible = false; return; }
       if (lt && !leftHidden) {
         const lp = model.localToWorld(this._v.copy(lt));
         L.hand.position.copy(lp);
-        L.hand.quaternion.copy(wq).multiply(this._qFore || (this._qFore = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, Math.PI, 'YXZ'))));
-        L.hand.translateY(0.024);
+        // v1.11: palm under the handguard, rolled so the heel, thumb and knuckles show on the near
+        // side instead of the whole hand sinking into the gun (which left only the cuff visible)
+        L.hand.quaternion.copy(wq).multiply(this._qFore || (this._qFore = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, Math.PI, 'YXZ'))))
+          .multiply(this._qFore2 || (this._qFore2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.12, 0, -0.55))));
+        L.hand.translateY(0.036); L.hand.translateZ(0.016); L.hand.translateX(-0.004);
       } else {
         // no off hand on this weapon (karambit): come in from below the screen
         L.hand.position.set(-0.3, -0.62, -0.25);
@@ -820,8 +861,11 @@
         }
       }
       L.hand.visible = true;
-      const elbowL = new THREE.Vector3(U.lerp(-0.28, -0.16, A) * s, U.lerp(-0.6, -0.52, A), -0.06);
+      // v1.11: the forearm leaves the wrist sideways-down toward the lower left (seen from the side, like
+      // most shooters) instead of pointing back at the camera (which showed only the cuff end-on)
+      const elbowL = new THREE.Vector3().copy(L.hand.position).add(this._sv.set(U.lerp(-0.3, -0.22, A) * s, U.lerp(-0.3, -0.26, A), U.lerp(0.14, 0.18, A)));
       if (special) elbowL.lerp(this._v2.set(-0.34, -0.7, 0.05), special.w);
+      L.hand.updateMatrixWorld(true);
       this.limb(L.fore, L.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), elbowL);
       // where the grapple rope leaves the launcher, mapped into the game camera's world
       if (this.launcher.visible) {
@@ -957,7 +1001,7 @@
 
     limb(mesh, a, b, thick) {
       const d = this._d || (this._d = new THREE.Vector3());
-      d.subVectors(b, a);
+      d.subVectors(b, a).multiplyScalar(1.7);                   // v1.11: run the sleeve well past the elbow (open end off-screen)
       const len = d.length();
       mesh.position.copy(a).addScaledVector(d, 0.5);
       mesh.quaternion.setFromUnitVectors(this._up || (this._up = new THREE.Vector3(0, 1, 0)), d.normalize());

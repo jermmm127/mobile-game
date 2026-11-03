@@ -2362,12 +2362,14 @@ BR.Models = (function () {
     const cyl = (r1, r2, len, seg) => new THREE.CylinderGeometry(r1, r2, len, seg || 8);
     const sph = (r) => new THREE.SphereGeometry(r, 10, 8);
     // palm: core + rounded heel + slightly domed back
-    put(box(0.05, 0.026, 0.062), m.main, 0, 0, 0);
+    // (v1.11: rounded instead of a box, so the glove reads as a hand, not a block)
+    const core = put(sph(0.03), m.main, 0, 0, -0.004); core.scale.set(0.86, 0.42, 1.12);
     const heel = put(sph(0.026), m.main, 0, -0.004, 0.018); heel.scale.set(1.0, 0.55, 0.75);
-    const dome = put(sph(0.028), m.main, 0, 0.006, -0.006); dome.scale.set(0.95, 0.45, 1.15);
+    const dome = put(sph(0.028), m.main, 0, 0.005, -0.008); dome.scale.set(0.92, 0.42, 1.1);
+    const pinky = put(sph(0.014), m.main, -0.021, -0.001, 0.004); pinky.scale.set(0.7, 0.8, 1.6);      // fleshy outer edge
     // fingers: three phalanges each, chained so the curl reads naturally
     // fist: true = all fingers closed; 'point' = index finger straight (the karambit ring spins on it)
-    const lens = [0.023, 0.017, 0.013], radii = [0.0066, 0.006, 0.0056], curl = fist ? [1.2, 1.45, 1.1] : [0.55, 0.95, 0.75], straight = [0.06, 0.08, 0.04];
+    const lens = [0.023, 0.017, 0.013], radii = [0.0079, 0.0072, 0.0066], curl = fist ? [1.2, 1.45, 1.1] : [0.55, 0.95, 0.75], straight = [0.06, 0.08, 0.04];
     for (let i = 0; i < 4; i++) {
       const fx = -0.0195 + i * 0.013, fy = 0.002 + (i === 1 || i === 2 ? 0.0015 : 0), lenK = i === 0 ? 0.85 : i === 3 ? 0.95 : 1;
       let par = new THREE.Group(); par.position.set(fx * sx, fy, -0.03); g.add(par);
@@ -2383,15 +2385,15 @@ BR.Models = (function () {
     }
     // thumb: two segments angled across the front of the fist
     const tb = new THREE.Group(); tb.position.set(0.026 * sx, -0.008, -0.004); tb.rotation.set(fist ? 0.75 : 0.35, (fist ? -0.95 : -0.75) * sx, (fist ? 0.35 : 0.2) * sx); g.add(tb);
-    put(sph(0.0085), m.main, 0, 0, 0, 0, 0, 0, tb).position.x = 0;
-    put(cyl(0.0082, 0.0076, 0.022, 8), m.main, 0, 0, -0.011, Math.PI / 2, 0, 0, tb).position.x = 0;
+    put(sph(0.0105), m.main, 0, 0, 0, 0, 0, 0, tb).position.x = 0;
+    put(cyl(0.0098, 0.009, 0.022, 8), m.main, 0, 0, -0.011, Math.PI / 2, 0, 0, tb).position.x = 0;
     const t2 = new THREE.Group(); t2.position.z = -0.022; t2.rotation.x = fist ? -0.8 : -0.45; tb.add(t2);
-    put(cyl(0.0074, 0.0068, 0.016, 8), m.main, 0, 0, -0.008, Math.PI / 2, 0, 0, t2).position.x = 0;
-    put(sph(0.0068), m.main, 0, 0, -0.016, 0, 0, 0, t2).position.x = 0;
+    put(cyl(0.0088, 0.0080, 0.016, 8), m.main, 0, 0, -0.008, Math.PI / 2, 0, 0, t2).position.x = 0;
+    put(sph(0.008), m.main, 0, 0, -0.016, 0, 0, 0, t2).position.x = 0;
     // armour: knuckle guard + back plate
-    put(cyl(0.0075, 0.0075, 0.054, 10), m.pad, 0, 0.0085, -0.031, 0, 0, Math.PI / 2);
-    const plate = put(box(0.042, 0.007, 0.036), m.pad, 0, 0.0175, -0.002, -0.08, 0, 0);
-    for (const px of [-0.012, 0.012]) put(box(0.012, 0.003, 0.03), m.pad, px, 0.022, -0.002, -0.08, 0, 0);
+    put(cyl(0.0052, 0.0052, 0.05, 10), m.pad, 0, 0.0095, -0.031, 0, 0, Math.PI / 2);
+    const plate = put(sph(0.022), m.pad, 0, 0.0135, -0.004, -0.08, 0, 0); plate.scale.set(0.95, 0.22, 0.85);
+    for (const px of [-0.011, 0.011]) { const r = put(sph(0.008), m.pad, px, 0.0175, -0.004, -0.08, 0, 0); r.scale.set(0.7, 0.25, 1.5); }
     // cuff + strap + velcro tab
     put(cyl(0.03, 0.032, 0.032, 16), m.pad, 0, 0.0, 0.046, Math.PI / 2, 0, 0);
     put(cyl(0.0325, 0.0325, 0.008, 16), m.glow || m.main, 0, 0.0, 0.04, Math.PI / 2, 0, 0);
