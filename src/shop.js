@@ -135,7 +135,7 @@ BR.Profile = {
       equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', melee: 'knife' }, d.equip || {}),
       rp: typeof d.rp === 'number' ? d.rp : 0,
       cases: Object.assign({ opened: 0 }, d.cases || {}),
-      stats: Object.assign({ matches: 0, wins: 0, kills: 0 }, d.stats || {}),
+      stats: Object.assign({ matches: 0, wins: 0, kills: 0, deaths: 0 }, d.stats || {}),
       dev: !!d.dev,
     };
     this.data.equip.blueprints = Object.assign({}, (d.equip && d.equip.blueprints) || {});
@@ -212,6 +212,8 @@ BR.Profile = {
     else if (cat === 'gloves') { this.data.equip.gloves = id; this.data.equip.glovesByGun = {}; }      // ALL: one pair everywhere
     else this.data.equip[cat] = id;
   },
+  // K/D ratio (kills per death; with no deaths yet it's just your kills)
+  kd() { const st = this.data.stats || {}; return (st.kills || 0) / Math.max(1, st.deaths || 0); },
   // ---- Weapon mastery: kills per weapon; camos unlock at 10 / 25 / 50 / 100 kills with any one gun
   addKill(weapon) {
     const d = this.data; d.mastery = d.mastery || {};
@@ -277,6 +279,7 @@ BR.Profile = {
     const after = BR.Ranks.of(this.data.rp), unlocked = this.unlockRankRewards();
     this.data.stats.kills += r.kills;
     if (r.win) this.data.stats.wins++;
+    else this.data.stats.deaths = (this.data.stats.deaths || 0) + 1;     // one life: a match you didn't win ended in a death
     this.save();
     return { total, parts, rp, rankUp: after > before ? BR.Ranks.tiers[after].name : null, unlocked };
   },

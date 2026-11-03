@@ -167,6 +167,7 @@ BR.HUD = class HUD {
   <div id="stimfx"></div>
   <div id="shockfx"></div>
   <div id="scope"><div class="scope-ring"></div></div>
+  <div id="scope2"><div class="s2-win"><i class="s2-h l"></i><i class="s2-h r"></i><i class="s2-post l"></i><i class="s2-post r"></i><b class="s2-chev"></b><i class="s2-bdc b1"></i><i class="s2-bdc b2"></i><i class="s2-bdc b3"></i></div></div>
   <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
   <div id="hitcrit"></div>
@@ -555,7 +556,7 @@ BR.HUD = class HUD {
       mag: $('mag'), reserve: $('reserve'), reloadBar: $('reload-bar'), reloadFill: $('reload-bar').firstElementChild,
       shieldFill: $('shield-fill'), healthFill: $('health-fill'), shieldTxt: $('shield-txt'), healthTxt: $('health-txt'),
       slots: Array.from(document.querySelectorAll('#play > .slot')),
-      prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'),
+      prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'), scope2: $('scope2'),
       dmgDirs: $('dmg-dirs'), dmgNums: $('dmg-nums'), vignette: $('vignette'), zoneTint: $('zone-tint'),
       stateTag: $('state-tag'), speedfx: $('speedfx'), speedvig: $('speedvig'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
       grapBtn: document.querySelector('.btn.grapple'), stimBtn: document.querySelector('.btn.stim'), stimfx: $('stimfx'), crouchBtn: document.querySelector('.btn.crouch'), jumpBtn: document.querySelector('.btn.jump'),
@@ -684,7 +685,10 @@ BR.HUD = class HUD {
     const scoped = p.ads && w && w.def.scope && p.alive;
     const holo = p.ads && w && !w.def.scope && !w.def.melee && game.vmr.adsW > 0.7; // sights replace the crosshair
     this.set('scope', e.scope, !!scoped, el => el.classList.toggle('on', !!scoped));
-    this.set('xh', e.crosshair, !!(scoped || holo), (el, v) => el.classList.toggle('hide', v));
+    // DMR prism optic: its own eyepiece once the gun is up
+    const optic = p.ads && w && w.def.optic && p.alive && game.vmr.adsW > 0.8;
+    this.set('scope2', e.scope2, !!optic, el => el.classList.toggle('on', !!optic));
+    this.set('xh', e.crosshair, !!(scoped || holo || optic), (el, v) => el.classList.toggle('hide', v));
 
     // Low health vignette + storm tint
     const hurt = 1 - Math.max(0, p.health) / A.maxHealth;

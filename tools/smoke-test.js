@@ -273,8 +273,8 @@ const server = http.createServer((req, res) => {
       let best = 9;
       for (const k of [0.2, 0.3, 0.4]) {
         for (let i = 0; i < 40; i++) { v.drawT = 1.05 * (1 - k); v.update(1 / 60, 0, 0); }
-        const H = v.knifeHands.R, ring = v.models.knife.userData.spin.obj.getWorldPosition(new THREE.Vector3());
-        const tip = new THREE.Vector3(-0.0194, -0.02, -0.056).multiplyScalar(1.3).applyQuaternion(H.quaternion).add(H.position);
+        const H = v.knifeHands.RP, ring = v.models.knife.userData.spin.obj.getWorldPosition(new THREE.Vector3());     // straight index finger through the ring
+        const tip = new THREE.Vector3(-0.0195, 0.002, -0.062).multiplyScalar(1.3).applyQuaternion(H.quaternion).add(H.position);
         best = Math.min(best, tip.distanceTo(ring));
       }
       r.ringRoll = best;
@@ -580,6 +580,19 @@ const server = http.createServer((req, res) => {
     P.equip('skins', 'opal', 'all'); P.data.owned.skins.push('opal'); P.equip('skins', 'opal', 'all');
     out.camo.all = Object.keys(BR.CONFIG.weapons).every(w => P.skinFor(w) === 'opal');
     P.equip('skins', 'default', 'all');
+    // K/D: deaths counted when a match isn't won; kd = kills / deaths
+    { const st = P.data.stats, k0 = st.kills, d0 = st.deaths || 0;
+      st.kills = 9; st.deaths = 3; out.kd = +P.kd().toFixed(2); st.kills = k0; st.deaths = d0;
+      P.award({ kills: 2, damage: 100, place: 7, win: false, mode: 'br' }); out.kdDeath = (P.data.stats.deaths || 0) === d0 + 1; }
+    // DMR prism optic: own overlay (not the sniper scope), zooms, hides the gun
+    { g.practiceSpawn('weapon', 'dmr', 0); p.cur = 0; g.state = 'playing'; g.input.ads = true; p.ads = true;
+      for (let i = 0; i < 40; i++) g.update(1 / 60);
+      out.dmr = { optic: document.getElementById('scope2').classList.contains('on'), sniperScope: document.getElementById('scope').classList.contains('on'), zoomed: g.camera.fov < 45, gunHidden: !vm.root.visible };
+      g.input.ads = false; p.ads = false; for (let i = 0; i < 20; i++) g.update(1 / 60); out.dmr.off = !document.getElementById('scope2').classList.contains('on'); }
+    // karambit: the straight-finger glove holds the ring while it spins
+    { P.data.equip.melee = 'knife'; g.refreshCosmetics(); p.cur = 2; vm.lastWeapon = null; let pointSeen = false;
+      for (let i = 0; i < 40; i++) { vm.update(1 / 60, 0, 0); if (vm.knifeHands.RP.visible) pointSeen = true; }
+      out.ringFinger = pointSeen; }
     // mastery + daily
     const before = P.owns('skins', 'm_copper'); let got = []; for (let i = 0; i < 10; i++) got = got.concat(P.addKill('smg'));
     out.mastery = { before, after: P.owns('skins', 'm_copper'), got: got.join() };
@@ -695,6 +708,9 @@ const server = http.createServer((req, res) => {
     ['loot / dropped guns wear your equipped blueprint', v17.lootSkin],
     ['weapon mastery unlocks a camo; daily reward streak + key, once a day', !v17.mastery.before && v17.mastery.after && v17.daily.streak === 3 && v17.daily.key && v17.daily.again === null],
     ['camos equip per gun (SMG camo stays on the SMG; ALL = every gun)', v17.camo.smg === 'hyperspace' && v17.camo.rifle === 'default' && v17.camo.smgEq && !v17.camo.rifleEq && v17.camo.vmSmg && v17.camo.vmRifleClean && v17.camo.all],
+    ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
+    ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
+    ['karambit spins on a straight finger through the ring', v17.ringFinger],
     ['enemy highlight tints other players', v17.highlight],
     ['spinning case previews render', v17.spins >= 2],
     ['bots finish a match', match.alive === 1],

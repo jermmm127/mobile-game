@@ -133,9 +133,9 @@
         for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })); m.visible = false; this.scene.add(m); this.rings.push({ m, life: 0, max: 1 }); }
       }
       // Backhand fists for the karambit idle (mirrored gloves so the thumbs sit toward the centre)
-      if (this.knifeHands) this.scene.remove(this.knifeHands.R, this.knifeHands.L, this.knifeHands.RB);
+      if (this.knifeHands) this.scene.remove(this.knifeHands.R, this.knifeHands.L, this.knifeHands.RB, this.knifeHands.RP);
       const kh = left => { const h = BR.Models.hand(eq.gloves || 'default', left, true); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; };
-      this.knifeHands = { R: kh(true), L: kh(false), RB: kh(false) };
+      this.knifeHands = { R: kh(true), L: kh(false), RB: kh(false), RP: (() => { const h = BR.Models.hand(eq.gloves || 'default', true, 'point'); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; })() };
       this.curGlove = null;          // forces the per-weapon glove pass on the next frame
       // Wrist grapple launcher (child of the left hand: aims where the fingers point)
       const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
@@ -186,7 +186,7 @@
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 3.4 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
-    hide() { if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -199,7 +199,7 @@
       if (this.pumpDelay > 0) { this.pumpDelay -= dt; if (this.pumpDelay <= 0) this.pumpT = this.pumpDur; }
       else if (this.pumpT > 0) this.pumpT = Math.max(0, this.pumpT - dt);
       if (!w || !w.def.pump) { this.pumpT = 0; this.pumpDelay = 0; }
-      if (!w || m.dropping || (p.ads && w.def.scope)) { this.hide(); return; }
+      if (!w || m.dropping || (p.ads && w.def.scope) || (p.ads && w.def.optic && this.adsW > 0.8)) { this.hide(); if (p.ads && w && w.def.optic) this.adsW = Math.min(1, this.adsW + dt * 6); return; }
       this.root.visible = true;
       const holder = this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
       holder.visible = true;
@@ -213,7 +213,7 @@
           const src = BR.Models.hand(gid, left, fist); while (src.children.length) grp.add(src.children[0]);
         };
         swap(this.arms.R.hand, false, false); swap(this.arms.L.hand, true, false);
-        swap(this.knifeHands.R, true, true); swap(this.knifeHands.L, false, true); swap(this.knifeHands.RB, false, true);
+        swap(this.knifeHands.R, true, true); swap(this.knifeHands.L, false, true); swap(this.knifeHands.RB, false, true); swap(this.knifeHands.RP, true, 'point');
       }
       // New weapon in hand: draw animation
       if (w !== this.lastWeapon) {
@@ -277,9 +277,10 @@
           oy += -(1 - rise) * 0.2; orx += (1 - rise) * 0.25; ox -= (1 - rise) * 0.03;
           const palm = win(t, 0.04, 0.16, 0.56, 0.8);                                   // palm turned toward you while it opens
           orz += 0.06 * palm; ox -= 0.01 * palm;
-          const p1 = smooth((t - 0.16) / 0.16), p2 = easeInOut((t - 0.36) / 0.24);
-          bfly = { a: Math.PI + Math.PI * p1, flip: Math.PI + Math.PI * p2, roll: 0 };
-          orx -= 0.1 * win(t, 0.36, 0.46, 0.52, 0.66);
+          // eased phases + a small catch-settle when the blade lands in the open position
+          const p1 = easeInOut((t - 0.14) / 0.2), p2 = easeInOut((t - 0.36) / 0.28), settle = win(t, 0.62, 0.68, 0.68, 0.82);
+          bfly = { a: Math.PI + Math.PI * p1, flip: Math.PI + Math.PI * p2 - 0.16 * settle, roll: 0 };
+          orx -= 0.08 * win(t, 0.36, 0.48, 0.56, 0.72);
           this.bflySwish(t, [0.2, 0.44]);
         } else if (def.melee) {
           // Karambit deploy: the hand comes up near the centre, turning a little upright, while the
@@ -304,13 +305,13 @@
           // Balisong inspect: a quick chaplin, a roll of the whole knife around the hand, then the
           // long show-off pose (wrist turned to the camera, bite handle swung out so the handles
           // spread in a V behind the blade), a fast close-and-rollover catch, and back to the hold
-          const c1 = win(t, 0.03, 0.09, 0.1, 0.17);                                     // chaplin
-          const rl = easeInOut((t - 0.17) / 0.17);                                      // roll around the hand
-          const show = win(t, 0.36, 0.44, 0.74, 0.8);                                   // show pose
-          const vee = win(t, 0.38, 0.47, 0.72, 0.78);                                   // handles spread
-          const rov = easeInOut((t - 0.8) / 0.13);                                      // rollover catch
+          const c1 = win(t, 0.03, 0.1, 0.11, 0.19);                                     // chaplin
+          const rl = easeInOut((t - 0.18) / 0.2);                                       // roll around the hand
+          const show = win(t, 0.38, 0.47, 0.74, 0.81);                                  // show pose
+          const vee = win(t, 0.4, 0.5, 0.72, 0.79);                                     // handles spread
+          const rov = easeInOut((t - 0.8) / 0.15);                                      // rollover catch
           bfly = { a: Math.PI * c1 + 1.9 * vee, flip: -Math.PI * 2 * rov, roll: Math.PI * 2 * rl };
-          ory += 0.22 * show + Math.sin(t * Math.PI * 2.2) * 0.03 * show;              // present it, with a little sway
+          ory += 0.22 * show + Math.sin(t * Math.PI * 1.2) * 0.025 * show;             // present it, with a slow sway
           orz += 0.16 * show; orx -= 0.08 * show; ox -= 0.035 * show; oy += 0.05 * show; oz -= 0.02 * show;
           orx -= 0.1 * win(t, 0.8, 0.86, 0.88, 0.95);
           this.bflySwish(t, [0.08, 0.22, 0.3, 0.84]);
@@ -319,7 +320,7 @@
           // round the ring finger and ends hanging below the fist; hold that show pose with a gentle
           // sway; then a last half-twirl as the hand drops back into the low hold
           const up = win(t, 0.0, 0.1, 0.76, 0.9);
-          ox -= 0.07 * up; oy += 0.09 * up; oz -= 0.03 * up; orz += 1.05 * up; ory += 0.2 * up; orx -= 0.15 * up;
+          ox -= 0.05 * up; oy += 0.13 * up; oz -= 0.12 * up; orz += 0.5 * up; ory += 0.4 * up; orx -= 0.05 * up;     // up near the centre so the hanging knife stays in view
           spinAng = easeInOut((t - 0.02) / 0.14) * Math.PI * 3 + easeInOut((t - 0.78) / 0.14) * Math.PI;
           ringW = win(t, 0, 0.05, 0.9, 0.96);
           const hold = win(t, 0.16, 0.24, 0.72, 0.78);
@@ -600,8 +601,9 @@
       let gp = model.localToWorld(this._v.copy(ud.grip));
       const spin = holder.userData.spin;
       const bf = !!ud.handleA;
-      const KH = this.knifeHands, H = spin ? KH.R : bf ? KH.RB : R.hand;     // karambit: backhand fist; butterfly: hammer-grip fist
-      R.hand.visible = KH.R.visible = KH.L.visible = KH.RB.visible = false;
+      const KH = this.knifeHands;
+      let H = spin ? (spin.ringW > 0.45 ? KH.RP : KH.R) : bf ? KH.RB : R.hand;     // karambit: backhand fist (pointing finger in the ring while it spins); butterfly: hammer-grip fist
+      R.hand.visible = KH.R.visible = KH.L.visible = KH.RB.visible = KH.RP.visible = false;
       if (bf) {
         // Butterfly: closed fist round the safe handle (the handle stays put in the hand while
         // the blade and bite handle flip around the pin)
@@ -638,12 +640,18 @@
         // knife rolls around that finger; it closes back onto the handle for the final pose.
         const rw = spin.ringW || 0;
         if (rw > 0.001) {
+          // The index finger straightens and goes THROUGH the ring: the finger lies along the knife's
+          // spin axis with the ring's centre on it, so the knife visibly rolls around the finger.
           const ringC = spin.obj.getWorldPosition(this._kv1 || (this._kv1 = new THREE.Vector3()));
-          const tip = this._v2.set(-0.0194, -0.018, -0.04).multiplyScalar(1.3).applyQuaternion(gripQ);    // mirrored glove: index on -X
-          H.position.lerp(ringC.sub(tip), rw);
-          const tilt = this._kq3 || (this._kq3 = new THREE.Quaternion());
-          tilt.setFromAxisAngle(X, -0.35 * rw);                                // fingers relax open a little
-          H.quaternion.premultiply(tilt);
+          const F = this._kF || (this._kF = new THREE.Vector3(-0.92, 0.08, -0.38).normalize());
+          const Zp = (this._kzp || (this._kzp = new THREE.Vector3())).copy(F).negate();
+          const Yp = (this._kyp || (this._kyp = new THREE.Vector3())).set(0, 1, 0.25); Yp.addScaledVector(Zp, -Yp.dot(Zp)).normalize();
+          const Xp = (this._kxp || (this._kxp = new THREE.Vector3())).crossVectors(Yp, Zp);
+          const pq = (this._kpq || (this._kpq = new THREE.Quaternion())).setFromRotationMatrix((this._kpm || (this._kpm = new THREE.Matrix4())).makeBasis(Xp, Yp, Zp));
+          const q = (this._kq4 || (this._kq4 = new THREE.Quaternion())).copy(gripQ).slerp(pq, smooth(rw));
+          const onFinger = this._v2.set(-0.0195, 0.002, -0.062).multiplyScalar(1.3).applyQuaternion(q);   // point mid-way along the straight index finger
+          H.position.lerp(ringC.sub(onFinger), smooth(rw));
+          H.quaternion.copy(q);
         }
       } else {
         R.hand.position.copy(gp);

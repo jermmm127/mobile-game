@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.7.2',
+  version: '1.7.3',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -161,7 +161,7 @@ BR.CONFIG = {
     // Light machine gun: 80-round belt box, long sustained fire, slower to move with and reload
     lmg:     { name: 'LMG', ammo: 'heavy', dmg: 20, pellets: 1, rpm: 720, mag: 80, reload: 3.6, spread: 0.03, ads: 0.4, bloom: 0.004, bloomMax: 0.045, range: 90, head: 1.5, recoil: 0.012, recoilH: 0.02, kick: 0.6, zoom: 1.35, tier: 2, color: 0x3a3d33, speedMult: 0.9 },
     // Designated marksman rifle: semi-auto, hard-hitting, low-power prism optic
-    dmr:     { name: 'DMR', ammo: 'heavy', dmg: 44, pellets: 1, rpm: 240, mag: 12, reload: 2.3, spread: 0.012, ads: 0.15, bloom: 0.012, bloomMax: 0.04, range: 200, head: 2.0, recoil: 0.03, kick: 0.9, zoom: 2.2, tier: 2, color: 0x5a5448 },
+    dmr:     { name: 'DMR', ammo: 'heavy', dmg: 44, pellets: 1, rpm: 240, mag: 12, reload: 2.3, spread: 0.012, ads: 0.15, bloom: 0.012, bloomMax: 0.04, range: 200, head: 2.0, recoil: 0.03, kick: 0.9, zoom: 2.6, tier: 2, color: 0x5a5448, optic: 'prism' },
     sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4 },
   },
 

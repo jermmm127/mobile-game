@@ -1945,7 +1945,7 @@ BR.Models = (function () {
   const handCache = {};
   // fist = fingers closed round a handle (karambit); otherwise the relaxed gun-grip curl
   function hand(id, left, fist) {
-    const key = (id || 'default') + (left ? 'L' : 'R') + (fist ? 'F' : '');
+    const key = (id || 'default') + (left ? 'L' : 'R') + (fist === 'point' ? 'P' : fist ? 'F' : '');
     if (!handCache[key]) handCache[key] = buildHand(id, left, fist);
     const g = new THREE.Group();
     for (const m of handCache[key].children) { const c = new THREE.Mesh(m.geometry, m.material); c.userData.glove = true; g.add(c); }
@@ -1962,13 +1962,14 @@ BR.Models = (function () {
     const heel = put(sph(0.026), m.main, 0, -0.004, 0.018); heel.scale.set(1.0, 0.55, 0.75);
     const dome = put(sph(0.028), m.main, 0, 0.006, -0.006); dome.scale.set(0.95, 0.45, 1.15);
     // fingers: three phalanges each, chained so the curl reads naturally
-    const lens = [0.023, 0.017, 0.013], radii = [0.0066, 0.006, 0.0056], curl = fist ? [1.2, 1.45, 1.1] : [0.55, 0.95, 0.75];
+    // fist: true = all fingers closed; 'point' = index finger straight (the karambit ring spins on it)
+    const lens = [0.023, 0.017, 0.013], radii = [0.0066, 0.006, 0.0056], curl = fist ? [1.2, 1.45, 1.1] : [0.55, 0.95, 0.75], straight = [0.06, 0.08, 0.04];
     for (let i = 0; i < 4; i++) {
       const fx = -0.0195 + i * 0.013, fy = 0.002 + (i === 1 || i === 2 ? 0.0015 : 0), lenK = i === 0 ? 0.85 : i === 3 ? 0.95 : 1;
       let par = new THREE.Group(); par.position.set(fx * sx, fy, -0.03); g.add(par);
       put(sph(radii[0] * 1.15), m.main, 0, 0, 0, 0, 0, 0, par);                               // knuckle
       for (let k = 0; k < 3; k++) {
-        const joint = new THREE.Group(); joint.rotation.x = -curl[k]; par.add(joint);
+        const joint = new THREE.Group(); joint.rotation.x = -(fist === 'point' && i === 3 ? straight[k] : curl[k]); par.add(joint);
         const L = lens[k] * lenK;
         const seg = put(cyl(radii[k], radii[k] * 0.92, L, 8), m.main, 0, 0, -L / 2, Math.PI / 2, 0, 0, joint);
         seg.position.x = 0;

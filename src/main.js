@@ -167,7 +167,7 @@
     if (signed) {
       $('acct-me').textContent = BR.Accounts.current();
       $('acct-coins').textContent = BR.Profile.coinsLabel();
-      $('acct-stats').textContent = `${P.stats.matches} matches · ${P.stats.wins} wins · ${P.stats.kills} kills`;
+      $('acct-stats').textContent = `${P.stats.matches} matches · ${P.stats.wins} wins · ${P.stats.kills} kills · K/D ${BR.Profile.kd().toFixed(2)}`;
       $('acct-dev').classList.toggle('hidden', !BR.Profile.infinite());
     }
   };
@@ -409,7 +409,7 @@
     const P = BR.Profile.data, R = BR.Ranks, t = R.of(P.rp || 0), T = R.tiers[t], N = R.tiers[t + 1];
     const pct = N ? Math.round(((P.rp || 0) - T.rp) / (N.rp - T.rp) * 100) : 100;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    $('rk-me').innerHTML = `${R.badge(P.rp || 0, true)}<div class="rk-info"><b>${T.name.toUpperCase()}</b><span>${P.rp || 0} RP${N ? ' · ' + (N.rp - (P.rp || 0)) + ' to ' + N.name : ' · top tier'}</span><div class="rk-prog"><i style="width:${pct}%;background:linear-gradient(90deg,${T.c2},${T.c1})"></i></div></div>`;
+    $('rk-me').innerHTML = `${R.badge(P.rp || 0, true)}<div class="rk-info"><b>${T.name.toUpperCase()}</b><span>${P.rp || 0} RP${N ? ' · ' + (N.rp - (P.rp || 0)) + ' to ' + N.name : ' · top tier'} · K/D ${BR.Profile.kd().toFixed(2)}</span><div class="rk-prog"><i style="width:${pct}%;background:linear-gradient(90deg,${T.c2},${T.c1})"></i></div></div>`;
     const rows = R.board(), meIdx = rows.findIndex(r => r.me);
     const shown = rows.slice(0, 25);
     if (meIdx >= 25) shown.push(rows[meIdx]);
