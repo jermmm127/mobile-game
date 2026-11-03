@@ -14,6 +14,8 @@ const WICON_PATHS = {
   sniper: 'M0 10h64v3H40v2h-6l-1 8h-6l-1-8H16l-3 6H6l3-6H0z M18 4h22v5H18z',
   hunter: 'M0 10h62v2H40c-7 0-11 3-15 9h-9c3-4 7-8 10-9H0z M30 8h6v2h-6z',
   knife: 'M28 6a4 4 0 1 1 0.1 0z M24 9l8 2c-2 8-8 12-18 12 7-3 10-8 10-14z',
+  butterfly: 'M6 11h22v3H6z M28 10l26-2-4 6H28z M8 15h20v2H8z',
+  revolver: 'M10 6h34v5H30v3h-6l-3 9h-8l3-9h-3l-2-3H10z M44 7h12v3H44z M24 11a3 3 0 1 1 0.1 0z',
 };
 const WICON = id => `<svg viewBox="0 0 64 24"><path d="${WICON_PATHS[id] || WICON_PATHS.pistol}" fill-rule="evenodd"/></svg>`;
 
@@ -126,6 +128,7 @@ BR.HUD = class HUD {
   </div>
   <div class="ed-row">
     <label class="ed-l">OPACITY <input id="ed-alpha" type="range" min="0.15" max="1" step="0.05"></label>
+    <label class="ed-l">WEAPONS <input id="ed-slot-alpha" type="range" min="0.1" max="1" step="0.05"></label>
     <button id="ed-flip" class="mbtn sm">MOVE PANEL</button>
     <button id="ed-reset" class="mbtn sm">RESET</button>
     <button id="ed-done" class="mbtn sm hot">DONE</button>

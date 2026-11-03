@@ -16,7 +16,7 @@ BR.Layout = class Layout {
     this.buttons = Array.from(this.play.querySelectorAll(':scope > [data-act]'));
     this.sel = null;
     const $ = id => document.getElementById(id);
-    this.ui = { bar: $('editor'), name: $('ed-sel'), size: $('ed-size'), hide: $('ed-hide'), alpha: $('ed-alpha') };
+    this.ui = { bar: $('editor'), name: $('ed-sel'), size: $('ed-size'), hide: $('ed-hide'), alpha: $('ed-alpha'), slotAlpha: $('ed-slot-alpha') };
     this.bind();
     this.apply();
     window.addEventListener('resize', () => this.apply());
@@ -33,6 +33,7 @@ BR.Layout = class Layout {
   apply() {
     const t = this.settings.layout[this.orient()] || {};
     this.play.style.setProperty('--btn-alpha', this.settings.layout.alpha ?? 0.85);
+    this.play.style.setProperty('--slot-alpha', this.settings.layout.slotAlpha ?? 1);
     for (const b of this.buttons) {
       const e = t[b.dataset.act];
       if (e) {
@@ -76,6 +77,7 @@ BR.Layout = class Layout {
     this.capture();
     this.apply();
     this.ui.alpha.value = this.settings.layout.alpha ?? 0.85;
+    this.ui.slotAlpha.value = this.settings.layout.slotAlpha ?? 1;
     this.select(this.buttons.find(b => b.dataset.act === 'fire'));
   }
 
@@ -140,10 +142,15 @@ BR.Layout = class Layout {
       this.settings.layout.alpha = parseFloat(ui.alpha.value);
       this.apply(); this.save();
     });
+    ui.slotAlpha.addEventListener('input', () => {
+      this.settings.layout.slotAlpha = parseFloat(ui.slotAlpha.value);
+      this.apply(); this.save();
+    });
     document.getElementById('ed-reset').addEventListener('click', () => {
       delete this.settings.layout[this.orient()];
       this.settings.layout.alpha = 0.85;
       ui.alpha.value = 0.85;
+      this.settings.layout.slotAlpha = 1; ui.slotAlpha.value = 1;
       this.apply();     // back to CSS defaults…
       this.capture();   // …then capture them so editing continues
       this.apply();

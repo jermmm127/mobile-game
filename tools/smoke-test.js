@@ -87,11 +87,11 @@ const server = http.createServer((req, res) => {
     g.actors.forEach(a => { if (a !== p) a.alive = false; });
     p.mover.dropping = false; p.mover.pos.set(0, 30, 0); p.mover.vel.set(0, 0, 0);
     for (let i = 0; i < 90; i++) g.update(1 / 30);
+    r.spawnSlots = p.slots.map(s => s && s.id);
     p.slots[1] = BR.Weapons.create('shotgun'); p.cur = 1; p.pitch = -1.45;
     const y0 = p.pos.y; BR.Weapons.tryFire(g, p);
     let peak = y0; for (let i = 0; i < 60; i++) { p.mover.update(1 / 60, { mx: 0, mz: 0 }, p.yaw); peak = Math.max(peak, p.pos.y); }
     r.shotgunJump = peak - y0;
-    r.spawnSlots = p.slots.map(s => s && s.id);
     // super jump cooldown: two slide-jumps in a row -> only the first is super
     { const fw = new BR.World(1); fw.boxes = []; fw.cells = fw.cells.map(() => []);
       const m = new BR.Mover(fw); m.pos.set(0, 0, 0);
@@ -127,7 +127,7 @@ const server = http.createServer((req, res) => {
     let built = 0; for (const w in BR.Models.BLUEPRINTS) for (const b in BR.Models.BLUEPRINTS[w]) { BR.Models.weapon(w, 'default', 'none', b); built++; }
     r.blueprints = built;
     const v = g.vmr; p.alive = true; p.mover.dropping = false; p.ads = false;
-    p.cur = 2; v.update(1 / 60, 0, 0); let maxSpin = 0;
+    p.cur = 2; v.lastWeapon = null; v.update(1 / 60, 0, 0); let maxSpin = 0;
     for (let i = 0; i < 70; i++) { v.update(1 / 60, 0, 0); const q = v.models.knife.userData.spin.obj.quaternion; maxSpin = Math.max(maxSpin, 2 * Math.acos(Math.min(1, Math.abs(q.w)))); }
     r.knifeSpin = maxSpin;
     // karambit is held in the backhand-fist gloves (right holds the knife, left is an empty fist)
@@ -410,6 +410,39 @@ const server = http.createServer((req, res) => {
     const dropped = P.scale; for (let i = 0; i < 700; i++) g.adaptResolution(16);
     return { chunks: W.chunks.length, hidden, calls: calls / 10, tris: Math.round(tris / 10), s0, dropped, recovered: P.scale, cap: P.cap, botMeshes: g.actors[1].mesh ? (() => { let n = 0; g.actors[1].mesh.traverse(o => { if (o.isMesh) n++; }); return n; })() : 0 };
   });
+  // v1.5: butterfly knife + revolver + their skins, weaker Easy bots, 5-round hunter, slot opacity
+  const v15 = await page.evaluate(() => {
+    const g = BR.game, C = BR.CONFIG, P = BR.Profile, out = {};
+    out.hunterMag = C.weapons.hunter.mag;
+    out.easyMult = C.difficulty.easy.playerDamageMult; out.medMult = C.difficulty.normal.playerDamageMult;
+    const M = BR.Models.BLUEPRINTS, caseIds = BR.CaseItems.all().map(x => x.id);
+    out.bflySkins = Object.keys(M.butterfly).length; out.rvSkins = Object.keys(M.revolver).length;
+    out.inCase = caseIds.filter(x => /^(butterfly|revolver):/.test(x)).length;
+    out.inShop = Object.keys(M.butterfly).concat(Object.keys(M.revolver)).length - out.inCase;
+    // equip the butterfly -> becomes the player's melee; draw flips the handles
+    P.data.owned.blueprints.push('butterfly:fade'); P.setEquip('blueprints', 'butterfly:fade');
+    g.startMatch({ practice: true }); g.player.takeDamage = () => false;
+    for (let i = 0; i < 400 && g.player.mover.dropping; i++) g.update(1 / 30);
+    const p = g.player; out.melee = p.slots[2] && p.slots[2].id;
+    p.switchTo ? p.switchTo(2) : (p.cur = 2);
+    const vm = g.vmr; let maxA = 0;
+    for (let i = 0; i < 40; i++) { g.update(1 / 60); const ud = vm.models.butterfly && vm.models.butterfly.userData.model.userData; if (ud && ud.handleA) maxA = Math.max(maxA, Math.abs(ud.handleA.rotation.x)); }
+    out.bflyFlip = maxA;
+    // revolver: crane swings out and cylinder spins during reload
+    g.practiceSpawn('weapon', 'revolver');
+    const w = p.weapon; out.rv = w && w.id;
+    let crane = 0, cyl0 = null, cyl = 0;
+    if (w && w.id === 'revolver') { for (let i = 0; i < 60; i++) vm.update(1 / 60, 0, 0); w.mag = 0; BR.Weapons.startReload(w, p); for (let i = 0; i < 200 && w.reloadT > 0; i++) { BR.Weapons.update(w, 1 / 60, p); vm.update(1 / 60, 0, 0); const ud = vm.models.revolver.userData.model.userData; crane = Math.max(crane, ud.crane.rotation.z); if (cyl0 === null) cyl0 = ud.cylinder.rotation.z; cyl = Math.max(cyl, Math.abs(ud.cylinder.rotation.z - cyl0)); } }
+    out.crane = crane; out.cyl = cyl;
+    P.setEquip('blueprints', 'butterfly:default'); P.data.equip.melee = 'knife';
+    // weapon-slot opacity in the HUD editor
+    const sa = document.getElementById('ed-slot-alpha'); sa.value = 0.3; sa.dispatchEvent(new Event('input'));
+    out.slotAlpha = parseFloat(getComputedStyle(document.querySelector('#play > .slot:not(.empty)')).opacity);
+    out.saved = g.settings.layout.slotAlpha;
+    sa.value = 1; sa.dispatchEvent(new Event('input'));
+    g.state = 'menu';
+    return out;
+  });
   const run = 6.9, BR_RUN = run;
   const checks = [
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
@@ -427,7 +460,7 @@ const server = http.createServer((req, res) => {
     ['jump pad launches > 5m', mech.padApex > 5],
     ['grapple pulls you onto a 10m roof', mech.grappleTop >= 9.9],
     ['shotgun jump launches > 2.5m', combat.shotgunJump > 2.5],
-    ['you spawn with a pistol + karambit', combat.spawnSlots[0] === 'pistol' && combat.spawnSlots[2] === 'knife'],
+    ['you drop in with only your knife (no pistol)', !combat.spawnSlots[0] && !combat.spawnSlots[1] && combat.spawnSlots[2] === 'knife'],
     ['super jump has a cooldown', combat.superJumpVy[0] > 11 && combat.superJumpVy[1] < 9],
     ['grapple hooks the ground', combat.grappleGround],
     ['grapple hooks tree canopies', combat.grappleTree],
@@ -483,10 +516,16 @@ const server = http.createServer((req, res) => {
     ['mythic blueprints exist for every weapon and animate', duel.mythic >= 9 && duel.mythicAnim],
     ['performance: tiled world culled past the fog, < 200 draw calls, lean bots', perf.chunks > 20 && perf.hidden > 5 && perf.calls < 200 && perf.botMeshes < 26],
     ['adaptive resolution drops on slow frames and recovers (capped)', perf.dropped < perf.s0 && perf.recovered > perf.dropped && perf.recovered <= perf.cap + 1e-9],
+    ['hunting rifle holds 5 rounds', v15.hunterMag === 5],
+    ['Easy bots hit much softer than Medium', v15.easyMult < v15.medMult * 0.6],
+    ['butterfly + revolver skins in the shop and the Release Case', v15.bflySkins >= 8 && v15.rvSkins >= 5 && v15.inCase >= 6 && v15.inShop >= 6],
+    ['butterfly equips as your melee and flips open on draw', v15.melee === 'butterfly' && v15.bflyFlip > 1],
+    ['revolver reload swings the cylinder out and spins it', v15.rv === 'revolver' && v15.crane > 0.8 && v15.cyl > 0.5],
+    ['weapon buttons opacity can be lowered (saved)', Math.abs(v15.slotAlpha - 0.3) < 0.02 && v15.saved === 0.3],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

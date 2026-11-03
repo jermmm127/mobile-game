@@ -114,7 +114,7 @@ BR.Profile = {
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
       owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none' }, d.equip || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', melee: 'knife' }, d.equip || {}),
       rp: typeof d.rp === 'number' ? d.rp : 0,
       cases: Object.assign({ opened: 0 }, d.cases || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0 }, d.stats || {}),
@@ -160,7 +160,7 @@ BR.Profile = {
     return this.data.owned[cat].includes(id);
   },
   isEquipped(cat, id, weapon) {
-    if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b; }
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b && (!BR.MELEE[w] || (this.data.equip.melee || 'knife') === w); }
     if (cat === 'tracers') return (this.data.equip.tracerByGun[weapon || 'rifle'] || 'signature') === id;
     return this.data.equip[cat] === id;
   },
@@ -178,7 +178,7 @@ BR.Profile = {
   },
   equip(cat, id, weapon) { if (!this.owns(cat, id)) return false; this.setEquip(cat, id, weapon); this.save(); return true; },
   setEquip(cat, id, weapon) {
-    if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; }
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; if (BR.MELEE[w]) this.data.equip.melee = w; }   // equipping a knife skin makes it your knife
     else if (cat === 'tracers') this.data.equip.tracerByGun[weapon || 'rifle'] = id;
     else this.data.equip[cat] = id;
   },
@@ -225,7 +225,8 @@ BR.Profile = {
   },
 };
 
-const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['pistol', 'Pistol'], ['knife', 'Karambit']];
+BR.MELEE = { knife: true, butterfly: true };
+const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['pistol', 'Pistol'], ['knife', 'Karambit'], ['butterfly', 'Butterfly']];
 const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
 
 BR.Shop = class Shop {

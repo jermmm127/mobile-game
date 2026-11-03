@@ -70,7 +70,7 @@
       this.models = {};
       for (const id in BR.CONFIG.weapons) {
         const bp = (eq.blueprints || {})[id];
-        const m = BR.Models.weapon(id, eq.skins, id === 'knife' ? 'none' : eq.charms, bp);
+        const m = BR.Models.weapon(id, eq.skins, BR.CONFIG.weapons[id].melee ? 'none' : eq.charms, bp);
         const holder = new THREE.Group();
         if (id === 'knife') {
           // Reverse grip: handle upright in the fist (ring on top by the index finger), blade
@@ -89,6 +89,11 @@
           spin.position.copy(P); m.position.sub(P);
           spin.add(m); holder.add(spin);
           holder.userData.spin = { obj: spin, axis };
+        } else if (id === 'butterfly') {
+          // held like a hammer grip: handles in the fist, blade angled forward and in
+          m.rotation.set(-0.5, 0.4, 0.12); m.scale.setScalar(1.25);
+          m.userData.baseRot = m.rotation.clone();
+          holder.add(m);
         } else holder.add(m);
         holder.userData.model = m;
         holder.visible = false;
@@ -161,13 +166,14 @@
       this.kickR.y.vel += r * (auto ? 0.6 : 0.25) * a;
       this.flashT = d.suppressed ? 0.025 : 0.05;
       this.inspectT = 0;
+      if (d.revolver) this.cylTarget = (this.cylTarget || 0) + Math.PI / 3;          // index one chamber
       // Bolt action: cycle the bolt after every shot (unless that was the last round)
       if (d.bolt && w.mag > 0) { this.boltDelay = 0.12; this.boltDur = Math.min(0.9, 60 / d.rpm * 0.72); this.boltT = 0; }
     }
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.def.melee ? 2.4 : 2.1; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.def.melee ? 2.4 : 2.1; this.lastBflyT = 0; }
 
     hide() { if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
@@ -188,7 +194,7 @@
       if (w !== this.lastWeapon) {
         this.lastWeapon = w;
         this.drawDur = this.drawT = def.melee ? 1.05 : 0.55;
-        this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.boltT = 0; this.boltDelay = 0;
+        this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0;
         if (def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
       }
       this.drawT = Math.max(0, this.drawT - dt);
@@ -206,6 +212,7 @@
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
+      if (w.id === 'butterfly') { hx = 0.14 * s; hy = -0.05; hz = -0.4; }
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
       if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) * 0.78 - sg.z; }
       const A = this.adsW, nA = 1 - A * 0.85;
@@ -232,11 +239,18 @@
 
       // ---- keyframed overlays (added after the springs) -------------------------
       let ox = 0, oy = 0, oz = 0, orx = 0, ory = 0, orz = 0;
-      let leftTarget = null, magOff = null, magVis = true, spinAng = 0, ringW = 0, leftHidden = !!def.melee;
+      let leftTarget = null, magOff = null, magVis = true, spinAng = 0, ringW = 0, leftHidden = !!def.melee, bfly = null;
       // Draw
       if (this.drawT > 0) {
         const t = 1 - this.drawT / this.drawDur;
-        if (def.melee) {
+        if (w.id === 'butterfly') {
+          // Butterfly deploy: comes up closed, the bite handle swings open, the knife rolls over in the
+          // hand while the safe handle swings round, then an extra aerial flip and the handles slap shut
+          const rise = smooth(t / 0.1);
+          oy += -(1 - rise) * 0.18; orz += Math.sin(t * Math.PI) * 0.35; ox += 0.04 * win(t, 0, 0.1, 0.6, 0.9);
+          bfly = { a: Math.PI * (1 - smooth((t - 0.08) / 0.3)), b: -Math.PI * (1 - smooth((t - 0.02) / 0.22)) + Math.PI * 2 * smooth((t - 0.48) / 0.2), roll: easeInOut(t / 0.75) * Math.PI * 2 };
+          this.bflySwish(t, [0.12, 0.3, 0.55, 0.68]);
+        } else if (def.melee) {
           // CS-style karambit deploy: snap into view, twirl twice around the ring, settle
           const rise = smooth(t / 0.08), out = 1 - smooth((t - 0.6) / 0.4);
           oy += -(1 - rise) * 0.16 + out * rise * 0.06;
@@ -255,7 +269,15 @@
       // Inspect
       if (this.inspectT > 0) {
         const t = 1 - this.inspectT / this.inspectDur;
-        if (def.melee) {
+        if (w.id === 'butterfly') {
+          // Butterfly inspect: chaplin flips (each handle swings closed and back open), a full roll, then a
+          // fast aerial and a show-off tilt toward the camera
+          const c1 = win(t, 0.04, 0.16, 0.16, 0.3), c2 = win(t, 0.22, 0.34, 0.34, 0.48);
+          bfly = { a: Math.PI * c1, b: -Math.PI * c2 + Math.PI * 2 * smooth((t - 0.62) / 0.14), roll: easeInOut((t - 0.4) / 0.25) * Math.PI * 2 };
+          const sh = win(t, 0.75, 0.85, 0.95, 1);
+          ory += sh * 0.9; orz += sh * 0.5 + Math.sin(t * Math.PI) * 0.2; ox -= sh * 0.1; oy += sh * 0.05;
+          this.bflySwish(t, [0.12, 0.3, 0.5, 0.68]);
+        } else if (def.melee) {
           spinAng = easeInOut(t / 0.42) * Math.PI * 4;
           ringW = win(t, 0, 0.06, 0.36, 0.48);
           const sh = win(t, 0.42, 0.55, 0.85, 1);
@@ -356,6 +378,30 @@
           const reach = smooth(k / 0.55), push = smooth((k - 0.55) / 0.3), away = smooth((k - 0.85) / 0.15);
           leftTarget = lp.set(port.x - 0.01, port.y - 0.16 * (1 - reach) - 0.01 * away, port.z + 0.06 * (1 - reach) - 0.035 * push + 0.08 * away);
           if (this.shellT > 0) oy -= Math.sin(this.shellT / 0.2 * Math.PI) * 0.02;
+        } else if (def.revolver && ud.crane) {
+          // Revolver: roll the gun, swing the cylinder out, punch the ejector (cylinder spins), left hand
+          // brings a speedloader up and drives it in, flick the cylinder shut, settle
+          const tilt = win(k, 0, 0.1, 0.84, 0.97), up = win(k, 0.14, 0.2, 0.3, 0.36);
+          orz += 0.75 * tilt; ory -= 0.2 * tilt; oy += 0.05 * tilt; ox -= 0.05 * tilt; orx += 0.55 * up - 0.15 * tilt;
+          const open = win(k, 0.04, 0.14, 0.72, 0.8);
+          ud.crane.rotation.z = open * 1.35;
+          if (k > 0.14 && k < 0.34) this.cylSpinV = 18;                                    // empties dumped
+          const sl = ud.speedloader, slIn = smooth((k - 0.42) / 0.18), slOn = k > 0.3 && k < 0.66;
+          sl.visible = slOn;
+          // speedloader path in model space: from below the gun up to the open cylinder's rear face
+          const cylAt = ud.crane.localToWorld(this._v.set(0.016, 0.02, 0.03)); model.worldToLocal(cylAt);
+          magOff = this._v2.set(0, -0.28, 0.12).lerp(cylAt.sub(this._rvSl || (this._rvSl = new THREE.Vector3(0, 0.042, 0.03))), slIn);
+          const handAt = this._rvHand || (this._rvHand = new THREE.Vector3());
+          handAt.set(0, 0.042, 0.03).add(magOff).add(this._rvOff || (this._rvOff = new THREE.Vector3(0, -0.04, -0.012)));
+          if (k < 0.2) leftTarget = (fore || handAt).clone().lerp(new THREE.Vector3(-0.1, -0.4, 0.2), smooth(k / 0.2));
+          else if (k < 0.7) leftTarget = handAt.clone();
+          else leftTarget = new THREE.Vector3(-0.02, 0.05, -0.03).lerp(fore || handAt, smooth((k - 0.72) / 0.2));   // palm flicks it shut
+          const passed = x => this.lastReloadK < x && k >= x;
+          if (passed(0.12)) { BR.Audio.click(); this.rot.z.vel += 0.8; }
+          if (passed(0.22)) { BR.Audio.reload(); this.pos.y.vel += 0.4; }
+          if (passed(0.6)) { BR.Audio.click(); this.pos.z.vel -= 0.3; }
+          if (passed(0.76)) { BR.Audio.reload(); this.rot.z.vel -= 1.6; }
+          this.lastReloadK = k;
         } else {
           // Magazine: tilt, mag out, hand to pouch, new mag in, slap, (rifles) charge
           const tilt = win(k, 0, 0.12, 0.82, 0.97);
@@ -400,6 +446,20 @@
       g.rotation.set(R.x.v + KR.x.v + orx, R.y.v + KR.y.v + ory, R.z.v + KR.z.v + orz);
       g.scale.setScalar(s);
 
+      // Revolver: cylinder indexing / spinning, crane closed when not reloading
+      if (ud.cylinder) {
+        this.cylSpinV = (this.cylSpinV || 0) * Math.exp(-dt * 3);
+        this.cylAng = (this.cylAng || 0) + this.cylSpinV * dt;
+        this.cylAng += ((this.cylTarget || 0) - this.cylAng) * Math.min(1, dt * 18) * (this.cylSpinV > 1 ? 0 : 1);
+        if (this.cylSpinV > 1) this.cylTarget = this.cylAng;
+        ud.cylinder.rotation.z = this.cylAng;
+        if (!reloading) { ud.crane.rotation.z = 0; if (ud.speedloader) ud.speedloader.visible = false; }
+      }
+      // Butterfly handles + roll (open and still when idle)
+      if (ud.handleA) {
+        ud.handleA.rotation.x = bfly ? bfly.a : 0; ud.handleB.rotation.x = bfly ? bfly.b : 0;
+        const br = model.userData.baseRot; if (br) model.rotation.set(br.x, br.y + (bfly ? bfly.roll : 0), br.z);
+      }
       // Karambit ring twirl
       if (holder.userData.spin) {
         // CS:GO-style flip: during twirls the knife turns edge-on so its ring lines up with the
@@ -643,6 +703,12 @@
         r.life -= dt; if (r.life <= 0) { r.m.visible = false; continue; }
         const k = 1 - r.life / r.max; r.m.scale.setScalar(0.02 + k * 0.16); r.m.material.opacity = (1 - k) * 0.9;
       }
+    }
+
+    // a swish each time a flip phase passes
+    bflySwish(t, marks) {
+      for (const m of marks) if (this.lastBflyT < m && t >= m) BR.Audio.swish(false);
+      this.lastBflyT = t;
     }
 
     onGrapple() { this.grapT = 0.3; }

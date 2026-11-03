@@ -72,7 +72,7 @@ button { font: inherit; color: inherit; }
 .ptitle { font: 700 22px var(--display); letter-spacing: 0.02em; color: var(--text); }
 
 /* ------------------------------------------------------------- play layer */
-#play { position: fixed; inset: 0; touch-action: none; overflow: hidden; --btn-alpha: 0.9; }
+#play { position: fixed; inset: 0; touch-action: none; overflow: hidden; --btn-alpha: 0.9; --slot-alpha: 1; }
 #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #play > *:not(#view):not(.btn):not(.slot) { pointer-events: none; }
 #play > .slot { pointer-events: auto !important; }
@@ -220,7 +220,8 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 .slot.knife { width: 76px; }
 .slot.active { border-color: rgba(255, 178, 36, 0.75); background: rgba(40, 28, 8, 0.6); box-shadow: inset 0 -2px 0 var(--accent); }
 .slot.active .sammo { color: var(--accent); }
-.slot.empty { opacity: 0.45; }
+.slot { opacity: var(--slot-alpha); }
+.slot.empty { opacity: calc(0.45 * var(--slot-alpha)); }
 #ammo { order: 2; display: flex; align-items: baseline; gap: 4px; position: relative; min-width: 84px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
 #mag { font: 700 34px/0.9 var(--display); color: #fff; }
 #ammo .sep { color: var(--muted); font-size: 18px; }
@@ -694,7 +695,7 @@ body.duel #topbar .dp { display: flex; }
 .slot.active .sbar i { background: var(--accent); }
 .slot.active .sammo { color: var(--accent); }
 .slot.low .sammo { color: var(--danger); } .slot.low .sbar i { background: var(--danger); }
-.slot.empty { opacity: 0.4; } .slot.empty .sicon { visibility: hidden; }
+.slot.empty { opacity: calc(0.4 * var(--slot-alpha)); } .slot.empty .sicon { visibility: hidden; }
 .slot.knife { width: 80px; }
 .slot .sicon:empty { height: 20px; }
 @media (max-height: 430px) { .slot { width: 78px; height: 48px; } .slot.knife { width: 66px; } .slot .sicon { height: 17px; } }

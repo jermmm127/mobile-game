@@ -581,6 +581,84 @@ BR.Models = (function () {
       anchors(g, -0.15, 0, [0, -0.02, 0.12]);
       g.userData.flash.visible = false;
     },
+    // Revolver: heavy frame, full-lug barrel with a vent rib, fluted six-shot cylinder on a swing-out
+    // crane (userData.crane / userData.cylinder), hammer, wood grip, speedloader as the "mag".
+    revolver(g, S, M) {
+      const k = kit(g), wood = cache.mat.revWood || (cache.mat.revWood = new THREE.MeshPhongMaterial({ color: 0x6a3f22, specular: 0x553322, shininess: 30 }));
+      k.box(0.032, 0.058, 0.11, 0, 0.034, 0.01, S);                       // frame
+      k.box(0.026, 0.012, 0.1, 0, 0.068, -0.005, S);                      // top strap
+      k.cyl(0.0105, 0.18, 0, 0.05, -0.15, M.metal, 'z', 14);              // barrel
+      k.box(0.018, 0.02, 0.17, 0, 0.033, -0.145, S);                      // full under-lug
+      k.box(0.012, 0.008, 0.17, 0, 0.064, -0.145, S);                     // vent rib
+      for (let i = 0; i < 6; i++) k.box(0.0125, 0.003, 0.012, 0, 0.069, -0.08 - i * 0.022, M.dark);
+      k.cyl(0.013, 0.012, 0, 0.05, -0.238, M.dark, 'z', 14);              // muzzle crown
+      // crane + cylinder (pivot on the left side so it swings out to the left)
+      const crane = new THREE.Group(); crane.position.set(-0.016, 0.022, -0.035); g.add(crane);
+      const cyl = new THREE.Group(); cyl.position.set(0.016, 0.02, 0); crane.add(cyl);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.052, 18), S); body.rotation.x = Math.PI / 2; cyl.add(body);
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2;
+        const fl = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.006, 0.04), M.dark); fl.position.set(Math.cos(a) * 0.025, Math.sin(a) * 0.025, 0); fl.rotation.z = a; cyl.add(fl);
+        const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.004, 10), M.brass); ch.rotation.x = Math.PI / 2; ch.position.set(Math.cos(a + 0.52) * 0.015, Math.sin(a + 0.52) * 0.015, 0.026); cyl.add(ch);
+      }
+      const ej = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.05, 8), M.metal); ej.rotation.x = Math.PI / 2; ej.position.set(0, 0, -0.045); cyl.add(ej);
+      g.userData.crane = crane; g.userData.cylinder = cyl;
+      const ham = k.box(0.008, 0.022, 0.014, 0, 0.074, 0.066, M.dark); ham.rotation.x = -0.5;
+      k.box(0.008, 0.008, 0.05, 0, -0.008, -0.01, M.dark); k.box(0.008, 0.026, 0.008, 0, 0.004, -0.035, M.dark);   // trigger guard
+      k.box(0.005, 0.022, 0.005, 0, 0.0, -0.01, M.metal);                // trigger
+      const gr = k.box(0.03, 0.105, 0.046, 0, -0.035, 0.07, wood, 0.32); void gr;
+      k.box(0.032, 0.012, 0.05, 0, -0.088, 0.088, M.dark);               // butt cap
+      // speedloader (the "mag" for the reload animation): 6 rounds in a dark ring
+      const sl = new THREE.Group(); sl.position.set(0, 0.042, 0.03);
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.012, 16), M.dark); ring.rotation.x = Math.PI / 2; sl.add(ring);
+      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.52; const rd = new THREE.Mesh(new THREE.CylinderGeometry(0.0052, 0.0052, 0.03, 8), M.brass); rd.rotation.x = Math.PI / 2; rd.position.set(Math.cos(a) * 0.015, Math.sin(a) * 0.015, -0.02); sl.add(rd); }
+      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.02, 10), M.dark); knob.rotation.x = Math.PI / 2; knob.position.z = 0.014; sl.add(knob);
+      const mg = new THREE.Group(); mg.add(sl); g.add(mg); g.userData.mag = mg; sl.visible = false; g.userData.speedloader = sl;
+      irons(g, M, 0.082, 0.05, -0.226, false);
+      g.userData.sightDist = 0.34;
+      hands(g, [0, -0.07, 0.07], [-0.012, -0.09, 0.05], [0, 0.075, 0.066]);
+      anchors(g, -0.25, 0.05, [-0.02, -0.07, 0.09]);
+    },
+    // Butterfly knife (balisong), CS-inspired: clip-point blade with a swedge + kicker, two
+    // skeletonized channel handles with cut-outs, pivot pins and a latch. Built upright like a
+    // pistol grip (blade up +Y, edge toward -Z, handles down -Y); handles swing about X on the pivot.
+    // Closed = handles rotated ±PI over the blade.
+    butterfly(g, S, M, opts) {
+      const ext = (pts, depth, bevel, holes) => {
+        const sh = new THREE.Shape(); sh.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) { const p = pts[i]; if (p.length === 4) sh.quadraticCurveTo(p[0], p[1], p[2], p[3]); else sh.lineTo(p[0], p[1]); }
+        sh.closePath();
+        for (const h of holes || []) { const pa = new THREE.Path(); pa.absellipse(h[0], h[1], h[2], h[3], 0, Math.PI * 2, false, 0); sh.holes.push(pa); }
+        const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: !!bevel, bevelThickness: bevel || 0, bevelSize: bevel || 0, bevelSegments: 2, curveSegments: 10 });
+        geo.translate(0, 0, -depth / 2);
+        const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 7, uv.getY(i) * 7);   // textures span the part
+        const m = new THREE.Mesh(geo, null); m.rotation.y = -Math.PI / 2;   // shape x -> model Z, shape y -> model Y, thickness -> X
+        return m;
+      };
+      const bladeMat = (opts && opts.blade) || M.blade;
+      // blade: shape x = model z (front is negative), shape y = up
+      const blade = ext([[0.009, 0.004], [0.009, 0.082], [0.009, 0.106, -0.001, 0.127], [-0.004, 0.131], [-0.012, 0.098, -0.011, 0.034], [-0.012, 0.012], [-0.006, 0.004]], 0.0026, 0.0009);
+      blade.material = bladeMat; g.add(blade);
+      const swedge = ext([[0.0075, 0.084], [0.0075, 0.104, 0.0, 0.122], [-0.002, 0.12], [0.0045, 0.1]], 0.0034, 0);
+      swedge.material = M.metal; g.add(swedge);
+      const kick = ext([[-0.006, 0.0], [-0.013, 0.004], [-0.012, 0.014], [-0.006, 0.012]], 0.003, 0.0005); kick.material = M.metal; g.add(kick);
+      // handles: pivot groups at the blade tang (pins along X)
+      const handle = (side) => {
+        const pv = new THREE.Group(); pv.position.set(side * 0.0042, 0.004, 0.001); g.add(pv);
+        const h = ext([[-0.0115, 0.004], [0.0115, 0.004], [0.0115, -0.118], [0.0115, -0.13, 0.0, -0.13], [-0.0115, -0.13, -0.0115, -0.118]], 0.0046, 0.0008,
+          [[0, -0.026, 0.004, 0.009], [0, -0.05, 0.004, 0.008], [0, -0.073, 0.004, 0.008], [0, -0.097, 0.0035, 0.007]]);
+        h.material = S; pv.add(h);
+        for (const y of [0, -0.12]) { const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0028, 0.0028, 0.012, 10), M.metal); pin.rotation.z = Math.PI / 2; pin.position.set(0, y, 0); pv.add(pin); }
+        return pv;
+      };
+      const hA = handle(1), hB = handle(-1);
+      const latch = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.022, 0.006), M.metal); latch.position.set(-0.004, -0.128, 0.0); hB.add(latch);
+      g.userData.handleA = hA; g.userData.handleB = hB;
+      g.userData.blade = blade;
+      hands(g, [0, -0.07, 0.0], null, null);
+      anchors(g, 0.14, 0, [0, -0.13, 0]);
+      g.userData.flash.visible = false;
+    },
   };
 
   // ------------------------------------------------------------------ charms
@@ -1118,6 +1196,78 @@ BR.Models = (function () {
     },
   };
   for (const w in CASEBP) MYTHIC[w] = Object.assign(MYTHIC[w] || {}, CASEBP[w]);
+  // ---- Butterfly knife + revolver skins (shop + Release Case). Animated blades use the shared
+  // animated textures (lava, lightning, prism, nebula, liquid gold), so they move in your hand.
+  const animBlade = (key, glow) => () => new THREE.MeshPhongMaterial({ map: TEX[key](), emissive: 0xffffff, emissiveMap: TEX[key](), emissiveIntensity: glow, specular: 0xffffff, shininess: 170, side: THREE.DoubleSide });
+  BLADES.molten = animBlade('molten', 1); BLADES.storm = animBlade('electric', 1); BLADES.prismblade = animBlade('prism', 0.6);
+  BLADES.nebula = animBlade('nebula', 0.9); BLADES.goldrush = animBlade('liquidgold', 0.35);
+  BLADES.crimson = () => new THREE.MeshPhongMaterial({ shininess: 150, specular: 0xffc0c0, side: THREE.DoubleSide, map: bladeTex('crimsonweb', (c, s) => {
+    c.fillStyle = '#9a0010'; c.fillRect(0, 0, s, s); c.strokeStyle = '#140003'; c.lineWidth = 1.6;
+    for (let r = 8; r < s; r += 14) { c.beginPath(); c.arc(s * 0.3, s * 0.3, r, 0, 7); c.stroke(); }
+    for (let a = 0; a < 10; a++) { c.beginPath(); c.moveTo(s * 0.3, s * 0.3); c.lineTo(s * 0.3 + Math.cos(a) * s * 1.2, s * 0.3 + Math.sin(a) * s * 1.2); c.stroke(); } }) });
+  BLADES.marble = () => new THREE.MeshPhongMaterial({ shininess: 160, specular: 0xffffff, side: THREE.DoubleSide, map: bladeTex('marble', (c, s) => {
+    for (let y = 0; y < s; y += 2) for (let x = 0; x < s; x += 2) { const v = Math.sin(x * 0.06 + Math.sin(y * 0.05) * 3) * 0.5 + 0.5;
+      c.fillStyle = `hsl(${v < 0.33 ? 0 : v < 0.66 ? 45 : 220},95%,${45 + v * 20}%)`; c.fillRect(x, y, 2, 2); } }) });
+  const handleGlow = (g, mat) => { for (const h of [g.userData.handleA, g.userData.handleB]) { if (!h) continue; for (const y of [-0.026, -0.05, -0.073, -0.097]) { const d = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.012, 0.005), mat); d.position.set(0, y, 0); h.add(d); } } };
+  const NEWBP = {
+    butterfly: {
+      crimsonweb: { name: 'Crimson Web', rarity: 'Epic', price: 900, body: 0x1a1214, accent: 0x1a1214, glow: 0xff1f3d, blade: 'crimson' },
+      fade: { name: 'Fade', rarity: 'Legendary', price: 1400, body: 0x16161a, accent: 0x16161a, glow: 0xff5ec4, blade: 'fade' },
+      marble: { name: 'Marble Fade', rarity: 'Legendary', price: 1500, body: 0x0e0e12, accent: 0x0e0e12, glow: 0xffd24a, blade: 'marble' },
+      goldrush: { name: 'Gold Rush', rarity: 'Legendary', price: 1600, body: 0xd9a400, bodyGloss: 2, accent: 0xfff3b0, glow: 0xfff3b0, blade: 'goldrush',
+        mod(g, k, P) { handleGlow(g, liveGlow(0xfff3b0)); } },
+      nebula: { name: 'Nebula', rarity: 'Legendary', caseOnly: true, body: 0x1a0a2a, bodyGloss: 2, accent: 0x7b2cff, glow: 0xff6af0, blade: 'nebula',
+        mod(g, k, P) { const G = liveGlow(0xff6af0); hueCycle(g, G, 0.75, 0.92, 1.5, 0.62); handleGlow(g, G); } },
+      moltencore: { name: 'Molten Core', rarity: 'Mythic', caseOnly: true, body: 0x1a0805, bodyGloss: 1, accent: 0x2a0d05, glow: 0xff6a00, blade: 'molten',
+        mod(g, k, P) { const G = liveGlow(0xff7a00); hueCycle(g, G, 0.02, 0.1, 4, 0.55); handleGlow(g, G);
+          orbiters(g, 5, new THREE.OctahedronGeometry(0.004, 0), G, 0, 0.07, 0, 0.03, 4, 'y'); } },
+      stormbreaker: { name: 'Stormbreaker', rarity: 'Mythic', caseOnly: true, body: 0x0a1030, bodyGloss: 2, accent: 0x1a2a6a, glow: 0x6fc8ff, blade: 'storm',
+        mod(g, k, P) { const G = liveGlow(0x9fe8ff); handleGlow(g, G);
+          const arcs = []; for (let i = 0; i < 6; i++) { const a = k.box(0.002, 0.016, 0.002, 0, 0.03 + i * 0.016, 0, G); arcs.push(a); }
+          anim(g, t => { const f = Math.floor(t * 18); arcs.forEach((a, i) => { const u = Math.abs(Math.sin(f * 7.1 + i * 3.3)); a.position.z = (u - 0.5) * 0.03; a.rotation.x = u * 2; a.visible = u > 0.35; }); G.color.setHSL(0.55, 1, 0.65 + 0.2 * Math.sin(t * 30)); }); } },
+      prismatic: { name: 'Prismatic', rarity: 'Exotic', caseOnly: true, body: 0xf2f2ff, bodyGloss: 2, accent: 0xffffff, glow: 0xffffff, blade: 'prismblade',
+        mod(g, k, P) { const G = liveGlow(0xff3df2); hueCycle(g, G, 0.0, 1.0, 0.8, 0.6); handleGlow(g, G);
+          const ice = crystal(0xd8f4ff), shards = [];
+          for (let i = 0; i < 5; i++) { const sh = new THREE.Mesh(new THREE.OctahedronGeometry(0.006, 0), ice); sh.scale.y = 2.2; g.add(sh); shards.push(sh); }
+          anim(g, t => shards.forEach((sh, i) => { const a = t * 1.6 + i / 5 * 6.283; sh.position.set(Math.cos(a) * 0.035, 0.07 + Math.sin(t * 2 + i) * 0.02, Math.sin(a) * 0.035); sh.rotation.set(t * 3 + i, t, 0); }));
+          orbiters(g, 6, new THREE.BoxGeometry(0.003, 0.003, 0.003), liveGlow(0xffffff), 0, 0.12, 0, 0.02, -5, 'y'); },
+        tracer: { name: 'Prismatic Signature', style: 'helix', color: -1, color2: -1 } },
+    },
+    revolver: {
+      neonoutlaw: { name: 'Neon Outlaw', rarity: 'Epic', price: 800, body: 0x121218, bodyGloss: 2, accent: 0xff2fa8, accentGloss: 2, glow: 0x1de9ff,
+        mod(g, k, P) { for (const x of [-0.016, 0.016]) k.box(0.002, 0.004, 0.16, x, 0.052, -0.14, P.G);
+          const cyl = g.userData.cylinder; if (cyl) for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const st = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.003, 0.042), P.G); st.position.set(Math.cos(a) * 0.027, Math.sin(a) * 0.027, 0); cyl.add(st); } } },
+      engraved: { name: 'Engraved', rarity: 'Legendary', price: 1200, body: 0xd8dde3, bodyGloss: 2, accent: 0xe6b422, accentGloss: 2, glow: 0xfff0b0,
+        mod(g, k, P) { for (let i = 0; i < 8; i++) k.box(0.0335, 0.002, 0.008, 0, 0.012 + (i % 4) * 0.012, -0.03 + Math.floor(i / 4) * 0.05, P.A);
+          for (let i = 0; i < 5; i++) k.box(0.013, 0.002, 0.024, 0, 0.0715, -0.08 - i * 0.03, P.A);
+          const iv = chrome(0xf3ecd8); for (const x of [-0.016, 0.016]) { const p2 = k.box(0.003, 0.09, 0.04, x, -0.035, 0.07, iv); p2.rotation.x = 0.32; } } },
+      ghost: { name: 'Ghost', rarity: 'Legendary', caseOnly: true, body: 0xbfeaff, bodyGloss: 2, accent: 0xe8f6ff, glow: 0xdff6ff,
+        mod(g, k, P) { const ghost = new THREE.MeshPhongMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.45, specular: 0xffffff, shininess: 140, emissive: 0x204a6a, depthWrite: false });
+          k.box(0.036, 0.062, 0.12, 0, 0.034, 0.01, ghost);
+          orbiters(g, 3, new THREE.SphereGeometry(0.006, 8, 6), new THREE.MeshBasicMaterial({ color: 0xdff6ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }), 0, 0.05, -0.1, 0.04, 2, 'z');
+          anim(g, t => { ghost.opacity = 0.35 + 0.15 * Math.sin(t * 2.2); }); } },
+      dragonfang: { name: 'Dragon Fang', rarity: 'Mythic', caseOnly: true, body: 0x6a0b0b, bodyGloss: 2, accent: 0xffc93a, accentGloss: 2, glow: 0xff5a1f,
+        mod(g, k, P) { const G = liveGlow(0xff5a1f); hueCycle(g, G, 0.0, 0.1, 4, 0.55); const gold = chrome(0xffc93a);
+          k.box(0.03, 0.03, 0.04, 0, 0.05, -0.245, gold);
+          for (const x of [-0.009, 0.009]) k.box(0.006, 0.004, 0.003, x, 0.058, -0.266, G);
+          for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.004, 0.022, 5), G); f.position.set(0, 0.078, -0.06 - i * 0.04); g.add(f); anim(g, t => { f.scale.y = 0.6 + 0.6 * Math.abs(Math.sin(t * 8 + i * 1.7)); }); }
+          const cyl = g.userData.cylinder; if (cyl) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.027, 0.003, 8, 24), G); r.position.z = 0.02; cyl.add(r); } },
+        tracer: { name: 'Dragon Fang Signature', style: 'phoenix', color: 0xffe14d, color2: 0xff3a00 } },
+      supernova: { name: 'Supernova', rarity: 'Exotic', caseOnly: true, body: 0xf6f2ff, bodyGloss: 2, accent: 0xffd36a, accentGloss: 2, glow: 0xb48cff,
+        mod(g, k, P) { const G = liveGlow(0xb48cff); hueCycle(g, G, 0.0, 1.0, 0.7, 0.62);
+          const cyl = g.userData.cylinder;
+          if (cyl) {
+            const pr = new THREE.MeshPhongMaterial({ map: TEX.prism(), emissive: 0xffffff, emissiveMap: TEX.prism(), emissiveIntensity: 0.6, shininess: 160, specular: 0xffffff });
+            const b = new THREE.Mesh(new THREE.CylinderGeometry(0.0268, 0.0268, 0.046, 18), pr); b.rotation.x = Math.PI / 2; cyl.add(b);
+            const cores = []; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.52; const c = new THREE.Mesh(new THREE.SphereGeometry(0.0045, 8, 6), G); c.position.set(Math.cos(a) * 0.015, Math.sin(a) * 0.015, 0.028); cyl.add(c); cores.push(c); }
+            anim(g, t => cores.forEach((c, i) => c.scale.setScalar(0.8 + 0.4 * Math.sin(t * 6 + i))));
+          }
+          orbiters(g, 5, new THREE.OctahedronGeometry(0.0045, 0), chrome(0xffd36a), 0, 0.042, -0.035, 0.045, 2.2, 'z');
+          const halo = ring(g, 0.02, 0.0025, G, 0, 0.05, -0.255); anim(g, t => { halo.scale.setScalar(1 + 0.2 * Math.sin(t * 5)); halo.rotation.z = t; }); },
+        tracer: { name: 'Supernova Signature', style: 'comet', color: -1, color2: -1 } },
+    },
+  };
+  for (const w in NEWBP) MYTHIC[w] = Object.assign(MYTHIC[w] || {}, NEWBP[w]);
   BLADES.fireice = () => new THREE.MeshPhongMaterial({ shininess: 170, specular: 0xffffff, side: THREE.DoubleSide, emissive: 0x100408, map: bladeTex('fireice', (c, s) => {
     const g = c.createLinearGradient(0, 0, s, 0); g.addColorStop(0, '#ff3a00'); g.addColorStop(0.42, '#ffb000'); g.addColorStop(0.5, '#ffffff'); g.addColorStop(0.58, '#6fd8ff'); g.addColorStop(1, '#1d4aff');
     c.fillStyle = g; c.fillRect(0, 0, s, s); }) });
@@ -1146,15 +1296,16 @@ BR.Models = (function () {
   };
   for (const w in BLUEPRINTS) for (const b in BLUEPRINTS[w]) {
     const bp = BLUEPRINTS[w][b];
-    if (w === 'knife' || !(bp.rarity === 'Legendary' || bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) continue;
+    if (w === 'knife' || w === 'butterfly' || !(bp.rarity === 'Legendary' || bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) continue;
     const sg = SIG[b] || ['dual', bp.glow, 0xffffff];
     bp.tracer = bp.tracer || { name: bp.name + ' Signature', style: sg[0], color: sg[1], color2: sg[2] };
     // signature reload animation (viewmodel): twirl | flip | toss | spin | glitch, VFX in the blueprint's glow
     const RL = { vandal: 'twirl', gilded: 'spin', neonrush: 'glitch', dragon: 'flip', cyber: 'glitch', executioner: 'twirl', timberwolf: 'flip', neonviper: 'twirl',
       solarflare: 'flip', glitch: 'glitch', frostbite: 'flip', celestial: 'toss', aurora: 'twirl', plasma: 'spin', dragonlord: 'flip', quantum: 'glitch', synthwave: 'twirl',
       volcano: 'toss', thunder: 'flip', phantom: 'glitch', kitsune: 'spin', chroma: 'twirl', wildhunt: 'flip' };
-    bp.reload = bp.reload || { style: RL[b] || (bp.rarity === 'Legendary' ? 'twirl' : 'flip'), fx: bp.glow };
+    bp.reload = bp.reload || { style: w === 'revolver' ? 'spin' : RL[b] || (bp.rarity === 'Legendary' ? 'twirl' : 'flip'), fx: bp.glow };
   }
+  BLUEPRINTS.butterfly = BLUEPRINTS.butterfly || {}; BLUEPRINTS.revolver = BLUEPRINTS.revolver || {};
   for (const w in BLUEPRINTS) BLUEPRINTS[w] = Object.assign({ default: { name: 'Standard Issue', rarity: 'Base', price: 0 } }, BLUEPRINTS[w]);
 
   // ------------------------------------------------------------------ gloves

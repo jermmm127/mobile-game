@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.4.0',
+  version: '1.5.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -146,6 +146,9 @@ BR.CONFIG = {
   // spread (radians, hip fire), range = full damage distance (falls to 55% at 2x),
   // tier = loot rarity, knockback = self-push when airborne / aimed at your feet
   weapons: {
+    // Revolver: six heavy rounds, big punch, swing-out cylinder + speedloader reload
+    revolver: { name: 'Revolver', ammo: 'heavy', dmg: 58, pellets: 1, rpm: 150, mag: 6, reload: 2.2, spread: 0.012, ads: 0.3, bloom: 0.012, bloomMax: 0.04, range: 90, head: 2.0, recoil: 0.055, zoom: 1.25, tier: 2, color: 0x8a8f96, revolver: true, knockback: 2 },
+    butterfly: { name: 'Butterfly Knife', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 150, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.2 },
     knife:   { name: 'Karambit', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.2 },
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x8e96a3 },
     smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 1100, mag: 35, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.0035, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.0095, recoilH: 0.012, zoom: 1.3, tier: 1, color: 0x3fa6c4 },
@@ -154,16 +157,16 @@ BR.CONFIG = {
     rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 45, reload: 2.4, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.015, recoilH: 0.018, zoom: 1.5, tier: 2, color: 0x5f8f4a, suppressed: true },
     holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, recoilH: 0.009, zoom: 1.75, tier: 2, color: 0x4b5566, suppressed: true, holo: true },
     // Lightweight bolt-action with open iron sights: accurate from the hip (easy no-scopes), moves fast
-    hunter:  { name: 'Hunting Rifle', ammo: 'heavy', dmg: 78, pellets: 1, rpm: 75, mag: 4, reload: 2.0, spread: 0.006, ads: 0.05, bloom: 0, bloomMax: 0, range: 250, head: 2.0, recoil: 0.035, zoom: 1.45, tier: 2, color: 0x7a4a2a, bolt: true, easyHip: true, speedMult: 1.05, knockback: 2 },
+    hunter:  { name: 'Hunting Rifle', ammo: 'heavy', dmg: 78, pellets: 1, rpm: 75, mag: 5, reload: 2.0, spread: 0.006, ads: 0.05, bloom: 0, bloomMax: 0, range: 250, head: 2.0, recoil: 0.035, zoom: 1.45, tier: 2, color: 0x7a4a2a, bolt: true, easyHip: true, speedMult: 1.05, knockback: 2 },
     sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x7d5aa8, scope: true, bolt: true, kick: 3.5, knockback: 4 },
   },
 
   // Loot rolls by spot tier. Weights are relative.
   loot: {
     tables: [
-      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
-      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
-      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
+      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, revolver: 4, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
+      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, revolver: 8, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
+      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, revolver: 9, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
     ],
     healAmount: 50,
     shieldAmount: 50,
@@ -200,15 +203,15 @@ BR.CONFIG = {
 
   // ---- Bots ----------------------------------------------------------------
   difficulty: {
-    easy:   { reaction: 1.1,  aimError: 1.5,  settle: 2.2, turnRate: 3.0, playerDamageMult: 0.35, viewDist: 45, fov: 1.5, burst: [0.15, 0.35], pause: [0.8, 1.6], jumpiness: 0.1 },
+    easy:   { reaction: 1.6,  aimError: 2.3,  settle: 3.2, turnRate: 2.2, playerDamageMult: 0.22, viewDist: 35, fov: 1.3, burst: [0.12, 0.28], pause: [1.1, 2.2], jumpiness: 0.05 },
     normal: { reaction: 0.55, aimError: 0.7,  settle: 1.2, turnRate: 6.0, playerDamageMult: 0.65, viewDist: 70, fov: 1.9, burst: [0.3, 0.7],  pause: [0.35, 0.8], jumpiness: 0.35 },
     hard:   { reaction: 0.3,  aimError: 0.4,  settle: 0.7, turnRate: 9.0, playerDamageMult: 1.0,  viewDist: 90, fov: 2.1, burst: [0.4, 0.9],  pause: [0.2, 0.5], jumpiness: 0.6 },
   },
 
   graphics: {
-    low:    { pixelRatio: 0.75, fogFar: 170, detail: 0.4 },   // pixelRatio is capped by the device's own
-    medium: { pixelRatio: 1.25, fogFar: 230, detail: 0.8 },
-    high:   { pixelRatio: 2.0,  fogFar: 300, detail: 1.0 },
+    low:    { pixelRatio: 1.0, fogFar: 170, detail: 0.4 },    // pixelRatio is capped by the device's own;
+    medium: { pixelRatio: 2.0, fogFar: 230, detail: 0.8 },    // adaptive resolution lowers it if frames drop
+    high:   { pixelRatio: 3.0, fogFar: 300, detail: 1.0 },
   },
 
   botNames: [

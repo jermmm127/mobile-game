@@ -89,7 +89,8 @@ BR.Actor = class Actor {
     this.health = A.maxHealth;
     this.shield = 0;
     this.alive = true;
-    this.slots = [null, null, BR.Weapons.create('knife')]; // 2 guns + the karambit you always carry
+    // 2 guns + the knife you always carry (yours: karambit or butterfly, whichever you equipped)
+    this.slots = [null, null, BR.Weapons.create(opts && opts.isPlayer && BR.Profile && BR.Profile.data ? (BR.Profile.data.equip.melee || 'knife') : 'knife')];
     this.cur = 2;
     this.grappleCd = 0;
     this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0;

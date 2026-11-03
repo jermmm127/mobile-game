@@ -132,9 +132,7 @@ BR.Game = class Game {
   spawn(a) {
     const H = this.world.half, C = BR.CONFIG;
     a.mover.pos.set((Math.random() * 2 - 1) * H * 0.85, C.match.dropHeight + Math.random() * 12, (Math.random() * 2 - 1) * H * 0.85);
-    a.mover.dropping = true;
-    a.giveWeapon('pistol', 12);
-    a.ammo.light = 24;
+    a.mover.dropping = true;          // everyone drops in with just their knife - loot up fast
   }
 
   addBots(n, diff) {
@@ -245,7 +243,7 @@ BR.Game = class Game {
       a.mover.dropping = false; a.mover.vel.set(0, 0, 0);
       a.mover.pos.set(sp.x, 0, sp.z);
       a.yaw = sp.yaw; a.pitch = 0;
-      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create('knife')];
+      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create(a.isPlayer ? (BR.Profile.data.equip.melee || 'knife') : 'knife')];
       a.cur = 0;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = 50;
@@ -912,7 +910,7 @@ BR.Game = class Game {
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
     const wid = p.weapon || 'holoar';
     const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
-    const sc = wid === 'knife' ? 5 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : 1.6;
+    const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'revolver' ? 2.4 : 1.6;
     g.scale.setScalar(sc);
     g.rotation.y = Math.PI / 2;
     g.position.set(0, wid === 'knife' ? 0.05 : -0.05, -0.15);
@@ -1021,7 +1019,12 @@ BR.Game = class Game {
   }
 
   // ------------------------------------------------------------- viewmodel
-  refreshCosmetics() { this.vmr.rebuild(); }
+  refreshCosmetics() {
+    this.vmr.rebuild();
+    // swapped knives? give the player the newly equipped one
+    const p = this.player, mel = BR.Profile.data.equip.melee || 'knife';
+    if (p && p.slots && p.slots[2] && p.slots[2].id !== mel) { p.slots[2] = BR.Weapons.create(mel); if (p.cur === 2) this.vmr.lastWeapon = null; }
+  }
 
   render() {
     BR.Models.tick(performance.now() / 1000);       // animated camo / glove textures
