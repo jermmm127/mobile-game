@@ -132,6 +132,12 @@ BR.Profile = {
     // Dev accounts: infinite coins and everything unlocked (including items added later)
     if (BR.Accounts && BR.Accounts.isSeededDev()) this.data.dev = true;
     if (this.data.dev) this.grantAll();
+    // the built-in dev account sits at #1 on the leaderboard (Predator)
+    if (BR.Accounts && BR.Accounts.isSeededDev()) {
+      const top = Math.max(...BR.Ranks.rivals().map(r => r.rp));
+      this.data.rp = Math.max(this.data.rp || 0, top + 2500);
+      this.unlockRankRewards();
+    }
     return this.data;
   },
   // Rank rewards unlock themselves when you reach the rank

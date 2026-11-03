@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.3.3',
+  version: '1.4.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -57,7 +57,7 @@ BR.CONFIG = {
 
   // ---- Movement (shared by player AND bots) --------------------------------
   move: {
-    runSpeed: 7.4,          // top ground speed from input alone
+    runSpeed: 6.9,          // top ground speed from input alone
     crouchSpeed: 3.4,
     accelGround: 12,
     friction: 8,

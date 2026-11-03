@@ -285,9 +285,27 @@ BR.Models = (function () {
   });
 
   // ------------------------------------------------------------- builders
+  // Bevelled box: corners and edges pushed onto a rounded shell (r ≈ 18% of the smallest side).
+  // Used for weapon parts in first person + the shop; dropped guns stay plain boxes (cheap).
+  const RB = {};
+  let ROUND = false;
+  function roundedBox(w, h, d) {
+    const key = w.toFixed(4) + '|' + h.toFixed(4) + '|' + d.toFixed(4);
+    if (RB[key]) return RB[key];
+    const r = Math.min(w, h, d) * 0.2, g = new THREE.BoxGeometry(w, h, d, 2, 2, 2), p = g.attributes.position;
+    const hx = w / 2 - r, hy = h / 2 - r, hz = d / 2 - r, v = new THREE.Vector3(), c = new THREE.Vector3();
+    for (let i = 0; i < p.count; i++) {
+      v.set(p.getX(i), p.getY(i), p.getZ(i));
+      c.set(Math.max(-hx, Math.min(hx, v.x)), Math.max(-hy, Math.min(hy, v.y)), Math.max(-hz, Math.min(hz, v.z)));
+      v.sub(c); if (v.lengthSq() > 1e-12) { v.setLength(r); p.setXYZ(i, c.x + v.x, c.y + v.y, c.z + v.z); }
+    }
+    g.computeVertexNormals(); g._shared = true;
+    return (RB[key] = g);
+  }
+  BR.roundedBox = roundedBox;
   function kit(g) {
     return {
-      box(w, h, d, x, y, z, mat, rx) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); if (rx) m.rotation.x = rx; g.add(m); return m; },
+      box(w, h, d, x, y, z, mat, rx) { const m = new THREE.Mesh(ROUND ? roundedBox(w, h, d) : new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); if (rx) m.rotation.x = rx; g.add(m); return m; },
       cyl(r, len, x, y, z, mat, axis, seg) {
         const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, seg || 10), mat);
         m.position.set(x, y, z);
@@ -1322,8 +1340,11 @@ BR.Models = (function () {
       else S = skinMaterial('default', def.color);
       const opts = {};
       if (bp && bp.blade) opts.blade = cache.mat['blade' + bp.blade] || (cache.mat['blade' + bp.blade] = BLADES[bp.blade]());
-      (BUILD[id] || BUILD.pistol)(g, S, MAT(), opts);
-      if (bp && bp.mod) bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT() });
+      ROUND = true;
+      try {
+        (BUILD[id] || BUILD.pistol)(g, S, MAT(), opts);
+        if (bp && bp.mod) bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT() });
+      } finally { ROUND = false; }
       if (charmId && charmId !== 'none') {
         const c = charm(charmId);
         g.userData.charm.add(c);

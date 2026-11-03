@@ -20,7 +20,7 @@ BR.Game = class Game {
     this.settings = settings;
     this.hud = new BR.HUD(document.getElementById('app'));
     this.canvas = document.getElementById('view');
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: false, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });   // MSAA: smooth edges (cheap on mobile tile GPUs)
     this.renderer.autoClear = false;
     const C = BR.CONFIG.camera;
     this.camera = new THREE.PerspectiveCamera(this.baseFov(), 1, C.near, C.far);
@@ -102,8 +102,8 @@ BR.Game = class Game {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(fogCol);
     this.scene.fog = new THREE.Fog(fogCol, 50, this.fogFar || 230);
-    this.scene.add(new THREE.HemisphereLight(0xe8f2ff, 0x5a5242, 0.8));
-    const sun = new THREE.DirectionalLight(0xfff1d6, 0.8);
+    this.scene.add(new THREE.HemisphereLight(0xe3efff, 0x6a5a40, 0.78));
+    const sun = new THREE.DirectionalLight(0xffeccc, 0.9);
     sun.position.set(0.6, 1, 0.35);
     this.scene.add(sun);
     this.world = new BR.World(seed, opts);

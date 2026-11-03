@@ -1323,14 +1323,18 @@ BR.World = class World {
       const cp = [], cn = [], cc = [], sh = new THREE.Color(), mtx = new THREE.Matrix4();
       lay.forEach(([dx, dy, dz, sc, det], j) => {
         const b = new THREE.IcosahedronGeometry(1, det).toNonIndexed();
-        b.applyMatrix4(mtx.makeRotationY(j * 1.3)); b.scale(sc, sc * 0.92, sc); b.translate(dx, dy, dz); b.computeVertexNormals();
-        const pa = b.attributes.position, na = b.attributes.normal, k = 0.86 + (j === 3 ? 0.24 : j * 0.04);
-        for (let i = 0; i < pa.count; i++) { cp.push(pa.getX(i), pa.getY(i), pa.getZ(i)); cn.push(na.getX(i), na.getY(i), na.getZ(i)); sh.setScalar(k * (0.85 + 0.15 * Math.max(0, na.getY(i)))); cc.push(sh.r, sh.g, sh.b); }
+        b.applyMatrix4(mtx.makeRotationY(j * 1.3)); b.scale(sc, sc * 0.92, sc); b.translate(dx, dy, dz);
+        // smooth sphere normals (round shading on a low-poly blob)
+        const pa = b.attributes.position, k = 0.86 + (j === 3 ? 0.24 : j * 0.04), nv = new THREE.Vector3();
+        for (let i = 0; i < pa.count; i++) {
+          nv.set(pa.getX(i) - dx, (pa.getY(i) - dy) / 0.92, pa.getZ(i) - dz).normalize();
+          cp.push(pa.getX(i), pa.getY(i), pa.getZ(i)); cn.push(nv.x, nv.y, nv.z); sh.setScalar(k * (0.82 + 0.18 * Math.max(0, nv.y))); cc.push(sh.r, sh.g, sh.b);
+        }
       });
       const canopy = new THREE.BufferGeometry();
       canopy.setAttribute('position', new THREE.Float32BufferAttribute(cp, 3)); canopy.setAttribute('normal', new THREE.Float32BufferAttribute(cn, 3)); canopy.setAttribute('color', new THREE.Float32BufferAttribute(cc, 3));
       canopy.computeBoundingSphere();
-      const lv = this.collector(canopy, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+      const lv = this.collector(canopy, new THREE.MeshLambertMaterial({ vertexColors: true }));
       const GR = [0x4f8a3a, 0x3f7a34, 0x5e9a40, 0x6aa648, 0x4a7f3e];
       leafy.forEach((t, i) => {
         o.position.set(t.x, t.h, t.z); o.scale.set(t.s, t.s, t.s); o.rotation.set(0, t.tone * 6.28, 0);
@@ -1479,17 +1483,18 @@ BR.World = class World {
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
     const nB = this.arena ? 0 : Math.floor(700 * detail), nG = this.arena ? 0 : Math.floor(5000 * detail);
-    const bush = this.collector(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), nB * 3);
+    const bushG = new THREE.IcosahedronGeometry(1, 1); bushG.computeVertexNormals();
+    const bush = this.collector(bushG, new THREE.MeshLambertMaterial({ color: 0xffffff }), nB * 2);
     const BG = [0x55803e, 0x4a7a3a, 0x5f8f42, 0x6b9446, 0x47703a], bc = new THREE.Color();
     const tuft = this.collector(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
     let bi = 0, gi = 0;
     for (let tries = 0; tries < (nB + nG) * 2 && (bi < nB || gi < nG); tries++) {
       const x = (R() * 2 - 1) * (H - 4), z = (R() * 2 - 1) * (H - 4);
       if (!this.free(x - 0.6, z - 0.6, x + 0.6, z + 0.6, 0)) continue;
-      if (bi < nB * 3 && R() < 0.12) {
+      if (bi < nB * 2 && R() < 0.12) {
         const s = 0.45 + R() * 0.6, base = BG[Math.floor(R() * BG.length)];
-        for (let j = 0; j < 3; j++) {
-          const a = j * 2.1 + R(), r = j ? s * 0.55 : 0, ss = s * (j ? 0.72 : 1);
+        for (let j = 0; j < 2; j++) {
+          const a = R() * 6.28, r = j ? s * 0.5 : 0, ss = s * (j ? 0.75 : 1);
           o.position.set(x + Math.cos(a) * r, ss * 0.55, z + Math.sin(a) * r); o.scale.set(ss * 1.15, ss * 0.85, ss * 1.15); o.rotation.set(R(), R() * 6, 0);
           o.updateMatrix(); bush.setMatrixAt(bi, o.matrix); bush.setColorAt(bi++, bc.setHex(base).multiplyScalar(0.85 + j * 0.1));
         }

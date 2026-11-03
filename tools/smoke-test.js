@@ -410,7 +410,7 @@ const server = http.createServer((req, res) => {
     const dropped = P.scale; for (let i = 0; i < 700; i++) g.adaptResolution(16);
     return { chunks: W.chunks.length, hidden, calls: calls / 10, tris: Math.round(tris / 10), s0, dropped, recovered: P.scale, cap: P.cap, botMeshes: g.actors[1].mesh ? (() => { let n = 0; g.actors[1].mesh.traverse(o => { if (o.isMesh) n++; }); return n; })() : 0 };
   });
-  const run = 7.4, BR_RUN = run;
+  const run = 6.9, BR_RUN = run;
   const checks = [
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
     ['crouch while running slides with a boost', mech.slide > run + 3],

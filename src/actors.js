@@ -53,15 +53,15 @@ function sharedGeo() {
   SHARED.upperArm = cyl(0.056, 0.048, 0.28);
   SHARED.forearm = cyl(0.046, 0.04, 0.26);
   SHARED.hand = new THREE.SphereGeometry(0.045, 8, 6);
-  SHARED.hips = new THREE.BoxGeometry(0.34, 0.16, 0.22);
+  SHARED.hips = BR.roundedBox(0.34, 0.16, 0.22);
   SHARED.abdomen = new THREE.CylinderGeometry(0.15, 0.13, 0.22, 10);
   SHARED.chest = new THREE.CylinderGeometry(0.21, 0.15, 0.34, 10);
-  SHARED.vest = new THREE.BoxGeometry(0.34, 0.27, 0.07);
+  SHARED.vest = BR.roundedBox(0.34, 0.27, 0.07);
   SHARED.neck = new THREE.CylinderGeometry(0.05, 0.055, 0.1, 8);
   SHARED.head = new THREE.SphereGeometry(0.12, 12, 10);
   SHARED.helmet = new THREE.SphereGeometry(0.135, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
   SHARED.visor = new THREE.BoxGeometry(0.18, 0.045, 0.04);
-  SHARED.pack = new THREE.BoxGeometry(0.3, 0.36, 0.14);
+  SHARED.pack = BR.roundedBox(0.3, 0.36, 0.14);
   SHARED.shoulder = new THREE.SphereGeometry(0.075, 8, 6);
   for (const k in SHARED) if (SHARED[k] && SHARED[k].isBufferGeometry) SHARED[k]._shared = true;
   SHARED.dark = new THREE.MeshLambertMaterial({ color: 0x2a2f38 });
@@ -304,11 +304,12 @@ BR.Actor = class Actor {
     const faceYaw = m.sliding && sp > 1 ? velYaw : this.yaw;
     u.yaw = dampAngle(u.yaw, faceYaw, 14, dt);
     this.mesh.rotation.y = u.yaw;
-    u.upper.rotation.y = U.damp(u.upper.rotation.y, U.clamp(U.wrapAngle(this.yaw - u.yaw), -1.1, 1.1), 16, dt);
+    // shoulders counter-rotate against the hip sway so the pelvis visibly swings under them
+    u.upper.rotation.y = U.damp(u.upper.rotation.y, U.clamp(U.wrapAngle(this.yaw - u.yaw), -1.1, 1.1) - (u.hipYaw || 0) * 1.15, 16, dt);
     u.pitch = U.damp(u.pitch, this.pitch, 14, dt);
     u.t += dt * sp * 1.45;
     // targets: [hipL, kneeL, hipR, kneeR, lean, bodyY, bodyX]
-    let hL = 0, kL = 0, hR = 0, kR = 0, lean = 0, bodyY = 0, bodyX = 0, armsUp = 0, armsOut = 0;
+    let hL = 0, kL = 0, hR = 0, kR = 0, lean = 0, bodyY = 0, bodyX = 0, armsUp = 0, armsOut = 0, hipYaw = 0, hipRoll = 0, hipShift = 0;
     if (m.dropping && !m.chute) {                 // freefall: belly down, limbs spread
       bodyX = -1.4; bodyY = 1.0; hL = 0.3; kL = 0.6; hR = 0.25; kR = 0.5; armsOut = 1.1;
     } else if (m.dropping) {                      // under canopy: holding the lines, legs dangling
@@ -326,6 +327,9 @@ BR.Actor = class Actor {
       kL = Math.max(0, -Math.cos(u.t)) * a * 1.4 + (sp > 0.5 ? 0.15 : 0); kR = Math.max(0, Math.cos(u.t)) * a * 1.4 + (sp > 0.5 ? 0.15 : 0);
       lean = Math.min(sp * 0.012, 0.12);
       bodyY = -Math.abs(Math.sin(u.t)) * Math.min(sp * 0.006, 0.04);
+      // hips: twist with the leg swing, drop toward the swinging leg, shift over the planted foot
+      const amp = Math.min(1, sp / 5);
+      hipYaw = c * 0.2 * amp; hipRoll = Math.sin(u.t) * 0.07 * amp; hipShift = Math.sin(u.t) * 0.035 * amp;
     }
     const D = (o, key, v, k) => { o[key] = U.damp(o[key], v, k, dt); };
     D(u.L.hip.rotation, 'x', hL, 16); D(u.L.knee.rotation, 'x', kL, 16);
@@ -333,7 +337,10 @@ BR.Actor = class Actor {
     D(u.upper.rotation, 'x', lean, 12);
     D(u.body.rotation, 'x', bodyX, 7);
     D(u.body.position, 'y', bodyY, 12);
-    D(u.body.rotation, 'z', m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : m.sliding ? 0.1 : 0, 10);
+    D(u.body.rotation, 'z', (m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : m.sliding ? 0.1 : 0) + hipRoll, 10);
+    D(u.body.rotation, 'y', hipYaw, 12); D(u.body.position, 'x', hipShift, 12);
+    D(u.upper.rotation, 'z', -hipRoll * 0.8, 12);
+    u.hipYaw = u.body.rotation.y;
     // Aim: head + arms + gun follow the (smoothed) pitch together
     const aimP = u.pitch - u.upper.rotation.x;
     u.head.rotation.x = aimP * 0.6;
