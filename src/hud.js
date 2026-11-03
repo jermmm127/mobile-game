@@ -350,6 +350,7 @@ BR.HUD = class HUD {
     <button id="sp-x" class="xbtn" aria-label="Close spawn menu">✕</button>
     <div class="ptitle">SPAWN</div>
     <div class="sp-sec">WEAPONS</div>
+    <div class="sp-slots" id="sp-slots"><span>PUT IN</span><button data-slot="0"><b>SLOT 1</b><i>EMPTY</i></button><button data-slot="1"><b>SLOT 2</b><i>EMPTY</i></button></div>
     <div class="sp-grid" id="sp-weapons"></div>
     <div class="sp-sec">ITEMS</div>
     <div class="sp-grid">

@@ -840,3 +840,16 @@ body.duel #topbar .dp { display: flex; }
 /* Soft cinematic vignette over the 3D view (cheap: one gradient, no post-processing) */
 #play::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background: radial-gradient(ellipse 85% 80% at 50% 48%, rgba(0,0,0,0) 62%, rgba(8,16,30,0.26) 100%); }
+
+/* Spawn menu: choose which slot a weapon goes into */
+.sp-slots { display: flex; align-items: stretch; gap: 8px; margin: 2px 0 8px; }
+.sp-slots span { align-self: center; font: 700 10px var(--ui); letter-spacing: 0.14em; color: var(--muted); margin-right: 2px; }
+.sp-slots button { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; cursor: pointer;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 10px; color: #e8ecf2; }
+.sp-slots button b { font: 700 9px var(--ui); letter-spacing: 0.14em; color: var(--muted); }
+.sp-slots button i { font: 700 12px var(--ui); font-style: normal; letter-spacing: 0.06em; }
+.sp-slots button.sel { border-color: var(--accent); background: linear-gradient(160deg, rgba(255,178,36,0.2), rgba(255,178,36,0.04)); box-shadow: 0 0 12px rgba(255,178,36,0.22); }
+.sp-slots button.sel b { color: var(--accent); }
+.gcard .gbadge { position: absolute; top: 6px; right: 7px; min-width: 16px; padding: 1px 5px; border-radius: 6px; font: 800 10px var(--ui); font-style: normal;
+  color: #111; background: var(--accent); }
+.gcard.held { border-color: rgba(255,178,36,0.45); }

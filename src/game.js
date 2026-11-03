@@ -387,11 +387,11 @@ BR.Game = class Game {
     return { x: cx, y: this.world.groundAt(cx, cz, p.pos.y + 6), z: cz };
   }
 
-  practiceSpawn(kind, arg) {
+  practiceSpawn(kind, arg, toSlot) {
     const p = this.player, C = BR.CONFIG;
     if (kind === 'weapon') {
       const def = C.weapons[arg];
-      const slot = p.cur < 2 ? p.cur : (!p.slots[0] ? 0 : !p.slots[1] ? 1 : 0);
+      const slot = toSlot === 0 || toSlot === 1 ? toSlot : p.cur < 2 ? p.cur : (!p.slots[0] ? 0 : !p.slots[1] ? 1 : 0);
       p.slots[slot] = BR.Weapons.create(arg);
       p.cur = slot;
       p.ammo[def.ammo] = C.ammoCap[def.ammo];
@@ -437,6 +437,7 @@ BR.Game = class Game {
     this.input.reset();
     this.input.unlock();
     this.hud.show('spawnmenu', true);
+    if (BR.renderSpawnSlots) BR.renderSpawnSlots(true);
   }
   closeSpawnMenu() {
     this.hud.show('spawnmenu', false);

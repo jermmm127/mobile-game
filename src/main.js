@@ -219,9 +219,39 @@
     return `<button class="gcard${sel ? ' sel' : ''}" ${attrs}>${pic ? `<img src="${pic}" alt="">` : ''}<span>${d.name.toUpperCase()}</span></button>`; };
   $('sp-weapons').innerHTML = Object.keys(BR.CONFIG.weapons).filter(id => !BR.CONFIG.weapons[id].melee)
     .map(id => gcard(id, `data-sp="weapon" data-arg="${id}"`)).join('');
+  // two-gun loadout: pick the slot, then tap a weapon card to put it there
+  let spSlot = 0;
+  BR.renderSpawnSlots = fresh => {
+    const p = game.player; if (!p) return;
+    if (fresh) spSlot = !p.slots[0] ? 0 : !p.slots[1] ? 1 : (p.cur === 1 ? 1 : 0);
+    document.querySelectorAll('#sp-slots button').forEach(b => {
+      const k = +b.dataset.slot, w = p.slots[k];
+      b.classList.toggle('sel', k === spSlot);
+      b.querySelector('i').textContent = w ? w.def.name.toUpperCase() : 'EMPTY';
+    });
+    document.querySelectorAll('#sp-weapons .gcard').forEach(c => {
+      const id = c.dataset.arg, tags = [0, 1].filter(k => p.slots[k] && p.slots[k].id === id).map(k => k + 1);
+      let bd = c.querySelector('.gbadge');
+      if (tags.length) { if (!bd) { bd = document.createElement('em'); bd.className = 'gbadge'; c.appendChild(bd); } bd.textContent = tags.join('+'); }
+      else if (bd) bd.remove();
+      c.classList.toggle('held', tags.length > 0);
+    });
+  };
+  $('sp-slots').addEventListener('click', e => {
+    const b = e.target.closest('button[data-slot]'); if (!b) return;
+    spSlot = +b.dataset.slot; BR.Audio.click(); BR.renderSpawnSlots();
+  });
   $('spawnmenu').addEventListener('click', e => {
     const b = e.target.closest('[data-sp]');
     if (!b) return;
+    if (b.dataset.sp === 'weapon') {
+      const p = game.player;
+      game.practiceSpawn('weapon', b.dataset.arg, spSlot);
+      if (spSlot === 0 && p && !p.slots[1]) spSlot = 1;        // first gun in -> second slot next
+      BR.renderSpawnSlots(); BR.Audio.pickup();
+      b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);
+      return;
+    }
     game.practiceSpawn(b.dataset.sp, b.dataset.arg);
     BR.Audio.pickup();
     b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);

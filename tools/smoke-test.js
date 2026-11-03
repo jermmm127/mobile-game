@@ -467,6 +467,13 @@ const server = http.createServer((req, res) => {
       out.icons = { sil: ids.every(id => WI.sil[id] && WI.sil[id].length > 500), pic: ids.every(id => WI.pic[id]),
         slot: !!document.querySelector('.slot .sicon .wsil'), spawnCards: document.querySelectorAll('#sp-weapons .gcard img').length,
         duelCards: document.querySelectorAll('#dm-g0 .gcard img').length, hunterRecoil: C.weapons.hunter.recoil, hunterKick: C.weapons.hunter.kick }; }
+    // spawn menu: pick a slot, then a gun goes into that slot (two-gun loadout)
+    { p.slots[0] = null; p.slots[1] = null; g.state = 'playing'; g.openSpawnMenu();
+      const card = id => document.querySelector('#sp-weapons .gcard[data-arg="' + id + '"]');
+      card('sniper').click(); card('smg').click(); const a = p.slots.map(x => x && x.id).join();
+      document.querySelector('#sp-slots button[data-slot="0"]').click(); card('shotgun').click(); const b2 = p.slots.map(x => x && x.id).join();
+      const badges = document.querySelectorAll('#sp-weapons .gbadge').length; g.closeSpawnMenu();
+      out.spawnSlots = { a, b: b2, badges }; }
     // weapon-slot opacity in the HUD editor
     const sa = document.getElementById('ed-slot-alpha'); sa.value = 0.3; sa.dispatchEvent(new Event('input'));
     out.slotAlpha = parseFloat(getComputedStyle(document.querySelector('#play > .slot:not(.empty)')).opacity);
@@ -559,6 +566,7 @@ const server = http.createServer((req, res) => {
     ['reload button inspects with a knife or a full mag, reloads otherwise', v15.reloadInspect.knife && v15.reloadInspect.full && v15.reloadInspect.fullNoReload && v15.reloadInspect.reloads],
     ['weapon slots + spawn/duel menus use pictures of the real models', v15.icons.sil && v15.icons.pic && v15.icons.slot && v15.icons.spawnCards >= 8 && v15.icons.duelCards >= 8],
     ['hunting rifle has more recoil', v15.icons.hunterRecoil >= 0.05 && v15.icons.hunterKick > 1],
+    ['spawn menu fills slot 1 and slot 2 (pick the slot, then the gun)', v15.spawnSlots.a === 'sniper,smg,knife' && v15.spawnSlots.b === 'shotgun,smg,knife' && v15.spawnSlots.badges === 2],
     ['weapon buttons opacity can be lowered (saved)', Math.abs(v15.slotAlpha - 0.3) < 0.02 && v15.saved === 0.3],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],

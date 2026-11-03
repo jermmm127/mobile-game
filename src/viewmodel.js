@@ -91,7 +91,7 @@
           holder.userData.spin = { obj: spin, axis };
         } else if (id === 'butterfly') {
           // held like a hammer grip: handles in the fist, blade angled forward and in
-          m.rotation.set(-0.5, 0.4, 0.12); m.scale.setScalar(1.25);
+          m.rotation.set(-0.5, 0.4, 0.12); m.scale.setScalar(0.95);
           m.userData.baseRot = m.rotation.clone();
           // everything pivots inside the fist about the handle pin, so the held (safe) handle can
           // stay put while the blade and bite handle flip round it
