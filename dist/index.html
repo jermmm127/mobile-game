@@ -853,7 +853,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.5.4',
+  version: '1.5.5',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -1004,7 +1004,7 @@ BR.CONFIG = {
     holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, recoilH: 0.009, zoom: 1.75, tier: 2, color: 0x33363c, suppressed: true, holo: true },
     // Lightweight bolt-action with open iron sights: accurate from the hip (easy no-scopes), moves fast
     hunter:  { name: 'Hunting Rifle', ammo: 'heavy', dmg: 78, pellets: 1, rpm: 75, mag: 5, reload: 2.0, spread: 0.006, ads: 0.05, bloom: 0, bloomMax: 0, range: 250, head: 2.0, recoil: 0.035, zoom: 1.45, tier: 2, color: 0x7a4a2a, bolt: true, easyHip: true, speedMult: 1.05, knockback: 2 },
-    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x7d5aa8, scope: true, bolt: true, kick: 3.5, knockback: 4 },
+    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4 },
   },
 
   // Loot rolls by spot tier. Weights are relative.
@@ -4268,25 +4268,75 @@ BR.Models = (function () {
       hands(g, [0, -0.06, 0.17], [0, -0.035, -0.12], [0.06, 0.05, 0.11]);
       anchors(g, -0.62, 0.045, [-0.035, -0.02, 0.24]);
     },
+    // Sniper: a heavy long-range bolt-action in desert tan. Ported muzzle brake, fluted
+    // heavy barrel, skeletonised handguard with a top rail and a folding bipod, flat-top
+    // receiver with a long rail, big scope with a wide ocular bell and turrets, ribbed
+    // box mag, rubber pistol grip, and a skeleton stock (tube + cheek rest + tall butt
+    // pad) with a rear monopod. Side profiles on a 2D grid, extruded.
     sniper(g, S, M) {
       const k = kit(g);
-      k.box(0.06, 0.08, 0.36, 0, 0.03, -0.04, S);                 // receiver
-      k.cyl(0.016, 0.62, 0, 0.04, -0.52, M.metal, 'z', 10);       // long barrel
-      k.cyl(0.024, 0.08, 0, 0.04, -0.84, M.dark, 'z', 10);        // muzzle brake
-      k.cyl(0.032, 0.3, 0, 0.13, -0.06, M.dark, 'z', 14);         // scope tube
-      k.cyl(0.042, 0.06, 0, 0.13, -0.24, M.dark, 'z', 14);        // objective bell
-      k.cyl(0.036, 0.05, 0, 0.13, 0.11, M.dark, 'z', 14);         // eyepiece
-      k.cyl(0.04, 0.003, 0, 0.13, -0.271, M.lensDark, 'z', 14);   // lens
-      k.box(0.02, 0.05, 0.02, 0, 0.085, -0.13, M.dark); k.box(0.02, 0.05, 0.02, 0, 0.085, 0.02, M.dark); // rings
-      boltGroup(g, M, 0.05, 0.1, 0.16);                            // bolt (cycles after every shot)
-      magGroup(g, [k.box(0.035, 0.08, 0.06, 0, -0.06, -0.06, M.dark)]); // mag
-      hands(g, [0, -0.07, 0.1], [0, 0.0, -0.32], [0.05, 0.05, 0.08]);
-      k.box(0.042, 0.12, 0.05, 0, -0.06, 0.1, M.grip, 0.25);      // grip
-      k.box(0.06, 0.09, 0.26, 0, 0.0, 0.3, S);                    // stock
-      k.box(0.05, 0.03, 0.12, 0, 0.06, 0.28, S);                  // cheek rest
-      const l1 = k.box(0.01, 0.16, 0.01, 0.02, -0.05, -0.5, M.dark); l1.rotation.z = 0.25; // bipod
-      const l2 = k.box(0.01, 0.16, 0.01, -0.02, -0.05, -0.5, M.dark); l2.rotation.z = -0.25;
-      anchors(g, -0.9, 0.04, [-0.04, -0.01, 0.14]);
+      const Z = x => -0.9 + (x - 35) * 0.0026, Y = y => 0.04 - (y - 118) * 0.0026;
+      const prof = profiler(g, Z, Y), BY = 0.04, SY = 0.13;
+      // muzzle brake with side ports
+      k.box(0.044, 0.04, Z(62) - Z(33), 0, BY, (Z(33) + Z(62)) / 2, M.dark);
+      for (let i = 0; i < 3; i++) k.box(0.046, 0.022, 0.012, 0, BY, Z(38 + i * 8), M.grip);
+      // fluted heavy barrel
+      k.cyl(0.0165, Z(125) - Z(60), 0, BY, (Z(60) + Z(125)) / 2, M.dark, 'z', 16);
+      for (let i = 0; i < 6; i++) { const a2 = i / 6 * Math.PI * 2; k.box(0.004, 0.004, Z(118) - Z(70), Math.cos(a2) * 0.0158, BY + Math.sin(a2) * 0.0158, (Z(70) + Z(118)) / 2, M.grip).rotation.z = a2; }
+      // skeleton handguard: tan, rail on top, rows of lightening cut-outs
+      prof([[120, 100], [252, 98], [252, 142], [156, 138], [120, 126]], 0.056, S, 0.004);
+      for (let i = 0; i < 5; i++) { const x = 140 + i * 21; prof([[x, 118], [x + 13, 118], [x + 16, 124], [x + 13, 130], [x, 130], [x - 3, 124]], 0.0575, M.grip, 0); }
+      k.box(0.0605, Y(98) - Y(142), 0.003, 0, (Y(98) + Y(142)) / 2, Z(250), M.grip);   // handguard / receiver seam
+      k.box(0.026, 0.008, Z(250) - Z(118), 0, Y(95), (Z(118) + Z(250)) / 2, M.dark);
+      for (let i = 0; i < 12; i++) k.box(0.027, 0.004, 0.006, 0, Y(93), Z(124 + i * 11), M.metal);
+      k.box(0.022, 0.014, 0.04, -0.02, Y(88), Z(180), M.dark);                    // laser module
+      k.cyl(0.005, 0.003, -0.02, Y(88), Z(180) - 0.021, M.reticle, 'z', 8);
+      // folding bipod: clamp + two splayed legs with feet
+      k.box(0.03, 0.016, 0.03, 0, Y(146), Z(196), M.dark);
+      for (const sx of [-1, 1]) {
+        const leg = new THREE.Group(); leg.position.set(sx * 0.012, Y(148), Z(196)); leg.rotation.set(0.42, 0, sx * 0.32); g.add(leg);
+        const up = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.13, 8), M.dark); up.position.y = -0.065; leg.add(up);
+        const lo = new THREE.Mesh(new THREE.CylinderGeometry(0.0048, 0.0048, 0.11, 8), M.metal); lo.position.y = -0.17; leg.add(lo);
+        const ft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.008, 0.008, 10), M.grip); ft.position.y = -0.228; leg.add(ft);
+      }
+      // receiver + long top rail, ejection port, bolt
+      prof([[248, 96], [366, 96], [374, 106], [374, 142], [248, 142]], 0.06, S, 0.004);
+      k.box(0.028, 0.01, Z(372) - Z(226), 0, Y(92), (Z(226) + Z(372)) / 2, M.dark);
+      for (let i = 0; i < 12; i++) k.box(0.029, 0.004, 0.006, 0, Y(89), Z(232 + i * 12), M.metal);
+      k.box(0.002, 0.022, 0.07, 0.0305, Y(112), Z(318), M.grip);
+      boltGroup(g, M, BY + 0.012, Z(334), 0.16);
+      // scope: front bell, tube, wide ocular bell, turrets, rings + base, dark lenses
+      k.cyl(0.028, 0.02, 0, SY, Z(232), M.scopeTube, 'z', 24);
+      const fb = new THREE.Mesh(new THREE.CylinderGeometry(0.0215, 0.028, 0.045, 24), M.scopeTube); fb.rotation.x = Math.PI / 2; fb.position.set(0, SY, Z(232) + 0.032); g.add(fb);
+      k.cyl(0.0215, Z(352) - Z(252), 0, SY, (Z(252) + Z(352)) / 2, M.scopeTube, 'z', 24);
+      const ob = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.0215, 0.05, 28), M.scopeTube); ob.rotation.x = Math.PI / 2; ob.position.set(0, SY, Z(360)); g.add(ob);
+      k.cyl(0.04, 0.05, 0, SY, Z(380), M.scopeTube, 'z', 28);
+      k.cyl(0.041, 0.006, 0, SY, Z(392), M.grip, 'z', 28);
+      k.cyl(0.026, 0.003, 0, SY, Z(232) - 0.011, M.lensDark, 'z', 24);
+      k.cyl(0.037, 0.003, 0, SY, Z(392) + 0.004, M.lensDark, 'z', 28);
+      k.cyl(0.011, 0.024, 0, SY + 0.028, Z(300), M.scopeTube, 'y', 16); k.cyl(0.012, 0.006, 0, SY + 0.042, Z(300), M.metal, 'y', 16);
+      k.cyl(0.011, 0.024, 0.028, SY, Z(300), M.scopeTube, 'x', 16); k.cyl(0.012, 0.006, 0.042, SY, Z(300), M.metal, 'x', 16);
+      k.cyl(0.009, 0.016, -0.026, SY, Z(300), M.scopeTube, 'x', 14);
+      for (const x of [268, 334]) { k.box(0.03, 0.03, 0.018, 0, (SY + Y(92)) / 2, Z(x), M.dark); k.cyl(0.0215, 0.016, 0, SY, Z(x), M.dark, 'z', 20); }
+      // box mag (ribbed)
+      const mag = [prof([[262, 140], [302, 140], [302, 210], [264, 210]], 0.04, M.dark, 0.003)];
+      for (let i = 0; i < 5; i++) mag.push(k.box(0.0415, 0.003, Z(300) - Z(266), 0, Y(152 + i * 12), (Z(266) + Z(300)) / 2, M.grip));
+      magGroup(g, mag);
+      // trigger guard + trigger, rubber pistol grip with finger bumps
+      prof([[338, 140], [344, 140], [346, 162], [372, 164], [374, 140], [380, 140], [378, 170], [340, 168]], 0.012, M.dark, 0.0015);
+      prof([[356, 142], [362, 142], [364, 152], [359, 160], [356, 158], [358, 152]], 0.006, M.metal, 0.001);
+      prof([[372, 138], [404, 138], [420, 204], [412, 216], [390, 216], [384, 196], [380, 180], [384, 166], [376, 156]], 0.04, M.grip, 0.005);
+      // skeleton stock: buffer tube, tan cheek rest on two posts, tall rubber butt pad, monopod
+      k.cyl(0.013, Z(494) - Z(372), 0, Y(124), (Z(372) + Z(494)) / 2, M.dark, 'z', 14);
+      prof([[372, 104], [420, 104], [420, 132], [372, 140]], 0.05, S, 0.003);
+      prof([[402, 102], [494, 98], [500, 104], [498, 114], [404, 118]], 0.046, S, 0.005);
+      for (const x of [428, 480]) k.cyl(0.006, Y(114) - Y(124), 0, (Y(114) + Y(124)) / 2, Z(x), M.metal, 'y', 8);
+      prof([[490, 98], [514, 96], [528, 106], [530, 196], [518, 206], [494, 202], [490, 150]], 0.05, M.grip, 0.005);
+      k.cyl(0.0095, Y(166) - Y(252), 0, (Y(166) + Y(252)) / 2, Z(484), M.dark, 'y', 10);
+      k.cyl(0.013, 0.02, 0, Y(178), Z(484), M.metal, 'y', 12);
+      k.cyl(0.016, 0.008, 0, Y(254), Z(484), M.grip, 'y', 12);
+      hands(g, [0, -0.09, Z(394)], [0, -0.015, -0.42], [0.05, BY + 0.012, Z(334) + 0.02]);
+      anchors(g, Z(33) - 0.006, BY, [-0.034, -0.02, 0.2]);
     },
     knife(g, S, M, opts) {
       // Karambit, CS-style: a curved "banana" handle with a large finger ring at the
@@ -4644,15 +4694,15 @@ BR.Models = (function () {
         mod(g, k, P) {
           k.box(0.06, 0.05, 0.09, 0, 0.04, -0.88, P.A);                           // big brake
           for (const x of [-0.031, 0.031]) k.box(0.004, 0.012, 0.06, x, 0.04, -0.88, P.G);
-          k.cyl(0.044, 0.02, 0, 0.13, -0.28, P.A, 'z', 14); k.cyl(0.038, 0.02, 0, 0.13, 0.14, P.A, 'z', 14);
-          k.box(0.065, 0.04, 0.14, 0, 0.065, 0.28, P.A);
+          k.cyl(0.03, 0.016, 0, 0.13, -0.39, P.A, 'z', 20); k.cyl(0.043, 0.016, 0, 0.13, 0.02, P.A, 'z', 24);
+          k.box(0.05, 0.016, 0.2, 0, 0.095, 0.19, P.A);
         } },
       executioner: { name: 'Executioner', rarity: 'Legendary', price: 1100, body: 0x3a0a0e, accent: 0x111111, glow: 0xff2a2a,
         mod(g, k, P) {
           for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.04, 4), P.A); const a = i / 6 * Math.PI * 2; c.position.set(Math.cos(a) * 0.03, 0.04 + Math.sin(a) * 0.03, -0.86); c.rotation.x = -Math.PI / 2; g.add(c); }
           glowStrip(k, P.G, 0.5, 0, 0.058, -0.55);
-          k.box(0.05, 0.05, 0.012, 0.031, 0.01, 0.3, P.A);                        // stock badge
-          for (const z of [0.29, 0.31]) k.box(0.004, 0.008, 0.006, 0.058, 0.02, z, P.G);
+          k.box(0.012, 0.05, 0.05, 0.027, -0.03, 0.34, P.A);                       // stock badge
+          for (const z of [0.33, 0.35]) k.box(0.006, 0.008, 0.006, 0.034, -0.02, z, P.G);
         } },
     },
     hunter: {
