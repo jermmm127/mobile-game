@@ -260,6 +260,7 @@ BR.Mover = class Mover {
     const fwd = inp.mz > 0.3;
     const canRun = !this.grapple && !this.onGround && this.wallContactT < (this.wallRunning ? 0.06 : 0.2) && this.wallTall && this.wallRunCd <= 0 &&
       this.wallRunT < M.wallRunMaxTime && fwd && this.speedH >= M.wallRunMinSpeed &&
+      inp.jumpHeld !== false &&                       // players must hold JUMP to wall-run (letting go drops you off)
       (this.wallRunning || this.vel.y < M.wallRunEnterVy);
     if (canRun) {
       if (!this.wallRunning) {

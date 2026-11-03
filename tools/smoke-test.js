@@ -65,6 +65,12 @@ const server = http.createServer((req, res) => {
     go(m, 30, { mz: 1 }, yw); go(m, 1, { mz: 1, jump: true }, yw);
     for (let i = 0; i < 600 && !m.onGround; i++) { const j = m.wallRunning && m.wallRunT > 0.5; if (j) yw = yawFor(-1, m.wallN.z * 0.6); go(m, 1, { mz: 1, jump: j }, yw); air++; }
     r.wallChainAir = air / 60;
+    // wall-run only while JUMP is held (players): same run-up with jump released vs held
+    const wr = held => { const mm = new BR.Mover(lane); mm.pos.set(60, 0, -2.5); let y2 = yawFor(-1, -0.3), ran = false;
+      go(mm, 30, { mz: 1 }, y2); go(mm, 1, { mz: 1, jump: true, jumpHeld: true }, y2);
+      for (let i = 0; i < 90 && !mm.onGround; i++) { go(mm, 1, { mz: 1, jumpHeld: held }, y2); if (mm.wallRunning) ran = true; }
+      return ran; };
+    r.wallRunReleased = wr(false); r.wallRunHeld = wr(true);
     // ledges
     const led = mkWorld([[20, 0, 5, 22, 1.6, 15, 0], [-22, 0, 5, -20, 1.2, 15, 0]]);
     m = new BR.Mover(led); m.pos.set(16, 0, 10);
@@ -537,6 +543,7 @@ const server = http.createServer((req, res) => {
     ['holding jump does NOT bunny hop', mech.bhopHeld < run + 0.5],
     ['late jumps lose speed', mech.bhopLate < mech.bhopTimed - 2],
     ['wall chain keeps you airborne > 3s', mech.wallChainAir > 3],
+    ['wall-run only while holding jump', mech.wallRunHeld && !mech.wallRunReleased],
     ['mantle climbs a 1.6m ledge', mech.mantleY >= 1.59],
     ['vault climbs a 1.2m crate', mech.vaultTop >= 1.19],
     ['jump pad launches > 5m', mech.padApex > 5],

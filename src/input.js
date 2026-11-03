@@ -59,7 +59,7 @@ BR.Input = class Input {
   consumeLook() { const d = [this.lookDX, this.lookDY]; this.lookDX = 0; this.lookDY = 0; return d; }
   reset() {
     this.moveX = this.moveY = this.lookDX = this.lookDY = 0;
-    this.fire = false; this.fireTouches = 0; this.mouseFire = false;
+    this.fire = false; this.fireTouches = 0; this.mouseFire = false; this.jumpHeld = false;
     this.pressed = {}; this.touches = {}; this.keys = {};
     this.joy.active = false;
     this.joy.base.classList.remove('on');
@@ -91,6 +91,7 @@ BR.Input = class Input {
         btn.classList.add('on');
         if (act === 'fire' || act === 'firel') { this.fireTouches++; this.fire = true; }
         else if (act === 'ads') this.ads = !this.ads;
+        else if (act === 'jump') { this.jumpHeld = true; this.press(act); }
 
         else this.press(act);
         continue;
@@ -154,6 +155,7 @@ BR.Input = class Input {
         this.joy.base.classList.remove('on');
       } else if (r.type === 'btn') {
         r.btn.classList.remove('on');
+        if (r.act === 'jump') this.jumpHeld = false;
         if (r.act === 'fire' || r.act === 'firel') {
           this.fireTouches = Math.max(0, this.fireTouches - 1);
           this.fire = this.fireTouches > 0 || this.mouseFire;
@@ -177,7 +179,7 @@ BR.Input = class Input {
       this.usingTouch = false;
       BR.Audio.init();
       if (map[e.code]) { this.keys[map[e.code]] = true; upd(); }
-      if (e.code === 'Space') { this.press('jump'); e.preventDefault(); }
+      if (e.code === 'Space') { this.press('jump'); this.jumpHeld = true; e.preventDefault(); }
       if (e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'ControlLeft') this.press('crouch');
       if (e.code === 'KeyG') this.press('grapple');
       if (e.code === 'KeyV') this.press('inspect');
@@ -196,6 +198,7 @@ BR.Input = class Input {
     });
     window.addEventListener('keyup', e => {
       if (map[e.code]) { this.keys[map[e.code]] = false; upd(); }
+      if (e.code === 'Space') this.jumpHeld = false;
     });
     this.root.addEventListener('mousedown', e => {
       if (this.usingTouch || this.editing || e.target.closest('[data-act]')) return;

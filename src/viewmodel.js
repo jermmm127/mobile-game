@@ -12,6 +12,10 @@
 // =============================================================================
 (function () {
   const U = BR.util;
+  // butterfly hammer grip: relaxed elbow (camera space, x scaled by the side) + which way the thumb faces
+  const BF_ARM = new THREE.Vector3(0.36, -0.5, 0.26);         // wrist -> elbow, kept constant so the forearm never swings at the camera
+  let BF_THUMB = 1;
+  BR._bfThumb = v => { BF_THUMB = v; };
   const clamp01 = t => (t < 0 ? 0 : t > 1 ? 1 : t);
   const smooth = t => { t = clamp01(t); return t * t * (3 - 2 * t); };
   const easeOutBack = t => { t = clamp01(t); const c = 1.6; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
@@ -179,7 +183,7 @@
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 3.4 : w.def.melee ? 2.4 : 2.1; this.lastBflyT = 0; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 3.4 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
     hide() { if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
@@ -266,13 +270,13 @@
           orx -= 0.1 * win(t, 0.36, 0.46, 0.52, 0.66);
           this.bflySwish(t, [0.2, 0.44]);
         } else if (def.melee) {
-          // CS-style karambit deploy: snap into view, twirl twice around the ring, settle
-          const rise = smooth(t / 0.08), out = 1 - smooth((t - 0.6) / 0.4);
-          oy += -(1 - rise) * 0.16 + out * rise * 0.06;
-          ox += -out * rise * 0.06; oz += -out * 0.14;
-          ox += 0.18 * win(t, 0, 0.1, 0.5, 0.72); oy -= 0.02 * win(t, 0, 0.1, 0.5, 0.72);                           // the flip happens out to the right side
-          orz += -out * 0.3; orx += out * 0.15;
-          spinAng = easeInOut(t / 0.6) * Math.PI * 4;                       // starts right away
+          // Karambit deploy: the hand comes up near the centre, turning a little upright, while the
+          // knife twirls twice around the index finger in the ring, then drops into the low hold
+          const rise = smooth(t / 0.08), out = 1 - smooth((t - 0.62) / 0.38);
+          oy += -(1 - rise) * 0.16; oz += -out * 0.06;
+          const lift = win(t, 0.02, 0.12, 0.5, 0.76);
+          ox -= 0.05 * lift; oy += 0.07 * lift; oz -= 0.04 * lift; orz += 0.45 * lift; orx += 0.08 * lift;
+          spinAng = easeInOut(t / 0.6) * Math.PI * 4;
           ringW = win(t, 0, 0.07, 0.52, 0.68);                              // index finger in the ring while it rolls
           const turns = Math.floor(spinAng / (Math.PI * 2) + 0.25);
           if (turns > this.spinSwish) { this.spinSwish = turns; BR.Audio.swish(false); }
@@ -294,19 +298,22 @@
           const vee = win(t, 0.38, 0.47, 0.72, 0.78);                                   // handles spread
           const rov = easeInOut((t - 0.8) / 0.13);                                      // rollover catch
           bfly = { a: Math.PI * c1 + 1.9 * vee, flip: -Math.PI * 2 * rov, roll: Math.PI * 2 * rl };
-          ory += 0.45 * show + Math.sin(t * Math.PI * 2.2) * 0.035 * show;              // present it, with a little sway
-          orz += 0.28 * show; orx -= 0.1 * show; ox -= 0.025 * show; oy += 0.05 * show; oz -= 0.02 * show;
+          ory += 0.22 * show + Math.sin(t * Math.PI * 2.2) * 0.03 * show;              // present it, with a little sway
+          orz += 0.16 * show; orx -= 0.08 * show; ox -= 0.035 * show; oy += 0.05 * show; oz -= 0.02 * show;
           orx -= 0.1 * win(t, 0.8, 0.86, 0.88, 0.95);
           this.bflySwish(t, [0.08, 0.22, 0.3, 0.84]);
         } else if (def.melee) {
-          // one clean flip over the index finger: a small counter-cock, a smooth eased roll
-          // around the ring with the wrist following through, then the show-off ending
-          const fk = Math.min(1, Math.max(0, (t - 0.07) / 0.3));
-          spinAng = -0.32 * win(t, 0, 0.05, 0.06, 0.13) + easeInOut(fk) * Math.PI * 2;
-          ringW = win(t, 0.01, 0.07, 0.34, 0.44);
-          orz += 0.12 * Math.sin(Math.PI * fk); oy += 0.012 * Math.sin(Math.PI * fk); orx -= 0.05 * win(t, 0, 0.05, 0.08, 0.16);
-          const sh = win(t, 0.42, 0.55, 0.85, 1);
-          ory += sh * 1.15; orz += sh * 0.65; ox -= sh * 0.12; oy += sh * 0.06; orx += Math.sin(t * Math.PI * 3) * 0.05 * sh;
+          // Karambit inspect: the hand rises to the centre and turns upright while the knife twirls
+          // round the ring finger and ends hanging below the fist; hold that show pose with a gentle
+          // sway; then a last half-twirl as the hand drops back into the low hold
+          const up = win(t, 0.0, 0.1, 0.76, 0.9);
+          ox -= 0.07 * up; oy += 0.09 * up; oz -= 0.03 * up; orz += 1.05 * up; ory += 0.2 * up; orx -= 0.15 * up;
+          spinAng = easeInOut((t - 0.02) / 0.14) * Math.PI * 3 + easeInOut((t - 0.78) / 0.14) * Math.PI;
+          ringW = win(t, 0, 0.05, 0.9, 0.96);
+          const hold = win(t, 0.16, 0.24, 0.72, 0.78);
+          orz += 0.035 * Math.sin(t * Math.PI * 3) * hold; ory += 0.03 * Math.sin(t * Math.PI * 2) * hold;
+          const turns = Math.floor(spinAng / Math.PI + 0.25);
+          if (turns > this.spinSwish) { this.spinSwish = turns; BR.Audio.swish(false); }
         } else {
           const a = win(t, 0, 0.2, 0.45, 0.6), b = win(t, 0.45, 0.6, 0.85, 1);
           ory += a * 0.95 - b * 0.35; orz += a * 0.4 + b * 0.55; orx += b * 0.35;
@@ -566,9 +573,18 @@
       if (bf) {
         // Butterfly: closed fist round the safe handle (the handle stays put in the hand while
         // the blade and bite handle flip around the pin)
-        H.position.copy(gp);
-        H.quaternion.copy(wq).multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
-        H.translateY(0.014 * 1.3); H.translateZ(0.029 * 1.3);
+        // Natural hammer grip: the handle runs across the palm, and the fist is lined up with the
+        // forearm (wrist straight, pointing back toward a relaxed elbow) instead of being bent to
+        // match the knife's tilt
+        const hc = this._bh1 || (this._bh1 = new THREE.Vector3()), ht = this._bh2 || (this._bh2 = new THREE.Vector3());
+        model.localToWorld(hc.set(0, -0.07, 0)); model.localToWorld(ht.set(0, -0.01, 0));
+        const X = (this._bhx || (this._bhx = new THREE.Vector3())).subVectors(ht, hc).normalize().multiplyScalar(BF_THUMB);
+        const Z = (this._bhz || (this._bhz = new THREE.Vector3())).set(BF_ARM.x * s, BF_ARM.y, BF_ARM.z);
+        this._bfElbow = (this._bfElbow || new THREE.Vector3()).copy(hc).add(Z);
+        Z.addScaledVector(X, -Z.dot(X)).normalize();
+        const Y = (this._bhy || (this._bhy = new THREE.Vector3())).crossVectors(Z, X);
+        H.quaternion.setFromRotationMatrix((this._bhm || (this._bhm = new THREE.Matrix4())).makeBasis(X, Y, Z));
+        H.position.copy(hc).sub(this._v2.set(0, -0.014, -0.029).multiplyScalar(1.3).applyQuaternion(H.quaternion));
       } else if (spin) {
         // Karambit: a backhand fist round the handle, index finger by the ring. The hand
         // stays put during twirls and the knife spins round the ring at the index finger.
@@ -618,7 +634,7 @@
       }
       H.visible = true;
       // the butterfly is held high in view, so its elbow sits low and forward (keeps the sleeve end off the camera)
-      const elbowR = spin ? this._v2.set(0.5 * s, -0.68, -0.3) : bf ? this._v2.set(0.42 * s, -0.78, -0.26) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
+      const elbowR = spin ? this._v2.set(0.5 * s, -0.68, -0.3) : bf ? this._v2.copy(this._bfElbow) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
       this.limb(R.fore, H.localToWorld(new THREE.Vector3(0, 0, spin || bf ? 0.075 : 0.05)), elbowR, spin || bf ? 0.72 : 1);
       // left hand on the foregrip / mag / charging handle
       const lt = leftTarget || (ud.pump && ud.fore ? this._pumpFore.copy(ud.fore).setZ(ud.fore.z + ud.pump.position.z) : ud.fore);

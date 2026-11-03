@@ -636,6 +636,7 @@ BR.Game = class Game {
     p.input.mx = inp.moveX;
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
+    p.input.jumpHeld = !!inp.jumpHeld;
     if (inp.consume('crouch')) p.input.crouch = true;
     if (inp.consume('grenade')) { if (this.shock.throw(p)) { BR.Audio.throwNade(); this.vmr.onThrow(); } else BR.Audio.click(); }
     if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.vmr.onStim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
