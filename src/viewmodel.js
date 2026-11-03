@@ -126,7 +126,7 @@
       }
       // Backhand fists for the karambit idle (mirrored gloves so the thumbs sit toward the centre)
       if (this.knifeHands) this.scene.remove(this.knifeHands.R, this.knifeHands.L);
-      const kh = left => { const h = BR.Models.hand(eq.gloves || 'default', left); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; };
+      const kh = left => { const h = BR.Models.hand(eq.gloves || 'default', left, true); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; };
       this.knifeHands = { R: kh(true), L: kh(false) };
       // Wrist grapple launcher (child of the left hand: aims where the fingers point)
       const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
@@ -529,8 +529,8 @@
         // stays put during twirls and the knife spins round the ring at the index finger.
         const sq = this._ksq || (this._ksq = new THREE.Quaternion());
         sq.copy(spin.obj.quaternion); spin.obj.quaternion.identity(); spin.obj.updateMatrixWorld(true);
-        const a = model.localToWorld((this._kv2 || (this._kv2 = new THREE.Vector3())).set(0, 0.004, 0.004));
-        const b = model.localToWorld((this._kv3 || (this._kv3 = new THREE.Vector3())).set(0, 0.055, 0.1));
+        const a = model.localToWorld((this._kv2 || (this._kv2 = new THREE.Vector3())).set(0, 0.002, 0.004));      // handle centre line
+        const b = model.localToWorld((this._kv3 || (this._kv3 = new THREE.Vector3())).set(0, 0.044, 0.1));
         spin.obj.quaternion.copy(sq); spin.obj.updateMatrixWorld(true);
         // mirrored glove (thumb on -X): -X points at the ring, wrist down toward you, back of hand up
         const X = (this._kx || (this._kx = new THREE.Vector3())).subVectors(a, b).normalize();
@@ -538,7 +538,7 @@
         Z.addScaledVector(X, -Z.dot(X)).normalize();
         const Y = (this._ky || (this._ky = new THREE.Vector3())).crossVectors(Z, X);
         const gripQ = (this._kq2 || (this._kq2 = new THREE.Quaternion())).setFromRotationMatrix((this._km || (this._km = new THREE.Matrix4())).makeBasis(X, Y, Z));
-        const fist = this._v2.set(0, -0.026, -0.05).multiplyScalar(1.3).applyQuaternion(gripQ);
+        const fist = this._v2.set(0, -0.014, -0.029).multiplyScalar(1.3).applyQuaternion(gripQ);   // centre of the closed fingers
         H.position.copy(a.lerp(b, 0.5)).sub(fist);
         H.quaternion.copy(gripQ);
         // Twirls: the hand opens off the handle so the index finger sits in the ring, and the
@@ -546,7 +546,7 @@
         const rw = spin.ringW || 0;
         if (rw > 0.001) {
           const ringC = spin.obj.getWorldPosition(this._kv1 || (this._kv1 = new THREE.Vector3()));
-          const tip = this._v2.set(-0.0194, -0.02, -0.056).multiplyScalar(1.3).applyQuaternion(gripQ);   // mirrored glove: index on -X
+          const tip = this._v2.set(-0.0194, -0.018, -0.04).multiplyScalar(1.3).applyQuaternion(gripQ);    // mirrored glove: index on -X
           H.position.lerp(ringC.sub(tip), rw);
           const tilt = this._kq3 || (this._kq3 = new THREE.Quaternion());
           tilt.setFromAxisAngle(X, -0.35 * rw);                                // fingers relax open a little

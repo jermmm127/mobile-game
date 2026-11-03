@@ -1719,14 +1719,15 @@ BR.Models = (function () {
   // Three-segment fingers with knuckles, two-part thumb, rounded palm, knuckle guard, back plate,
   // round cuff with a strap. Merged per material and cached per glove + side.
   const handCache = {};
-  function hand(id, left) {
-    const key = (id || 'default') + (left ? 'L' : 'R');
-    if (!handCache[key]) handCache[key] = buildHand(id, left);
+  // fist = fingers closed round a handle (karambit); otherwise the relaxed gun-grip curl
+  function hand(id, left, fist) {
+    const key = (id || 'default') + (left ? 'L' : 'R') + (fist ? 'F' : '');
+    if (!handCache[key]) handCache[key] = buildHand(id, left, fist);
     const g = new THREE.Group();
     for (const m of handCache[key].children) g.add(new THREE.Mesh(m.geometry, m.material));
     return g;
   }
-  function buildHand(id, left) {
+  function buildHand(id, left, fist) {
     const m = gloveMats(id), g = new THREE.Group(), sx = left ? -1 : 1;
     const put = (geo, mat, x, y, z, rx, ry, rz, par) => { const o = new THREE.Mesh(geo, mat); o.position.set(x * sx, y, z); o.rotation.set(rx || 0, (ry || 0) * sx, (rz || 0) * sx); (par || g).add(o); return o; };
     const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
@@ -1737,7 +1738,7 @@ BR.Models = (function () {
     const heel = put(sph(0.026), m.main, 0, -0.004, 0.018); heel.scale.set(1.0, 0.55, 0.75);
     const dome = put(sph(0.028), m.main, 0, 0.006, -0.006); dome.scale.set(0.95, 0.45, 1.15);
     // fingers: three phalanges each, chained so the curl reads naturally
-    const lens = [0.023, 0.017, 0.013], radii = [0.0066, 0.006, 0.0056], curl = [0.55, 0.95, 0.75];
+    const lens = [0.023, 0.017, 0.013], radii = [0.0066, 0.006, 0.0056], curl = fist ? [1.2, 1.45, 1.1] : [0.55, 0.95, 0.75];
     for (let i = 0; i < 4; i++) {
       const fx = -0.0195 + i * 0.013, fy = 0.002 + (i === 1 || i === 2 ? 0.0015 : 0), lenK = i === 0 ? 0.85 : i === 3 ? 0.95 : 1;
       let par = new THREE.Group(); par.position.set(fx * sx, fy, -0.03); g.add(par);
@@ -1752,10 +1753,10 @@ BR.Models = (function () {
       }
     }
     // thumb: two segments angled across the front of the fist
-    const tb = new THREE.Group(); tb.position.set(0.026 * sx, -0.008, -0.004); tb.rotation.set(0.35, -0.75 * sx, 0.2 * sx); g.add(tb);
+    const tb = new THREE.Group(); tb.position.set(0.026 * sx, -0.008, -0.004); tb.rotation.set(fist ? 0.75 : 0.35, (fist ? -0.95 : -0.75) * sx, (fist ? 0.35 : 0.2) * sx); g.add(tb);
     put(sph(0.0085), m.main, 0, 0, 0, 0, 0, 0, tb).position.x = 0;
     put(cyl(0.0082, 0.0076, 0.022, 8), m.main, 0, 0, -0.011, Math.PI / 2, 0, 0, tb).position.x = 0;
-    const t2 = new THREE.Group(); t2.position.z = -0.022; t2.rotation.x = -0.45; tb.add(t2);
+    const t2 = new THREE.Group(); t2.position.z = -0.022; t2.rotation.x = fist ? -0.8 : -0.45; tb.add(t2);
     put(cyl(0.0074, 0.0068, 0.016, 8), m.main, 0, 0, -0.008, Math.PI / 2, 0, 0, t2).position.x = 0;
     put(sph(0.0068), m.main, 0, 0, -0.016, 0, 0, 0, t2).position.x = 0;
     // armour: knuckle guard + back plate
