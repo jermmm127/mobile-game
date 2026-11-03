@@ -334,6 +334,8 @@
       c.classList.toggle('held', tags.length > 0);
     });
   };
+  let spRar = 0;
+  $('sp-rar').addEventListener('click', e => { const b = e.target.closest('button[data-r]'); if (!b) return; spRar = +b.dataset.r; $('sp-rar').querySelectorAll('button').forEach(x => x.classList.toggle('sel', x === b)); BR.Audio.click(); });
   $('sp-slots').addEventListener('click', e => {
     const b = e.target.closest('button[data-slot]'); if (!b) return;
     spSlot = +b.dataset.slot; BR.Audio.click(); BR.renderSpawnSlots();
@@ -343,7 +345,7 @@
     if (!b) return;
     if (b.dataset.sp === 'weapon') {
       const p = game.player;
-      game.practiceSpawn('weapon', b.dataset.arg, spSlot);
+      game.practiceSpawn('weapon', b.dataset.arg, spSlot, spRar);
       if (spSlot === 0 && p && !p.slots[1]) spSlot = 1;        // first gun in -> second slot next
       BR.renderSpawnSlots(); BR.Audio.pickup();
       b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);
@@ -499,6 +501,60 @@
   game.hud.notesBadge();
   $('rk-x').addEventListener('click', () => game.hud.show('ranks', false));
   $('btn-duel').addEventListener('click', () => { BR.Audio.init(); BR.openDuelMenu('setup'); });
+
+  // ---- v1.11: Discover-style mode browser. The lobby shows the selected mode; PLAY launches it.
+  const ICO = {
+    br: '<path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6z"/><path d="M8 12l3 3 5-6" fill="none" stroke-width="2.2"/>',
+    resurgence: '<path d="M12 3a9 9 0 1 0 9 9h-2.4A6.6 6.6 0 1 1 12 5.4V9l5-4.5L12 0z"/>',
+    duel: '<path d="M4 3l7 7-2 2L2 5V3zM20 3h2v2l-7 7-2-2zM6 15l3 3-3 3-3-3zM18 15l3 3-3 3-3-3zM8 13l3 3M16 13l-3 3" stroke-width="2"/>',
+    zombies: '<path d="M32 4C18 4 8 14 8 27c0 8 4 14 9 17v8c0 2 2 4 4 4h3v-6h4v6h8v-6h4v6h3c2 0 4-2 4-4v-8c5-3 9-9 9-17C56 14 46 4 32 4zm-11 32a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm22 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-11 9-4-6h8z" transform="scale(.375)"/>',
+    overdrive: '<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>',
+    practice: '<path d="M4 20h16M6 20V9l6-5 6 5v11"/><path d="M10 20v-6h4v6" fill="none" stroke-width="2"/>',
+    aim: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke-width="2"/>',
+  };
+  const MODES = {
+    br:         { name: 'BATTLE ROYALE', sub: 'Solo · 30 players · one life', cat: 'BATTLE ROYALE', tags: ['RANKED', '30 PLAYERS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play() },
+    resurgence: { name: 'RESURGENCE', sub: 'Redeploy until the 4th circle', cat: 'BATTLE ROYALE', tags: ['NEW', '24 PLAYERS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true }) },
+    duel:       { name: '1V1 DUEL', sub: 'The Yard · first to 5', cat: 'COMPETITIVE', tags: ['1V1'], art: 'linear-gradient(120deg,#2f6fd8 0 48%,#d8443a 52% 100%)', glow: '#8ab4ff', go: () => { BR.Audio.init(); BR.openDuelMenu('setup'); } },
+    zombies:    { name: 'ZOMBIES', sub: 'Hollow Graves · endless rounds', cat: 'SURVIVAL', tags: ['STORY', 'BOSSES'], art: 'radial-gradient(120% 120% at 80% 0%,#ff7a1a,#5a141e 55%,#140818)', glow: '#ff8a2a', go: () => { BR.Audio.init(); game.startZombies(); } },
+    overdrive:  { name: 'OVERDRIVE', sub: 'Roguelike swarm survival', cat: 'SURVIVAL', tags: ['NEW', 'ROGUELIKE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff5ec4,#46145a 55%,#12061c)', glow: '#ff5ec4', go: () => overdrive() },
+    practice:   { name: 'PRACTICE', sub: 'Spawn anything · no bots', cat: 'TRAINING', tags: ['SOLO'], art: 'linear-gradient(160deg,#4fdc8a,#14583a 55%,#071a12)', glow: '#4fdc8a', go: () => practice() },
+    aim:        { name: 'AIM TRAINER', sub: 'Gridshot · Flick · Tracking · Strafe', cat: 'TRAINING', tags: ['NEW', 'SCORES'], art: 'radial-gradient(120% 120% at 80% 0%,#45e0ff,#0b3a56 55%,#050d18)', glow: '#45e0ff', go: () => aimTrainer() },
+  };
+  const CATS = ['BATTLE ROYALE', 'SURVIVAL', 'COMPETITIVE', 'TRAINING'];
+  if (!MODES[settings.mode]) settings.mode = 'br';
+  const art = (id, big) => { const M = MODES[id]; return `<span class="mart${big ? ' big' : ''}" style="background:${M.art};--g:${M.glow}"><i class="mart-grid"></i><svg viewBox="0 0 24 24">${ICO[id]}</svg></span>`; };
+  const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = M.sub; $('mode-cur').style.setProperty('--g', M.glow); };
+  const renderDiscover = () => {
+    const feat = 'overdrive', F = MODES[feat];
+    $('dc-feat').innerHTML = `<button class="dc-tile feat${settings.mode === feat ? ' sel' : ''}" data-m="${feat}" style="--g:${F.glow}">${art(feat, true)}<span class="dt-txt"><em>FEATURED</em><b>${F.name}</b><i>${F.sub}</i><span class="dt-tags">${F.tags.map(t => `<u>${t}</u>`).join('')}</span></span></button>`;
+    $('dc-rows').innerHTML = CATS.map(c => `<div class="dc-row"><div class="dc-cat">${c}</div><div class="dc-strip">${Object.entries(MODES).filter(([, M]) => M.cat === c).map(([id, M]) =>
+      `<button class="dc-tile${settings.mode === id ? ' sel' : ''}" data-m="${id}" style="--g:${M.glow}">${art(id)}<span class="dt-txt"><b>${M.name}</b><i>${M.sub}</i><span class="dt-tags">${M.tags.map(t => `<u class="${t === 'NEW' ? 'new' : ''}">${t}</u>`).join('')}</span></span>${settings.mode === id ? '<span class="dt-check">✓</span>' : ''}</button>`).join('')}</div></div>`).join('');
+  };
+  BR.selectMode = id => { if (!MODES[id]) return; settings.mode = id; save(); renderLobby(); };
+  $('mode-cur').addEventListener('click', () => { BR.Audio.init(); BR.Audio.click(); renderDiscover(); $('discover').classList.remove('hidden'); });
+  $('dc-x').addEventListener('click', () => $('discover').classList.add('hidden'));
+  $('discover').addEventListener('click', e => { const t = e.target.closest('[data-m]'); if (!t) return; BR.selectMode(t.dataset.m); BR.Audio.pickup(); renderDiscover(); setTimeout(() => $('discover').classList.add('hidden'), 160); });
+  $('btn-go').addEventListener('click', () => { BR.Audio.init(); MODES[settings.mode].go(); });
+  renderLobby();
+
+  // ---- v1.11: loadout editor
+  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
+  const renderLoadout = () => {
+    const L = BR.Profile.loadoutGuns();
+    $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');
+    $('lo-secondary').innerHTML = LO_S.map(id => gcard(id, `data-lo="secondary" data-g="${id}"`, L.secondary === id)).join('');
+    $('lo-melee').innerHTML = LO_M.map(([id, n]) => `<button class="gcard${L.melee === id ? ' sel' : ''}" data-lo="melee" data-g="${id}">${BR.WeaponIcons.pic[id] ? `<img src="${BR.WeaponIcons.pic[id]}" alt="">` : ''}<span>${n}</span></button>`).join('');
+  };
+  $('btn-loadout').addEventListener('click', () => { BR.Audio.init(); renderLoadout(); $('loadout').classList.remove('hidden'); });
+  $('lo-x').addEventListener('click', () => $('loadout').classList.add('hidden'));
+  $('loadout').addEventListener('click', e => {
+    const b = e.target.closest('[data-lo]'); if (!b) return;
+    const P = BR.Profile, k = b.dataset.lo, id = b.dataset.g;
+    if (k === 'melee') P.data.equip.melee = id; else P.data.loadout[k] = id;
+    P.save(); game.refreshCosmetics(); BR.Audio.pickup(); renderLoadout();
+  });
+  $('lo-reset').addEventListener('click', () => { const P = BR.Profile; P.data.loadout = { primary: 'rifle', secondary: 'pistol' }; P.data.equip.melee = 'bayonet'; P.save(); game.refreshCosmetics(); BR.Audio.click(); renderLoadout(); });
   $('dm-go').addEventListener('click', dmGo);
   $('dm-x').addEventListener('click', dmClose);
   $('btn-menu').addEventListener('click', () => game.toMenu());

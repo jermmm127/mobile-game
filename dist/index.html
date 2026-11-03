@@ -1364,6 +1364,84 @@ body.overdrive .zm-hide, body.overdrive #alive, body.overdrive .alive-box { disp
 body.aimtrain #topbar, body.overdrive #topbar, body.aimtrain #minimap, body.overdrive #minimap { display: none !important; }
 body.shopping #play > :not(#view) { visibility: hidden !important; }
 
+/* ---- v1.11 weapon rarity: slot tint, prompts, practice picker */
+.slot.rar { border-color: color-mix(in srgb, var(--rc) 70%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 22%, var(--panel-hud)), var(--panel-hud) 70%); }
+.slot.rar .sname { color: var(--rc); }
+.slot.rar .sbar i { background: var(--rc) !important; }
+.slot.rar.active { box-shadow: 0 0 0 1px var(--rc), 0 0 14px color-mix(in srgb, var(--rc) 45%, transparent); }
+.slot[data-rar="mythic"] { animation: mythicSlot 2.4s ease-in-out infinite; }
+@keyframes mythicSlot { 50% { box-shadow: 0 0 0 1px #ffd84a, 0 0 18px rgba(255, 216, 74, .6); } }
+#prompt.rarp { border-color: var(--pc) !important; box-shadow: 0 0 14px color-mix(in srgb, var(--pc) 40%, transparent); }
+.sp-rar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 2px 0 6px; }
+.sp-rar span { font: 700 10px var(--ui); letter-spacing: .18em; opacity: .6; margin-right: 4px; }
+.sp-rar button { padding: 5px 9px; border-radius: 8px; font: 700 10px var(--ui); letter-spacing: .08em; color: var(--rc); background: rgba(255,255,255,.04); border: 1px solid color-mix(in srgb, var(--rc) 45%, transparent); cursor: pointer; }
+.sp-rar button.sel { background: color-mix(in srgb, var(--rc) 25%, transparent); border-color: var(--rc); color: #fff; box-shadow: 0 0 10px color-mix(in srgb, var(--rc) 40%, transparent); }
+
+/* ---- v1.11 lobby: selected mode + PLAY (Discover-style browser) */
+.legacy-modes { display: none !important; }
+.lobby { display: flex; gap: 10px; align-items: stretch; }
+.mode-cur { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 10px 14px 10px 10px; border-radius: 18px; cursor: pointer; color: #fff; font-family: var(--ui); text-align: left;
+  background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.03)); border: 1px solid color-mix(in srgb, var(--g, #c084fc) 55%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 12px 30px rgba(0,0,0,.35), 0 0 24px color-mix(in srgb, var(--g, #c084fc) 18%, transparent); transition: transform .15s; }
+.mode-cur:hover { transform: translateY(-2px); } .mode-cur:active { transform: scale(.98); }
+.mc-art .mart { width: 132px; height: 84px; }
+.mc-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mc-tag { font: 700 10px var(--ui); letter-spacing: .24em; color: rgba(255,255,255,.6); }
+.mc-txt b { font: 800 26px/1 var(--display); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-txt i { font-style: normal; font-size: 12px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-change { display: flex; align-items: center; gap: 2px; padding: 7px 10px 7px 12px; border-radius: 999px; font: 800 11px var(--ui); letter-spacing: .14em; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); }
+.mc-change svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 2.6; }
+.play-big { flex: none; width: clamp(150px, 22vw, 230px); display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 18px; cursor: pointer; border: 1px solid rgba(255, 240, 160, .7);
+  font: 900 34px/1 var(--display); letter-spacing: .04em; color: #1c1206; background: linear-gradient(180deg, #ffe680, #ffc21a 55%, #f08a00); box-shadow: 0 12px 30px rgba(255, 170, 0, .35), inset 0 2px 0 rgba(255,255,255,.6);
+  position: relative; overflow: hidden; transition: transform .15s; }
+.play-big svg { width: 26px; height: 26px; fill: #1c1206; }
+.play-big::after { content: ''; position: absolute; top: -50%; left: -60%; width: 40%; height: 200%; transform: rotate(20deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); animation: sheen 3.2s ease-in-out infinite; }
+.play-big:hover { transform: translateY(-2px) scale(1.02); } .play-big:active { transform: scale(.97); }
+#menu:not(.hidden) .lobby > * { animation: cardIn .7s cubic-bezier(.2, 1.2, .4, 1) both; } #menu:not(.hidden) .lobby > :nth-child(2) { animation-delay: .12s; }
+/* mode art: gradient + grid + glowing emblem */
+.mart { position: relative; display: block; border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+.mart-grid { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 16px), repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 16px); mask-image: linear-gradient(180deg, transparent, #000 70%); -webkit-mask-image: linear-gradient(180deg, transparent, #000 70%); }
+.mart::after { content: ''; position: absolute; inset: 0; background: radial-gradient(80% 80% at 50% 120%, rgba(0,0,0,.55), transparent 60%); }
+.mart svg { position: absolute; left: 50%; top: 50%; width: 46%; height: 70%; transform: translate(-50%, -50%); fill: #fff; stroke: #fff; filter: drop-shadow(0 0 10px var(--g)) drop-shadow(0 4px 8px rgba(0,0,0,.5)); z-index: 1; }
+.mart.big svg { width: 34%; }
+/* the browser */
+.discover { flex-direction: column; gap: 12px; background: radial-gradient(120% 90% at 50% 0%, rgba(80, 30, 140, .55), rgba(6, 4, 14, .94) 70%); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.dc-top { display: flex; align-items: center; justify-content: space-between; }
+.dc-title b { display: block; font: 900 30px/1 var(--display); letter-spacing: .02em; background: linear-gradient(180deg, #fff, #c8a8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.dc-title span { font-size: 12px; opacity: .7; letter-spacing: .06em; }
+.discover .xbtn { position: static; }
+.dc-row { display: flex; flex-direction: column; gap: 6px; }
+.dc-cat { font: 800 11px var(--ui); letter-spacing: .24em; color: rgba(255,255,255,.65); }
+.dc-strip { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x mandatory; }
+.dc-tile { flex: none; width: 220px; display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 16px; cursor: pointer; color: #fff; font-family: var(--ui); text-align: left; scroll-snap-align: start; position: relative;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); transition: transform .15s, border-color .15s, box-shadow .15s; }
+.dc-tile .mart { width: 100%; height: 112px; }
+.dc-tile:hover, .dc-tile:focus-visible { transform: translateY(-3px); border-color: color-mix(in srgb, var(--g) 70%, transparent); box-shadow: 0 0 22px color-mix(in srgb, var(--g) 30%, transparent); }
+.dc-tile.sel { border-color: var(--g); box-shadow: 0 0 0 1px var(--g), 0 0 26px color-mix(in srgb, var(--g) 40%, transparent); }
+.dt-txt { display: flex; flex-direction: column; gap: 2px; padding: 0 4px 2px; }
+.dt-txt b { font: 800 16px var(--display); } .dt-txt i { font-style: normal; font-size: 11px; opacity: .72; }
+.dt-txt em { font-style: normal; font: 800 10px var(--ui); letter-spacing: .24em; color: var(--g); }
+.dt-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+.dt-tags u { text-decoration: none; font: 700 9px var(--ui); letter-spacing: .1em; padding: 2px 6px; border-radius: 5px; background: rgba(255,255,255,.1); }
+.dt-tags u.new { background: linear-gradient(90deg, #ff3df2, #7b2cff); }
+.dt-check { position: absolute; right: 14px; top: 14px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; color: #120a20; background: var(--g); box-shadow: 0 0 12px var(--g); z-index: 2; }
+.dc-tile.feat { width: 100%; flex-direction: row; align-items: stretch; gap: 14px; }
+.dc-tile.feat .mart { width: min(52%, 420px); height: 150px; flex: none; }
+.dc-tile.feat .dt-txt { justify-content: center; } .dc-tile.feat .dt-txt b { font-size: 30px; } .dc-tile.feat .dt-txt i { font-size: 13px; }
+@media (max-height: 430px) {
+  .mc-art .mart { width: 96px; height: 60px; } .mc-txt b { font-size: 21px; } .play-big { font-size: 28px; }
+  .dc-tile { width: 180px; } .dc-tile .mart { height: 84px; } .dc-tile.feat .mart { height: 110px; } .dc-title b { font-size: 24px; }
+}
+@media (orientation: portrait) { .lobby { flex-direction: column; } .play-big { width: 100%; min-height: 64px; } .mc-change { display: none; } .dc-tile.feat { flex-direction: column; } .dc-tile.feat .mart { width: 100%; } }
+/* loadout */
+.lopanel { position: relative; }
+.lo-grid .gcard.sel { box-shadow: 0 0 0 2px #ffd24a, 0 0 16px rgba(255, 210, 74, .45); }
+.dk.loadout svg { fill: none; stroke: currentColor; stroke-width: 1.8; }
+/* v1.11: one more dock button — let the dock scroll and tighten it on small landscape phones */
+.dock { overflow-x: auto; scrollbar-width: none; padding-top: 8px; margin-top: -8px; } .dock::-webkit-scrollbar { display: none; }
+.dk { flex: none; }
+@media (max-width: 900px) and (orientation: landscape) { .dock { gap: 6px; } .dk { padding: 8px 10px; gap: 6px; font-size: 11px; } .dk.grind span { display: none; } }
+
 </style>
 </head>
 <body>
@@ -1387,7 +1465,7 @@ body.shopping #play > :not(#view) { visibility: hidden !important; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.10.0',
+  version: '1.11.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1618,6 +1696,26 @@ BR.RESURGENCE_PHASES = [
   { wait: 15, shrink: 20, radius: 0,   dps: 18 },
 ];
 
+// Weapon rarity (v1.11): every gun drops as Common -> Mythic. Higher rarity = more damage, faster
+// reloads and tighter spread. Colours are used on loot rings, name tags, HUD slots and prompts.
+BR.RARITY = [
+  { id: 'common',    name: 'Common',    css: '#b9c0c8', col: 0xb9c0c8, dmg: 1.00, reload: 1.00, spread: 1.00 },
+  { id: 'uncommon',  name: 'Uncommon',  css: '#5fd35f', col: 0x5fd35f, dmg: 1.06, reload: 0.97, spread: 0.96 },
+  { id: 'rare',      name: 'Rare',      css: '#45a8ff', col: 0x45a8ff, dmg: 1.12, reload: 0.94, spread: 0.92 },
+  { id: 'epic',      name: 'Epic',      css: '#b26bff', col: 0xb26bff, dmg: 1.19, reload: 0.9,  spread: 0.88 },
+  { id: 'legendary', name: 'Legendary', css: '#ff9a1f', col: 0xff9a1f, dmg: 1.27, reload: 0.86, spread: 0.84 },
+  { id: 'mythic',    name: 'Mythic',    css: '#ffd84a', col: 0xffd84a, dmg: 1.36, reload: 0.8,  spread: 0.8 },
+];
+// odds per loot tier (0 floor, 1 buildings, 2 high ground, 3 chests + supply)
+BR.RARITY_ODDS = [
+  [46, 30, 16, 6, 2, 0],
+  [26, 32, 24, 12, 5, 1],
+  [12, 26, 30, 20, 10, 2],
+  [0, 18, 34, 28, 16, 4],
+];
+BR.rollRarity = (tier, R) => { const o = BR.RARITY_ODDS[Math.max(0, Math.min(3, tier | 0))], tot = o.reduce((a, b) => a + b, 0); let r = (R || Math.random)() * tot; for (let i = 0; i < o.length; i++) { r -= o[i]; if (r < 0) return i; } return 0; };
+BR.weaponScore = w => (w ? (w.def.tier || 0) + (w.rar || 0) * 0.7 : -1);
+
 </script>
 <script>
 'use strict';
@@ -1627,6 +1725,14 @@ BR.RESURGENCE_PHASES = [
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.11.0', date: '2026-11-03', title: 'Discover, rarities + better hands', notes: [
+    'New lobby: a big PLAY button and your selected mode. Tap CHANGE to open DISCOVER, a mode browser with a featured mode and rows for Battle Royale, Survival, Competitive and Training. Your pick is remembered.',
+    'Weapon rarity: every gun now drops as Common, Uncommon, Rare, Epic, Legendary or Mythic. Higher rarity means more damage, faster reloads and tighter spread (Mythic: +36% damage). Loot rings, name tags, light pillars (Epic and up), HUD slots and the swap prompt all show the rarity colour. Chests roll better gear, you can swap a gun for a better copy of the same gun, bots go for better rarities, and Practice has a rarity picker.',
+    'Default loadout: new accounts start with Rifle + Pistol + M9 Bayonet and a Recruit kit (Carbon Weave camo on the rifle, Ion Blue tracers). Change it on the new LOADOUT screen. You start Practice and Overdrive with it, and Resurgence redeploys you with your sidearm.',
+    'Arms and hands: fabric sleeves with a cuff replace the plain tubes, gloves are rounder with thicker fingers, the support hand now wraps under the handguard with the forearm coming in from the lower left, and sleeves no longer lag behind or detach from the wrist.',
+    'M9 Bayonet: the draw is now a clean end-over-end flip and catch, the inspect ends with a flip, and the idle shows your fist and sleeve.',
+    'Karambit: the inspect turns the wrist to show both sides of the blade, then spins twice round your index finger and catches it. The empty off hand no longer floats in view.',
+  ] },
   { v: '1.10.0', date: '2026-11-03', title: 'Overdrive, Resurgence, Aim Trainer + the Grind', notes: [
     'New mode: OVERDRIVE. A roguelike survivor run on the Crucible arena. Survive a growing swarm (mites, brutes, spitting wisps, chargers, golden elites), collect XP gems and pick 1 of 3 upgrades every level. Powers fire on their own: Orbit Blades, Arc Lightning, Nova Pulse, Seeker Drones, Flame Trail and Frost Field. Passives: Power, Haste, Rapid, Magnet, Vitality, Armor, Greed, Luck and Big Gun. Treasure chests, magnets and hearts drop along the way. A Crucible Titan comes every 3 minutes; at 10:00 THE OVERLORD arrives. Kill it to win.',
     'New mode: RESURGENCE. A faster battle royale with 24 players and quicker circles. When you go down you redeploy from the sky with a pistol after a countdown (each kill shortens your next one), and bots redeploy too. Respawns end when the 4th circle starts closing; then it is last one standing.',
@@ -4368,9 +4474,12 @@ BR.Mover = class Mover {
 // A weapon "instance" is { id, def, mag, cool, reloadT, bloom }.
 // =============================================================================
 BR.Weapons = {
-  create(id, mag) {
-    const def = BR.CONFIG.weapons[id];
-    return { id, def, mag: mag === undefined ? def.mag : mag, cool: 0, reloadT: 0, bloom: 0 };
+  // rar: 0 common .. 5 mythic (BR.RARITY). Above common the instance gets its own scaled stats.
+  create(id, mag, rar) {
+    let def = BR.CONFIG.weapons[id];
+    rar = def.melee ? 0 : Math.max(0, Math.min(5, rar | 0));
+    if (rar > 0) { const R = BR.RARITY[rar]; def = Object.assign({}, def, { dmg: def.dmg * R.dmg, reload: def.reload * R.reload, spread: def.spread * R.spread, bloomMax: def.bloomMax * R.spread, rar }); }
+    return { id, def, rar, mag: mag === undefined ? def.mag : mag, cool: 0, reloadT: 0, bloom: 0 };
   },
 
   update(w, dt, actor) {
@@ -6965,12 +7074,14 @@ BR.Models = (function () {
     const cyl = (r1, r2, len, seg) => new THREE.CylinderGeometry(r1, r2, len, seg || 8);
     const sph = (r) => new THREE.SphereGeometry(r, 10, 8);
     // palm: core + rounded heel + slightly domed back
-    put(box(0.05, 0.026, 0.062), m.main, 0, 0, 0);
+    // (v1.11: rounded instead of a box, so the glove reads as a hand, not a block)
+    const core = put(sph(0.03), m.main, 0, 0, -0.004); core.scale.set(0.86, 0.42, 1.12);
     const heel = put(sph(0.026), m.main, 0, -0.004, 0.018); heel.scale.set(1.0, 0.55, 0.75);
-    const dome = put(sph(0.028), m.main, 0, 0.006, -0.006); dome.scale.set(0.95, 0.45, 1.15);
+    const dome = put(sph(0.028), m.main, 0, 0.005, -0.008); dome.scale.set(0.92, 0.42, 1.1);
+    const pinky = put(sph(0.014), m.main, -0.021, -0.001, 0.004); pinky.scale.set(0.7, 0.8, 1.6);      // fleshy outer edge
     // fingers: three phalanges each, chained so the curl reads naturally
     // fist: true = all fingers closed; 'point' = index finger straight (the karambit ring spins on it)
-    const lens = [0.023, 0.017, 0.013], radii = [0.0066, 0.006, 0.0056], curl = fist ? [1.2, 1.45, 1.1] : [0.55, 0.95, 0.75], straight = [0.06, 0.08, 0.04];
+    const lens = [0.023, 0.017, 0.013], radii = [0.0079, 0.0072, 0.0066], curl = fist ? [1.2, 1.45, 1.1] : [0.55, 0.95, 0.75], straight = [0.06, 0.08, 0.04];
     for (let i = 0; i < 4; i++) {
       const fx = -0.0195 + i * 0.013, fy = 0.002 + (i === 1 || i === 2 ? 0.0015 : 0), lenK = i === 0 ? 0.85 : i === 3 ? 0.95 : 1;
       let par = new THREE.Group(); par.position.set(fx * sx, fy, -0.03); g.add(par);
@@ -6986,15 +7097,15 @@ BR.Models = (function () {
     }
     // thumb: two segments angled across the front of the fist
     const tb = new THREE.Group(); tb.position.set(0.026 * sx, -0.008, -0.004); tb.rotation.set(fist ? 0.75 : 0.35, (fist ? -0.95 : -0.75) * sx, (fist ? 0.35 : 0.2) * sx); g.add(tb);
-    put(sph(0.0085), m.main, 0, 0, 0, 0, 0, 0, tb).position.x = 0;
-    put(cyl(0.0082, 0.0076, 0.022, 8), m.main, 0, 0, -0.011, Math.PI / 2, 0, 0, tb).position.x = 0;
+    put(sph(0.0105), m.main, 0, 0, 0, 0, 0, 0, tb).position.x = 0;
+    put(cyl(0.0098, 0.009, 0.022, 8), m.main, 0, 0, -0.011, Math.PI / 2, 0, 0, tb).position.x = 0;
     const t2 = new THREE.Group(); t2.position.z = -0.022; t2.rotation.x = fist ? -0.8 : -0.45; tb.add(t2);
-    put(cyl(0.0074, 0.0068, 0.016, 8), m.main, 0, 0, -0.008, Math.PI / 2, 0, 0, t2).position.x = 0;
-    put(sph(0.0068), m.main, 0, 0, -0.016, 0, 0, 0, t2).position.x = 0;
+    put(cyl(0.0088, 0.0080, 0.016, 8), m.main, 0, 0, -0.008, Math.PI / 2, 0, 0, t2).position.x = 0;
+    put(sph(0.008), m.main, 0, 0, -0.016, 0, 0, 0, t2).position.x = 0;
     // armour: knuckle guard + back plate
-    put(cyl(0.0075, 0.0075, 0.054, 10), m.pad, 0, 0.0085, -0.031, 0, 0, Math.PI / 2);
-    const plate = put(box(0.042, 0.007, 0.036), m.pad, 0, 0.0175, -0.002, -0.08, 0, 0);
-    for (const px of [-0.012, 0.012]) put(box(0.012, 0.003, 0.03), m.pad, px, 0.022, -0.002, -0.08, 0, 0);
+    put(cyl(0.0052, 0.0052, 0.05, 10), m.pad, 0, 0.0095, -0.031, 0, 0, Math.PI / 2);
+    const plate = put(sph(0.022), m.pad, 0, 0.0135, -0.004, -0.08, 0, 0); plate.scale.set(0.95, 0.22, 0.85);
+    for (const px of [-0.011, 0.011]) { const r = put(sph(0.008), m.pad, px, 0.0175, -0.004, -0.08, 0, 0); r.scale.set(0.7, 0.25, 1.5); }
     // cuff + strap + velcro tab
     put(cyl(0.03, 0.032, 0.032, 16), m.pad, 0, 0.0, 0.046, Math.PI / 2, 0, 0);
     put(cyl(0.0325, 0.0325, 0.008, 16), m.glow || m.main, 0, 0.0, 0.04, Math.PI / 2, 0, 0);
@@ -7122,6 +7233,33 @@ BR.Models = (function () {
 // onShell(), startInspect(), onLand(speed). Read adsW for aim progress.
 // =============================================================================
 (function () {
+  // v1.11 sleeves: a tapered fabric forearm (lathe) with an elastic cuff at the wrist and a
+  // seam band, instead of a plain tube. Unit length along +Y (wrist at -0.5, elbow at +0.5).
+  const KI = { z1: 0.95, y1: -0.15, x1: 0.1, z2: -0.25, y2: -0.55, x2: 0 };      // karambit inspect show poses (wrist turns)
+  let SLEEVE = null;
+  function sleeveParts() {
+    if (SLEEVE) return SLEEVE;
+    const prof = [[0.0, -0.5], [0.031, -0.5], [0.034, -0.492], [0.0345, -0.47], [0.032, -0.455], [0.035, -0.44], [0.039, -0.38], [0.043, -0.25], [0.047, -0.08], [0.05, 0.12], [0.052, 0.35], [0.053, 0.5], [0.0, 0.5]];
+    const geo = new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 20);
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      if (y < -0.452) c.setHex(0x1c2027);                      // elastic cuff
+      else if (y > 0.18 && y < 0.2) c.setHex(0x232831);        // seam band
+      else c.setHex(0xffffff);
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.computeVertexNormals();
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d');
+    x.fillStyle = '#272d35'; x.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 128; i += 2) { x.fillStyle = `rgba(255,255,255,${0.025 + 0.02 * ((i / 2) % 2)})`; x.fillRect(0, i, 128, 1); x.fillStyle = 'rgba(0,0,0,0.05)'; x.fillRect(i, 0, 1, 128); }
+    for (let k = 0; k < 7; k++) { const y = 10 + k * 17 + Math.random() * 6; x.strokeStyle = 'rgba(0,0,0,0.18)'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, y); x.bezierCurveTo(40, y - 5, 80, y + 6, 128, y); x.stroke(); x.strokeStyle = 'rgba(255,255,255,0.06)'; x.beginPath(); x.moveTo(0, y + 2); x.bezierCurveTo(40, y - 3, 80, y + 8, 128, y + 2); x.stroke(); }
+    x.fillStyle = 'rgba(0,0,0,0.25)'; x.fillRect(60, 0, 2, 128);                // side seam
+    const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 3);
+    const sleeve = new THREE.MeshPhongMaterial({ map: tex, vertexColors: true, shininess: 10, specular: 0x222831 });
+    return (SLEEVE = { sleeve, sleeveGeo: geo });
+  }
   const U = BR.util;
   // butterfly hammer grip: relaxed elbow (camera space, x scaled by the side) + which way the thumb faces
   const BF_ARM = new THREE.Vector3(0.36, -0.5, 0.26);         // wrist -> elbow, kept constant so the forearm never swings at the camera
@@ -7240,8 +7378,7 @@ BR.Models = (function () {
       }
       // Arms: sleeve + gloved hand for each side, placed every frame in camera space
       if (this.arms) for (const s of ['R', 'L']) this.scene.remove(this.arms[s].hand, this.arms[s].fore);
-      const sleeve = new THREE.MeshLambertMaterial({ color: 0x2c333c });
-      const sleeveGeo = new THREE.CylinderGeometry(0.03, 0.042, 1, 10);
+      const { sleeve, sleeveGeo } = sleeveParts();
       const mk = left => {
         const hand = BR.Models.hand(eq.gloves || 'default', left);
         hand.scale.setScalar(1.3);
@@ -7392,7 +7529,7 @@ BR.Models = (function () {
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
-      if (w.id === 'bayonet') { hx = -0.006 * s; hy = -0.146; hz = -0.42; }   // farther from the eye: same spot on screen, smaller
+      if (w.id === 'bayonet') { hx = 0.04 * s; hy = -0.108; hz = -0.42; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
@@ -7452,8 +7589,10 @@ BR.Models = (function () {
           const near = 1 - smooth((t - 0.5) / 0.32);
           ox -= 0.07 * near; oy += 0.07 * near; oz -= 0.03 * near;
           bUp = near;
-          const a = easeInOut((t - 0.12) / 0.34);
-          bay = { lift: Math.sin(clamp01((t - 0.12) / 0.34) * Math.PI) * 0.035, flip: Math.PI - Math.PI * a, roll: 0 };
+          // v1.11: one clean end-over-end flip (blade up -> forward over the top -> blade up), tossed a
+          // little above the palm and caught, instead of the half turn from blade-down
+          const a = easeInOut((t - 0.16) / 0.36);
+          bay = { lift: Math.sin(clamp01((t - 0.16) / 0.36) * Math.PI) * 0.055, flip: -Math.PI * 2 * a, roll: 0 };
           const settle = win(t, 0.78, 0.84, 0.84, 0.96); orx -= 0.07 * settle; oy -= 0.012 * settle;
           if (t > 0.14 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
           if (t > 0.46 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.click(); }
@@ -7498,22 +7637,30 @@ BR.Models = (function () {
           // Bayonet inspect (reference clip): bring it up upright close to the centre showing one face,
           // a slow look with small wobbles, twist the wrist to show the other face tilted left, twist
           // back to the first face, then drop back into the angled idle. No tosses.
-          const up = win(t, 0, 0.08, 0.86, 0.95);
-          bUp = up; bUp2 = win(t, 0.3, 0.38, 0.62, 0.7);
+          const up = win(t, 0, 0.08, 0.88, 0.97);
+          bUp = up; bUp2 = win(t, 0.26, 0.34, 0.54, 0.62);
           ox -= 0.1 * up + 0.015 * bUp2; oy += 0.11 * up; oz -= 0.06 * up;
           const hold = up * (1 - 0.6 * win(t, 0.28, 0.32, 0.36, 0.4) - 0.6 * win(t, 0.6, 0.64, 0.68, 0.72));
           orz += 0.035 * Math.sin(t * Math.PI * 5) * hold; ory += 0.06 * Math.sin(t * Math.PI * 3.4 + 1) * hold; orx += 0.025 * Math.sin(t * Math.PI * 4.2) * hold;
-          bay = null;
-          if (t > 0.3 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
-          if (t > 0.62 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
+          // v1.11: finish with a flip-and-catch before it drops back into the idle
+          const fa = easeInOut((t - 0.68) / 0.16);
+          bay = fa > 0 && fa < 1 ? { lift: Math.sin(fa * Math.PI) * 0.06, flip: -Math.PI * 2 * fa, roll: 0 } : null;
+          if (t > 0.26 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
+          if (t > 0.54 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
+          if (t > 0.69 && !(this.spinSwish & 4)) { this.spinSwish |= 4; BR.Audio.swish(false); }
+          if (t > 0.84 && !(this.spinSwish & 8)) { this.spinSwish |= 8; BR.Audio.click(); }
         } else if (def.melee) {
           // Karambit inspect: the hand rises to the centre and turns upright while the knife twirls
           // round the ring finger and ends hanging below the fist; hold that show pose with a gentle
           // sway; then a last half-twirl as the hand drops back into the low hold
-          const up = win(t, 0.0, 0.1, 0.76, 0.9);
-          ox -= 0.05 * up; oy += 0.13 * up; oz -= 0.12 * up; orz += 0.5 * up; ory += 0.4 * up; orx -= 0.05 * up;     // up near the centre so the hanging knife stays in view
-          spinAng = easeInOut((t - 0.02) / 0.14) * Math.PI * 3 + easeInOut((t - 0.78) / 0.14) * Math.PI;
-          ringW = win(t, 0, 0.05, 0.9, 0.96);
+          // v1.11 (CS-style): raise it, turn the wrist to show one side of the blade, turn it over to
+          // show the other, then two full spins round the index finger in the ring and catch
+          const up = win(t, 0.0, 0.12, 0.86, 0.97);
+          ox -= 0.07 * up; oy += 0.08 * up; oz -= 0.05 * up;
+          const show = win(t, 0.06, 0.18, 0.38, 0.48), show2 = win(t, 0.4, 0.5, 0.56, 0.62);
+          orz += KI.z1 * show + KI.z2 * show2; ory += KI.y1 * show + KI.y2 * show2; orx += KI.x1 * show + KI.x2 * show2;
+          spinAng = easeInOut((t - 0.62) / 0.22) * Math.PI * 4;
+          ringW = win(t, 0.58, 0.63, 0.84, 0.9);
           const hold = win(t, 0.16, 0.24, 0.72, 0.78);
           orz += 0.035 * Math.sin(t * Math.PI * 3) * hold; ory += 0.03 * Math.sin(t * Math.PI * 2) * hold;
           const turns = Math.floor(spinAng / Math.PI + 0.25);
@@ -7885,6 +8032,7 @@ BR.Models = (function () {
       H.visible = true;
       // the butterfly is held high in view, so its elbow sits low and forward (keeps the sleeve end off the camera)
       const elbowR = spin ? this._v2.set(0.5 * s, -0.68, -0.3) : bf ? this._v2.copy(this._bfElbow) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
+      H.updateMatrixWorld(true);
       this.limb(R.fore, H.localToWorld(new THREE.Vector3(0, 0, spin || bf ? 0.075 : 0.05)), elbowR, spin || bf ? 0.72 : 1);
       // left hand on the foregrip / mag / charging handle
       const lt = leftTarget || (ud.pump && ud.fore ? this._pumpFore.copy(ud.fore).setZ(ud.fore.z + ud.pump.position.z) : ud.fore);
@@ -7898,16 +8046,20 @@ BR.Models = (function () {
         const LX = this._sx.set(0.9, -0.35, 0.2).normalize(), LZ = this._sz.set(-0.35, -0.9, -0.15).normalize();
         LZ.addScaledVector(LX, -LZ.dot(LX)).normalize();
         KH.L.quaternion.setFromRotationMatrix(this._sm.makeBasis(LX, this._sy.crossVectors(LZ, LX), LZ));
-        KH.L.visible = true;
-        this.limb(L.fore, KH.L.localToWorld(new THREE.Vector3(0, 0, 0.075)), this._sv.set(-0.3 * s, -0.7, -0.45), 0.72);
+        KH.L.visible = false;                  // v1.11: like CS, the off hand stays out of view with the karambit
+        KH.L.updateMatrixWorld(true);
+        L.fore.visible = false;
         return;
       }
       if ((!lt || leftHidden) && !special) { L.hand.visible = L.fore.visible = false; return; }
       if (lt && !leftHidden) {
         const lp = model.localToWorld(this._v.copy(lt));
         L.hand.position.copy(lp);
-        L.hand.quaternion.copy(wq).multiply(this._qFore || (this._qFore = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, Math.PI, 'YXZ'))));
-        L.hand.translateY(0.024);
+        // v1.11: palm under the handguard, rolled so the heel, thumb and knuckles show on the near
+        // side instead of the whole hand sinking into the gun (which left only the cuff visible)
+        L.hand.quaternion.copy(wq).multiply(this._qFore || (this._qFore = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, Math.PI, 'YXZ'))))
+          .multiply(this._qFore2 || (this._qFore2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.12, 0, -0.55))));
+        L.hand.translateY(0.036); L.hand.translateZ(0.016); L.hand.translateX(-0.004);
       } else {
         // no off hand on this weapon (karambit): come in from below the screen
         L.hand.position.set(-0.3, -0.62, -0.25);
@@ -7931,8 +8083,11 @@ BR.Models = (function () {
         }
       }
       L.hand.visible = true;
-      const elbowL = new THREE.Vector3(U.lerp(-0.28, -0.16, A) * s, U.lerp(-0.6, -0.52, A), -0.06);
+      // v1.11: the forearm leaves the wrist sideways-down toward the lower left (seen from the side, like
+      // most shooters) instead of pointing back at the camera (which showed only the cuff end-on)
+      const elbowL = new THREE.Vector3().copy(L.hand.position).add(this._sv.set(U.lerp(-0.3, -0.22, A) * s, U.lerp(-0.3, -0.26, A), U.lerp(0.14, 0.18, A)));
       if (special) elbowL.lerp(this._v2.set(-0.34, -0.7, 0.05), special.w);
+      L.hand.updateMatrixWorld(true);
       this.limb(L.fore, L.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), elbowL);
       // where the grapple rope leaves the launcher, mapped into the game camera's world
       if (this.launcher.visible) {
@@ -8068,7 +8223,7 @@ BR.Models = (function () {
 
     limb(mesh, a, b, thick) {
       const d = this._d || (this._d = new THREE.Vector3());
-      d.subVectors(b, a);
+      d.subVectors(b, a).multiplyScalar(1.7);                   // v1.11: run the sleeve well past the elbow (open end off-screen)
       const len = d.length();
       mesh.position.copy(a).addScaledVector(d, 0.5);
       mesh.quaternion.setFromUnitVectors(this._up || (this._up = new THREE.Vector3(0, 1, 0)), d.normalize());
@@ -8209,10 +8364,10 @@ BR.Actor = class Actor {
   guns() { return this.slots.slice(0, 2); }
 
   // Put a gun in an empty gun slot and switch to it. Returns the slot index or -1.
-  giveWeapon(id, mag) {
+  giveWeapon(id, mag, rar) {
     for (let i = 0; i < 2; i++) {
       if (!this.slots[i]) {
-        this.slots[i] = BR.Weapons.create(id, mag);
+        this.slots[i] = BR.Weapons.create(id, mag, rar);
         this.switchTo(i);
         return i;
       }
@@ -10572,7 +10727,8 @@ BR.BotBrain = class BotBrain {
       g.scene.background = new THREE.Color(0x150f22); g.scene.fog.color.setHex(0x2a1638); g.scene.fog.near = 45; g.scene.fog.far = 190;
       BR.skyTint(g, { zen: 0x07030f, mid: 0x26103e, hor: 0xb02a6a, low: 0x120a1c, far: 0x2a1640 }, { sky: 0xd0a8ff, ground: 0x2a1a30, hemi: 0.95, sun: 0xffc8e8, sunI: 0.8 });
       p.mover.pos.set(0, 0.5, 6); p.yaw = 0; p.pitch = 0;
-      p.slots[0] = BR.Weapons.create('smg'); p.slots[1] = null; p.cur = 0;
+      const LO = BR.Profile.loadoutGuns();                      // your loadout (v1.11)
+      p.slots[0] = BR.Weapons.create(LO.primary); p.slots[1] = BR.Weapons.create(LO.secondary); p.cur = 0;
       for (const t in p.ammo) p.ammo[t] = C.ammoCap[t];
       this.root = new THREE.Group(); g.scene.add(this.root);
       this.sphere = new THREE.SphereGeometry(1, 14, 10); this.ico = new THREE.IcosahedronGeometry(1, 0); this.oct = new THREE.OctahedronGeometry(1, 0); this.box = new THREE.BoxGeometry(1, 1, 1); this.cone = new THREE.ConeGeometry(1, 1, 5);
@@ -11038,7 +11194,7 @@ BR.Loot = class Loot {
         const table = L.tables[Math.min(s.tier, L.tables.length - 1)];
         const kind = U.weighted(s.force === 'weapon' ? this.weaponTable(table) : table, R);
         const x = s.x + (i ? U.rand(R, -1, 1) : 0), z = s.z + (i ? U.rand(R, -1, 1) : 0);
-        this.spawnKind(kind, x, s.y, z, R);
+        this.spawnKind(kind, x, s.y, z, R, BR.rollRarity(s.tier, R));
       }
     }
   }
@@ -11049,11 +11205,11 @@ BR.Loot = class Loot {
     return t;
   }
 
-  spawnKind(kind, x, y, z, R) {
+  spawnKind(kind, x, y, z, R, rar) {
     const C = BR.CONFIG;
     if (C.weapons[kind]) {
       const def = C.weapons[kind];
-      return this.add({ kind: 'weapon', wid: kind, mag: def.mag, reserve: def.mag }, x, y, z);
+      return this.add({ kind: 'weapon', wid: kind, rar: rar | 0, mag: def.mag, reserve: def.mag }, x, y, z);
     }
     if (kind === 'ammo') {
       const t = BR.util.pick(['light', 'light', 'heavy', 'heavy', 'shells'], R);
@@ -11065,19 +11221,19 @@ BR.Loot = class Loot {
   }
 
   // Name tag for dropped weapons: rarity-coloured text on a dark pill (cached per weapon)
-  label(wid) {
+  // (v1.11) rarity line ("EPIC") over the gun name, both in the rarity colour
+  label(wid, rar) {
     this.labels = this.labels || {};
-    if (this.labels[wid]) return this.labels[wid];
-    const def = BR.CONFIG.weapons[wid], col = '#' + TIER_COLORS[def.tier].toString(16).padStart(6, '0');
-    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const c = cv.getContext('2d');
-    // rarity-coloured name, no background: dark outline + soft glow so it reads anywhere
-    c.font = '700 30px "Outfit", "Arial Narrow", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    const text = def.name.toUpperCase();
-    c.lineJoin = 'round'; c.lineWidth = 7; c.strokeStyle = 'rgba(6,8,12,0.85)'; c.strokeText(text, 128, 33);
-    c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = col; c.fillText(text, 128, 33);
-    c.shadowBlur = 0; c.fillText(text, 128, 33);
+    const key = wid + '|' + (rar | 0);
+    if (this.labels[key]) return this.labels[key];
+    const def = BR.CONFIG.weapons[wid], RR = BR.RARITY[rar | 0], col = RR.css;
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const c = cv.getContext('2d');
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
+    const line = (text, y, font) => { c.font = font; c.lineWidth = 7; c.strokeStyle = 'rgba(6,8,12,0.85)'; c.strokeText(text, 128, y); c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = col; c.fillText(text, 128, y); c.shadowBlur = 0; c.fillText(text, 128, y); };
+    line(RR.name.toUpperCase(), 26, '800 20px "Outfit", "Arial Narrow", sans-serif');
+    line(def.name.toUpperCase(), 62, '700 30px "Outfit", "Arial Narrow", sans-serif');
     const tex = new THREE.CanvasTexture(cv);
-    return (this.labels[wid] = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: true }));
+    return (this.labels[key] = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: true }));
   }
 
   // vel (optional): toss the item out - it flies, spins fast, bounces and settles
@@ -11104,12 +11260,17 @@ BR.Loot = class Loot {
       gun.rotation.set(0, Math.PI / 2, Math.PI / 2 * 0.9);
       gun.position.y = -0.05;
       g.add(gun);
-      const ring = new THREE.Mesh(G.ring, this.mat('ring' + def.tier, TIER_COLORS[def.tier], true));
+      const rar = item.rar | 0, RR = BR.RARITY[rar];
+      const ring = new THREE.Mesh(G.ring, this.mat('rar' + rar, RR.col, true));
       ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4;
       ring.scale.setScalar(1.4);
       g.add(ring);
       g.userData.ring = ring;
-      const tag = new THREE.Sprite(this.label(item.wid)); tag.scale.set(1.25, 0.31, 1); tag.position.y = 0.62; tag.renderOrder = 5; tag.visible = false;
+      if (rar >= 3) {                                  // epic+ : a soft light pillar so good loot reads from far away
+        const beam = new THREE.Mesh(G.beam || (G.beam = new THREE.CylinderGeometry(0.18, 0.32, 3.2, 10, 1, true)), this.mats['beam' + rar] || (this.mats['beam' + rar] = new THREE.MeshBasicMaterial({ color: RR.col, transparent: true, opacity: rar >= 5 ? 0.38 : 0.24, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })));
+        beam.position.y = 1.1; g.add(beam); g.userData.beam = beam;
+      }
+      const tag = new THREE.Sprite(this.label(item.wid, rar)); tag.scale.set(1.25, 0.47, 1); tag.position.y = 0.7; tag.renderOrder = 5; tag.visible = false;
       g.add(tag); g.userData.label = tag;
     } else if (item.kind === 'chest') {
       const wood = this.mat('chest', 0x8a5a2b), gold = this.mat('gold', 0xffc04a);
@@ -11215,12 +11376,14 @@ BR.Loot = class Loot {
       else if (it.kind === 'weapon') {
         const def = C.weapons[it.wid];
         const cap = C.ammoCap[def.ammo];
-        if (actor.hasWeapon(it.wid)) {
+        const held = actor.guns().find(s => s && s.id === it.wid);
+        if (held && (it.rar | 0) > (held.rar | 0)) { if (d < swapD) { swapCandidate = it; swapD = d; } }
+        else if (held) {
           if (actor.ammo[def.ammo] < cap) {
             actor.ammo[def.ammo] = Math.min(cap, actor.ammo[def.ammo] + it.mag + it.reserve);
             took = true;
           }
-        } else if (actor.giveWeapon(it.wid, it.mag) >= 0) {
+        } else if (actor.giveWeapon(it.wid, it.mag, it.rar) >= 0) {
           actor.ammo[def.ammo] = Math.min(cap, actor.ammo[def.ammo] + it.reserve);
           took = true;
         } else if (d < swapD) { swapCandidate = it; swapD = d; }
@@ -11228,10 +11391,11 @@ BR.Loot = class Loot {
       if (took) { this.game.onPickup(actor, it); this.remove(it); }
     }
     if (swapCandidate && !actor.isPlayer) {
-      const worst = Math.min(...actor.guns().map(s => s.def.tier));
-      if (C.weapons[swapCandidate.wid].tier > worst) {
-        const i = actor.guns().findIndex(s => s.def.tier === worst);
-        actor.cur = i;
+      const gs = actor.guns(), sc = gs.map(s => BR.weaponScore(s)), worst = Math.min(...sc);
+      const cand = (C.weapons[swapCandidate.wid].tier || 0) + (swapCandidate.rar | 0) * 0.7;
+      if (cand > worst) {
+        const same = gs.findIndex(s => s && s.id === swapCandidate.wid);
+        actor.cur = same >= 0 ? same : sc.indexOf(worst);
         this.swap(actor, swapCandidate);
       }
       return null;
@@ -11259,7 +11423,7 @@ BR.Loot = class Loot {
     const wid = U.weighted(this.weaponTable(C.loot.tables[tier]), R);
     const def = C.weapons[wid];
     const p = chest.pos, out = [];
-    out.push({ kind: 'weapon', wid, mag: def.mag, reserve: def.mag });
+    out.push({ kind: 'weapon', wid, rar: BR.rollRarity(3, R), mag: def.mag, reserve: def.mag });
     out.push({ kind: 'ammo', ammoType: def.ammo, amount: C.ammoPickup[def.ammo] * 2 });
     out.push(R() < 0.5 ? { kind: 'shield', amount: C.loot.shieldAmount } : { kind: 'heal', amount: C.loot.healAmount });
     if (R() < 0.6) out.push({ kind: 'shield', amount: C.loot.shieldAmount });
@@ -11281,9 +11445,9 @@ BR.Loot = class Loot {
     const old = actor.weapon;
     if (old) {
       const fx = -Math.sin(actor.yaw), fz = -Math.cos(actor.yaw);
-      this.add({ kind: 'weapon', wid: old.id, mag: old.mag, reserve: 0 }, actor.pos.x + fx * 0.5, actor.pos.y + 1.0, actor.pos.z + fz * 0.5, new THREE.Vector3(fx * 3.2, 4, fz * 3.2));
+      this.add({ kind: 'weapon', wid: old.id, rar: old.rar | 0, mag: old.mag, reserve: 0 }, actor.pos.x + fx * 0.5, actor.pos.y + 1.0, actor.pos.z + fz * 0.5, new THREE.Vector3(fx * 3.2, 4, fz * 3.2));
     }
-    actor.slots[actor.cur] = BR.Weapons.create(item.wid, item.mag);
+    actor.slots[actor.cur] = BR.Weapons.create(item.wid, item.mag, item.rar);
     const def = BR.CONFIG.weapons[item.wid];
     actor.ammo[def.ammo] = Math.min(BR.CONFIG.ammoCap[def.ammo], actor.ammo[def.ammo] + item.reserve);
     this.game.onPickup(actor, item);
@@ -11295,7 +11459,7 @@ BR.Loot = class Loot {
     const C = BR.CONFIG;
     let best = null, bestD = radius;
     const empty = actor.guns().some(s => !s);
-    const worst = empty ? -1 : Math.min(...actor.guns().map(s => s.def.tier));
+    const worst = empty ? -1 : Math.min(...actor.guns().map(s => BR.weaponScore(s)));
     const heldAmmo = new Set(actor.guns().filter(Boolean).map(s => s.def.ammo));
     for (const it of this.items) {
       if (Math.abs(it.pos.y - actor.pos.y) > 2.5) continue; // bots have no pathfinding: skip roofs
@@ -11303,7 +11467,7 @@ BR.Loot = class Loot {
       if (d >= bestD) continue;
       let want = false;
       if (it.kind === 'chest') want = true;
-      else if (it.kind === 'weapon') want = !actor.hasWeapon(it.wid) && C.weapons[it.wid].tier > worst;
+      else if (it.kind === 'weapon') want = !actor.hasWeapon(it.wid) && (C.weapons[it.wid].tier || 0) + (it.rar | 0) * 0.7 > worst;
       else if (it.kind === 'ammo') want = heldAmmo.has(it.ammoType) && actor.ammo[it.ammoType] < C.ammoCap[it.ammoType] * 0.5;
       else if (it.kind === 'heal') want = actor.health < 75;
       else if (it.kind === 'shield') want = actor.shield < 75;
@@ -11317,7 +11481,7 @@ BR.Loot = class Loot {
     const p = actor.pos;
     let k = 0;
     const spot = () => { const a = k++ * 2.1 + Math.random() * 0.4; return [p.x + Math.cos(a) * 0.3, p.y + 0.9, p.z + Math.sin(a) * 0.3, new THREE.Vector3(Math.cos(a) * (2 + Math.random() * 1.5), 4.5 + Math.random() * 2, Math.sin(a) * (2 + Math.random() * 1.5))]; };
-    for (const w of actor.guns()) if (w) this.add({ kind: 'weapon', wid: w.id, mag: w.mag, reserve: 0 }, ...spot());
+    for (const w of actor.guns()) if (w) this.add({ kind: 'weapon', wid: w.id, rar: w.rar | 0, mag: w.mag, reserve: 0 }, ...spot());
     for (const t in actor.ammo) if (actor.ammo[t] > 0) this.add({ kind: 'ammo', ammoType: t, amount: actor.ammo[t] }, ...spot());
     if (actor.shield > 0 || Math.random() < 0.5) this.add({ kind: 'shield', amount: BR.CONFIG.loot.shieldAmount }, ...spot());
   }
@@ -12858,6 +13022,10 @@ BR.Profile = {
       stats: Object.assign({ matches: 0, wins: 0, kills: 0, deaths: 0 }, d.stats || {}),
       dev: !!d.dev,
       meleeV: d.meleeV || 0,
+      // v1.11: default loadout (used where a mode hands you guns: Practice, Overdrive, Aim Trainer, Resurgence redeploys)
+      loadout: Object.assign({ primary: 'rifle', secondary: 'pistol' }, d.loadout || {}),
+      starter: !!d.starter,
+      fresh: !d.owned,
     };
     // v1.7.5: the M9 bayonet is the new default knife (one-time switch for older saves)
     if (this.data.meleeV < 2) { this.data.equip.melee = 'bayonet'; this.data.meleeV = 2; }
@@ -12875,6 +13043,14 @@ BR.Profile = {
     if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
     if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
+    // v1.11: new accounts start with a Recruit kit equipped (rifle camo + tracer) on top of the default loadout
+    if (this.data.fresh && !this.data.starter) {
+      const o = this.data.owned, e = this.data.equip;
+      for (const [k, id] of [['skins', 'carbon'], ['tracers', 'cyan']]) if (!o[k].includes(id)) o[k].push(id);
+      e.skinByGun.rifle = 'carbon'; e.tracerByGun.rifle = 'cyan';
+      this.data.starter = true;
+    }
+    delete this.data.fresh;
     this.unlockRankRewards();
     // Dev accounts: infinite coins and everything unlocked (including items added later)
     if (BR.Accounts && BR.Accounts.isSeededDev()) this.data.dev = true;
@@ -12914,6 +13090,8 @@ BR.Profile = {
     return this.data.equip[cat] === id;
   },
   infinite() { return !!this.data.dev; },
+  // the guns + knife you start with where a mode arms you (v1.11)
+  loadoutGuns() { const L = this.data.loadout || {}, W = BR.CONFIG.weapons; return { primary: W[L.primary] ? L.primary : 'rifle', secondary: W[L.secondary] ? L.secondary : 'pistol', melee: this.data.equip.melee || 'bayonet' }; },
   coinsLabel() { return this.infinite() ? '∞' : String(this.data.coins); },
   canAfford(price) { return this.infinite() || this.data.coins >= price; },
   buy(cat, id, weapon) {
@@ -13665,7 +13843,15 @@ BR.HUD = class HUD {
       <div class="tagline">Slide. Wall-run. Grapple. Be the last one standing.</div>
     </div>
     <nav class="menu-nav">
-      <div class="modes">
+      <div class="lobby">
+        <button id="mode-cur" class="mode-cur" aria-label="Change game mode">
+          <span class="mc-art" id="mc-art"></span>
+          <span class="mc-txt"><span class="mc-tag">GAME MODE</span><b id="mc-name">BATTLE ROYALE</b><i id="mc-sub">Solo · one life</i></span>
+          <span class="mc-change">CHANGE<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+        </button>
+        <button id="btn-go" class="play-big"><span>PLAY</span><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></button>
+      </div>
+      <div class="modes legacy-modes" hidden aria-hidden="true">
         <button id="btn-play" class="mode hero">
           <span class="m-tag">BATTLE ROYALE</span>
           <span class="m-title">PLAY</span>
@@ -13709,6 +13895,7 @@ BR.HUD = class HUD {
         </button>
       </div>
       <div class="dock">
+        <button id="btn-loadout" class="dk loadout"><svg viewBox="0 0 24 24"><path d="M3 14h11l3-3h4v3l-3 3H3z"/><path d="M6 14v4M10 14v3"/></svg><span>LOADOUT</span></button>
         <button id="btn-cases" class="dk cases"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M8 8l1-3h6l1 3"/></svg><span>CASES</span><em>NEW</em></button>
         <button id="btn-inv" class="dk inv"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>INVENTORY</span></button>
         <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span></button>
@@ -13876,6 +14063,7 @@ BR.HUD = class HUD {
     <div class="ptitle">SPAWN</div>
     <button class="mbtn sm hot sp-locker" id="sp-locker">LOCKER · SWAP SKINS, BLUEPRINTS + KNIFE</button>
     <div class="sp-sec">WEAPONS</div>
+    <div class="sp-rar" id="sp-rar"><span>RARITY</span>${(BR.RARITY || []).map((r, i) => `<button data-r="${i}" style="--rc:${r.css}"${i === 0 ? ' class="sel"' : ''}>${r.name.toUpperCase()}</button>`).join('')}</div>
     <div class="sp-slots" id="sp-slots"><span>PUT IN</span><button data-slot="0"><b>SLOT 1</b><i>EMPTY</i></button><button data-slot="1"><b>SLOT 2</b><i>EMPTY</i></button></div>
     <div class="sp-grid" id="sp-weapons"></div>
     <div class="sp-sec">ITEMS</div>
@@ -13913,6 +14101,24 @@ BR.HUD = class HUD {
     <button id="btn-settings2" class="mbtn">SETTINGS</button>
     <button id="btn-hud2" class="mbtn">CUSTOMIZE HUD</button>
     <button id="btn-quit" class="mbtn">LEAVE MATCH</button>
+  </div>
+</div>
+
+<div id="discover" class="overlay hidden discover">
+  <div class="dc-top"><div class="dc-title"><b>DISCOVER</b><span>Pick a mode, then hit PLAY</span></div><button id="dc-x" class="xbtn" aria-label="Close">✕</button></div>
+  <div class="dc-feat" id="dc-feat"></div>
+  <div id="dc-rows"></div>
+</div>
+
+<div id="loadout" class="overlay hidden">
+  <div class="panel metal wide lopanel">
+    <button id="lo-x" class="xbtn" aria-label="Close loadout">✕</button>
+    <div class="ptitle">LOADOUT</div>
+    <p class="tip">Your default kit. You start Practice and Overdrive with it, and Resurgence redeploys you with your sidearm. In Battle Royale you still drop in with just your knife.</p>
+    <div class="sp-sec">PRIMARY</div><div class="sp-grid lo-grid" id="lo-primary"></div>
+    <div class="sp-sec">SECONDARY</div><div class="sp-grid lo-grid" id="lo-secondary"></div>
+    <div class="sp-sec">MELEE</div><div class="sp-grid lo-grid" id="lo-melee"></div>
+    <button id="lo-reset" class="mbtn sm">RESET TO DEFAULT (RIFLE · PISTOL · M9 BAYONET)</button>
   </div>
 </div>
 
@@ -14094,10 +14300,13 @@ BR.HUD = class HUD {
       e.reloadFill.style.transform = `scaleX(${Math.max(0, v) / 40})`;
     });
     p.slots.forEach((s, i) => {
-      const key = s ? `${s.id}|${s.mag}|${i === p.cur}` : 'empty' + i + (i === p.cur);
+      const key = s ? `${s.id}|${s.mag}|${i === p.cur}|${s.rar | 0}` : 'empty' + i + (i === p.cur);
       this.set('slot' + i, e.slots[i], key, el => {
         el.classList.toggle('active', i === p.cur && !!s);
         el.classList.toggle('empty', !s);
+        const rr = s && !s.def.melee ? BR.RARITY[s.rar | 0] : null;      // rarity colour on the slot (v1.11)
+        el.classList.toggle('rar', !!rr); el.dataset.rar = rr ? rr.id : '';
+        if (rr) el.style.setProperty('--rc', rr.css); else el.style.removeProperty('--rc');
         el.querySelector('.sicon').innerHTML = s ? WICON(s.id) : '';
         el.querySelector('.sname').textContent = s ? (s.def.melee ? 'KNIFE' : s.def.name.toUpperCase()) : 'EMPTY';
         el.querySelector('.sammo').textContent = s && !s.def.melee ? s.mag : '';
@@ -14373,8 +14582,9 @@ BR.HUD = class HUD {
     t.className = 'on';
   }
 
-  prompt(text) {
+  prompt(text, col) {
     this.set('prompt', this.el.prompt, text || '', (el, v) => { el.textContent = v; el.classList.toggle('hidden', !v); });
+    this.set('promptCol', this.el.prompt, col || '', (el, v) => { if (v) el.style.setProperty('--pc', v); else el.style.removeProperty('--pc'); el.classList.toggle('rarp', !!v); });
   }
 
   // Damage numbers stack per target (Apex-style): rapid hits on the same enemy add up in
@@ -14821,6 +15031,10 @@ BR.Game = class Game {
       this.player.mover.pos.set(hub.x + 10, 0, hub.z + 10);
       this.player.mover.pos.y = this.world.groundAt(hub.x + 10, hub.z + 10, 60);
       this.player.pitch = 0;
+      // v1.11: you start practice with your loadout
+      const LO = BR.Profile.loadoutGuns(), pl = this.player;
+      pl.slots[0] = BR.Weapons.create(LO.primary); pl.slots[1] = BR.Weapons.create(LO.secondary); pl.cur = 0;
+      for (const t in pl.ammo) pl.ammo[t] = C.ammoCap[t];
     }
     this.addBots(bots, this.diff);
     this.zone.mesh.visible = !this.practice;
@@ -14871,8 +15085,9 @@ BR.Game = class Game {
   redeployPlayer() {
     const p = this.player, C = BR.CONFIG, q = this.dropPoint();
     p.alive = true; p.health = C.actor.maxHealth; p.shield = 0; p.fireHeld = false;
-    p.slots[0] = BR.Weapons.create('pistol'); p.slots[1] = null; p.cur = 0;
-    p.ammo.light = 60;
+    const LO = BR.Profile.loadoutGuns();                        // redeploy with your loadout's sidearm
+    p.slots[0] = BR.Weapons.create(LO.secondary); p.slots[1] = null; p.cur = 0;
+    p.ammo[C.weapons[LO.secondary].ammo] = Math.max(p.ammo[C.weapons[LO.secondary].ammo] || 0, C.weapons[LO.secondary].mag * 3);
     p.mover.pos.set(q.x, C.match.dropHeight * 0.55, q.z); p.mover.vel.set(0, 0, 0); p.mover.dropping = true; p.mover.chute = false;
     p.pitch = -0.6;
     this.result = null; this.resurgence.redeploys++;
@@ -15070,15 +15285,15 @@ BR.Game = class Game {
     return { x: cx, y: this.world.groundAt(cx, cz, p.pos.y + 6), z: cz };
   }
 
-  practiceSpawn(kind, arg, toSlot) {
+  practiceSpawn(kind, arg, toSlot, rar) {
     const p = this.player, C = BR.CONFIG;
     if (kind === 'weapon') {
       const def = C.weapons[arg];
       const slot = toSlot === 0 || toSlot === 1 ? toSlot : p.cur < 2 ? p.cur : (!p.slots[0] ? 0 : !p.slots[1] ? 1 : 0);
-      p.slots[slot] = BR.Weapons.create(arg);
+      p.slots[slot] = BR.Weapons.create(arg, undefined, rar | 0);
       p.cur = slot;
       p.ammo[def.ammo] = C.ammoCap[def.ammo];
-      this.hud.toast(def.name, 900);
+      this.hud.toast(BR.RARITY[rar | 0].name + ' ' + def.name, 900);
     } else if (kind === 'ammo') { for (const t in p.ammo) p.ammo[t] = C.ammoCap[t]; this.hud.toast('Ammo full', 900); }
     else if (kind === 'nades') { p.nades = C.shockwave.maxCarry; this.hud.toast('Shockwave grenades ×' + p.nades, 900); }
     else if (kind === 'heal') { p.health = C.actor.maxHealth; p.shield = C.actor.maxShield; this.hud.toast('Health + shield full', 900); }
@@ -15232,7 +15447,7 @@ BR.Game = class Game {
 
     this.chest = p.alive && !p.mover.dropping ? this.loot.nearestChest(p, 2.2) : null;
     if (this.chest) this.hud.prompt('Open chest');
-    else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
+    else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.RARITY[this.swapItem.rar | 0].name + ' ' + BR.CONFIG.weapons[this.swapItem.wid].name, BR.RARITY[this.swapItem.rar | 0].css);
     else if (!this.zm && !(this.mode && this.mode.prompts)) this.hud.prompt(null);
 
     // Player parachute (look up to see it)
@@ -15697,7 +15912,7 @@ BR.Game = class Game {
     BR.Audio.pickup();
     const C = BR.CONFIG;
     let label = '';
-    if (item.kind === 'weapon') label = C.weapons[item.wid].name;
+    if (item.kind === 'weapon') label = BR.RARITY[item.rar | 0].name + ' ' + C.weapons[item.wid].name;
     else if (item.kind === 'ammo') label = `+${item.amount} ${item.ammoType} ammo`;
     else if (item.kind === 'heal') label = `+${item.amount} health`;
     else label = `+${item.amount} shield`;
@@ -16257,6 +16472,8 @@ BR.Game = class Game {
       c.classList.toggle('held', tags.length > 0);
     });
   };
+  let spRar = 0;
+  $('sp-rar').addEventListener('click', e => { const b = e.target.closest('button[data-r]'); if (!b) return; spRar = +b.dataset.r; $('sp-rar').querySelectorAll('button').forEach(x => x.classList.toggle('sel', x === b)); BR.Audio.click(); });
   $('sp-slots').addEventListener('click', e => {
     const b = e.target.closest('button[data-slot]'); if (!b) return;
     spSlot = +b.dataset.slot; BR.Audio.click(); BR.renderSpawnSlots();
@@ -16266,7 +16483,7 @@ BR.Game = class Game {
     if (!b) return;
     if (b.dataset.sp === 'weapon') {
       const p = game.player;
-      game.practiceSpawn('weapon', b.dataset.arg, spSlot);
+      game.practiceSpawn('weapon', b.dataset.arg, spSlot, spRar);
       if (spSlot === 0 && p && !p.slots[1]) spSlot = 1;        // first gun in -> second slot next
       BR.renderSpawnSlots(); BR.Audio.pickup();
       b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);
@@ -16422,6 +16639,60 @@ BR.Game = class Game {
   game.hud.notesBadge();
   $('rk-x').addEventListener('click', () => game.hud.show('ranks', false));
   $('btn-duel').addEventListener('click', () => { BR.Audio.init(); BR.openDuelMenu('setup'); });
+
+  // ---- v1.11: Discover-style mode browser. The lobby shows the selected mode; PLAY launches it.
+  const ICO = {
+    br: '<path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6z"/><path d="M8 12l3 3 5-6" fill="none" stroke-width="2.2"/>',
+    resurgence: '<path d="M12 3a9 9 0 1 0 9 9h-2.4A6.6 6.6 0 1 1 12 5.4V9l5-4.5L12 0z"/>',
+    duel: '<path d="M4 3l7 7-2 2L2 5V3zM20 3h2v2l-7 7-2-2zM6 15l3 3-3 3-3-3zM18 15l3 3-3 3-3-3zM8 13l3 3M16 13l-3 3" stroke-width="2"/>',
+    zombies: '<path d="M32 4C18 4 8 14 8 27c0 8 4 14 9 17v8c0 2 2 4 4 4h3v-6h4v6h8v-6h4v6h3c2 0 4-2 4-4v-8c5-3 9-9 9-17C56 14 46 4 32 4zm-11 32a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm22 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-11 9-4-6h8z" transform="scale(.375)"/>',
+    overdrive: '<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>',
+    practice: '<path d="M4 20h16M6 20V9l6-5 6 5v11"/><path d="M10 20v-6h4v6" fill="none" stroke-width="2"/>',
+    aim: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke-width="2"/>',
+  };
+  const MODES = {
+    br:         { name: 'BATTLE ROYALE', sub: 'Solo · 30 players · one life', cat: 'BATTLE ROYALE', tags: ['RANKED', '30 PLAYERS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play() },
+    resurgence: { name: 'RESURGENCE', sub: 'Redeploy until the 4th circle', cat: 'BATTLE ROYALE', tags: ['NEW', '24 PLAYERS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true }) },
+    duel:       { name: '1V1 DUEL', sub: 'The Yard · first to 5', cat: 'COMPETITIVE', tags: ['1V1'], art: 'linear-gradient(120deg,#2f6fd8 0 48%,#d8443a 52% 100%)', glow: '#8ab4ff', go: () => { BR.Audio.init(); BR.openDuelMenu('setup'); } },
+    zombies:    { name: 'ZOMBIES', sub: 'Hollow Graves · endless rounds', cat: 'SURVIVAL', tags: ['STORY', 'BOSSES'], art: 'radial-gradient(120% 120% at 80% 0%,#ff7a1a,#5a141e 55%,#140818)', glow: '#ff8a2a', go: () => { BR.Audio.init(); game.startZombies(); } },
+    overdrive:  { name: 'OVERDRIVE', sub: 'Roguelike swarm survival', cat: 'SURVIVAL', tags: ['NEW', 'ROGUELIKE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff5ec4,#46145a 55%,#12061c)', glow: '#ff5ec4', go: () => overdrive() },
+    practice:   { name: 'PRACTICE', sub: 'Spawn anything · no bots', cat: 'TRAINING', tags: ['SOLO'], art: 'linear-gradient(160deg,#4fdc8a,#14583a 55%,#071a12)', glow: '#4fdc8a', go: () => practice() },
+    aim:        { name: 'AIM TRAINER', sub: 'Gridshot · Flick · Tracking · Strafe', cat: 'TRAINING', tags: ['NEW', 'SCORES'], art: 'radial-gradient(120% 120% at 80% 0%,#45e0ff,#0b3a56 55%,#050d18)', glow: '#45e0ff', go: () => aimTrainer() },
+  };
+  const CATS = ['BATTLE ROYALE', 'SURVIVAL', 'COMPETITIVE', 'TRAINING'];
+  if (!MODES[settings.mode]) settings.mode = 'br';
+  const art = (id, big) => { const M = MODES[id]; return `<span class="mart${big ? ' big' : ''}" style="background:${M.art};--g:${M.glow}"><i class="mart-grid"></i><svg viewBox="0 0 24 24">${ICO[id]}</svg></span>`; };
+  const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = M.sub; $('mode-cur').style.setProperty('--g', M.glow); };
+  const renderDiscover = () => {
+    const feat = 'overdrive', F = MODES[feat];
+    $('dc-feat').innerHTML = `<button class="dc-tile feat${settings.mode === feat ? ' sel' : ''}" data-m="${feat}" style="--g:${F.glow}">${art(feat, true)}<span class="dt-txt"><em>FEATURED</em><b>${F.name}</b><i>${F.sub}</i><span class="dt-tags">${F.tags.map(t => `<u>${t}</u>`).join('')}</span></span></button>`;
+    $('dc-rows').innerHTML = CATS.map(c => `<div class="dc-row"><div class="dc-cat">${c}</div><div class="dc-strip">${Object.entries(MODES).filter(([, M]) => M.cat === c).map(([id, M]) =>
+      `<button class="dc-tile${settings.mode === id ? ' sel' : ''}" data-m="${id}" style="--g:${M.glow}">${art(id)}<span class="dt-txt"><b>${M.name}</b><i>${M.sub}</i><span class="dt-tags">${M.tags.map(t => `<u class="${t === 'NEW' ? 'new' : ''}">${t}</u>`).join('')}</span></span>${settings.mode === id ? '<span class="dt-check">✓</span>' : ''}</button>`).join('')}</div></div>`).join('');
+  };
+  BR.selectMode = id => { if (!MODES[id]) return; settings.mode = id; save(); renderLobby(); };
+  $('mode-cur').addEventListener('click', () => { BR.Audio.init(); BR.Audio.click(); renderDiscover(); $('discover').classList.remove('hidden'); });
+  $('dc-x').addEventListener('click', () => $('discover').classList.add('hidden'));
+  $('discover').addEventListener('click', e => { const t = e.target.closest('[data-m]'); if (!t) return; BR.selectMode(t.dataset.m); BR.Audio.pickup(); renderDiscover(); setTimeout(() => $('discover').classList.add('hidden'), 160); });
+  $('btn-go').addEventListener('click', () => { BR.Audio.init(); MODES[settings.mode].go(); });
+  renderLobby();
+
+  // ---- v1.11: loadout editor
+  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
+  const renderLoadout = () => {
+    const L = BR.Profile.loadoutGuns();
+    $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');
+    $('lo-secondary').innerHTML = LO_S.map(id => gcard(id, `data-lo="secondary" data-g="${id}"`, L.secondary === id)).join('');
+    $('lo-melee').innerHTML = LO_M.map(([id, n]) => `<button class="gcard${L.melee === id ? ' sel' : ''}" data-lo="melee" data-g="${id}">${BR.WeaponIcons.pic[id] ? `<img src="${BR.WeaponIcons.pic[id]}" alt="">` : ''}<span>${n}</span></button>`).join('');
+  };
+  $('btn-loadout').addEventListener('click', () => { BR.Audio.init(); renderLoadout(); $('loadout').classList.remove('hidden'); });
+  $('lo-x').addEventListener('click', () => $('loadout').classList.add('hidden'));
+  $('loadout').addEventListener('click', e => {
+    const b = e.target.closest('[data-lo]'); if (!b) return;
+    const P = BR.Profile, k = b.dataset.lo, id = b.dataset.g;
+    if (k === 'melee') P.data.equip.melee = id; else P.data.loadout[k] = id;
+    P.save(); game.refreshCosmetics(); BR.Audio.pickup(); renderLoadout();
+  });
+  $('lo-reset').addEventListener('click', () => { const P = BR.Profile; P.data.loadout = { primary: 'rifle', secondary: 'pistol' }; P.data.equip.melee = 'bayonet'; P.save(); game.refreshCosmetics(); BR.Audio.click(); renderLoadout(); });
   $('dm-go').addEventListener('click', dmGo);
   $('dm-x').addEventListener('click', dmClose);
   $('btn-menu').addEventListener('click', () => game.toMenu());

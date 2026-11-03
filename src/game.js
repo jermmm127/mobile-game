@@ -258,6 +258,10 @@ BR.Game = class Game {
       this.player.mover.pos.set(hub.x + 10, 0, hub.z + 10);
       this.player.mover.pos.y = this.world.groundAt(hub.x + 10, hub.z + 10, 60);
       this.player.pitch = 0;
+      // v1.11: you start practice with your loadout
+      const LO = BR.Profile.loadoutGuns(), pl = this.player;
+      pl.slots[0] = BR.Weapons.create(LO.primary); pl.slots[1] = BR.Weapons.create(LO.secondary); pl.cur = 0;
+      for (const t in pl.ammo) pl.ammo[t] = C.ammoCap[t];
     }
     this.addBots(bots, this.diff);
     this.zone.mesh.visible = !this.practice;
@@ -308,8 +312,9 @@ BR.Game = class Game {
   redeployPlayer() {
     const p = this.player, C = BR.CONFIG, q = this.dropPoint();
     p.alive = true; p.health = C.actor.maxHealth; p.shield = 0; p.fireHeld = false;
-    p.slots[0] = BR.Weapons.create('pistol'); p.slots[1] = null; p.cur = 0;
-    p.ammo.light = 60;
+    const LO = BR.Profile.loadoutGuns();                        // redeploy with your loadout's sidearm
+    p.slots[0] = BR.Weapons.create(LO.secondary); p.slots[1] = null; p.cur = 0;
+    p.ammo[C.weapons[LO.secondary].ammo] = Math.max(p.ammo[C.weapons[LO.secondary].ammo] || 0, C.weapons[LO.secondary].mag * 3);
     p.mover.pos.set(q.x, C.match.dropHeight * 0.55, q.z); p.mover.vel.set(0, 0, 0); p.mover.dropping = true; p.mover.chute = false;
     p.pitch = -0.6;
     this.result = null; this.resurgence.redeploys++;
@@ -507,15 +512,15 @@ BR.Game = class Game {
     return { x: cx, y: this.world.groundAt(cx, cz, p.pos.y + 6), z: cz };
   }
 
-  practiceSpawn(kind, arg, toSlot) {
+  practiceSpawn(kind, arg, toSlot, rar) {
     const p = this.player, C = BR.CONFIG;
     if (kind === 'weapon') {
       const def = C.weapons[arg];
       const slot = toSlot === 0 || toSlot === 1 ? toSlot : p.cur < 2 ? p.cur : (!p.slots[0] ? 0 : !p.slots[1] ? 1 : 0);
-      p.slots[slot] = BR.Weapons.create(arg);
+      p.slots[slot] = BR.Weapons.create(arg, undefined, rar | 0);
       p.cur = slot;
       p.ammo[def.ammo] = C.ammoCap[def.ammo];
-      this.hud.toast(def.name, 900);
+      this.hud.toast(BR.RARITY[rar | 0].name + ' ' + def.name, 900);
     } else if (kind === 'ammo') { for (const t in p.ammo) p.ammo[t] = C.ammoCap[t]; this.hud.toast('Ammo full', 900); }
     else if (kind === 'nades') { p.nades = C.shockwave.maxCarry; this.hud.toast('Shockwave grenades ×' + p.nades, 900); }
     else if (kind === 'heal') { p.health = C.actor.maxHealth; p.shield = C.actor.maxShield; this.hud.toast('Health + shield full', 900); }
@@ -669,7 +674,7 @@ BR.Game = class Game {
 
     this.chest = p.alive && !p.mover.dropping ? this.loot.nearestChest(p, 2.2) : null;
     if (this.chest) this.hud.prompt('Open chest');
-    else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
+    else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.RARITY[this.swapItem.rar | 0].name + ' ' + BR.CONFIG.weapons[this.swapItem.wid].name, BR.RARITY[this.swapItem.rar | 0].css);
     else if (!this.zm && !(this.mode && this.mode.prompts)) this.hud.prompt(null);
 
     // Player parachute (look up to see it)
@@ -1134,7 +1139,7 @@ BR.Game = class Game {
     BR.Audio.pickup();
     const C = BR.CONFIG;
     let label = '';
-    if (item.kind === 'weapon') label = C.weapons[item.wid].name;
+    if (item.kind === 'weapon') label = BR.RARITY[item.rar | 0].name + ' ' + C.weapons[item.wid].name;
     else if (item.kind === 'ammo') label = `+${item.amount} ${item.ammoType} ammo`;
     else if (item.kind === 'heal') label = `+${item.amount} health`;
     else label = `+${item.amount} shield`;

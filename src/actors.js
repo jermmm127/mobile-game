@@ -127,10 +127,10 @@ BR.Actor = class Actor {
   guns() { return this.slots.slice(0, 2); }
 
   // Put a gun in an empty gun slot and switch to it. Returns the slot index or -1.
-  giveWeapon(id, mag) {
+  giveWeapon(id, mag, rar) {
     for (let i = 0; i < 2; i++) {
       if (!this.slots[i]) {
-        this.slots[i] = BR.Weapons.create(id, mag);
+        this.slots[i] = BR.Weapons.create(id, mag, rar);
         this.switchTo(i);
         return i;
       }

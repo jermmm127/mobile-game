@@ -284,7 +284,15 @@ BR.HUD = class HUD {
       <div class="tagline">Slide. Wall-run. Grapple. Be the last one standing.</div>
     </div>
     <nav class="menu-nav">
-      <div class="modes">
+      <div class="lobby">
+        <button id="mode-cur" class="mode-cur" aria-label="Change game mode">
+          <span class="mc-art" id="mc-art"></span>
+          <span class="mc-txt"><span class="mc-tag">GAME MODE</span><b id="mc-name">BATTLE ROYALE</b><i id="mc-sub">Solo · one life</i></span>
+          <span class="mc-change">CHANGE<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+        </button>
+        <button id="btn-go" class="play-big"><span>PLAY</span><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></button>
+      </div>
+      <div class="modes legacy-modes" hidden aria-hidden="true">
         <button id="btn-play" class="mode hero">
           <span class="m-tag">BATTLE ROYALE</span>
           <span class="m-title">PLAY</span>
@@ -328,6 +336,7 @@ BR.HUD = class HUD {
         </button>
       </div>
       <div class="dock">
+        <button id="btn-loadout" class="dk loadout"><svg viewBox="0 0 24 24"><path d="M3 14h11l3-3h4v3l-3 3H3z"/><path d="M6 14v4M10 14v3"/></svg><span>LOADOUT</span></button>
         <button id="btn-cases" class="dk cases"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M8 8l1-3h6l1 3"/></svg><span>CASES</span><em>NEW</em></button>
         <button id="btn-inv" class="dk inv"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>INVENTORY</span></button>
         <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span></button>
@@ -495,6 +504,7 @@ BR.HUD = class HUD {
     <div class="ptitle">SPAWN</div>
     <button class="mbtn sm hot sp-locker" id="sp-locker">LOCKER · SWAP SKINS, BLUEPRINTS + KNIFE</button>
     <div class="sp-sec">WEAPONS</div>
+    <div class="sp-rar" id="sp-rar"><span>RARITY</span>${(BR.RARITY || []).map((r, i) => `<button data-r="${i}" style="--rc:${r.css}"${i === 0 ? ' class="sel"' : ''}>${r.name.toUpperCase()}</button>`).join('')}</div>
     <div class="sp-slots" id="sp-slots"><span>PUT IN</span><button data-slot="0"><b>SLOT 1</b><i>EMPTY</i></button><button data-slot="1"><b>SLOT 2</b><i>EMPTY</i></button></div>
     <div class="sp-grid" id="sp-weapons"></div>
     <div class="sp-sec">ITEMS</div>
@@ -532,6 +542,24 @@ BR.HUD = class HUD {
     <button id="btn-settings2" class="mbtn">SETTINGS</button>
     <button id="btn-hud2" class="mbtn">CUSTOMIZE HUD</button>
     <button id="btn-quit" class="mbtn">LEAVE MATCH</button>
+  </div>
+</div>
+
+<div id="discover" class="overlay hidden discover">
+  <div class="dc-top"><div class="dc-title"><b>DISCOVER</b><span>Pick a mode, then hit PLAY</span></div><button id="dc-x" class="xbtn" aria-label="Close">✕</button></div>
+  <div class="dc-feat" id="dc-feat"></div>
+  <div id="dc-rows"></div>
+</div>
+
+<div id="loadout" class="overlay hidden">
+  <div class="panel metal wide lopanel">
+    <button id="lo-x" class="xbtn" aria-label="Close loadout">✕</button>
+    <div class="ptitle">LOADOUT</div>
+    <p class="tip">Your default kit. You start Practice and Overdrive with it, and Resurgence redeploys you with your sidearm. In Battle Royale you still drop in with just your knife.</p>
+    <div class="sp-sec">PRIMARY</div><div class="sp-grid lo-grid" id="lo-primary"></div>
+    <div class="sp-sec">SECONDARY</div><div class="sp-grid lo-grid" id="lo-secondary"></div>
+    <div class="sp-sec">MELEE</div><div class="sp-grid lo-grid" id="lo-melee"></div>
+    <button id="lo-reset" class="mbtn sm">RESET TO DEFAULT (RIFLE · PISTOL · M9 BAYONET)</button>
   </div>
 </div>
 
@@ -713,10 +741,13 @@ BR.HUD = class HUD {
       e.reloadFill.style.transform = `scaleX(${Math.max(0, v) / 40})`;
     });
     p.slots.forEach((s, i) => {
-      const key = s ? `${s.id}|${s.mag}|${i === p.cur}` : 'empty' + i + (i === p.cur);
+      const key = s ? `${s.id}|${s.mag}|${i === p.cur}|${s.rar | 0}` : 'empty' + i + (i === p.cur);
       this.set('slot' + i, e.slots[i], key, el => {
         el.classList.toggle('active', i === p.cur && !!s);
         el.classList.toggle('empty', !s);
+        const rr = s && !s.def.melee ? BR.RARITY[s.rar | 0] : null;      // rarity colour on the slot (v1.11)
+        el.classList.toggle('rar', !!rr); el.dataset.rar = rr ? rr.id : '';
+        if (rr) el.style.setProperty('--rc', rr.css); else el.style.removeProperty('--rc');
         el.querySelector('.sicon').innerHTML = s ? WICON(s.id) : '';
         el.querySelector('.sname').textContent = s ? (s.def.melee ? 'KNIFE' : s.def.name.toUpperCase()) : 'EMPTY';
         el.querySelector('.sammo').textContent = s && !s.def.melee ? s.mag : '';
@@ -992,8 +1023,9 @@ BR.HUD = class HUD {
     t.className = 'on';
   }
 
-  prompt(text) {
+  prompt(text, col) {
     this.set('prompt', this.el.prompt, text || '', (el, v) => { el.textContent = v; el.classList.toggle('hidden', !v); });
+    this.set('promptCol', this.el.prompt, col || '', (el, v) => { if (v) el.style.setProperty('--pc', v); else el.style.removeProperty('--pc'); el.classList.toggle('rarp', !!v); });
   }
 
   // Damage numbers stack per target (Apex-style): rapid hits on the same enemy add up in

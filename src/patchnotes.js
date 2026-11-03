@@ -5,6 +5,14 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.11.0', date: '2026-11-03', title: 'Discover, rarities + better hands', notes: [
+    'New lobby: a big PLAY button and your selected mode. Tap CHANGE to open DISCOVER, a mode browser with a featured mode and rows for Battle Royale, Survival, Competitive and Training. Your pick is remembered.',
+    'Weapon rarity: every gun now drops as Common, Uncommon, Rare, Epic, Legendary or Mythic. Higher rarity means more damage, faster reloads and tighter spread (Mythic: +36% damage). Loot rings, name tags, light pillars (Epic and up), HUD slots and the swap prompt all show the rarity colour. Chests roll better gear, you can swap a gun for a better copy of the same gun, bots go for better rarities, and Practice has a rarity picker.',
+    'Default loadout: new accounts start with Rifle + Pistol + M9 Bayonet and a Recruit kit (Carbon Weave camo on the rifle, Ion Blue tracers). Change it on the new LOADOUT screen. You start Practice and Overdrive with it, and Resurgence redeploys you with your sidearm.',
+    'Arms and hands: fabric sleeves with a cuff replace the plain tubes, gloves are rounder with thicker fingers, the support hand now wraps under the handguard with the forearm coming in from the lower left, and sleeves no longer lag behind or detach from the wrist.',
+    'M9 Bayonet: the draw is now a clean end-over-end flip and catch, the inspect ends with a flip, and the idle shows your fist and sleeve.',
+    'Karambit: the inspect turns the wrist to show both sides of the blade, then spins twice round your index finger and catches it. The empty off hand no longer floats in view.',
+  ] },
   { v: '1.10.0', date: '2026-11-03', title: 'Overdrive, Resurgence, Aim Trainer + the Grind', notes: [
     'New mode: OVERDRIVE. A roguelike survivor run on the Crucible arena. Survive a growing swarm (mites, brutes, spitting wisps, chargers, golden elites), collect XP gems and pick 1 of 3 upgrades every level. Powers fire on their own: Orbit Blades, Arc Lightning, Nova Pulse, Seeker Drones, Flame Trail and Frost Field. Passives: Power, Haste, Rapid, Magnet, Vitality, Armor, Greed, Luck and Big Gun. Treasure chests, magnets and hearts drop along the way. A Crucible Titan comes every 3 minutes; at 10:00 THE OVERLORD arrives. Kill it to win.',
     'New mode: RESURGENCE. A faster battle royale with 24 players and quicker circles. When you go down you redeploy from the sky with a pistol after a countdown (each kill shortens your next one), and bots redeploy too. Respawns end when the 4th circle starts closing; then it is last one standing.',

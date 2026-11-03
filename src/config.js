@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.10.0',
+  version: '1.11.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -237,3 +237,23 @@ BR.RESURGENCE_PHASES = [
   { wait: 25, shrink: 20, radius: 14,  dps: 12 },
   { wait: 15, shrink: 20, radius: 0,   dps: 18 },
 ];
+
+// Weapon rarity (v1.11): every gun drops as Common -> Mythic. Higher rarity = more damage, faster
+// reloads and tighter spread. Colours are used on loot rings, name tags, HUD slots and prompts.
+BR.RARITY = [
+  { id: 'common',    name: 'Common',    css: '#b9c0c8', col: 0xb9c0c8, dmg: 1.00, reload: 1.00, spread: 1.00 },
+  { id: 'uncommon',  name: 'Uncommon',  css: '#5fd35f', col: 0x5fd35f, dmg: 1.06, reload: 0.97, spread: 0.96 },
+  { id: 'rare',      name: 'Rare',      css: '#45a8ff', col: 0x45a8ff, dmg: 1.12, reload: 0.94, spread: 0.92 },
+  { id: 'epic',      name: 'Epic',      css: '#b26bff', col: 0xb26bff, dmg: 1.19, reload: 0.9,  spread: 0.88 },
+  { id: 'legendary', name: 'Legendary', css: '#ff9a1f', col: 0xff9a1f, dmg: 1.27, reload: 0.86, spread: 0.84 },
+  { id: 'mythic',    name: 'Mythic',    css: '#ffd84a', col: 0xffd84a, dmg: 1.36, reload: 0.8,  spread: 0.8 },
+];
+// odds per loot tier (0 floor, 1 buildings, 2 high ground, 3 chests + supply)
+BR.RARITY_ODDS = [
+  [46, 30, 16, 6, 2, 0],
+  [26, 32, 24, 12, 5, 1],
+  [12, 26, 30, 20, 10, 2],
+  [0, 18, 34, 28, 16, 4],
+];
+BR.rollRarity = (tier, R) => { const o = BR.RARITY_ODDS[Math.max(0, Math.min(3, tier | 0))], tot = o.reduce((a, b) => a + b, 0); let r = (R || Math.random)() * tot; for (let i = 0; i < o.length; i++) { r -= o[i]; if (r < 0) return i; } return 0; };
+BR.weaponScore = w => (w ? (w.def.tier || 0) + (w.rar || 0) * 0.7 : -1);

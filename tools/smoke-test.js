@@ -139,7 +139,7 @@ const server = http.createServer((req, res) => {
     for (let i = 0; i < 70; i++) { v.update(1 / 60, 0, 0); const q = v.models.knife.userData.spin.obj.quaternion; maxSpin = Math.max(maxSpin, 2 * Math.acos(Math.min(1, Math.abs(q.w)))); }
     r.knifeSpin = maxSpin;
     // karambit is held in the backhand-fist gloves (right holds the knife, left is an empty fist)
-    r.armsVisible = v.knifeHands.R.visible && v.knifeHands.L.visible && v.arms.R.fore.visible && v.arms.L.fore.visible;
+    r.armsVisible = v.knifeHands.R.visible && !v.knifeHands.L.visible && v.arms.R.fore.visible;    // v1.11: the karambit's empty off hand stays out of view (like CS)
     p.slots[0] = BR.Weapons.create('rifle', 2); p.ammo.heavy = 90; p.cur = 0;
     for (let i = 0; i < 60; i++) v.update(1 / 60, 0, 0);
     BR.Weapons.startReload(p.weapon, p); let magDrop = 0;
@@ -889,6 +889,51 @@ const server = http.createServer((req, res) => {
       v.modes = ['btn-resurgence', 'btn-overdrive', 'btn-aim'].every(id => !!document.getElementById(id));
       g.toMenu();
       out.v110 = v; }
+    // v1.11: rarities, default loadout, Discover browser, sleeves, knife animation fixes
+    { const v = {}, P = BR.Profile, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
+      const W = BR.Weapons, c = W.create('rifle', undefined, 0), m = W.create('rifle', undefined, 5);
+      v.rarTable = BR.RARITY.length === 6 && BR.RARITY.map(r => r.id).join() === 'common,uncommon,rare,epic,legendary,mythic';
+      v.rarStats = c.def === BR.CONFIG.weapons.rifle && m.def.dmg > c.def.dmg * 1.3 && m.def.reload < c.def.reload && m.rar === 5;
+      let cnt = [0, 0, 0, 0, 0, 0]; for (let i = 0; i < 4000; i++) cnt[BR.rollRarity(1)]++; v.rarRoll = cnt.every((n, i) => i === 5 ? n > 0 && n < 120 : n > 50);
+      // loadout: default + used in practice
+      v.loadoutDefault = P.loadoutGuns().primary === 'rifle' && P.loadoutGuns().secondary === 'pistol';
+      P.data.loadout = { primary: 'lmg', secondary: 'revolver' };
+      document.getElementById('btn-practice').click(); const pl = g.player;
+      v.loadoutUsed = pl.slots[0] && pl.slots[0].id === 'lmg' && pl.slots[1] && pl.slots[1].id === 'revolver';
+      P.data.loadout = { primary: 'rifle', secondary: 'pistol' }; P.save();
+      // rarity loot: label + beam + pickup keeps rarity + HUD slot tint + swap prompt
+      pl.slots[0] = null; pl.slots[1] = null; pl.cur = 2; run(2);
+      const q = g.frontPoint(0.5), it = g.loot.add({ kind: 'weapon', wid: 'smg', rar: 4, mag: 25, reserve: 25 }, pl.pos.x, pl.pos.y, pl.pos.z);
+      v.lootBeam = !!it.mesh.userData.beam;
+      run(10); v.pickRar = pl.slots.some(s => s && s.id === 'smg' && s.rar === 4);
+      run(3); v.slotRar = !!document.querySelector('#play > .slot.rar[data-rar="legendary"]');
+      const it2 = g.loot.add({ kind: 'weapon', wid: 'smg', rar: 5, mag: 25, reserve: 25 }, pl.pos.x, pl.pos.y, pl.pos.z);
+      run(10); v.swapPrompt = /Mythic SMG/.test(document.getElementById('prompt').textContent);
+      // practice spawn menu rarity picker
+      v.spRar = document.querySelectorAll('#sp-rar button').length === 6;
+      g.practiceSpawn('weapon', 'dmr', 0, 3); v.spawnRar = pl.slots[0].rar === 3;
+      // sleeves: lathe forearms attached at the wrist
+      pl.slots[0] = W.create('rifle'); pl.cur = 0; g.vmr.lastWeapon = null; run(40);
+      const A = g.vmr.arms.L, wrist = A.hand.localToWorld(new THREE.Vector3(0, 0, 0.05));
+      v.sleeve = A.fore.geometry.type === 'LatheGeometry' && A.fore.visible && A.fore.position.distanceTo(wrist) < A.fore.scale.y * 0.55 + 0.02;
+      // bayonet: full flip mid-draw; karambit inspect shows the blade (not hanging on the finger) mid-way
+      P.data.equip.melee = 'bayonet'; g.refreshCosmetics(); pl.slots[2] = W.create('bayonet'); pl.cur = 2; g.vmr.lastWeapon = null; run(1);
+      const vm = g.vmr; vm.drawT = vm.drawDur * (1 - 0.34); g.update(1 / 240);
+      const inr = vm.models.bayonet.userData.model.userData.inner; v.bayFlip = inr && Math.abs(inr.rotation.x) > 2.5 && Math.abs(inr.rotation.x) < 3.8;
+      P.data.equip.melee = 'knife'; g.refreshCosmetics(); pl.slots[2] = W.create('knife'); g.vmr.lastWeapon = null; run(40);
+      g.startInspect(); vm.inspectT = vm.inspectDur * (1 - 0.3); g.update(1 / 240);
+      const sp = vm.models.knife.userData.spin; v.karShow = sp && sp.ringW < 0.01;
+      vm.inspectT = vm.inspectDur * (1 - 0.72); g.update(1 / 240); v.karSpin = sp && sp.ringW > 0.9 && sp.ang > 1;
+      P.data.equip.melee = 'bayonet'; g.refreshCosmetics();
+      // Discover browser + lobby PLAY
+      g.toMenu(); document.getElementById('mode-cur').click();
+      v.discover = !document.getElementById('discover').classList.contains('hidden') && document.querySelectorAll('#dc-rows .dc-tile').length === 7;
+      document.querySelector('#discover [data-m="aim"]').click();
+      v.selected = g.settings.mode === 'aim' && /AIM TRAINER/.test(document.getElementById('mc-name').textContent);
+      document.getElementById('btn-go').click(); v.goAim = g.mode instanceof BR.AimTrainer;
+      g.toMenu(); BR.selectMode('br');
+      document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 8 && !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
+      out.v111 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -909,7 +954,7 @@ const server = http.createServer((req, res) => {
     let tinted = false; bot.mesh.traverse(o => { if (o.isMesh && o.material && o.material.emissive && o.material.emissive.r > 0.3) tinted = true; });
     out.highlight = tinted; g.settings.highlight = 'subtle';
     // spinning case previews render
-    await new Promise(res => { BR.WeaponIcons.queueSpins(BR.CaseItems.all('nova').slice(0, 2), () => {}); const t0 = performance.now(); const chk = () => (Object.keys(BR.WeaponIcons.spin).length >= 2 || performance.now() - t0 > 15000) ? res() : setTimeout(chk, 200); chk(); });
+    await new Promise(res => { BR.WeaponIcons.queueSpins(BR.CaseItems.all('nova').slice(0, 2), () => {}); const t0 = performance.now(); const chk = () => (Object.keys(BR.WeaponIcons.spin).length >= 2 || performance.now() - t0 > 40000) ? res() : setTimeout(chk, 200); chk(); });
     out.spins = Object.keys(BR.WeaponIcons.spin).length;
     g.state = 'menu';
     return out;
@@ -1014,7 +1059,7 @@ const server = http.createServer((req, res) => {
     ['gloves per weapon (and the viewmodel swaps them)', v17.gloves.lmg === 'hyperspace' && v17.gloves.rifle === 'default' && v17.gloveSwapped],
     ['loot / dropped guns wear your equipped blueprint', v17.lootSkin],
     ['weapon mastery unlocks a camo; daily reward streak + key, once a day', !v17.mastery.before && v17.mastery.after && v17.daily.streak === 3 && v17.daily.key && v17.daily.again === null],
-    ['camos equip per gun (SMG camo stays on the SMG; ALL = every gun)', v17.camo.smg === 'hyperspace' && v17.camo.rifle === 'default' && v17.camo.smgEq && !v17.camo.rifleEq && v17.camo.vmSmg && v17.camo.vmRifleClean && v17.camo.all],
+    ['camos equip per gun (SMG camo stays on the SMG; ALL = every gun)', v17.camo.smg === 'hyperspace' && (v17.camo.rifle === 'default' || v17.camo.rifle === 'carbon') && v17.camo.smgEq && !v17.camo.rifleEq && v17.camo.vmSmg && v17.camo.vmRifleClean && v17.camo.all],
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
@@ -1042,13 +1087,17 @@ const server = http.createServer((req, res) => {
     ['v1.10 Overdrive: swarm, auto powers, level-up cards, Overlord win -> results', v17.v110.odEnemies && v17.v110.odLevel && v17.v110.odPicked && v17.v110.odRay && v17.v110.odWin],
     ['v1.10 Resurgence: you and bots redeploy, respawns end at circle 4, results', v17.v110.resBack && v17.v110.resBot && v17.v110.resEnd],
     ['v1.10 grind camos + blueprints: locked, unlock by challenges, animated, challenges page', v17.v110.grindItems && v17.v110.grindLocked && v17.v110.grindUnlock && v17.v110.grindAnim && v17.v110.grindUi && v17.v110.modes],
+    ['v1.11 weapon rarity: Common..Mythic stats, loot rolls, beams, pickups keep rarity, HUD + prompt + practice picker', v17.v111.rarTable && v17.v111.rarStats && v17.v111.rarRoll && v17.v111.lootBeam && v17.v111.pickRar && v17.v111.slotRar && v17.v111.swapPrompt && v17.v111.spRar && v17.v111.spawnRar],
+    ['v1.11 default loadout (rifle + pistol + bayonet), used in practice, loadout screen', v17.v111.loadoutDefault && v17.v111.loadoutUsed && v17.v111.loUi],
+    ['v1.11 Discover mode browser: tiles, select, lobby PLAY launches the mode', v17.v111.discover && v17.v111.selected && v17.v111.goAim],
+    ['v1.11 arms: fabric sleeves attached at the wrist; bayonet full flip; karambit inspect shows the blade then spins', v17.v111.sleeve && v17.v111.bayFlip && v17.v111.karShow && v17.v111.karSpin],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
     ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],
     ['victory: orbit cam, celebrating character, overlay, HUD hidden, then results', v17.victory.state === 'won' && v17.victory.active && v17.victory.overlay && v17.victory.hudHidden && v17.victory.body && v17.victory.camOut && v17.victory.armsUp && v17.victory.vmHidden && v17.victory.ended],
     ['tracers are soft camera-facing beams with a glowing head (no boxes)', v17.beams && v17.beamOk],
     ['spray: first shot light, climb ramps up, smooth side sway, view recovers after', v17.spray.ramps && v17.spray.flips <= 4 && v17.spray.recovered],
     ['kill reward: banner + screen flash + hit-stop + on-body burst', v17.killReward.banner && v17.killReward.flash && v17.killReward.hitStop && v17.killReward.fx],
-    ['M9 bayonet: default knife, flips into the hand on draw and settles in the fist', v17.bayonet.fresh === 'bayonet' && v17.bayonet.migrated === 'bayonet' && v17.bayonet.kept === 'butterfly' && v17.bayonet.slot === 'bayonet' && v17.bayonet.maxFlip > 2 && v17.bayonet.upBeat < 0.4 && v17.bayonet.flipMid > 1 && v17.bayonet.idleOk && v17.bayonet.face2 < 0.3 && v17.bayonet.settled && v17.bayonet.fist],
+    ['M9 bayonet: default knife, flips into the hand on draw and settles in the fist', v17.bayonet.fresh === 'bayonet' && v17.bayonet.migrated === 'bayonet' && v17.bayonet.kept === 'butterfly' && v17.bayonet.slot === 'bayonet' && v17.bayonet.maxFlip > 2 && v17.bayonet.upBeat < 0.4 && Math.abs(v17.bayonet.flipMid) > 0.5 && v17.bayonet.idleOk && v17.bayonet.face2 < 0.3 && v17.bayonet.settled && v17.bayonet.fist],
     ['bayonet blueprints (shop + both cases), camo on the blade, new camos, trails', v17.bayonet.bps >= 9 && v17.bayonet.caseR >= 2 && v17.bayonet.caseN >= 2 && v17.bayonet.camoBlade && v17.bayonet.trail && v17.bayonet.newCamos],
     ['speedometer shows m/s and can be turned off; movement slowed', v17.bayonet.speedo && v17.bayonet.speedoOff && v17.run < 6],
     ['Nightshade butterfly: purple aura + glowing trail on the flips', v17.nightshade.bp && v17.nightshade.trail && v17.nightshade.trailSeen && v17.nightshade.base && v17.nightshade.aura >= 2 && v17.nightshade.cleared],

@@ -40,7 +40,7 @@ BR.Loot = class Loot {
         const table = L.tables[Math.min(s.tier, L.tables.length - 1)];
         const kind = U.weighted(s.force === 'weapon' ? this.weaponTable(table) : table, R);
         const x = s.x + (i ? U.rand(R, -1, 1) : 0), z = s.z + (i ? U.rand(R, -1, 1) : 0);
-        this.spawnKind(kind, x, s.y, z, R);
+        this.spawnKind(kind, x, s.y, z, R, BR.rollRarity(s.tier, R));
       }
     }
   }
@@ -51,11 +51,11 @@ BR.Loot = class Loot {
     return t;
   }
 
-  spawnKind(kind, x, y, z, R) {
+  spawnKind(kind, x, y, z, R, rar) {
     const C = BR.CONFIG;
     if (C.weapons[kind]) {
       const def = C.weapons[kind];
-      return this.add({ kind: 'weapon', wid: kind, mag: def.mag, reserve: def.mag }, x, y, z);
+      return this.add({ kind: 'weapon', wid: kind, rar: rar | 0, mag: def.mag, reserve: def.mag }, x, y, z);
     }
     if (kind === 'ammo') {
       const t = BR.util.pick(['light', 'light', 'heavy', 'heavy', 'shells'], R);
@@ -67,19 +67,19 @@ BR.Loot = class Loot {
   }
 
   // Name tag for dropped weapons: rarity-coloured text on a dark pill (cached per weapon)
-  label(wid) {
+  // (v1.11) rarity line ("EPIC") over the gun name, both in the rarity colour
+  label(wid, rar) {
     this.labels = this.labels || {};
-    if (this.labels[wid]) return this.labels[wid];
-    const def = BR.CONFIG.weapons[wid], col = '#' + TIER_COLORS[def.tier].toString(16).padStart(6, '0');
-    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const c = cv.getContext('2d');
-    // rarity-coloured name, no background: dark outline + soft glow so it reads anywhere
-    c.font = '700 30px "Outfit", "Arial Narrow", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    const text = def.name.toUpperCase();
-    c.lineJoin = 'round'; c.lineWidth = 7; c.strokeStyle = 'rgba(6,8,12,0.85)'; c.strokeText(text, 128, 33);
-    c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = col; c.fillText(text, 128, 33);
-    c.shadowBlur = 0; c.fillText(text, 128, 33);
+    const key = wid + '|' + (rar | 0);
+    if (this.labels[key]) return this.labels[key];
+    const def = BR.CONFIG.weapons[wid], RR = BR.RARITY[rar | 0], col = RR.css;
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const c = cv.getContext('2d');
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
+    const line = (text, y, font) => { c.font = font; c.lineWidth = 7; c.strokeStyle = 'rgba(6,8,12,0.85)'; c.strokeText(text, 128, y); c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = col; c.fillText(text, 128, y); c.shadowBlur = 0; c.fillText(text, 128, y); };
+    line(RR.name.toUpperCase(), 26, '800 20px "Outfit", "Arial Narrow", sans-serif');
+    line(def.name.toUpperCase(), 62, '700 30px "Outfit", "Arial Narrow", sans-serif');
     const tex = new THREE.CanvasTexture(cv);
-    return (this.labels[wid] = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: true }));
+    return (this.labels[key] = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: true }));
   }
 
   // vel (optional): toss the item out - it flies, spins fast, bounces and settles
@@ -106,12 +106,17 @@ BR.Loot = class Loot {
       gun.rotation.set(0, Math.PI / 2, Math.PI / 2 * 0.9);
       gun.position.y = -0.05;
       g.add(gun);
-      const ring = new THREE.Mesh(G.ring, this.mat('ring' + def.tier, TIER_COLORS[def.tier], true));
+      const rar = item.rar | 0, RR = BR.RARITY[rar];
+      const ring = new THREE.Mesh(G.ring, this.mat('rar' + rar, RR.col, true));
       ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4;
       ring.scale.setScalar(1.4);
       g.add(ring);
       g.userData.ring = ring;
-      const tag = new THREE.Sprite(this.label(item.wid)); tag.scale.set(1.25, 0.31, 1); tag.position.y = 0.62; tag.renderOrder = 5; tag.visible = false;
+      if (rar >= 3) {                                  // epic+ : a soft light pillar so good loot reads from far away
+        const beam = new THREE.Mesh(G.beam || (G.beam = new THREE.CylinderGeometry(0.18, 0.32, 3.2, 10, 1, true)), this.mats['beam' + rar] || (this.mats['beam' + rar] = new THREE.MeshBasicMaterial({ color: RR.col, transparent: true, opacity: rar >= 5 ? 0.38 : 0.24, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })));
+        beam.position.y = 1.1; g.add(beam); g.userData.beam = beam;
+      }
+      const tag = new THREE.Sprite(this.label(item.wid, rar)); tag.scale.set(1.25, 0.47, 1); tag.position.y = 0.7; tag.renderOrder = 5; tag.visible = false;
       g.add(tag); g.userData.label = tag;
     } else if (item.kind === 'chest') {
       const wood = this.mat('chest', 0x8a5a2b), gold = this.mat('gold', 0xffc04a);
@@ -217,12 +222,14 @@ BR.Loot = class Loot {
       else if (it.kind === 'weapon') {
         const def = C.weapons[it.wid];
         const cap = C.ammoCap[def.ammo];
-        if (actor.hasWeapon(it.wid)) {
+        const held = actor.guns().find(s => s && s.id === it.wid);
+        if (held && (it.rar | 0) > (held.rar | 0)) { if (d < swapD) { swapCandidate = it; swapD = d; } }
+        else if (held) {
           if (actor.ammo[def.ammo] < cap) {
             actor.ammo[def.ammo] = Math.min(cap, actor.ammo[def.ammo] + it.mag + it.reserve);
             took = true;
           }
-        } else if (actor.giveWeapon(it.wid, it.mag) >= 0) {
+        } else if (actor.giveWeapon(it.wid, it.mag, it.rar) >= 0) {
           actor.ammo[def.ammo] = Math.min(cap, actor.ammo[def.ammo] + it.reserve);
           took = true;
         } else if (d < swapD) { swapCandidate = it; swapD = d; }
@@ -230,10 +237,11 @@ BR.Loot = class Loot {
       if (took) { this.game.onPickup(actor, it); this.remove(it); }
     }
     if (swapCandidate && !actor.isPlayer) {
-      const worst = Math.min(...actor.guns().map(s => s.def.tier));
-      if (C.weapons[swapCandidate.wid].tier > worst) {
-        const i = actor.guns().findIndex(s => s.def.tier === worst);
-        actor.cur = i;
+      const gs = actor.guns(), sc = gs.map(s => BR.weaponScore(s)), worst = Math.min(...sc);
+      const cand = (C.weapons[swapCandidate.wid].tier || 0) + (swapCandidate.rar | 0) * 0.7;
+      if (cand > worst) {
+        const same = gs.findIndex(s => s && s.id === swapCandidate.wid);
+        actor.cur = same >= 0 ? same : sc.indexOf(worst);
         this.swap(actor, swapCandidate);
       }
       return null;
@@ -261,7 +269,7 @@ BR.Loot = class Loot {
     const wid = U.weighted(this.weaponTable(C.loot.tables[tier]), R);
     const def = C.weapons[wid];
     const p = chest.pos, out = [];
-    out.push({ kind: 'weapon', wid, mag: def.mag, reserve: def.mag });
+    out.push({ kind: 'weapon', wid, rar: BR.rollRarity(3, R), mag: def.mag, reserve: def.mag });
     out.push({ kind: 'ammo', ammoType: def.ammo, amount: C.ammoPickup[def.ammo] * 2 });
     out.push(R() < 0.5 ? { kind: 'shield', amount: C.loot.shieldAmount } : { kind: 'heal', amount: C.loot.healAmount });
     if (R() < 0.6) out.push({ kind: 'shield', amount: C.loot.shieldAmount });
@@ -283,9 +291,9 @@ BR.Loot = class Loot {
     const old = actor.weapon;
     if (old) {
       const fx = -Math.sin(actor.yaw), fz = -Math.cos(actor.yaw);
-      this.add({ kind: 'weapon', wid: old.id, mag: old.mag, reserve: 0 }, actor.pos.x + fx * 0.5, actor.pos.y + 1.0, actor.pos.z + fz * 0.5, new THREE.Vector3(fx * 3.2, 4, fz * 3.2));
+      this.add({ kind: 'weapon', wid: old.id, rar: old.rar | 0, mag: old.mag, reserve: 0 }, actor.pos.x + fx * 0.5, actor.pos.y + 1.0, actor.pos.z + fz * 0.5, new THREE.Vector3(fx * 3.2, 4, fz * 3.2));
     }
-    actor.slots[actor.cur] = BR.Weapons.create(item.wid, item.mag);
+    actor.slots[actor.cur] = BR.Weapons.create(item.wid, item.mag, item.rar);
     const def = BR.CONFIG.weapons[item.wid];
     actor.ammo[def.ammo] = Math.min(BR.CONFIG.ammoCap[def.ammo], actor.ammo[def.ammo] + item.reserve);
     this.game.onPickup(actor, item);
@@ -297,7 +305,7 @@ BR.Loot = class Loot {
     const C = BR.CONFIG;
     let best = null, bestD = radius;
     const empty = actor.guns().some(s => !s);
-    const worst = empty ? -1 : Math.min(...actor.guns().map(s => s.def.tier));
+    const worst = empty ? -1 : Math.min(...actor.guns().map(s => BR.weaponScore(s)));
     const heldAmmo = new Set(actor.guns().filter(Boolean).map(s => s.def.ammo));
     for (const it of this.items) {
       if (Math.abs(it.pos.y - actor.pos.y) > 2.5) continue; // bots have no pathfinding: skip roofs
@@ -305,7 +313,7 @@ BR.Loot = class Loot {
       if (d >= bestD) continue;
       let want = false;
       if (it.kind === 'chest') want = true;
-      else if (it.kind === 'weapon') want = !actor.hasWeapon(it.wid) && C.weapons[it.wid].tier > worst;
+      else if (it.kind === 'weapon') want = !actor.hasWeapon(it.wid) && (C.weapons[it.wid].tier || 0) + (it.rar | 0) * 0.7 > worst;
       else if (it.kind === 'ammo') want = heldAmmo.has(it.ammoType) && actor.ammo[it.ammoType] < C.ammoCap[it.ammoType] * 0.5;
       else if (it.kind === 'heal') want = actor.health < 75;
       else if (it.kind === 'shield') want = actor.shield < 75;
@@ -319,7 +327,7 @@ BR.Loot = class Loot {
     const p = actor.pos;
     let k = 0;
     const spot = () => { const a = k++ * 2.1 + Math.random() * 0.4; return [p.x + Math.cos(a) * 0.3, p.y + 0.9, p.z + Math.sin(a) * 0.3, new THREE.Vector3(Math.cos(a) * (2 + Math.random() * 1.5), 4.5 + Math.random() * 2, Math.sin(a) * (2 + Math.random() * 1.5))]; };
-    for (const w of actor.guns()) if (w) this.add({ kind: 'weapon', wid: w.id, mag: w.mag, reserve: 0 }, ...spot());
+    for (const w of actor.guns()) if (w) this.add({ kind: 'weapon', wid: w.id, rar: w.rar | 0, mag: w.mag, reserve: 0 }, ...spot());
     for (const t in actor.ammo) if (actor.ammo[t] > 0) this.add({ kind: 'ammo', ammoType: t, amount: actor.ammo[t] }, ...spot());
     if (actor.shield > 0 || Math.random() < 0.5) this.add({ kind: 'shield', amount: BR.CONFIG.loot.shieldAmount }, ...spot());
   }

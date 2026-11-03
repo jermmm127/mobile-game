@@ -56,7 +56,8 @@
       g.scene.background = new THREE.Color(0x150f22); g.scene.fog.color.setHex(0x2a1638); g.scene.fog.near = 45; g.scene.fog.far = 190;
       BR.skyTint(g, { zen: 0x07030f, mid: 0x26103e, hor: 0xb02a6a, low: 0x120a1c, far: 0x2a1640 }, { sky: 0xd0a8ff, ground: 0x2a1a30, hemi: 0.95, sun: 0xffc8e8, sunI: 0.8 });
       p.mover.pos.set(0, 0.5, 6); p.yaw = 0; p.pitch = 0;
-      p.slots[0] = BR.Weapons.create('smg'); p.slots[1] = null; p.cur = 0;
+      const LO = BR.Profile.loadoutGuns();                      // your loadout (v1.11)
+      p.slots[0] = BR.Weapons.create(LO.primary); p.slots[1] = BR.Weapons.create(LO.secondary); p.cur = 0;
       for (const t in p.ammo) p.ammo[t] = C.ammoCap[t];
       this.root = new THREE.Group(); g.scene.add(this.root);
       this.sphere = new THREE.SphereGeometry(1, 14, 10); this.ico = new THREE.IcosahedronGeometry(1, 0); this.oct = new THREE.OctahedronGeometry(1, 0); this.box = new THREE.BoxGeometry(1, 1, 1); this.cone = new THREE.ConeGeometry(1, 1, 5);

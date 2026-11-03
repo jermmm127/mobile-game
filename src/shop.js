@@ -144,6 +144,10 @@ BR.Profile = {
       stats: Object.assign({ matches: 0, wins: 0, kills: 0, deaths: 0 }, d.stats || {}),
       dev: !!d.dev,
       meleeV: d.meleeV || 0,
+      // v1.11: default loadout (used where a mode hands you guns: Practice, Overdrive, Aim Trainer, Resurgence redeploys)
+      loadout: Object.assign({ primary: 'rifle', secondary: 'pistol' }, d.loadout || {}),
+      starter: !!d.starter,
+      fresh: !d.owned,
     };
     // v1.7.5: the M9 bayonet is the new default knife (one-time switch for older saves)
     if (this.data.meleeV < 2) { this.data.equip.melee = 'bayonet'; this.data.meleeV = 2; }
@@ -161,6 +165,14 @@ BR.Profile = {
     if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
     if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
+    // v1.11: new accounts start with a Recruit kit equipped (rifle camo + tracer) on top of the default loadout
+    if (this.data.fresh && !this.data.starter) {
+      const o = this.data.owned, e = this.data.equip;
+      for (const [k, id] of [['skins', 'carbon'], ['tracers', 'cyan']]) if (!o[k].includes(id)) o[k].push(id);
+      e.skinByGun.rifle = 'carbon'; e.tracerByGun.rifle = 'cyan';
+      this.data.starter = true;
+    }
+    delete this.data.fresh;
     this.unlockRankRewards();
     // Dev accounts: infinite coins and everything unlocked (including items added later)
     if (BR.Accounts && BR.Accounts.isSeededDev()) this.data.dev = true;
@@ -200,6 +212,8 @@ BR.Profile = {
     return this.data.equip[cat] === id;
   },
   infinite() { return !!this.data.dev; },
+  // the guns + knife you start with where a mode arms you (v1.11)
+  loadoutGuns() { const L = this.data.loadout || {}, W = BR.CONFIG.weapons; return { primary: W[L.primary] ? L.primary : 'rifle', secondary: W[L.secondary] ? L.secondary : 'pistol', melee: this.data.equip.melee || 'bayonet' }; },
   coinsLabel() { return this.infinite() ? '∞' : String(this.data.coins); },
   canAfford(price) { return this.infinite() || this.data.coins >= price; },
   buy(cat, id, weapon) {

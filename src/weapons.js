@@ -4,9 +4,12 @@
 // A weapon "instance" is { id, def, mag, cool, reloadT, bloom }.
 // =============================================================================
 BR.Weapons = {
-  create(id, mag) {
-    const def = BR.CONFIG.weapons[id];
-    return { id, def, mag: mag === undefined ? def.mag : mag, cool: 0, reloadT: 0, bloom: 0 };
+  // rar: 0 common .. 5 mythic (BR.RARITY). Above common the instance gets its own scaled stats.
+  create(id, mag, rar) {
+    let def = BR.CONFIG.weapons[id];
+    rar = def.melee ? 0 : Math.max(0, Math.min(5, rar | 0));
+    if (rar > 0) { const R = BR.RARITY[rar]; def = Object.assign({}, def, { dmg: def.dmg * R.dmg, reload: def.reload * R.reload, spread: def.spread * R.spread, bloomMax: def.bloomMax * R.spread, rar }); }
+    return { id, def, rar, mag: mag === undefined ? def.mag : mag, cool: 0, reloadT: 0, bloom: 0 };
   },
 
   update(w, dt, actor) {
