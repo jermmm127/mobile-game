@@ -22,7 +22,7 @@ BR.World = class World {
     this.arena = !!(opts && (opts.arena || opts.halloween));
     this.halloween = !!(opts && opts.halloween);
     if (this.halloween) this.groundCols = [0x2b3820, 0x1f2a17, 0x3a3122];   // dead grass, mud
-    this.size = this.arena ? 92 : M.size;
+    this.size = opts && opts.halloween ? 230 : this.arena ? 92 : M.size;
     this.half = M.size / 2;
     this.gridHalf = this.size / 2;     // collision grid spans this world's own size (the duel arena is 72 m)
     this.cell = M.cell;
@@ -47,79 +47,156 @@ BR.World = class World {
   }
 
   // ------------------------------------------------------------------ zombies: Hollow Graves
-  // A walled Halloween graveyard (about 84 x 84 m): a ruined chapel with a bell tower in the
-  // north, four stone mausoleums, low crumbling walls you can vault, rows of headstones, an
-  // iron-gated south entrance. Zombie spawn holes ring the yard; wall-buy outlines sit on walls.
+  // Four zones joined by buyable doors (collision boxes the zombies mode removes when bought):
+  //   THE GRAVEYARD (start, 84 x 84 m): ruined chapel + bell tower, mausoleums, headstone rows
+  //   PUMPKIN PATCH (east, door 750): barn, crop rows, scarecrows, hay bales
+  //   WITCH'S WOOD (west, door 1000): dense dead trees, the witch's hut + cauldron, standing stones
+  //   RAVENHOLD MANOR (north, door 1250): the ruined manor (Pack-a-Punch in the great hall), courtyard fountain
+  // Each zone lists its zombie spawn graves, wall buys, Mystery Box spots and quest spots.
   generateHalloween() {
-    const STONE = 0x4a4652, STONE2 = 0x3a3742, MOSS = 0x34402c, WOOD = 0x3b2a1e, IRON = 0x1c1b20, BONE = 0x8d8676, ROOF = 0x2a2530;
+    const STONE = 0x4a4652, STONE2 = 0x3a3742, MOSS = 0x34402c, WOOD = 0x3b2a1e, IRON = 0x1c1b20, BONE = 0x8d8676, ROOF = 0x2a2530, HAY = 0x8a7038, BRICK = 0x4a2a2a;
     const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
     const D = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
-    const R = this.rand, L = 42;
+    const R = this.rand, L = 42, WH = 3.2;
     this.pois = [{ x: 0, z: 0, name: 'Hollow Graves', type: 'arena' }];
     this.towns = [];
-    // perimeter: stone wall with a cap and iron fence spikes along the top
-    for (const s of [-1, 1]) {
-      B(-L, 0, s * L - 0.6, L, 3.2, s * L + 0.6, STONE2); D(-L, 3.2, s * L - 0.7, L, 3.45, s * L + 0.7, STONE);
-      B(s * L - 0.6, 0, -L, s * L + 0.6, 3.2, L, STONE2); D(s * L - 0.7, 3.2, -L, s * L + 0.7, 3.45, L, STONE);
-      for (let i = -L + 1; i < L; i += 1.4) { D(i - 0.04, 3.45, s * L - 0.04, i + 0.04, 4.5, s * L + 0.04, IRON); D(s * L - 0.04, 3.45, i - 0.04, s * L + 0.04, 4.5, i + 0.04, IRON); }
-    }
-    // south gate: two pillars with pumpkins on top (placed by the mode) and a closed iron gate
+    this.zmDoors = []; this.zmZones = {}; this.zmBuys = []; this.zmBoxSpots = []; this.zmSpawns = [];
+    const zone = (id, name) => (this.zmZones[id] = { id, name, spawns: [] });
+    zone('graveyard', 'The Graveyard'); zone('patch', 'Pumpkin Patch'); zone('wood', "Witch's Wood"); zone('manor', 'Ravenhold Manor');
+    // a wall along X or Z with door gaps: gaps = [[a0, a1], ...]
+    const wallX = (z, x0, x1, gaps, h) => { let a = x0; for (const [g0, g1] of (gaps || []).concat([[x1, x1]])) { if (g0 > a) { B(a, 0, z - 0.6, g0, h || WH, z + 0.6, STONE2); D(a, h || WH, z - 0.7, g0, (h || WH) + 0.25, z + 0.7, STONE); for (let i = a + 0.6; i < g0; i += 1.4) D(i - 0.04, (h || WH) + 0.25, z - 0.04, i + 0.04, (h || WH) + 1.3, z + 0.04, IRON); } a = g1; } };
+    const wallZ = (x, z0, z1, gaps, h) => { let a = z0; for (const [g0, g1] of (gaps || []).concat([[z1, z1]])) { if (g0 > a) { B(x - 0.6, 0, a, x + 0.6, h || WH, g0, STONE2); D(x - 0.7, h || WH, a, x + 0.7, (h || WH) + 0.25, g0, STONE); for (let i = a + 0.6; i < g0; i += 1.4) D(x - 0.04, (h || WH) + 0.25, i - 0.04, x + 0.04, (h || WH) + 1.3, i + 0.04, IRON); } a = g1; } };
+    const door = (id, name, cost, x0, z0, x1, z1, from, to) => { const box = B(x0, 0, z0, x1, 4.2, z1, WOOD, { hidden: true }); this.zmDoors.push({ id, name, cost, x0, z0, x1, z1, from, to, box, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2 }); };
+    const spawnRing = (zid, pts) => { for (const [x, z] of pts) { this.zmZones[zid].spawns.push({ x, z }); this.zmSpawns.push({ x, z, zone: zid }); } };
+    const buy = (zid, wid, x, y, z, nx, nz) => this.zmBuys.push([wid, x, y, z, nx, nz, zid]);
+
+    // ======================= THE GRAVEYARD (start) =======================
+    wallX(L, -L, L, [[-3.6, 3.6]]); wallX(-L, -L, L, [[17, 23]]); wallZ(L, -L, L, [[-3, 3]]); wallZ(-L, -L, L, [[-3, 3]]);
+    door('patch', 'Pumpkin Patch', 750, L - 0.7, -3, L + 0.7, 3, 'graveyard', 'patch');
+    door('wood', "Witch's Wood", 1000, -L - 0.7, -3, -L + 0.7, 3, 'graveyard', 'wood');
+    door('manor', 'Ravenhold Manor', 1250, 17, -L - 0.7, 23, -L + 0.7, 'graveyard', 'manor');
+    // south gate (closed iron gate between pillars)
     for (const x of [-4.5, 4.5]) { B(x - 0.9, 0, L - 1.2, x + 0.9, 4.6, L + 1.2, STONE); D(x - 1.05, 4.6, L - 1.35, x + 1.05, 4.9, L + 1.35, STONE2); }
+    B(-3.6, 0, L - 0.15, 3.6, 3.9, L + 0.15, IRON, { hidden: true });
     for (let x = -3.4; x <= 3.4; x += 0.45) D(x - 0.05, 0, L - 0.1, x + 0.05, 3.9, L + 0.1, IRON);
     D(-3.6, 3.0, L - 0.12, 3.6, 3.15, L + 0.12, IRON); D(-3.6, 1.0, L - 0.12, 3.6, 1.15, L + 0.12, IRON);
-    // ruined chapel (north): walls with door gaps, broken window holes, half-collapsed roof, bell tower
+    // ruined chapel + bell tower
     const cx = 0, cz = -22, cw = 9, cd = 7, ch = 6.5, t = 0.6;
-    B(cx - cw, 0, cz - cd, cx + cw, ch, cz - cd + t, STONE);                                    // back wall
-    B(cx - cw, 0, cz + cd - t, cx - 2, ch, cz + cd, STONE); B(cx + 2, 0, cz + cd - t, cx + cw, ch * 0.8, cz + cd, STONE);   // front with a door
+    B(cx - cw, 0, cz - cd, cx + cw, ch, cz - cd + t, STONE);
+    B(cx - cw, 0, cz + cd - t, cx - 2, ch, cz + cd, STONE); B(cx + 2, 0, cz + cd - t, cx + cw, ch * 0.8, cz + cd, STONE);
     B(cx - 2, 3.6, cz + cd - t, cx + 2, ch, cz + cd, STONE);
-    B(cx - cw, 0, cz - cd, cx - cw + t, ch, cz - 1.6, STONE); B(cx - cw, 0, cz + 1.6, cx - cw + t, ch * 0.7, cz + cd, STONE);  // west with a side door
+    B(cx - cw, 0, cz - cd, cx - cw + t, ch, cz - 1.6, STONE); B(cx - cw, 0, cz + 1.6, cx - cw + t, ch * 0.7, cz + cd, STONE);
     B(cx + cw - t, 0, cz - cd, cx + cw, ch * 0.85, cz - 1.6, STONE); B(cx + cw - t, 0, cz + 1.6, cx + cw, ch, cz + cd, STONE);
-    D(cx - cw - 0.2, ch, cz - cd - 0.2, cx + 1, ch + 0.4, cz + cd + 0.2, ROOF);              // what's left of the roof
+    D(cx - cw - 0.2, ch, cz - cd - 0.2, cx + 1, ch + 0.4, cz + cd + 0.2, ROOF);
     D(cx - 1, ch - 0.6, cz - cd, cx - 0.4, ch, cz + cd, WOOD); D(cx + 3, ch - 0.6, cz - cd, cx + 3.6, ch * 0.85, cz + cd, WOOD);
-    B(cx - 3, 0, cz - cd + t, cx + 3, 1.0, cz - cd + 2.2, STONE2);                            // altar step
-    D(cx - 0.15, 1.0, cz - cd + 1.0, cx + 0.15, 2.6, cz - cd + 1.3, BONE); D(cx - 0.7, 2.0, cz - cd + 1.0, cx + 0.7, 2.3, cz - cd + 1.3, BONE);   // cross
-    // bell tower on the north-east corner (climb it with the grapple)
+    B(cx - 3, 0, cz - cd + t, cx + 3, 1.0, cz - cd + 2.2, STONE2);
+    D(cx - 0.15, 1.0, cz - cd + 1.0, cx + 0.15, 2.6, cz - cd + 1.3, BONE); D(cx - 0.7, 2.0, cz - cd + 1.0, cx + 0.7, 2.3, cz - cd + 1.3, BONE);
     B(cx + cw - 3.5, 0, cz - cd - 3.5, cx + cw + 0.5, 13, cz - cd + 0.5, STONE2);
     D(cx + cw - 3.8, 13, cz - cd - 3.8, cx + cw + 0.8, 13.5, cz - cd + 0.8, STONE);
     D(cx + cw - 3.0, 13.5, cz - cd - 3.0, cx + cw, 15.5, cz - cd, ROOF); D(cx + cw - 2.2, 15.5, cz - cd - 2.2, cx + cw - 0.8, 17.5, cz - cd - 0.8, ROOF);
-    // mausoleums: stepped stone roofs and a dark doorway
     const crypt = (x, z, rot) => {
       const w = 3, d = 3.5, h = 3.6;
       B(x - w, 0, z - d, x + w, h, z + d, STONE);
       D(x - w - 0.3, h, z - d - 0.3, x + w + 0.3, h + 0.35, z + d + 0.3, STONE2); D(x - w + 0.5, h + 0.35, z - d + 0.4, x + w - 0.5, h + 0.9, z + d - 0.4, STONE2);
       D(x - w + 1.4, h + 0.9, z - d + 1, x + w - 1.4, h + 1.4, z + d - 1, ROOF);
       const fz = rot > 0 ? z + d : z - d, n = rot > 0 ? 1 : -1;
-      D(x - 1.1, 0, fz - 0.05 * n, x + 1.1, 2.4, fz + 0.06 * n, 0x0c0b10);                 // black doorway
-      D(x - 1.5, 2.4, fz - 0.05 * n, x + 1.5, 2.7, fz + 0.2 * n, BONE);                     // lintel
+      D(x - 1.1, 0, fz - 0.05 * n, x + 1.1, 2.4, fz + 0.06 * n, 0x0c0b10);
+      D(x - 1.5, 2.4, fz - 0.05 * n, x + 1.5, 2.7, fz + 0.2 * n, BONE);
       for (const sx of [-1.4, 1.4]) D(x + sx - 0.22, 0, fz, x + sx + 0.22, 2.4, fz + 0.3 * n, STONE2);
     };
     crypt(-25, -18, 1); crypt(25, -18, 1); crypt(-25, 20, -1); crypt(25, 20, -1);
-    // low crumbling walls (vaultable) + coffins + a dead-tree stump ring
     const lw = (x0, z0, x1, z1) => B(x0, 0, z0, x1, 1.0 + R() * 0.2, z1, MOSS);
-    lw(-14, 4, -6, 4.8); lw(6, 4, 14, 4.8); lw(-16, -6, -15.2, 2); lw(15.2, -6, 16, 2); lw(-10, 26, -3, 26.8); lw(3, 26, 10, 26.8);
-    lw(-36, -2, -30, -1.2); lw(30, 1.2, 36, 2);
-    for (const [x, z, a] of [[-8, 14, 0], [9, 13, 1], [0, 33, 0], [-30, 32, 1], [31, -31, 0]]) {
-      if (a) B(x - 0.5, 0, z - 1.1, x + 0.5, 0.75, z + 1.1, WOOD); else B(x - 1.1, 0, z - 0.5, x + 1.1, 0.75, z + 0.5, WOOD);
-    }
-    // headstones (visual only: rows across the yard, tilted a little by height variety) + grave mounds
-    for (let gx = -36; gx <= 36; gx += 4.2) for (let gz = -36; gz <= 38; gz += 5.2) {
-      if (Math.abs(gx) < 11 && gz > -31 && gz < -13) continue;             // chapel
-      if ((Math.abs(Math.abs(gx) - 25) < 5) && (Math.abs(Math.abs(gz) - 19) < 6)) continue;   // crypts
-      if (Math.abs(gx) < 6 && gz > 6 && gz < 30) continue;                 // the path up the middle
-      if (R() < 0.25) continue;
+    lw(-14, 4, -6, 4.8); lw(6, 4, 14, 4.8); lw(-16, -6, -15.2, 2); lw(15.2, -6, 16, 2); lw(-10, 26, -3, 26.8); lw(3, 26, 10, 26.8); lw(-36, -2, -30, -1.2); lw(30, 1.2, 36, 2);
+    for (const [x, z, a] of [[-8, 14, 0], [9, 13, 1], [0, 33, 0], [-30, 32, 1], [31, -31, 0]]) { if (a) B(x - 0.5, 0, z - 1.1, x + 0.5, 0.75, z + 1.1, WOOD); else B(x - 1.1, 0, z - 0.5, x + 1.1, 0.75, z + 0.5, WOOD); }
+    const stones = (x0, x1, z0, z1, skip) => { for (let gx = x0; gx <= x1; gx += 4.2) for (let gz = z0; gz <= z1; gz += 5.2) {
+      if (skip && skip(gx, gz)) continue; if (R() < 0.25) continue;
       const x = gx + (R() - 0.5) * 1.2, z = gz + (R() - 0.5) * 1.2, hh = 0.6 + R() * 0.7, ww = 0.35 + R() * 0.25;
-      D(x - ww, 0, z - 0.09, x + ww, hh, z + 0.09, R() < 0.5 ? STONE : 0x5a5662);
-      if (R() < 0.35) D(x - 0.1, hh, z - 0.08, x + 0.1, hh + 0.35, z + 0.08, STONE);
-      D(x - 0.45, 0, z + 0.2, x + 0.45, 0.16, z + 1.6, 0x2a2018);          // dirt mound
+      D(x - ww, 0, z - 0.09, x + ww, hh, z + 0.09, R() < 0.5 ? STONE : 0x5a5662); if (R() < 0.35) D(x - 0.1, hh, z - 0.08, x + 0.1, hh + 0.35, z + 0.08, STONE);
+      D(x - 0.45, 0, z + 0.2, x + 0.45, 0.16, z + 1.6, 0x2a2018); } };
+    stones(-36, 36, -36, 38, (gx, gz) => (Math.abs(gx) < 11 && gz > -31 && gz < -13) || (Math.abs(Math.abs(gx) - 25) < 5 && Math.abs(Math.abs(gz) - 19) < 6) || (Math.abs(gx) < 6 && gz > 6 && gz < 30) || (Math.abs(gz) < 6 && Math.abs(gx) > 36) || (gx > 14 && gx < 26 && gz < -34));
+    const ring = []; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + 0.2, r = 33 + (i % 3) * 2; ring.push([Math.cos(a) * r, Math.sin(a) * r]); }
+    spawnRing('graveyard', ring.concat([[-12, -20], [12, -30], [-20, 8], [20, 8]]));
+    buy('graveyard', 'smg', cx - 6, 1.7, cz + cd + 0.02, 0, 1); buy('graveyard', 'shotgun', cx + 6, 1.7, cz + cd + 0.02, 0, 1);
+    buy('graveyard', 'rifle', -25, 1.7, -18 + 3.5 + 0.02, 0, 1); buy('graveyard', 'revolver', 25, 1.7, -18 + 3.5 + 0.02, 0, 1);
+    buy('graveyard', 'holoar', -25, 1.7, 20 - 3.5 - 0.02, 0, -1); buy('graveyard', 'pistol', 25, 1.7, 20 - 3.5 - 0.02, 0, -1);
+    this.zmBoxSpots.push({ x: 0, z: 10, yaw: 0, zone: 'graveyard' }, { x: -25, z: -8, yaw: Math.PI / 2, zone: 'graveyard' });
+
+    // ======================= PUMPKIN PATCH (east) =======================
+    const PX0 = L, PX1 = 100, PZ = 34;
+    wallX(-PZ, PX0, PX1); wallX(PZ, PX0, PX1); wallZ(PX1, -PZ, PZ); wallZ(PX0, -PZ, -L + 0.1); wallZ(PX0, L - 0.1, PZ);
+    // barn: open front facing west, hayloft, roof
+    const bx0 = 74, bx1 = 92, bz0 = -24, bz1 = -8;
+    B(bx0, 0, bz0, bx1, 7, bz0 + 0.5, BRICK); B(bx0, 0, bz1 - 0.5, bx1, 7, bz1, BRICK); B(bx1 - 0.5, 0, bz0, bx1, 7, bz1, BRICK);
+    B(bx0, 0, bz0, bx0 + 0.5, 7, bz0 + 5, BRICK); B(bx0, 0, bz1 - 5, bx0 + 0.5, 7, bz1, BRICK); B(bx0, 5.2, bz0 + 5, bx0 + 0.5, 7, bz1 - 5, BRICK);
+    D(bx0 - 0.4, 7, bz0 - 0.4, bx1 + 0.4, 7.4, bz1 + 0.4, 0x3a1a1a); D(bx0 + 1, 7.4, bz0 + 1, bx1 - 1, 8.6, bz1 - 1, 0x3a1a1a);
+    B(bx0 + 8, 3.2, bz0 + 0.5, bx1 - 0.5, 3.5, bz1 - 0.5, WOOD);                                   // hayloft floor
+    for (let i = 0; i < 6; i++) B(bx0 + 9 + (i % 3) * 2.6, 3.5, bz0 + 2 + Math.floor(i / 3) * 5, bx0 + 11 + (i % 3) * 2.6, 4.6, bz0 + 4 + Math.floor(i / 3) * 5, HAY);
+    for (let i = 0; i < 5; i++) B(bx0 + 2 + i * 1.6, 0, bz1 - 3, bx0 + 3.3 + i * 1.6, 1.4 * (1 + (i % 2)), bz1 - 1.2, HAY);   // stairs of hay up
+    // crop rows, hay bales, scarecrow posts, a wagon
+    for (let x = 50; x < 96; x += 3.2) for (let z = 4; z < 30; z += 2.6) if (R() < 0.85) D(x - 0.6, 0, z - 0.25, x + 0.6, 0.25, z + 0.25, 0x2a3a18);
+    for (const [x, z] of [[56, -12], [62, -26], [58, 20], [70, 10], [90, 22], [96, -2], [52, -28]]) B(x - 1, 0, z - 0.7, x + 1, 1.3, z + 0.7, HAY);
+    for (const [x, z] of [[60, 12], [80, 26], [88, 6]]) { D(x - 0.08, 0, z - 0.08, x + 0.08, 2.6, z + 0.08, WOOD); D(x - 0.9, 2.0, z - 0.06, x + 0.9, 2.15, z + 0.06, WOOD); }
+    B(64, 0, -6, 69, 1.4, -3.6, WOOD); D(64.2, 0, -6.3, 65.2, 1.0, -3.3, 0x1c1b20);
+    for (const [x0, z0, x1, z1] of [[48, -16, 56, -15.4], [60, 0, 68, 0.6], [80, 0, 88, 0.6]]) B(x0, 0, z0, x1, 1.0, z1, WOOD);   // fences (vault)
+    spawnRing('patch', [[96, 30], [96, -30], [70, 31], [70, -31], [98, 4], [50, 30], [50, -30]]);
+    buy('patch', 'lmg', bx0 + 4, 1.7, bz1 + 0.02, 0, 1); buy('patch', 'hunter', bx1 + 0.02, 1.7, -16, 1, 0); buy('patch', 'shotgun', 69.1, 1.7, -4.8, 1, 0);
+    this.zmBoxSpots.push({ x: 84, z: -16, yaw: Math.PI / 2, zone: 'patch' });
+
+    // ======================= WITCH'S WOOD (west) =======================
+    const WX0 = -100, WX1 = -L;
+    wallX(-PZ, WX0, WX1); wallX(PZ, WX0, WX1); wallZ(WX0, -PZ, PZ); wallZ(WX1, -PZ, -L + 0.1); wallZ(WX1, L - 0.1, PZ);
+    // witch's hut: crooked walls, doorway east, pointed roof, chimney
+    const hx = -78, hz = 0;
+    B(hx - 5, 0, hz - 5, hx + 5, 4.5, hz - 4.5, WOOD); B(hx - 5, 0, hz + 4.5, hx + 5, 4.5, hz + 5, WOOD); B(hx - 5, 0, hz - 5, hx - 4.5, 4.5, hz + 5, WOOD);
+    B(hx + 4.5, 0, hz - 5, hx + 5, 4.5, hz - 1.4, WOOD); B(hx + 4.5, 0, hz + 1.4, hx + 5, 4.5, hz + 5, WOOD); B(hx + 4.5, 3, hz - 1.4, hx + 5, 4.5, hz + 1.4, WOOD);
+    D(hx - 5.6, 4.5, hz - 5.6, hx + 5.6, 5.0, hz + 5.6, 0x241a14); D(hx - 4, 5.0, hz - 4, hx + 4, 6.5, hz + 4, 0x241a14); D(hx - 2.4, 6.5, hz - 2.4, hx + 2.4, 8.2, hz + 2.4, 0x241a14); D(hx - 0.8, 8.2, hz - 0.8, hx + 0.8, 10.4, hz + 0.8, 0x241a14);
+    B(hx - 4, 4.5, hz + 2, hx - 2.8, 9, hz + 3.2, STONE2);
+    B(hx + 7, 0, hz - 1.2, hx + 9.4, 0.9, hz + 1.2, IRON);                                        // the cauldron (dressed by the mode)
+    // standing stones (circle) and the dead-tree thicket (trunks added by the mode)
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, x = -62 + Math.cos(a) * 7, z = -20 + Math.sin(a) * 7; B(x - 0.6, 0, z - 0.4, x + 0.6, 3 + (i % 3) * 0.6, z + 0.4, STONE2); }
+    B(-63, 0, -21, -61, 0.8, -19, STONE);                                                          // altar stone
+    spawnRing('wood', [[-96, 30], [-96, -30], [-70, 31], [-70, -31], [-98, 4], [-50, 30], [-50, -30]]);
+    buy('wood', 'dmr', hx - 5.02, 1.7, hz, -1, 0); buy('wood', 'sniper', -62 + 7 * Math.cos(0) + 0.62, 1.7, -20, 1, 0); buy('wood', 'smg', hx, 1.7, hz + 5.02, 0, 1);
+    this.zmBoxSpots.push({ x: -62, z: 12, yaw: 0, zone: 'wood' });
+
+    // ======================= RAVENHOLD MANOR (north) =======================
+    const MZ0 = -100, MZ1 = -L, MX = 34;
+    wallZ(-MX, MZ0, MZ1); wallZ(MX, MZ0, MZ1); wallX(MZ0, -MX, MX); wallX(MZ1, -MX, -L + 0.1); wallX(MZ1, L - 0.1, MX);
+    // the manor: a central great hall (Pack-a-Punch) with two wings, doorways front and sides
+    const m0 = -92, m1 = -70;
+    B(-14, 0, m0, 14, 9, m0 + 0.6, BRICK);                                                         // back
+    B(-14, 0, m1 - 0.6, -3, 9, m1, BRICK); B(3, 0, m1 - 0.6, 14, 9, m1, BRICK); B(-3, 5, m1 - 0.6, 3, 9, m1, BRICK);   // front with the great doors
+    B(-14, 0, m0, -13.4, 9, m1, BRICK); B(13.4, 0, m0, 14, 9, m1, BRICK);
+    D(-14.5, 9, m0 - 0.5, 14.5, 9.5, m1 + 0.5, ROOF); D(-12, 9.5, m0 + 1.5, 12, 12, m1 - 1.5, ROOF); D(-9, 12, m0 + 4, 9, 14, m1 - 4, ROOF);
+    for (const s of [-1, 1]) {                                                                     // wings
+      const w0 = s * 14, w1 = s * 28;
+      B(Math.min(w0, w1), 0, m0 + 4, Math.max(w0, w1), 6, m0 + 4.6, BRICK); B(Math.min(w0, w1), 0, m1 - 4.6, Math.max(w0, w1), 6, m1 - 4, BRICK);
+      B(w1 - 0.3, 0, m0 + 4, w1 + 0.3, 6, m0 + 9, BRICK); B(w1 - 0.3, 0, m1 - 9, w1 + 0.3, 6, m1 - 4, BRICK);
+      B(w0 - 0.3, 0, m0 + 4.6, w0 + 0.3, 6, m0 + 8, BRICK); B(w0 - 0.3, 0, m1 - 8, w0 + 0.3, 6, m1 - 4.6, BRICK);
+      D(Math.min(w0, w1) - 0.4, 6, m0 + 3.6, Math.max(w0, w1) + 0.4, 6.4, m1 - 3.6, ROOF);
+      for (let k = 0; k < 3; k++) D(s * (16 + k * 4) - 0.6, 2, m1 - 4.05, s * (16 + k * 4) + 0.6, 4, m1 - 3.95, 0xffb24a);  // lit windows
     }
-    // zombie spawn holes around the yard (broken graves), the player's start, and wall-buy spots
-    this.zmSpawns = [];
-    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2 + 0.2, r = 33 + (i % 3) * 2; this.zmSpawns.push({ x: Math.cos(a) * r, z: Math.sin(a) * r }); }
-    this.zmSpawns.push({ x: -12, z: -20 }, { x: 12, z: -30 }, { x: -20, z: 8 }, { x: 20, z: 8 });
+    for (let k = -2; k <= 2; k++) if (k) D(k * 4.5 - 0.7, 4.5, m1 + 0.02, k * 4.5 + 0.7, 7, m1 + 0.08, 0xffb24a);
+    // courtyard fountain + hedges
+    B(-3, 0, -58, 3, 0.9, -52, STONE); D(-2.5, 0.9, -57.5, 2.5, 1.0, -52.5, 0x3a5a8a); B(-0.4, 0.9, -55.4, 0.4, 3.0, -54.6, STONE);
+    for (const [x0, z0, x1, z1] of [[-28, -64, -16, -63], [16, -64, 28, -63], [-28, -50, -16, -49], [16, -50, 28, -49]]) B(x0, 0, z0, x1, 1.4, z1, 0x1e2a16);
+    spawnRing('manor', [[-30, -96], [30, -96], [-30, -48], [30, -48], [0, -97], [-31, -72], [31, -72]]);
+    buy('manor', 'hunter', -14.02, 1.7, -80, -1, 0); buy('manor', 'lmg', 14.02, 1.7, -80, 1, 0); buy('manor', 'dmr', -8, 1.7, m1 + 0.02, 0, 1); buy('manor', 'rifle', 8, 1.7, m1 + 0.02, 0, 1);
+    this.zmBoxSpots.push({ x: 0, z: -60, yaw: 0, zone: 'manor' });
+    this.zmPap = { x: 0, z: -86, yaw: 0, zone: 'manor' };
+    // quest spots (story): journal pages in each zone, ritual candles, the bell tower top, the cauldron, the altar
+    this.zmQuest = {
+      pages: [{ x: -7, z: -27.5 }, { x: 85, z: -12 }, { x: -76, z: 3 }, { x: 10, z: -88 }, { x: -30, z: 30 }],
+      candles: [{ x: -36, z: -36 }, { x: 36, z: -36 }, { x: 36, z: 36 }, { x: -36, z: 36 }],
+      bell: { x: 7.5, y: 13, z: -30.5 }, cauldron: { x: hx + 8.2, z: hz }, altar: { x: 0, z: -27.2 }, stones: { x: -62, z: -20 },
+    };
     this.spawns = [{ x: 0, z: 18, yaw: 0 }];
-    // wall buys: [weapon, x, y, z, normal x, normal z]
-    this.zmBuys = [['smg', cx - 6, 1.7, cz + cd + 0.02, 0, 1], ['shotgun', cx + 6, 1.7, cz + cd + 0.02, 0, 1], ['rifle', -25, 1.7, -18 + 3.5 + 0.02, 0, 1],
-      ['lmg', 25, 1.7, 20 - 3.5 - 0.02, 0, -1], ['dmr', 25, 1.7, -18 + 3.5 + 0.02, 0, 1], ['holoar', -25, 1.7, 20 - 3.5 - 0.02, 0, -1]];
+  }
+  // remove a collision box (a bought door)
+  removeBox(b) {
+    if (!b) return;
+    const i = this.boxes.indexOf(b); if (i >= 0) this.boxes.splice(i, 1);
+    for (const cell of this.cells) { const k = cell.indexOf(b); if (k >= 0) cell.splice(k, 1); }
   }
 
   // ------------------------------------------------------------------ duel arena

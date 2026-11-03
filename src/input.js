@@ -249,14 +249,14 @@ BR.Keybinds = {
     ['fire', 'Fire', 'Combat'], ['ads', 'Aim down sights', 'Combat'], ['reload', 'Reload', 'Combat'], ['inspect', 'Inspect', 'Combat'],
     ['grenade', 'Shockwave grenade', 'Combat'], ['stim', 'Stim', 'Combat'],
     ['slot0', 'Weapon 1', 'Weapons'], ['slot1', 'Weapon 2', 'Weapons'], ['slot2', 'Knife slot', 'Weapons'], ['swap', 'Next weapon', 'Weapons'], ['knife', 'Knife toggle', 'Weapons'],
-    ['interact', 'Open chest / swap gun', 'Other'], ['map', 'Map', 'Other'], ['spawnmenu', 'Spawn menu (practice)', 'Other'], ['pause', 'Pause', 'Other'],
+    ['interact', 'Open chest / swap gun / buy', 'Other'], ['journal', 'Zombies journal', 'Other'], ['map', 'Map', 'Other'], ['spawnmenu', 'Spawn menu (practice)', 'Other'], ['pause', 'Pause', 'Other'],
   ],
   DEFAULTS: {
     forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
     jump: ['Space', null], crouch: ['ShiftLeft', 'KeyC'], grapple: ['KeyG', 'Mouse1'],
     fire: ['Mouse0', null], ads: ['Mouse2', null], reload: ['KeyR', null], inspect: ['KeyV', null], grenade: ['KeyT', null], stim: ['KeyF', null],
     slot0: ['Digit1', null], slot1: ['Digit2', null], slot2: ['Digit3', null], swap: ['KeyQ', 'WheelDown'], knife: ['KeyX', null],
-    interact: ['KeyE', null], map: ['KeyM', 'Tab'], spawnmenu: ['KeyB', null], pause: ['Escape', 'KeyP'],
+    interact: ['KeyE', null], journal: ['KeyJ', null], map: ['KeyM', 'Tab'], spawnmenu: ['KeyB', null], pause: ['Escape', 'KeyP'],
   },
   capturing: null,
   load() {

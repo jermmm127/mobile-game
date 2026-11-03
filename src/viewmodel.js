@@ -192,7 +192,17 @@
       if (this.vmNade) this.scene.remove(this.vmNade);
       this.vmNade = BR.Shockwave.model(); this.vmNade.scale.setScalar(0.55); this.vmNade.visible = false; this.scene.add(this.vmNade);
 
-      this.lastWeapon = null;
+      this.lastWeapon = null; this.papModels = null;
+    }
+
+    // Pack-a-Punched guns (zombies): the same gun model in the animated Ravenhold camo, built on first use
+    papHolder(id) {
+      this.papModels = this.papModels || {};
+      if (!this.papModels[id]) {
+        const eq = BR.Profile.data.equip, m = BR.Models.weapon(id, 'pap', 'none', (eq.blueprints || {})[id]);
+        const holder = new THREE.Group(); holder.add(m); holder.userData.model = m; holder.visible = false; this.root.add(holder); this.papModels[id] = holder;
+      }
+      return this.papModels[id];
     }
 
     // ---- events from the game -------------------------------------------
@@ -223,6 +233,7 @@
     update(dt, lookDX, lookDY) {
       const game = this.game, p = game.player, w = p.weapon, m = p.mover, Mv = BR.CONFIG.move;
       for (const id in this.models) this.models[id].visible = false;
+      if (this.papModels) for (const id in this.papModels) this.papModels[id].visible = false;
       // bolt cycle timer (runs even while scoped, when the gun is hidden)
       if (this.boltDelay > 0) { this.boltDelay -= dt; if (this.boltDelay <= 0) this.boltT = this.boltDur; }
       else if (this.boltT > 0) this.boltT = Math.max(0, this.boltT - dt);
@@ -232,7 +243,7 @@
       if (!w || !w.def.pump) { this.pumpT = 0; this.pumpDelay = 0; }
       if (!w || m.dropping || (p.ads && w.def.scope) || (p.ads && w.def.optic && this.adsW > 0.8)) { this.hide(); if (p.ads && w && w.def.optic) this.adsW = Math.min(1, this.adsW + dt * 6); return; }
       this.root.visible = true;
-      const holder = this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
+      const holder = w.def.pap ? this.papHolder(w.id) : this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
       holder.visible = true;
 
       // Gloves can differ per weapon: swap the glove meshes in place (keeps the wrist launcher etc.)

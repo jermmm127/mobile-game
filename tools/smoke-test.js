@@ -756,6 +756,9 @@ const server = http.createServer((req, res) => {
       Z.round = 9; Z.toSpawn = 0; killAll(); for (let i = 0; i < 60 * 3; i++) g.update(1 / 60);
       for (let i = 0; i < 60 * 10 && Z.round < 10; i++) g.update(1 / 60);
       for (let i = 0; i < 60 * 3; i++) g.update(1 / 60);
+      zr.cutscene = !!Z.cut && document.body.classList.contains('zm-cinema') && document.getElementById('zm-cut').classList.contains('on');
+      for (let i = 0; i < 60 * 7; i++) g.update(1 / 60);
+      zr.cutEnd = !Z.cut && !document.body.classList.contains('zm-cinema');
       zr.boss = Z.round === 10 && !!Z.boss && Z.boss.boss === 'pumpkin' && !document.getElementById('zm-boss').classList.contains('hidden');
       // boss takes damage, dies, pays out
       if (Z.boss) { const bo = Z.boss; pts0 = Z.points; g.applyDamage(bo, p, 50, true, { x: bo.pos.x, y: bo.pos.y + 3.4, z: bo.pos.z }, 'rifle'); const hit = bo.health < bo.maxHp;
@@ -783,6 +786,40 @@ const server = http.createServer((req, res) => {
       zr.death = g.state === 'end' && g.result && g.result.zombies && /ROUND/.test(document.getElementById('end-place').textContent);
       g.hud.show('end', false);
       out.zm = zr; }
+    // v1.9.1: ADS crosshair, zombie highlight, doors, box, Pack-a-Punch, counter, quests, journal, zombie models
+    { const z2 = {};
+      g.startMatch({ practice: true }); const pa = g.player; pa.mover.dropping = false; pa.slots[0] = BR.Weapons.create('rifle'); pa.cur = 0; g.state = 'playing';
+      g.input.ads = true; for (let i = 0; i < 40; i++) g.update(1 / 60); z2.adsXh = !document.getElementById('crosshair').classList.contains('hide'); g.input.ads = false; g.update(1 / 60);
+      g.settings.highlight = 'bright'; g.startZombies(); const p = g.player, Z = g.zm; p.takeDamage = () => false;
+      const step = s => { for (let i = 0; i < s * 60; i++) g.update(1 / 60); };
+      const at = (x, z) => { p.mover.pos.set(x, g.world.groundAt(x, z, 3), z); p.mover.vel.set(0, 0, 0); g.update(1 / 60); };
+      const press = () => { g.input.press('interact'); g.update(1 / 60); };
+      step(4.5);
+      const zz = Z.zombies.find(z => z.alive); let tinted = false; if (zz) zz.mesh.traverse(o => { if (o.isMesh && o.material && o.material.emissive && o.material.emissive.r > 0.04) tinted = true; });
+      z2.highlight = tinted; g.settings.highlight = 'subtle';
+      z2.kinds = new Set(Z.zombies.map(z => z.mesh.userData.kind)).size >= 1 && !!Z.zombies[0].mesh.userData.mat.map;
+      z2.left = /ZOMBIES\s*\d+/.test(document.getElementById('zm-left').textContent) && !document.getElementById('zm-left').classList.contains('hidden');
+      z2.map = g.world.size >= 200 && Z.doors.length === 3 && Z.buys.length >= 12 && g.world.zmBoxSpots.length >= 4 && !!g.world.zmPap;
+      // doors: locked spawns stay closed until bought
+      z2.spawnsLocked = Z.zombies.every(z => BR.zombieZoneAt(z.pos.x, z.pos.z) === 'graveyard');
+      Z.points = 30000; const d = Z.doors.find(x => x.to === 'patch'); at(d.cx - 2, d.cz); press();
+      z2.door = d.open && Z.unlocked.has('patch') && !g.world.boxes.includes(d.box) && Z.points === 30000 - d.cost;
+      // box: roll, offer, take
+      const B = Z.box; at(B.grp.position.x + 1.6, B.grp.position.z); press(); const rolled = B.state === 'rolling'; step(3.6); const offered = B.state === 'offer' && !!B.wid; const w = B.wid; press();
+      z2.box = rolled && offered && p.hasWeapon(w) && B.state === 'idle' && B.beam.visible !== false;
+      // pack-a-punch (open the manor first)
+      const dm = Z.doors.find(x => x.to === 'manor'); at(dm.cx, dm.cz + 2); press(); at(Z.pap.x, Z.pap.z); p.cur = 0; const before = p.slots[0].def.dmg; g.update(1 / 60); press();
+      z2.pap = !!p.slots[0].def.pap && p.slots[0].def.dmg > before * 2 && p.slots[0].def.name !== BR.CONFIG.weapons[p.slots[0].id].name;
+      g.vmr.update(1 / 60, 0, 0); z2.papModel = !!(g.vmr.papModels && g.vmr.papModels[p.slots[0].id]) && g.tracerColor(p) === 0xc06bff;
+      // quests every 5 rounds -> reward + lore in the journal
+      Z.round = 4; Z.toSpawn = 0; for (const z of Z.zombies) if (z.alive) g.kill(z, p, 'pistol', false); step(9.5);
+      const q = Z.quest; z2.questStart = !!q && q.def.id === 'pages' && q.spots.length === q.goal && !document.getElementById('zm-quest').classList.contains('hidden');
+      const pts = Z.points, jn = Z.journal.length; if (q) for (const sp of q.spots) at(sp.x, sp.z); step(0.2);
+      z2.questDone = !Z.quest && Z.points > pts && Z.journal.length === jn + 1 && /STORY/.test(document.getElementById('zm-lore').textContent);
+      g.input.press('journal'); g.update(1 / 60); z2.journal = !document.getElementById('zm-journal').classList.contains('hidden') && document.querySelectorAll('#zm-journal .zj-e').length >= 2; g.input.press('journal'); g.update(1 / 60);
+      z2.story = Object.keys(BR.ZOMBIE_STORY.bosses).length === 4 && BR.ZOMBIE_STORY.lore.length >= 8 && BR.ZOMBIE_QUESTS.length >= 8;
+      z2.kb = BR.Keybinds.get().journal[0] === 'KeyJ';
+      out.z2 = z2; g.state = 'menu'; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -912,6 +949,11 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['zombies boss intro cutscene (letterbox + title card), then the fight', v17.zm.cutscene && v17.zm.cutEnd],
+    ['crosshair stays up while aiming; zombies take the enemy highlight; realistic textured zombies; zombies-left counter', v17.z2.adsXh && v17.z2.highlight && v17.z2.kinds && v17.z2.left],
+    ['zombies map: 4 zones, 3 buyable doors (spawns open with them), 12+ wall buys', v17.z2.map && v17.z2.spawnsLocked && v17.z2.door],
+    ['Mystery Box (beam, roll, take) and Pack-a-Punch (upgrade, camo, tracer)', v17.z2.box && v17.z2.pap && v17.z2.papModel],
+    ['quests every 5 rounds reward points + story lore in the journal (J)', v17.z2.questStart && v17.z2.questDone && v17.z2.journal && v17.z2.story && v17.z2.kb],
     ['zombies: Halloween map, round 1 starts, zombies rise and chase the player and swipe', v17.zm.card && v17.zm.map && v17.zm.round1 && v17.zm.chase && v17.zm.swipe],
     ['zombies: points + kills, rounds advance and get stronger, boss on round 10 with a health bar', v17.zm.points && v17.zm.kills && v17.zm.round2 && v17.zm.scales && v17.zm.boss && v17.zm.bossDies],
     ['zombies: all four bosses use their moves; power-ups, wall buys, death ends the run', Object.values(v17.zm.moves).every(n => n >= 2) && v17.zm.powers && v17.zm.buy && v17.zm.death],

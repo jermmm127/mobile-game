@@ -126,6 +126,14 @@ BR.Models = (function () {
         const g = c.createRadialGradient(x, y - 4, 1, x, y, 11); g.addColorStop(0, '#9dffcf'); g.addColorStop(0.5, '#1fa37a'); g.addColorStop(1, '#3b1a7a');
         c.fillStyle = g; c.beginPath(); c.arc(x, y, 9, 0, Math.PI); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.5)'; c.stroke(); }
     }, 256),
+    // Pack-a-Punch camo (zombies): swirling violet / teal moon-energy over black, always moving
+    pap: () => animTex(canvasTex('pap', (c, s) => {
+      c.fillStyle = '#07030f'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 46; i++) { let x = Math.random() * s, y = Math.random() * s; c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 8; k++) { x += Math.cos(k * 0.8 + i) * 18; y += Math.sin(k * 0.6 + i) * 18; c.lineTo(x, y); }
+        c.strokeStyle = i % 3 ? 'rgba(178,107,255,0.85)' : 'rgba(80,240,220,0.8)'; c.lineWidth = 1.5 + Math.random() * 2; c.shadowColor = c.strokeStyle; c.shadowBlur = 8; c.stroke(); }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.set(t * 0.12, Math.sin(t * 0.7) * 0.08); }),
     // knife-collection camos (v1.7.5)
     sabertooth: () => canvasTex('sabertooth', (c, s) => {
       const g = c.createLinearGradient(0, 0, s, 0); g.addColorStop(0, '#ffb000'); g.addColorStop(0.5, '#ff7a00'); g.addColorStop(1, '#ffcc33'); c.fillStyle = g; c.fillRect(0, 0, s, s);
@@ -306,7 +314,7 @@ BR.Models = (function () {
   const SKIN_FINISH = {
     gold: [0.5, 110], chrome: [0.7, 160], m_chrome: [0.7, 170], m_copper: [0.45, 100], liquidgold: [0.45, 160], diamond: [0.55, 200], damascus: [0.4, 130],
     holo: [0.3, 150], candy: [0.22, 110], opal: [0.3, 170], prism: [0.28, 150], scales: [0.25, 120], hyper: [0.15, 90], galaxy: [0.18, 100], nebula: [0.18, 100],
-    sabertooth: [0.25, 120], ultraviolet: [0.2, 110], emerald: [0.3, 160], tidewater: [0.25, 140], hyperspace: [0.2, 90], voidrift: [0.2, 100], acid: [0.15, 80],
+    pap: [0.3, 150], sabertooth: [0.25, 120], ultraviolet: [0.2, 110], emerald: [0.3, 160], tidewater: [0.25, 140], hyperspace: [0.2, 90], voidrift: [0.2, 100], acid: [0.15, 80],
     bloodmoon: [0.12, 70], circuit: [0.12, 70], electric: [0.12, 70], molten: [0.1, 60], inferno: [0.1, 60], aurora: [0.15, 80], m_volt: [0.15, 80], m_singularity: [0.25, 120],
     carbon: [0.12, 70], arctic: [0.05, 30], tiger: [0.06, 34], crimson: [0.08, 40], pixel: [0.06, 34], jungle: [0.04, 26], neon: [0.1, 60],
   };
@@ -335,6 +343,7 @@ BR.Models = (function () {
       case 'ultraviolet': m = new THREE.MeshPhongMaterial({ map: TEX.ultraviolet(), specular: 0xd8b8ff, shininess: 110, emissive: 0x0a0214 }); break;
       case 'emerald': m = new THREE.MeshPhongMaterial({ map: TEX.emerald(), specular: 0xc8ffe0, shininess: 180, emissive: 0xffffff, emissiveMap: TEX.emerald(), emissiveIntensity: 0.25 }); break;
       case 'tidewater': m = new THREE.MeshPhongMaterial({ map: TEX.tidewater(), specular: 0xdff8ff, shininess: 160, emissive: 0xffffff, emissiveMap: TEX.tidewater(), emissiveIntensity: 0.55 }); break;
+      case 'pap': m = new THREE.MeshPhongMaterial({ map: TEX.pap(), emissive: 0xffffff, emissiveMap: TEX.pap(), emissiveIntensity: 0.85, specular: 0xd8b8ff, shininess: 140 }); break;
       case 'opal': m = new THREE.MeshPhongMaterial({ map: TEX.opal(), specular: 0xffffff, shininess: 190, emissive: 0x1a1a24 }); break;
       // weapon-mastery camos (unlocked by kills, never sold)
       case 'm_copper': m = new THREE.MeshPhongMaterial({ color: 0xb8693a, specular: 0xffc8a0, shininess: 95, emissive: 0x1a0a04 }); break;

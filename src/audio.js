@@ -123,6 +123,11 @@ BR.Audio = {
   zThunder() { this.burst(120, 0.5, 2.2, 0.35); this.burst(60, 0.4, 2.8, 0.25); },
   zBuy() { this.tone(1046, 1046, 0.08, 0.14, 'square'); setTimeout(() => this.tone(1568, 1568, 0.16, 0.14, 'square'), 90); setTimeout(() => this.tone(2093, 2093, 0.2, 0.1, 'triangle'), 180); },
   zPower() { [523, 659, 784, 1046, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, f, 0.14, 0.12, 'triangle'), i * 70)); },
+  zDoor() { this.burst(300, 0.8, 0.6, 0.3); this.tone(120, 70, 0.5, 0.25, 'sawtooth'); },
+  zBox() { [392, 523, 659, 523, 784].forEach((f, i) => setTimeout(() => this.tone(f, f, 0.3, 0.1, 'triangle'), i * 180)); },
+  zTeddy() { this.tone(330, 160, 0.9, 0.18, 'sine'); setTimeout(() => this.tone(160, 80, 0.9, 0.18, 'sine'), 500); },
+  zPap() { this.tone(110, 440, 1.6, 0.25, 'sawtooth'); this.burst(3000, 1.2, 1.4, 0.12, 0, 'bandpass'); setTimeout(() => { this.tone(880, 880, 0.4, 0.15, 'triangle'); this.tone(1320, 1320, 0.6, 0.1, 'sine'); }, 1500); },
+  zBell() { for (let i = 0; i < 3; i++) setTimeout(() => { this.tone(392, 390, 2.2, 0.25, 'sine'); this.tone(784, 780, 1.6, 0.1, 'sine'); this.tone(1176, 1170, 1.0, 0.05, 'sine'); }, i * 900); },
   // firework pop (louder close up)
   pop(v) { this.burst(1400 + Math.random() * 1200, 0.9, 0.25, (v || 0.3) * 0.6); this.tone(220 + Math.random() * 80, 60, 0.3, (v || 0.3) * 0.5, 'sine'); setTimeout(() => this.burst(7000, 1.5, 0.4, (v || 0.3) * 0.18, 0, 'bandpass'), 90); },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },

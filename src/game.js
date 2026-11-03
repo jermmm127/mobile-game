@@ -105,17 +105,17 @@ BR.Game = class Game {
   // ------------------------------------------------------------ enemy highlight
   // Tints every other player's own materials so they read clearly in shade, foliage and clutter.
   // It's a colour tint only: walls still hide them (no seeing through geometry).
-  applyHighlight() {
-    const mode = this.settings.highlight || 'off', k = mode === 'bright' ? 0.5 : mode === 'subtle' ? 0.22 : 0;
+  applyHighlight() { for (const a of this.actors || []) this.highlightActor(a); }
+  // tint one actor (bots, zombies as they spawn, bosses) by the Enemy highlight setting
+  highlightActor(a) {
+    if (!a || a.isPlayer || !a.mesh) return;
+    const mode = this.settings.highlight || 'off', k = (mode === 'bright' ? 0.5 : mode === 'subtle' ? 0.22 : 0) * (a.zombie ? 0.32 : 1);   // night map: zombies need far less tint
     const col = this._hlc || (this._hlc = new THREE.Color(0xff3b30));
-    for (const a of this.actors || []) {
-      if (a.isPlayer || !a.mesh) continue;
-      a.mesh.traverse(o => {
-        if (!o.isMesh || !o.material || !o.material.emissive) return;
-        if (!o.userData.hlOwn) { o.material = o.material.clone(); o.userData.hlOwn = true; o.userData.hlBase = o.material.emissive.clone(); }
-        o.material.emissive.copy(o.userData.hlBase).lerp(col, k);
-      });
-    }
+    a.mesh.traverse(o => {
+      if (!o.isMesh || !o.material || !o.material.emissive) return;
+      if (!o.userData.hlOwn) { const old = o.material; o.material = old.clone(); o.userData.hlOwn = true; o.userData.hlBase = o.material.emissive.clone(); if (a.mesh.userData.mat === old) a.mesh.userData.mat = o.material; }
+      o.material.emissive.copy(o.userData.hlBase).lerp(col, k);
+    });
   }
 
   // ------------------------------------------------------------ sun shadows (Graphics: High)
@@ -581,6 +581,7 @@ BR.Game = class Game {
       if (this.freezeT <= 0) { this.freezeT = 0; this.hud.freeze(false); this.startVictory(); }
       return;
     }
+    if (this.zm && this.zm.cut) { this.zm.updateCut(dt); return; }      // zombies boss intro cutscene
     if (p.alive && this.state === 'playing') this.controlPlayer(dt);
     else p.fireHeld = false;
     this.simulate(dt);
@@ -778,6 +779,7 @@ BR.Game = class Game {
       else if (this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; }
       else if (this.zm) this.zm.interact();
     }
+    if (inp.consume('journal') && this.zm) this.hud.zmJournalToggle();
     if (inp.consume('pause')) this.pause();
     if (inp.consume('map')) this.hud.toggleMap();
     if (inp.consume('spawnmenu')) this.openSpawnMenu();
@@ -886,11 +888,13 @@ BR.Game = class Game {
   }
 
   tracerOpts(actor) {
+    if (actor.isPlayer && actor.weapon && actor.weapon.def.pap) return { style: 'helix', color2: 0x50f0dc };      // Pack-a-Punched: moon-energy helix
     if (!actor.isPlayer) return null;
     return BR.Models.tracerOpts(this.playerTracer(actor), this.time);
   }
 
   tracerColor(actor) {
+    if (actor.isPlayer && actor.weapon && actor.weapon.def.pap) return 0xc06bff;
     if (!actor.isPlayer) return 0xff9a6b;
     return BR.Models.tracerColor(this.playerTracer(actor), this.time);
   }

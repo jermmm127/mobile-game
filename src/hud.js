@@ -200,6 +200,12 @@ BR.HUD = class HUD {
   <div id="zm-hud" class="hidden">
     <div class="zm-round"><b id="zm-round">0</b></div>
     <div class="zm-points"><span id="zm-points">0</span><i id="zm-pop"></i></div>
+    <div id="zm-left" class="zm-left hidden">ZOMBIES <b>0</b></div>
+    <div id="zm-quest" class="zm-quest hidden"><small>QUEST</small><b class="zq-t"></b><span class="zq-d"></span><i class="zq-bar"><u></u></i><em class="zq-n"></em></div>
+    <button class="zm-jbtn" data-act="journal" aria-label="Journal"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg><span>JOURNAL</span></button>
+    <div id="zm-lore" class="zm-lore"><small>STORY UNLOCKED</small><b></b><p></p></div>
+    <div id="zm-journal" class="zm-journal hidden" data-act="journal"><div class="zj-panel"><div class="zj-head">THE HOLLOW GRAVES JOURNAL <span>tap to close</span></div><div class="zj-list"></div></div></div>
+    <div id="zm-cut" class="zm-cut"><i class="bar t"></i><i class="bar b"></i><div class="zc-card"><small class="zc-name"></small><b class="zc-title"></b><p class="zc-line"></p><span class="zc-skip">tap JUMP to skip</span></div></div>
     <div class="zm-timers"><span id="zm-insta" class="hidden">INSTA-KILL <b></b></span><span id="zm-double" class="hidden">DOUBLE POINTS <b></b></span></div>
     <div id="zm-boss" class="hidden"><div class="zb-name"></div><div class="zb-bar"><i></i></div></div>
     <div id="zm-banner"><b></b><span></span></div>
@@ -736,7 +742,7 @@ BR.HUD = class HUD {
     const prism = !!(optic && w.def.optic === 'prism'), acog = !!(optic && w.def.optic === 'acog');
     this.set('scope2', e.scope2, prism, el => el.classList.toggle('on', prism));
     this.set('scope3', e.scope3, acog, el => el.classList.toggle('on', acog));
-    this.set('xh', e.crosshair, !!(scoped || holo || optic), (el, v) => el.classList.toggle('hide', v));
+    this.set('xh', e.crosshair, !!(scoped || optic), (el, v) => el.classList.toggle('hide', v));   // the crosshair stays up while aiming (only scopes / magnified optics replace it)
 
     // Low health vignette + storm tint
     const hurt = 1 - Math.max(0, p.health) / A.maxHealth;
@@ -862,6 +868,24 @@ BR.HUD = class HUD {
   zmBanner(t, sub, kind, col) {
     const b = this.$('zm-banner'); b.querySelector('b').textContent = t; b.querySelector('span').textContent = sub || '';
     b.className = ''; void b.offsetWidth; b.className = 'on ' + (kind || ''); b.style.setProperty('--zc', col || '');
+  }
+  zmLeft(n, on) { const e = this.$('zm-left'); if (!e) return; e.classList.toggle('hidden', !on); this.set('zmLeftN', e, n, (el, v) => { el.querySelector('b').textContent = v; }); }
+  zmQuest(q) {
+    const e = this.$('zm-quest'); if (!e) return;
+    if (!q) { e.classList.add('hidden'); return; }
+    e.classList.remove('hidden'); e.querySelector('.zq-t').textContent = q.def.title; e.querySelector('.zq-d').textContent = q.def.desc;
+    e.querySelector('.zq-bar u').style.width = Math.round(q.n / q.goal * 100) + '%'; e.querySelector('.zq-n').textContent = q.n + ' / ' + q.goal;
+    e.classList.remove('pulse'); void e.offsetWidth; e.classList.add('pulse');
+  }
+  zmLore(title, text) { const e = this.$('zm-lore'); e.querySelector('b').textContent = title; e.querySelector('p').textContent = text; e.className = 'zm-lore'; void e.offsetWidth; e.className = 'zm-lore on'; }
+  zmJournal(list) { this._journal = list; const L = this.$('zm-journal').querySelector('.zj-list'); L.innerHTML = list.map((j, i) => `<div class="zj-e"><b>${i ? 'Entry ' + i + ' · ' : ''}${j.title}</b><p>${j.text}</p></div>`).join('') + (list.length < 9 ? '<div class="zj-e lock"><b>More pages are lost...</b><p>Complete quests (every 5 rounds) to recover them.</p></div>' : ''); }
+  zmJournalToggle(force) { const e = this.$('zm-journal'); const on = force !== undefined ? force : e.classList.contains('hidden'); e.classList.toggle('hidden', !on); }
+  zmCut(story, col) {
+    const e = this.$('zm-cut'); if (!e) return;
+    if (!story) { e.className = 'zm-cut'; return; }
+    e.querySelector('.zc-name').textContent = story.name; e.querySelector('.zc-title').textContent = story.title; e.querySelector('.zc-line').textContent = story.line;
+    e.style.setProperty('--cc', '#' + (col || 0xff7a1a).toString(16).padStart(6, '0'));
+    e.className = 'zm-cut'; void e.offsetWidth; e.className = 'zm-cut on';
   }
   zmLightning() { const f = this.$('zm-flash'); f.className = ''; void f.offsetWidth; f.className = 'on'; }
   zmNuke() { const f = this.$('zm-flash'); f.className = ''; void f.offsetWidth; f.className = 'on nuke'; }

@@ -40,6 +40,27 @@
   const cyl = (r1, r2, len, seg) => { const g = new THREE.CylinderGeometry(r1, r2, len, seg || 8); g.translate(0, -len / 2, 0); return g; };
 
   // ======================================================================== zombie
+  // shared zombie textures: mottled rotting skin with veins, bruises and dried blood; stained, torn cloth
+  const zombieTex = () => mats.ztex || (mats.ztex = (() => {
+    const mk = (draw) => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); draw(x, 256); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+    const skin = mk((x, s) => {
+      x.fillStyle = '#9aa486'; x.fillRect(0, 0, s, s);
+      for (let i = 0; i < 260; i++) { const r = 4 + Math.random() * 22; const g = x.createRadialGradient(0, 0, 0, 0, 0, r); const c = ['rgba(90,110,70,', 'rgba(140,130,100,', 'rgba(70,60,80,', 'rgba(160,170,130,'][i % 4];
+        g.addColorStop(0, c + '0.35)'); g.addColorStop(1, c + '0)'); x.save(); x.translate(Math.random() * s, Math.random() * s); x.fillStyle = g; x.fillRect(-r, -r, r * 2, r * 2); x.restore(); }
+      x.strokeStyle = 'rgba(50,40,90,0.45)'; x.lineWidth = 1.2;
+      for (let i = 0; i < 26; i++) { let px = Math.random() * s, py = Math.random() * s; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (Math.random() - 0.5) * 26; py += Math.random() * 18; x.lineTo(px, py); } x.stroke(); }      // veins
+      for (let i = 0; i < 14; i++) { x.fillStyle = `rgba(70,8,8,${0.3 + Math.random() * 0.4})`; x.beginPath(); x.ellipse(Math.random() * s, Math.random() * s, 4 + Math.random() * 14, 3 + Math.random() * 8, Math.random() * 3, 0, 7); x.fill(); }   // blood
+      for (let i = 0; i < 1400; i++) { x.fillStyle = `rgba(0,0,0,${Math.random() * 0.12})`; x.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); }
+    });
+    const cloth = mk((x, s) => {
+      x.fillStyle = '#c8c0b0'; x.fillRect(0, 0, s, s);
+      for (let y = 0; y < s; y += 3) { x.fillStyle = `rgba(0,0,0,${0.05 + Math.random() * 0.06})`; x.fillRect(0, y, s, 1); }
+      for (let i = 0; i < 30; i++) { const r = 8 + Math.random() * 30; const g = x.createRadialGradient(0, 0, 0, 0, 0, r); const c = i % 3 ? 'rgba(60,40,20,' : 'rgba(90,10,10,';
+        g.addColorStop(0, c + '0.5)'); g.addColorStop(1, c + '0)'); x.save(); x.translate(Math.random() * s, Math.random() * s); x.fillStyle = g; x.fillRect(-r, -r, r * 2, r * 2); x.restore(); }   // dirt + blood stains
+      for (let i = 0; i < 10; i++) { x.fillStyle = 'rgba(20,10,8,0.85)'; x.beginPath(); const px = Math.random() * s, py = Math.random() * s; x.moveTo(px, py); for (let k = 0; k < 5; k++) x.lineTo(px + (Math.random() - 0.3) * 24, py + (Math.random() - 0.3) * 24); x.fill(); }   // tears
+    });
+    return { skin, cloth };
+  })());
   let PENDING = null;                                  // opts for buildMesh (runs inside the Actor constructor)
   BR.Zombie = class Zombie extends BR.Actor {
     constructor(game, opts) {
@@ -57,37 +78,58 @@
     }
     get weapon() { return null; }
     buildMesh() {
-      const o = PENDING || {}, S = BR.actorGeo(), R = Math.random;
+      const o = PENDING || {}, S = BR.actorGeo(), R = Math.random, T = zombieTex();
       const g = new THREE.Group();
-      const skin = new THREE.MeshLambertMaterial({ color: [0x8a9a7c, 0x7d8a66, 0x9aa088, 0x6f7a5e, 0x8c8a74][Math.floor(R() * 5)] });
-      const shirt = lam([0x4a3b2e, 0x2f3540, 0x5a2222, 0x3c4a3a, 0x55524a][Math.floor(R() * 5)]);
-      const pants = lam([0x26221e, 0x2e2a3a, 0x3a2f24][Math.floor(R() * 3)]);
-      const blood = lam(0x4a0808), bone = lam(0xcfc6aa), eye = basic(o.eyes || 0xffa31a);
+      // four outfits from the story: villagers, Pumpkin Patch farmers, wedding-guest grooms, gravediggers
+      const kind = ['villager', 'farmer', 'groom', 'digger'][Math.floor(R() * 4)];
+      const skin = new THREE.MeshPhongMaterial({ map: T.skin, color: [0xd8e0c8, 0xc8d2b0, 0xe0dcc8, 0xbcc8a8][Math.floor(R() * 4)], specular: 0x2a3020, shininess: 22 });
+      const cloth = c => new THREE.MeshLambertMaterial({ map: T.cloth, color: c });
+      const top = cloth(kind === 'groom' ? 0x2a2a30 : kind === 'farmer' ? 0x8a3a2a : kind === 'digger' ? 0x5a4a38 : [0x7a6a52, 0x4a5a6a, 0x6a4a4a][Math.floor(R() * 3)]);
+      const bottom = cloth(kind === 'farmer' ? 0x3a5a8a : kind === 'groom' ? 0x1e1e24 : 0x3a3228);
+      const blood = new THREE.MeshPhongMaterial({ color: 0x3a0606, specular: 0x441010, shininess: 60 }), bone = lam(0xd8cfb4), dark = lam(0x120808), eye = basic(o.eyes || 0xffa31a);
       const body = new THREE.Group(); g.add(body);
-      body.add(mesh(S.hips, pants, 0, 0.97, 0));
-      const leg = x => { const hip = new THREE.Group(); hip.position.set(x, 0.96, 0); hip.add(mesh(S.thigh, pants));
-        const knee = new THREE.Group(); knee.position.y = -0.44; hip.add(knee); knee.add(mesh(S.shin, R() < 0.3 ? skin : pants)); knee.add(mesh(S.boot, S.boots, 0, -0.44, -0.04)); return { hip, knee }; };
-      const L = leg(-0.1), Rr = leg(0.1); body.add(L.hip, Rr.hip);
-      const upper = new THREE.Group(); upper.position.y = 1.0; body.add(upper);
-      upper.add(mesh(S.abdomen, R() < 0.5 ? skin : shirt, 0, 0.1, 0));
-      const chest = mesh(S.chest, shirt, 0, 0.36, 0); chest.scale.z = 0.62; upper.add(chest);
-      // torn shirt: exposed ribs + blood
-      const rib = new THREE.BoxGeometry(0.16, 0.018, 0.02);
-      for (let i = 0; i < 4; i++) upper.add(mesh(rib, bone, 0.05, 0.28 + i * 0.045, -0.13));
-      upper.add(mesh(new THREE.BoxGeometry(0.12, 0.16, 0.02), blood, -0.08, 0.36, -0.132));
-      upper.add(mesh(S.neck, skin, 0, 0.56, 0));
-      const head = new THREE.Group(); head.position.y = 0.7; upper.add(head);
-      const face = mesh(S.head, skin); face.scale.set(0.95, 1.1, 1); head.add(face);
-      const jaw = mesh(new THREE.BoxGeometry(0.13, 0.04, 0.1), skin, 0, -0.1, -0.05); jaw.rotation.x = 0.35; head.add(jaw);
-      head.add(mesh(new THREE.BoxGeometry(0.1, 0.035, 0.02), lam(0x1a0606), 0, -0.065, -0.112));      // open mouth
-      for (const x of [-0.045, 0.045]) { head.add(mesh(new THREE.SphereGeometry(0.018, 8, 6), eye, x, 0.025, -0.108)); const gl = sprite(o.eyes || 0xffa31a, 0.09); gl.position.set(x, 0.025, -0.12); head.add(gl); }
-      if (R() < 0.6) head.add(mesh(new THREE.SphereGeometry(0.125, 10, 6, 0, Math.PI * 2, 0, Math.PI / 3), lam(0x2a2420), 0, 0.02, 0.01));   // patchy hair
-      const arm = x => { const sh = new THREE.Group(); sh.position.set(x, 0.5, 0); upper.add(sh); sh.add(mesh(S.shoulder, shirt)); sh.add(mesh(S.upperArm, R() < 0.5 ? skin : shirt));
-        const el = new THREE.Group(); el.position.y = -0.28; sh.add(el); el.add(mesh(S.forearm, skin)); el.add(mesh(S.hand, skin, 0, -0.27, 0));
-        for (let f = -1; f <= 1; f++) el.add(mesh(new THREE.BoxGeometry(0.014, 0.07, 0.014), skin, f * 0.02, -0.33, -0.015));
+      const hips = mesh(S.hips, bottom, 0, 0.95, 0); hips.scale.set(0.9, 1, 0.9); body.add(hips);
+      const leg = x => { const hip = new THREE.Group(); hip.position.set(x, 0.94, 0); const th = mesh(S.thigh, bottom); th.scale.set(0.82, 1, 0.82); hip.add(th);
+        const knee = new THREE.Group(); knee.position.y = -0.44; hip.add(knee); const sh = mesh(S.shin, R() < 0.35 ? skin : bottom); sh.scale.set(0.78, 1, 0.78); knee.add(sh);
+        knee.add(mesh(S.boot, R() < 0.3 ? skin : S.boots, 0, -0.44, -0.04)); return { hip, knee }; };
+      const L = leg(-0.095), Rr = leg(0.095); body.add(L.hip, Rr.hip);
+      const upper = new THREE.Group(); upper.position.y = 0.98; body.add(upper);
+      const ab = mesh(S.abdomen, R() < 0.4 ? skin : top, 0, 0.1, 0); ab.scale.set(0.85, 1, 0.8); upper.add(ab);
+      const chest = mesh(S.chest, top, 0, 0.36, 0); chest.scale.set(0.88, 1, 0.6); upper.add(chest);
+      // a torn-open wound with ribs showing, blood down the front
+      upper.add(mesh(new THREE.BoxGeometry(0.15, 0.18, 0.02), dark, 0.06, 0.34, -0.118));
+      for (let i = 0; i < 4; i++) upper.add(mesh(new THREE.BoxGeometry(0.13, 0.016, 0.02), bone, 0.06, 0.28 + i * 0.04, -0.128));
+      upper.add(mesh(new THREE.BoxGeometry(0.1, 0.22, 0.012), blood, -0.07, 0.24, -0.124));
+      // shirt flaps hanging off
+      for (let i = 0; i < 3; i++) { const f = mesh(new THREE.PlaneGeometry(0.09, 0.16), top, -0.12 + i * 0.12, 0.06, -0.12); f.rotation.x = 0.2; f.material.side = THREE.DoubleSide; upper.add(f); }
+      if (kind === 'groom') { upper.add(mesh(new THREE.BoxGeometry(0.1, 0.22, 0.012), cloth(0xd8d2c0), 0, 0.42, -0.124)); upper.add(mesh(new THREE.BoxGeometry(0.08, 0.035, 0.03), dark, 0, 0.54, -0.13)); }
+      if (kind === 'digger') upper.add(mesh(new THREE.BoxGeometry(0.3, 0.42, 0.02), cloth(0x3a2e22), 0, 0.12, -0.13));
+      if (kind === 'farmer') for (const x of [-0.08, 0.08]) upper.add(mesh(new THREE.BoxGeometry(0.035, 0.36, 0.02), bottom, x, 0.36, -0.125));
+      const neck = mesh(S.neck, skin, 0, 0.55, 0.02); neck.scale.set(0.8, 1.1, 0.8); upper.add(neck);
+      // head: gaunt skull shape, sunken dark sockets with small glowing pupils, teeth, ears, lank hair
+      const head = new THREE.Group(); head.position.set(0, 0.69, 0.02); upper.add(head);
+      const face = mesh(S.head, skin); face.scale.set(0.88, 1.12, 0.98); head.add(face);
+      for (const x of [-0.042, 0.042]) { head.add(mesh(new THREE.SphereGeometry(0.03, 10, 8), dark, x, 0.025, -0.096)); head.add(mesh(new THREE.SphereGeometry(0.011, 8, 6), eye, x, 0.025, -0.121));
+        const gl = sprite(o.eyes || 0xffa31a, 0.07); gl.position.set(x, 0.025, -0.125); head.add(gl); const ear = mesh(new THREE.SphereGeometry(0.025, 8, 6), skin, x * 2.55, 0.0, 0.0); ear.scale.set(0.5, 1, 1); head.add(ear); }
+      { const nose = mesh(new THREE.ConeGeometry(0.018, 0.04, 4), dark, 0, -0.012, -0.112); nose.rotation.x = -1.4; head.add(nose); }                     // nose cavity
+      for (let i = 0; i < 6; i++) head.add(mesh(new THREE.BoxGeometry(0.012, 0.016, 0.01), bone, -0.03 + i * 0.012, -0.058, -0.106));
+      const jaw = new THREE.Group(); jaw.position.set(0, -0.07, -0.02); head.add(jaw);
+      jaw.add(mesh(new THREE.BoxGeometry(0.105, 0.035, 0.085), skin, 0, -0.02, -0.03));
+      for (let i = 0; i < 5; i++) jaw.add(mesh(new THREE.BoxGeometry(0.011, 0.014, 0.01), bone, -0.024 + i * 0.012, 0.0, -0.07));
+      if (kind === 'farmer') { head.add(mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.02, 14), lam(0x9a8040), 0, 0.1, 0)); head.add(mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.1, 12), lam(0x9a8040), 0, 0.15, 0)); }
+      else if (kind === 'digger') head.add(mesh(new THREE.SphereGeometry(0.128, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), cloth(0x2a2420), 0, 0.02, 0.0));
+      else { const hair = lam(0x1e1814); for (let i = 0; i < 9; i++) { const h = mesh(new THREE.BoxGeometry(0.018, 0.16 + R() * 0.1, 0.012), hair, Math.cos(i * 0.7 + 1.9) * 0.1, 0.0, Math.sin(i * 0.7 + 1.9) * 0.08 + 0.04); h.rotation.z = (R() - 0.5) * 0.3; head.add(h); }
+        head.add(mesh(new THREE.SphereGeometry(0.118, 10, 6, 0, Math.PI * 2, 0, Math.PI / 3), hair, 0, 0.03, 0.01)); }
+      // arms: thin, one torn sleeve showing a bloody forearm with bone at the elbow; long bony fingers
+      const arm = (x, torn) => { const sh = new THREE.Group(); sh.position.set(x, 0.49, 0.02); upper.add(sh); const sd = mesh(S.shoulder, top); sd.scale.setScalar(0.85); sh.add(sd);
+        const ua = mesh(S.upperArm, torn ? skin : top); ua.scale.set(0.78, 1.04, 0.78); sh.add(ua);
+        const el = new THREE.Group(); el.position.y = -0.29; sh.add(el); const fa = mesh(S.forearm, skin); fa.scale.set(0.75, 1.06, 0.75); el.add(fa);
+        if (torn) { el.add(mesh(new THREE.SphereGeometry(0.03, 8, 6), bone, 0, 0, 0.02)); el.add(mesh(new THREE.BoxGeometry(0.05, 0.12, 0.012), blood, 0, -0.12, -0.03)); }
+        el.add(mesh(new THREE.BoxGeometry(0.06, 0.06, 0.03), skin, 0, -0.29, 0));
+        for (let f = -1.5; f <= 1.5; f++) { const fg = mesh(new THREE.BoxGeometry(0.012, 0.09, 0.012), skin, f * 0.015, -0.36, -0.01); fg.rotation.x = 0.25; el.add(fg); }
         return { sh, el }; };
-      const AR = arm(0.22), AL = arm(-0.22);
-      g.userData = { body, upper, head, jaw, L, R: Rr, AR, AL, mat: skin, t: R() * 6, yaw: 0, gait: 0.9 + R() * 0.3, reachArm: R() < 0.5 ? 1 : -1 };
+      const tornR = R() < 0.5, AR = arm(0.2, tornR), AL = arm(-0.2, !tornR);
+      g.userData = { body, upper, head, jaw, L, R: Rr, AR, AL, mat: skin, t: R() * 6, yaw: 0, gait: 0.9 + R() * 0.3, reachArm: R() < 0.5 ? 1 : -1, kind };
       BR.collapseMeshes(g);
       return g;
     }
@@ -126,7 +168,7 @@
       u.AR.sh.rotation.set(rR, 0, -0.12); u.AL.sh.rotation.set(rL, 0, 0.12);
       u.AR.el.rotation.x = -0.35; u.AL.el.rotation.x = -0.35;
     }
-    flash() { if (!this.mesh) return; const m = this.mesh.userData.mat; m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.6; clearTimeout(this._flashTO); this._flashTO = setTimeout(() => m.emissive.setHex(0x000000), 70); }
+    flash() { if (!this.mesh) return; const m = this.mesh.userData.mat; if (!this._flashTO) this._flashPrev = m.emissive.getHex(); m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.6; clearTimeout(this._flashTO); this._flashTO = setTimeout(() => { m.emissive.setHex(this._flashPrev || 0); this._flashTO = null; }, 70); }
     dieVisual() {
       if (!this.mesh) return;
       const u = this.mesh.userData;
@@ -144,7 +186,9 @@
       const z = this.z, p = this.target = this.g.player;
       if (!p || !z.alive) return;
       if (z.riseT > 0) { z.input.mx = z.input.mz = 0; return; }
-      const dx = p.pos.x - z.pos.x, dz = p.pos.z - z.pos.z, dy = p.pos.y - z.pos.y, d = Math.hypot(dx, dz);
+      const goal = this.goal || p.pos;                      // a door waypoint when you're in another zone
+      const dx = goal.x - z.pos.x, dz = goal.z - z.pos.z, dy = p.pos.y - z.pos.y, d = Math.hypot(dx, dz);
+      const dp = Math.hypot(p.pos.x - z.pos.x, p.pos.z - z.pos.z);
       let yaw = Math.atan2(-dx, -dz);
       // unstick: if we're pushing but not moving, jump and side-step for a moment
       if (d > 1.6 && z.mover.speedH < 0.35 && z.mover.onGround) this.stuckT += dt; else this.stuckT = Math.max(0, this.stuckT - dt * 2);
@@ -154,14 +198,14 @@
       const zm = this.g.zm; if (zm) { let sx = 0, sz = 0; for (const o of zm.zombies) { if (o === z || !o.alive) continue; const ex = z.pos.x - o.pos.x, ez = z.pos.z - o.pos.z, e2 = ex * ex + ez * ez; if (e2 < 0.8 && e2 > 1e-4) { sx += ex / e2; sz += ez / e2; } }
         if (sx || sz) yaw = Math.atan2(-(dx / Math.max(d, 0.1) * 2 + sx * 0.25), -(dz / Math.max(d, 0.1) * 2 + sz * 0.25)); }
       z.yaw = dampAngle(z.yaw, yaw, 9, dt);
-      z.input.mz = d > 1.05 ? 1 : 0; z.input.mx = 0;
+      z.input.mz = d > 1.05 || this.goal ? 1 : 0; z.input.mx = 0;
       // swipe
       if (z.attackT > 0) {
         z.attackT -= dt;
-        if (!z.hitDone && z.attackT < 0.28) { z.hitDone = true; if (d < 1.9 && Math.abs(dy) < 1.8 && p.alive) { this.g.applyDamage(p, z, z.stats.dmg, false, { x: p.pos.x, y: p.pos.y + 1.2, z: p.pos.z }, 'zombie'); BR.Audio.zSwipe && BR.Audio.zSwipe(); } }
-      } else if (d < 1.55 && Math.abs(dy) < 1.8 && z.attackCd <= 0) { z.attackT = 0.55; z.attackCd = 1.15; z.hitDone = false; }
+        if (!z.hitDone && z.attackT < 0.28) { z.hitDone = true; if (dp < 1.9 && Math.abs(dy) < 1.8 && p.alive) { this.g.applyDamage(p, z, z.stats.dmg, false, { x: p.pos.x, y: p.pos.y + 1.2, z: p.pos.z }, 'zombie'); BR.Audio.zSwipe && BR.Audio.zSwipe(); } }
+      } else if (dp < 1.55 && Math.abs(dy) < 1.8 && z.attackCd <= 0) { z.attackT = 0.55; z.attackCd = 1.15; z.hitDone = false; }
       // groans
-      z.groanT -= dt; if (z.groanT <= 0) { z.groanT = 3 + Math.random() * 7; if (d < 30) BR.Audio.zGroan && BR.Audio.zGroan(d); }
+      z.groanT -= dt; if (z.groanT <= 0) { z.groanT = 3 + Math.random() * 7; if (dp < 30) BR.Audio.zGroan && BR.Audio.zGroan(dp); }
     }
   };
 
@@ -558,16 +602,16 @@
       z.mover.dropping = false; z.mover.pos.set(sp.x, g.world.groundAt(sp.x, sp.z, 20), sp.z);
       z.yaw = Math.random() * 6.28;
       z.brain = new BR.ZombieBrain(z, g);
-      g.scene.add(z.mesh); g.actors.push(z); this.zombies.push(z);
+      g.scene.add(z.mesh); g.actors.push(z); this.zombies.push(z); g.highlightActor(z);
       if (z.riseT > 0) g.fx.burst(z.pos.clone().setY(z.pos.y + 0.2), [0x3a2a1e, 0x5a4a3a, 0x241a12], 10, 3, 0.1, 0.8, 9);   // dirt bursting up
       return z;
     }
     spawnBoss() {
       const g = this.g, type = BOSS_ORDER[(this.round / ZC.bossEvery - 1) % BOSS_ORDER.length];
       const b = this.boss = new BR.ZBoss(g, this, type, this.round);
-      const p = g.player.pos, cands = (g.world.zmSpawns || []).slice().sort((a, c) => Math.hypot(c.x - p.x, c.z - p.z) - Math.hypot(a.x - p.x, a.z - p.z)), sp = cands[0] || { x: 0, z: -30 };
+      const p = g.player.pos, cands = (g.world.zmSpawns || []).filter(s => !this.unlocked || this.unlocked.has(s.zone || 'graveyard')).sort((a, c) => Math.hypot(c.x - p.x, c.z - p.z) - Math.hypot(a.x - p.x, a.z - p.z)), sp = cands[0] || { x: 0, z: -30 };
       b.mover.dropping = false; b.mover.pos.set(sp.x, g.world.groundAt(sp.x, sp.z, 20), sp.z);
-      g.scene.add(b.mesh); g.actors.push(b); this.zombies.push(b);
+      g.scene.add(b.mesh); g.actors.push(b); this.zombies.push(b); g.highlightActor(b);
       g.fx.burst(b.pos.clone().setY(b.pos.y + 1), [b.D.color, 0xffffff, 0x2a1a10], 70, 10, 0.14, 1.4, 6);
       this.shockRing(b.pos.clone(), 10, 0, b.D.color, true);
       g.cam.shake = Math.max(g.cam.shake, 0.5); this.lightning(1);
@@ -840,4 +884,385 @@
       this.proj = []; this.haz = []; this.powers = [];
     }
   };
+})();
+
+// =============================================================================
+// ZOMBIES, part 2 — the story of Hollow Graves, quests + journal, boss intro cutscenes,
+// zones + buyable doors (zombies path through open doors), the Mystery Box, Pack-a-Punch,
+// and a zombies-left counter. Extends BR.ZombieMode / BR.ZombieBrain / the bosses above.
+// =============================================================================
+(function () {
+  const U = BR.util, ZC = BR.ZOMBIE_CFG, BOSSES = BR.ZOMBIE_BOSSES;
+  const addMat = c => new THREE.MeshBasicMaterial({ color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const sprite = (c, s) => { const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: BR.Effects.tex().dot, color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); m.scale.setScalar(s); return m; };
+  const lam = c => new THREE.MeshLambertMaterial({ color: c });
+  const mesh = (geo, mat, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x || 0, y || 0, z || 0); return o; };
+
+  // ---------------------------------------------------------------- the story
+  // Ravenhold, 1893: a wedding, a funeral and a ritual on the night of the harvest moon.
+  BR.ZOMBIE_STORY = {
+    prologue: { title: 'Hollow Graves, 1893', text: 'The night the harvest moon bled, the village of Hollow Graves held a wedding, a funeral and a ritual. By dawn, only the dead came home. Survive the night. Learn what happened. End it.' },
+    bosses: {
+      pumpkin: { name: 'SILAS HALE', title: 'THE PUMPKIN KING', line: 'The groundskeeper kept his promise. He will never dig another grave. He will fill them.' },
+      banshee: { name: 'ELINOR RAVENHOLD', title: 'THE WEEPING BRIDE', line: 'She rang the bell for her wedding. You answered.' },
+      colossus: { name: 'THE OSSUARY', title: 'THE BONE COLOSSUS', line: 'Forty years of graves, stitched into one. It only remembers the shovel.' },
+      plague: { name: 'DR. CORVIN VALE', title: 'THE PLAGUE DOCTOR', line: 'Death is a disease. He found the cure. You are the side effect.' },
+    },
+    lore: [
+      { title: 'The Doctor\'s Journal', text: 'Dr. Corvin Vale: "Death is only a disease, and every disease has a cure. Lord Ravenhold has given me his crypts, his daughter\'s dowry and his groundskeeper. I need nothing more than a harvest moon."' },
+      { title: 'The Groundskeeper', text: 'Silas Hale dug every grave in Hollow Graves for forty years. Vale promised he would never have to dig another. He kept that promise: Silas became the Pumpkin King, keeper of a harvest of the dead.' },
+      { title: 'The Lantern Head', text: 'The flame in the Pumpkin King\'s head is Silas\' last breath. Vale carved the lantern and sealed it in, so the harvest would never be left untended.' },
+      { title: 'The Wedding Bell', text: 'Elinor Ravenhold rang this bell to call her guests. The groom never came. Vale needed a healthy heart for his first patient. She still waits at the altar, and she still weeps.' },
+      { title: 'The Witch of the Wood', text: 'Morwen of the wood warned the village about the doctor. Vale burned her hut and stole her cauldron\'s recipe: the Bone Draught, which knits the dead together into one.' },
+      { title: 'The Ossuary', text: 'The Bone Colossus is every grave Silas ever filled, poured through Morwen\'s draught and stood up on its own. It has a thousand names and remembers none of them.' },
+      { title: 'Lord Ravenhold\'s Machine', text: 'Ravenhold sealed his manor and built a machine under the great hall to undo Vale\'s work, fed by moonlight. He called it the Pack-a-Punch. It was never finished. Until you.' },
+      { title: 'The Cure', text: 'Vale wears the beaked mask to breathe his own cure. The crows are his nurses. Put the doctor down and the harvest moon will set... but every cure has a relapse.' },
+    ],
+  };
+  const STORY = BR.ZOMBIE_STORY;
+  for (const k in STORY.bosses) { BOSSES[k].name = STORY.bosses[k].title; BOSSES[k].sub = STORY.bosses[k].name; }
+
+  // per-boss cinematic intros: camera path + their own effects while they arrive
+  const INTRO = {
+    pumpkin: { cam: (t) => ({ ang: 0.4 + t * 0.12, r: 9 - t * 0.6, h: 0.8 + t * 0.15, look: 3 }), fx(Z, b, t, dt) { if (Math.random() < dt * 30) Z.g.fx.burst(b.pos.clone().setY(b.pos.y + Math.random() * 2), [0xff7a1a, 0xffd24a, 0xff3a00], 3, 4, 0.12, 0.9, -2); } },
+    banshee: { cam: (t) => ({ ang: t * 0.6, r: 8, h: 2 + Math.sin(t) * 0.5, look: 3 }), fx(Z, b, t, dt) { b.mover.pos.y = Z.g.world.groundAt(b.pos.x, b.pos.z, 20) + Math.max(0, 8 - t * 3); if (Math.random() < dt * 25) Z.g.fx.burst(b.pos.clone().setY(b.pos.y + 2), [0x9fe8ff, 0xffffff], 3, 3, 0.08, 1.2, -1); } },
+    colossus: { cam: (t) => ({ ang: -0.3, r: 12 - t * 1.0, h: 1.2, look: 3.8, shake: t > 1 && t < 3 ? 0.15 : 0 }), fx(Z, b, t, dt) { if (Math.random() < dt * 20) Z.g.fx.burst(b.pos.clone(), [0xd8d0b8, 0x6a5a48, 0x2a1a10], 4, 7, 0.14, 1.0, 9); } },
+    plague: { cam: (t) => ({ ang: 1.2 - t * 0.25, r: 7, h: 2.2, look: 2.6 }), fx(Z, b, t, dt) { if (t < 2.4 && Math.random() < dt * 30) { const a = Math.random() * 6.28, r = 6 - t * 2.2; Z.g.fx.burst(b.pos.clone().add(new THREE.Vector3(Math.cos(a) * r, 2 + Math.random() * 2, Math.sin(a) * r)), [0x101010, 0x7dff3a], 2, 1, 0.1, 0.5, 0); } } },
+  };
+
+  // ---------------------------------------------------------------- zones + navigation
+  const zoneAt = (x, z) => x > 42.6 ? 'patch' : x < -42.6 ? 'wood' : z < -42.6 ? 'manor' : 'graveyard';
+  BR.zombieZoneAt = zoneAt;
+  const baseBrainUpdate = BR.ZombieBrain.prototype.update;
+  BR.ZombieBrain.prototype.update = function (dt) {
+    // across zones: walk to the door between this zone and the graveyard hub, then on to you
+    const z = this.z, p = this.g.player, zm = this.g.zm;
+    if (zm && zm.doors && p) {
+      const za = zoneAt(z.pos.x, z.pos.z), zp = zoneAt(p.pos.x, p.pos.z);
+      if (za !== zp) {
+        const d = zm.doors.find(o => o.open && o.to === (za !== 'graveyard' ? za : zp));
+        if (d) { this.goal = this._gv || (this._gv = new THREE.Vector3()); this.goal.set(d.cx, p.pos.y, d.cz);
+          const r = baseBrainUpdate.call(this, dt); this.goal = null; return r; }
+      }
+    }
+    return baseBrainUpdate.call(this, dt);
+  };
+
+  // ---------------------------------------------------------------- quests
+  const QUESTS = [
+    { id: 'pages', title: 'Lost Journal', desc: 'Find 3 pages of the doctor\'s journal', goal: 3 },
+    { id: 'candles', title: 'Ritual Candles', desc: 'Light the 4 ritual candles at the graveyard corners', goal: 4 },
+    { id: 'headshots', title: 'The Lantern\'s Flame', desc: 'Kill 15 zombies with headshots', goal: 15 },
+    { id: 'bell', title: 'The Wedding Bell', desc: 'Climb the bell tower and ring the bell', goal: 1 },
+    { id: 'cauldron', title: 'Bone Draught', desc: 'Kill 12 zombies near the witch\'s cauldron (or in the chapel if the wood is locked)', goal: 12 },
+    { id: 'stones', title: 'The Ossuary Circle', desc: 'Survive 40 s inside the standing stones (or at the chapel altar)', goal: 40 },
+    { id: 'knife', title: 'Gravedigger\'s Work', desc: 'Get 10 knife kills', goal: 10 },
+    { id: 'pap', title: 'Ravenhold\'s Machine', desc: 'Pack-a-Punch a weapon', goal: 1 },
+  ];
+  BR.ZOMBIE_QUESTS = QUESTS;
+
+  const ZM = BR.ZombieMode.prototype;
+  const baseStart = ZM.start, baseUpdate = ZM.update, baseOnKill = ZM.onKill, baseNext = ZM.nextRound, baseDecorate = ZM.decorate;
+  ZM._spawnZombieBase = ZM.spawnZombie; ZM._spawnBossBase = ZM.spawnBoss;
+
+  Object.assign(ZM, {
+    start() {
+      this.unlocked = new Set(['graveyard']); this.journal = [STORY.prologue]; this.questN = 0; this.quest = null; this.papCount = 0;
+      baseStart.call(this);
+      this.buildDoors(); this.buildBox(); this.buildPap();
+      this.g.hud.zmLore(STORY.prologue.title, STORY.prologue.text);
+      this.g.hud.zmJournal(this.journal);
+    },
+    decorate() {
+      baseDecorate.call(this);
+      const W = this.g.world, deco = this.deco, R = Math.random;
+      // Pumpkin Patch: rows of jack-o'-lanterns + scarecrows
+      const pumpMat = new THREE.MeshPhongMaterial({ color: 0xff7a1a, emissive: 0x3a1400, shininess: 25 });
+      const pg = new THREE.SphereGeometry(0.3, 10, 8);
+      for (let x = 50; x < 96; x += 3.2) for (let z = 4; z < 30; z += 2.6) if (R() < 0.45) { const p = mesh(pg, pumpMat, x + (R() - 0.5), 0.2, z + (R() - 0.5)); p.scale.set(1 + R() * 0.5, 0.75, 1 + R() * 0.5); deco.add(p); }
+      for (const [x, z] of [[60, 12], [80, 26], [88, 6]]) { const s = new THREE.Group(); s.position.set(x, 0, z);
+        s.add(mesh(new THREE.ConeGeometry(0.42, 1.0, 8, 1, true), lam(0x5a3a1a), 0, 1.5, 0)); s.add(mesh(new THREE.SphereGeometry(0.24, 10, 8), pumpMat, 0, 2.3, 0));
+        s.add(mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.04, 12), lam(0x8a7038), 0, 2.5, 0)); s.add(mesh(new THREE.ConeGeometry(0.18, 0.3, 10), lam(0x8a7038), 0, 2.66, 0));
+        const gl = sprite(0xff8a1a, 0.6); gl.position.set(0, 2.3, -0.24); s.add(gl); deco.add(s); }
+      // Witch's Wood: a thicket of dead trees (collision trunks) + the cauldron's green brew + stone-circle runes
+      const bark = lam(0x1a1512);
+      for (let i = 0; i < 26; i++) { const x = -96 + R() * 50, z = -30 + R() * 60; if (Math.hypot(x + 78, z) < 9 || Math.hypot(x + 62, z + 20) < 9 || Math.hypot(x + 62, z - 12) < 3 || (x > -50 && Math.abs(z) < 5)) continue;
+        const h = 6 + R() * 6, t = new THREE.Group(); t.position.set(x, 0, z); t.add(mesh(new THREE.CylinderGeometry(0.14, 0.34, h, 6).translate(0, h / 2, 0), bark));
+        for (let k = 0; k < 4; k++) { const b = mesh(new THREE.CylinderGeometry(0.03, 0.09, h * 0.4, 5).translate(0, h * 0.2, 0), bark, 0, h * (0.5 + k * 0.1), 0); b.rotation.set(0, k * 1.7, (R() - 0.5) * 2.2); t.add(b); }
+        deco.add(t); W.addBox(x - 0.28, 0, z - 0.28, x + 0.28, h, z + 0.28, 0x1a1512, { hidden: true }); }
+      const Q = W.zmQuest, cq = Q.cauldron;
+      const caul = mesh(new THREE.SphereGeometry(1.0, 16, 10, 0, Math.PI * 2, Math.PI * 0.35, Math.PI * 0.65), lam(0x141418), cq.x, 1.0, cq.z); deco.add(caul);
+      const brew = mesh(new THREE.CircleGeometry(0.85, 20), new THREE.MeshBasicMaterial({ color: 0x7dff3a }), cq.x, 1.45, cq.z); brew.rotation.x = -Math.PI / 2; deco.add(brew);
+      const bg = sprite(0x7dff3a, 3); bg.position.set(cq.x, 1.8, cq.z); bg.material.opacity = 0.45; deco.add(bg); this.flicker.push(bg); this.brew = { x: cq.x, z: cq.z };
+      // Ravenhold Manor: lit chandelier glow in the great hall and ghost-lights in the windows
+      for (const [x, z] of [[0, -80], [-8, -84], [8, -84]]) { const c = sprite(0xffc46a, 3); c.position.set(x, 7.2, z); c.material.opacity = 0.5; deco.add(c); this.flicker.push(c); }
+      const L = new THREE.PointLight(0xb26bff, 1.6, 22, 2); L.position.set(0, 4, -84); deco.add(L);
+    },
+
+    // ---- doors ------------------------------------------------------------------
+    buildDoors() {
+      const g = this.g, sc = g.scene;
+      this.doors = (g.world.zmDoors || []).map(d => {
+        const grp = new THREE.Group(); grp.position.set(d.cx, 0, d.cz); sc.add(grp);
+        const alongX = d.x1 - d.x0 > d.z1 - d.z0, w = alongX ? d.x1 - d.x0 : d.z1 - d.z0;
+        const plank = lam(0x4a3220), iron = lam(0x1c1b20), bars = new THREE.Group(); grp.add(bars);
+        for (let i = 0; i < 6; i++) { const p = mesh(new THREE.BoxGeometry(alongX ? w : 0.25, 0.42, alongX ? 0.25 : w), plank, 0, 0.5 + i * 0.6, 0); p.rotation[alongX ? 'z' : 'x'] = (i % 2 ? 0.08 : -0.06); bars.add(p); }
+        for (const s of [-1, 1]) bars.add(mesh(new THREE.BoxGeometry(alongX ? 0.2 : 0.3, 4, alongX ? 0.3 : 0.2), iron, alongX ? s * w * 0.35 : 0, 2, alongX ? 0 : s * w * 0.35));
+        // price sign
+        const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const c = cv.getContext('2d');
+        c.fillStyle = '#1a0e08'; c.fillRect(0, 0, 256, 96); c.strokeStyle = '#ffb24a'; c.lineWidth = 4; c.strokeRect(4, 4, 248, 88);
+        c.fillStyle = '#ffe2b0'; c.font = '700 26px Outfit, sans-serif'; c.textAlign = 'center'; c.fillText(d.name.toUpperCase(), 128, 40); c.fillStyle = '#ffb24a'; c.font = '900 30px Outfit, sans-serif'; c.fillText(d.cost + ' PTS', 128, 78);
+        const sign = mesh(new THREE.PlaneGeometry(1.8, 0.68), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), side: THREE.DoubleSide }), 0, 2.5, 0);
+        if (!alongX) sign.rotation.y = Math.PI / 2; sign.position[alongX ? 'z' : 'x'] = 0.2; bars.add(sign);
+        return Object.assign({}, d, { grp, bars, open: false, openT: 0 });
+      });
+    },
+    openDoor(d) {
+      const g = this.g; d.open = true; g.world.removeBox(d.box); this.unlocked.add(d.to);
+      g.fx.burst(new THREE.Vector3(d.cx, 1.5, d.cz), [0x8a6a4a, 0x4a3220, 0xffd24a], 40, 7, 0.12, 1.0, 9);
+      g.hud.zmBanner(d.name.toUpperCase(), 'Area opened', 'done'); BR.Audio.zDoor && BR.Audio.zDoor();
+      if (this.quest) this.refreshQuestSpots();
+    },
+
+    // ---- the Mystery Box ---------------------------------------------------------
+    buildBox() {
+      const g = this.g, sc = g.scene, grp = new THREE.Group(); sc.add(grp);
+      const wood = new THREE.MeshPhongMaterial({ color: 0x3a2414, shininess: 20 }), trim = new THREE.MeshPhongMaterial({ color: 0xc89b3c, specular: 0xffe2a0, shininess: 80 });
+      grp.add(mesh(new THREE.BoxGeometry(2.0, 0.8, 0.9), wood, 0, 0.4, 0));
+      for (const x of [-0.95, 0.95]) grp.add(mesh(new THREE.BoxGeometry(0.08, 0.82, 0.92), trim, x, 0.4, 0));
+      const lid = new THREE.Group(); lid.position.set(0, 0.8, -0.45); grp.add(lid); lid.add(mesh(new THREE.BoxGeometry(2.0, 0.16, 0.9), wood, 0, 0.08, 0.45)); lid.add(mesh(new THREE.BoxGeometry(2.02, 0.04, 0.92), trim, 0, 0.17, 0.45));
+      // question marks glowing on the sides
+      const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d'); c.font = '900 52px Outfit, sans-serif'; c.textAlign = 'center'; c.fillStyle = '#9fe8ff'; c.shadowColor = '#4fd0ff'; c.shadowBlur = 10; c.fillText('?', 32, 50);
+      const qm = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+      for (const z of [-0.46, 0.46]) { const q = mesh(new THREE.PlaneGeometry(0.5, 0.5), qm, 0, 0.42, z); if (z < 0) q.rotation.y = Math.PI; grp.add(q); }
+      // the beam: a tall pillar of light seen from anywhere on the map
+      const beam = mesh(new THREE.CylinderGeometry(0.32, 0.55, 140, 16, 1, true), addMat(0x3ab8ff), 0, 70, 0); beam.material.opacity = 0.2; grp.add(beam);
+      const core = mesh(new THREE.CylinderGeometry(0.07, 0.12, 140, 10, 1, true), addMat(0xbff0ff), 0, 70, 0); core.material.opacity = 0.55; grp.add(core);
+      const gl = sprite(0x7fd8ff, 4); gl.position.y = 1.2; gl.material.opacity = 0.5; grp.add(gl);
+      const show = new THREE.Group(); show.position.y = 1.45; grp.add(show);
+      this.box = { grp, lid, beam, core, show, state: 'idle', t: 0, uses: 0, spot: 0, wid: null };
+      this.placeBox(0);
+    },
+    placeBox(i) {
+      const spots = this.g.world.zmBoxSpots, s = spots[i]; const b = this.box; b.spot = i;
+      b.grp.position.set(s.x, this.g.world.groundAt(s.x, s.z, 3), s.z); b.grp.rotation.y = s.yaw || 0; b.grp.visible = true;
+      this.g.fx.burst(b.grp.position.clone().setY(b.grp.position.y + 1), [0x7fd8ff, 0xffffff], 40, 8, 0.1, 1, 0);
+    },
+    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr']; },
+    updateBox(dt) {
+      const b = this.box; if (!b) return; b.t += dt;
+      b.beam.material.opacity = 0.16 + 0.06 * Math.sin(this.tAll * 2); b.beam.rotation.y += dt * 0.4;
+      const openK = b.state === 'idle' ? 0 : 1; b.lid.rotation.x = U.lerp(b.lid.rotation.x, -1.6 * openK, Math.min(1, dt * 8));
+      if (b.state === 'rolling') {
+        b.swapT = (b.swapT || 0) - dt;
+        if (b.swapT <= 0) { b.swapT = 0.06 + b.t * 0.06; const pool = this.boxPool(); this.showBoxGun(pool[Math.floor(Math.random() * pool.length)]); BR.Audio.click(); }
+        b.show.position.y = 1.0 + Math.min(1, b.t / 1.2) * 0.8;
+        if (b.t > 3.2) { // result
+          b.uses++;
+          if (b.uses >= 4 && Math.random() < 0.22 && this.g.world.zmBoxSpots.filter(s => this.unlocked.has(s.zone)).length > 1) { this.boxTeddy(); return; }
+          const pool = this.boxPool().filter(w => !this.g.player.hasWeapon(w)); b.wid = pool[Math.floor(Math.random() * pool.length)] || 'smg';
+          this.showBoxGun(b.wid); b.state = 'offer'; b.t = 0; BR.Audio.zBuy && BR.Audio.zBuy();
+        }
+      } else if (b.state === 'offer') { b.show.rotation.y += dt * 1.5; b.show.position.y = 1.8 - Math.min(1, b.t / 7) * 0.8; if (b.t > 7) this.boxClose(); }
+      else if (b.state === 'teddy') {
+        b.show.position.y = 1.8 + b.t * 0.5;
+        if (b.t > 2.6) { // the box flies away to a new spot
+          b.grp.position.y += dt * 30;
+          if (b.t > 3.6) { const spots = this.g.world.zmBoxSpots, ok = spots.map((s, i) => i).filter(i => i !== b.spot && this.unlocked.has(spots[i].zone)); this.placeBox(ok[Math.floor(Math.random() * ok.length)]); this.boxClose(); b.uses = 0; }
+        }
+      }
+    },
+    showBoxGun(wid) { const b = this.box; while (b.show.children.length) b.show.remove(b.show.children[0]); const m = BR.Models.worldWeapon(wid); m.scale.setScalar(1.5); m.rotation.y = Math.PI / 2; b.show.add(m); },
+    boxClose() { const b = this.box; b.state = 'idle'; b.t = 0; b.wid = null; while (b.show.children.length) b.show.remove(b.show.children[0]); },
+    boxTeddy() {
+      const b = this.box; b.state = 'teddy'; b.t = 0; while (b.show.children.length) b.show.remove(b.show.children[0]);
+      const fur = lam(0x7a5a3a), t = new THREE.Group(); t.add(mesh(new THREE.SphereGeometry(0.22, 10, 8), fur, 0, 0, 0)); t.add(mesh(new THREE.SphereGeometry(0.16, 10, 8), fur, 0, 0.3, 0));
+      for (const x of [-0.11, 0.11]) t.add(mesh(new THREE.SphereGeometry(0.06, 8, 6), fur, x, 0.44, 0)); t.add(mesh(new THREE.SphereGeometry(0.05, 6, 4), lam(0x1a0a0a), 0, 0.3, -0.15)); b.show.add(t);
+      this.addPoints(950); this.g.hud.zmBanner('BYE BYE', 'The box is moving… follow the beam', 'done'); BR.Audio.zTeddy && BR.Audio.zTeddy();
+    },
+
+    // ---- Pack-a-Punch ------------------------------------------------------------
+    buildPap() {
+      const g = this.g, P = g.world.zmPap; if (!P) return;
+      const grp = new THREE.Group(); grp.position.set(P.x, 0, P.z); g.scene.add(grp);
+      const stone = new THREE.MeshPhongMaterial({ color: 0x2a2436, shininess: 40 }), brass = new THREE.MeshPhongMaterial({ color: 0xb08a3c, specular: 0xffe2a0, shininess: 90 });
+      grp.add(mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.5, 8), stone, 0, 0.25, 0)); grp.add(mesh(new THREE.BoxGeometry(1.8, 1.6, 1.2), stone, 0, 1.3, 0));
+      for (const x of [-1.05, 1.05]) grp.add(mesh(new THREE.CylinderGeometry(0.16, 0.2, 3.4, 8), brass, x, 1.7, 0));
+      grp.add(mesh(new THREE.BoxGeometry(2.5, 0.3, 1.3), brass, 0, 3.3, 0));
+      const core = mesh(new THREE.SphereGeometry(0.42, 18, 14), new THREE.MeshBasicMaterial({ color: 0xc06bff }), 0, 2.55, 0); grp.add(core);
+      const rings = []; for (let i = 0; i < 3; i++) { const r = mesh(new THREE.TorusGeometry(0.7 + i * 0.16, 0.025, 6, 40), addMat(i === 1 ? 0x50f0dc : 0xc06bff), 0, 2.55, 0); grp.add(r); rings.push(r); }
+      const glow = sprite(0xc06bff, 5); glow.position.y = 2.55; glow.material.opacity = 0.5; grp.add(glow);
+      const slot = mesh(new THREE.BoxGeometry(1.2, 0.3, 0.1), new THREE.MeshBasicMaterial({ color: 0x50f0dc }), 0, 1.5, -0.61); grp.add(slot);
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const c = cv.getContext('2d'); c.font = '900 34px Outfit, sans-serif'; c.textAlign = 'center'; c.fillStyle = '#e9d5ff'; c.shadowColor = '#b26bff'; c.shadowBlur = 12; c.fillText('PACK-A-PUNCH', 128, 44);
+      const sign = mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true }), 0, 3.3, -0.66); sign.rotation.y = Math.PI; grp.add(sign);
+      const show = new THREE.Group(); show.position.set(0, 1.9, -0.9); grp.add(show);
+      this.pap = { grp, core, rings, glow, show, x: P.x, z: P.z - 1.4, busy: 0 };
+    },
+    updatePap(dt) {
+      const P = this.pap; if (!P) return; const t = this.tAll;
+      P.rings.forEach((r, i) => { r.rotation.set(t * (0.6 + i * 0.3), t * (0.9 - i * 0.2), i); });
+      P.core.scale.setScalar(1 + 0.08 * Math.sin(t * 4)); P.glow.material.opacity = 0.4 + 0.15 * Math.sin(t * 3) + (P.busy > 0 ? 0.4 : 0);
+      if (P.busy > 0) { P.busy -= dt; P.show.rotation.y += dt * 6; if (Math.random() < dt * 30) this.g.fx.burst(P.grp.position.clone().setY(2.55), [0xc06bff, 0x50f0dc, 0xffffff], 2, 3, 0.08, 0.5, 0);
+        if (P.busy <= 0) { while (P.show.children.length) P.show.remove(P.show.children[0]); } }
+    },
+    papWeapon(w) {
+      const NAMES = { smg: 'Spectral Chopper', shotgun: 'Grave Digger', rifle: 'Reaper\'s Toll', holoar: 'Phantom Lance', dmr: 'Witch\'s Eye', lmg: 'Harvest Moon', sniper: 'Raven\'s Gaze', hunter: 'Bone Splitter', revolver: 'Hex Six', pistol: 'Lantern of Souls' };
+      const d = w.def;
+      w.def = Object.assign({}, d, { name: NAMES[w.id] || d.name + ' Mk II', dmg: d.dmg * 2.2, mag: Math.round(d.mag * 1.5), reload: d.reload * 0.85, recoil: d.recoil * 0.8, pap: true, tier: 3 });
+      w.mag = w.def.mag; this.g.player.ammo[d.ammo] = BR.CONFIG.ammoCap[d.ammo];
+      this.papCount++;
+    },
+
+    // ---- interact: doors, wall buys, the box, Pack-a-Punch, quest objects ----------------
+    updateBuys() {
+      const g = this.g, p = g.player, near = (x, z, r, y) => Math.hypot(x - p.pos.x, z - p.pos.z) < r && (y === undefined || Math.abs(y - p.pos.y) < 2.5);
+      this.near = null;
+      for (const d of this.doors || []) if (!d.open && near(d.cx, d.cz, 3)) { this.near = { k: 'door', o: d, txt: `Open ${d.name} · ${d.cost}` }; break; }
+      if (!this.near) for (const b of this.buys || []) if (near(b.x, b.z, 2.3, b.y - 1.7)) { const have = p.hasWeapon(b.wid); this.near = { k: 'buy', o: b, txt: have ? `Ammo · ${Math.round(b.cost / 2)}` : `Buy ${b.name} · ${b.cost}` }; break; }
+      const B = this.box; if (!this.near && B && near(B.grp.position.x, B.grp.position.z, 2.6)) {
+        if (B.state === 'idle') this.near = { k: 'box', txt: 'Mystery Box · 950' };
+        else if (B.state === 'offer') this.near = { k: 'boxtake', txt: 'Take ' + BR.CONFIG.weapons[B.wid].name };
+      }
+      const P = this.pap; if (!this.near && P && near(P.x, P.z, 2.6)) { const w = p.weapon; this.near = { k: 'pap', txt: !w || w.def.melee ? 'Pack-a-Punch · hold a gun' : w.def.pap ? 'Already upgraded' : `Pack-a-Punch ${w.def.name} · 5000` }; }
+      if (!this.near && this.quest && this.quest.spots) for (const s of this.quest.spots) if (!s.done && s.interact && near(s.x, s.z, 2.4, s.y)) { this.near = { k: 'quest', o: s, txt: s.interact }; break; }
+      g.hud.prompt(this.near ? this.near.txt : null);
+    },
+    interact() {
+      const g = this.g, p = g.player, N = this.near; if (!N) return false;
+      const pay = c => { if (this.points < c) { g.hud.toast('Not enough points', 900); BR.Audio.click(); return false; } this.points -= c; g.hud.zmPoints(this.points, -c); return true; };
+      if (N.k === 'door') { if (pay(N.o.cost)) this.openDoor(N.o); return true; }
+      if (N.k === 'buy') {
+        const b = N.o, have = p.hasWeapon(b.wid), cost = have ? Math.round(b.cost / 2) : b.cost, def = BR.CONFIG.weapons[b.wid];
+        if (!pay(cost)) return true;
+        if (have) { const w = p.slots.find(s => s && s.id === b.wid); if (w) w.mag = w.def.mag; p.ammo[def.ammo] = BR.CONFIG.ammoCap[def.ammo]; }
+        else this.giveGun(b.wid);
+        BR.Audio.zBuy && BR.Audio.zBuy(); g.hud.toast(have ? 'Ammo refilled' : def.name + ' bought', 1000); return true;
+      }
+      if (N.k === 'box') { if (pay(950)) { const B = this.box; B.state = 'rolling'; B.t = 0; B.swapT = 0; BR.Audio.zBox && BR.Audio.zBox(); } return true; }
+      if (N.k === 'boxtake') { const B = this.box; this.giveGun(B.wid); g.hud.toast(BR.CONFIG.weapons[B.wid].name, 1000); this.boxClose(); BR.Audio.pickup(); return true; }
+      if (N.k === 'pap') {
+        const w = p.weapon; if (!w || w.def.melee || w.def.pap) return true;
+        if (!pay(5000)) return true;
+        const P = this.pap; P.busy = 2.4; while (P.show.children.length) P.show.remove(P.show.children[0]); const m = BR.Models.worldWeapon(w.id); m.scale.setScalar(1.4); P.show.add(m);
+        this.papWeapon(w); g.vmr.lastWeapon = null;
+        g.hud.zmBanner(w.def.name.toUpperCase(), 'Pack-a-Punched: double damage, bigger mag', 'power', '#c06bff'); BR.Audio.zPap && BR.Audio.zPap();
+        this.questEvent('pap'); return true;
+      }
+      if (N.k === 'quest') { this.questSpot(N.o); return true; }
+      return false;
+    },
+    giveGun(wid) {
+      const p = this.g.player, def = BR.CONFIG.weapons[wid];
+      const i = p.giveWeapon(wid, def.mag);
+      if (i < 0) { const c = p.cur === 2 ? 0 : p.cur; p.slots[c] = BR.Weapons.create(wid, def.mag); p.switchTo(c); }
+      p.ammo[def.ammo] = BR.CONFIG.ammoCap[def.ammo];
+    },
+
+    // ---- spawning only in opened zones -------------------------------------------------
+    spawnZombie(at, riseT, speedOverride) {
+      if (!at) { const p = this.g.player.pos, W = this.g.world, open = (W.zmSpawns || []).filter(s => this.unlocked.has(s.zone || 'graveyard'));
+        const far = open.filter(s => Math.hypot(s.x - p.x, s.z - p.z) > 12 && Math.hypot(s.x - p.x, s.z - p.z) < 70); const list = far.length ? far : open; at = list[Math.floor(Math.random() * list.length)]; }
+      return BR.ZombieMode.prototype._spawnZombieBase.call(this, at, riseT, speedOverride);
+    },
+
+    // ---- quests every 5 rounds (story lore + points) ---------------------------------------
+    nextRound() {
+      baseNext.call(this);
+      if (this.round % 5 === 0) this.startQuest();
+    },
+    startQuest() {
+      const def = QUESTS[this.questN % QUESTS.length], tier = Math.floor(this.questN / QUESTS.length);
+      this.quest = { def, n: 0, goal: Math.round(def.goal * (1 + tier * 0.5)), reward: 600 + this.round * 40, lore: STORY.lore[this.questN % STORY.lore.length], t: 0 };
+      this.refreshQuestSpots();
+      this.g.hud.zmQuest(this.quest);
+      setTimeout(() => this.g.hud.zmBanner('NEW QUEST', def.title + ': ' + def.desc, 'quest'), 2600);
+    },
+    refreshQuestSpots() {
+      const Q = this.quest; if (!Q) return; const W = this.g.world, QS = W.zmQuest, sc = this.g.scene;
+      if (Q.spots) for (const s of Q.spots) if (s.mesh) sc.remove(s.mesh);
+      Q.spots = [];
+      const mk = (x, y, z, col, interact, kind) => { const grp = new THREE.Group(); grp.position.set(x, y, z); const gl = sprite(col, 1.6); gl.material.opacity = 0.7; grp.add(gl); sc.add(grp); const s = { x, y, z, mesh: grp, gl, interact, kind, done: false }; Q.spots.push(s); return s; };
+      const id = Q.def.id;
+      if (id === 'pages') { const open = QS.pages.filter(pp => this.unlocked.has(BR.zombieZoneAt(pp.x, pp.z))); const pool = open.concat([{ x: -14, z: 30 }, { x: 18, z: -6 }, { x: -33, z: -12 }]).slice(0, Q.goal);
+        for (const pg of pool) { const s = mk(pg.x, this.g.world.groundAt(pg.x, pg.z, 3) + 1, pg.z, 0xfff2c0, null, 'page'); const page = mesh(new THREE.PlaneGeometry(0.35, 0.45), new THREE.MeshBasicMaterial({ color: 0xf2e6c8, side: THREE.DoubleSide })); s.mesh.add(page); s.page = page; } }
+      else if (id === 'candles') for (const c of QS.candles) { const s = mk(c.x, 0.9, c.z, 0x666666, 'Light the ritual candle', 'candle'); s.mesh.add(mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.9, 8), lam(0xeae0c8), 0, -0.45, 0)); s.gl.material.opacity = 0.15; }
+      else if (id === 'bell') mk(QS.bell.x, QS.bell.y + 1.2, QS.bell.z, 0xffd24a, 'Ring the wedding bell', 'bell');
+      else if (id === 'cauldron') { const open = this.unlocked.has('wood'); Q.zone = open ? { x: QS.cauldron.x, z: QS.cauldron.z, r: 8 } : { x: 0, z: -22, r: 8 }; mk(Q.zone.x, 2.5, Q.zone.z, 0x7dff3a, null, 'area'); }
+      else if (id === 'stones') { const open = this.unlocked.has('wood'); Q.zone = open ? { x: QS.stones.x, z: QS.stones.z, r: 6 } : { x: QS.altar.x, z: QS.altar.z, r: 4 }; mk(Q.zone.x, 2.5, Q.zone.z, 0xff2a2a, null, 'area'); }
+    },
+    questSpot(s) {
+      if (s.done) return; s.done = true;
+      if (s.kind === 'candle') { s.gl.material.color.setHex(0xffb24a); s.gl.material.opacity = 0.8; s.gl.scale.setScalar(1.2); BR.Audio.zFire && BR.Audio.zFire(); }
+      else if (s.kind === 'bell') { BR.Audio.zBell && BR.Audio.zBell(); this.g.cam.shake = Math.max(this.g.cam.shake, 0.2); }
+      this.questProgress(1);
+    },
+    questEvent(kind, n) {
+      const Q = this.quest; if (!Q) return; const id = Q.def.id;
+      if ((id === 'headshots' && kind === 'headshot') || (id === 'knife' && kind === 'knife') || (id === 'pap' && kind === 'pap')) this.questProgress(n || 1);
+      if (id === 'cauldron' && kind === 'kill' && n && Math.hypot(n.x - Q.zone.x, n.z - Q.zone.z) < Q.zone.r) this.questProgress(1);
+    },
+    questProgress(k) {
+      const Q = this.quest; if (!Q) return; Q.n = Math.min(Q.goal, Q.n + k); this.g.hud.zmQuest(Q);
+      if (Q.n >= Q.goal) this.completeQuest();
+    },
+    completeQuest() {
+      const Q = this.quest, g = this.g; this.quest = null; this.questN++;
+      if (Q.spots) for (const s of Q.spots) if (s.mesh) g.scene.remove(s.mesh);
+      this.addPoints(Q.reward); this.journal.push(Q.lore);
+      g.hud.zmQuest(null); g.hud.zmJournal(this.journal);
+      g.hud.zmBanner('QUEST COMPLETE', Q.def.title + '  ·  +' + Q.reward + ' points', 'slain');
+      setTimeout(() => g.hud.zmLore(Q.lore.title, Q.lore.text), 1500);
+      BR.Audio.zPower && BR.Audio.zPower();
+    },
+    updateQuest(dt) {
+      const Q = this.quest; if (!Q) return; const p = this.g.player;
+      Q.t += dt;
+      if (Q.spots) for (const s of Q.spots) { if (s.done && s.kind === 'page') continue; s.mesh.position.y = s.y + Math.sin(this.tAll * 2 + s.x) * 0.15; if (s.page) s.page.rotation.y += dt * 2;
+        if (s.kind === 'page' && !s.done && Math.hypot(s.x - p.pos.x, s.z - p.pos.z) < 1.6 && Math.abs(s.y - 1 - p.pos.y) < 2.5) { s.done = true; this.g.scene.remove(s.mesh); BR.Audio.pickup(); this.questProgress(1); } }
+      if (Q.def.id === 'stones' && Q.zone && Math.hypot(p.pos.x - Q.zone.x, p.pos.z - Q.zone.z) < Q.zone.r) { Q.acc = (Q.acc || 0) + dt; if (Q.acc >= 1) { Q.acc -= 1; this.questProgress(1); } }
+    },
+
+    // ---- boss intro cutscene -------------------------------------------------------------
+    spawnBoss() {
+      ZM._spawnBossBase.call(this);
+      const b = this.boss; if (!b) return;
+      b.riseT = b.riseMax = 3.2;
+      this.cut = { t: 0, dur: 6.2, b, type: b.boss, story: STORY.bosses[b.boss] };
+      document.body.classList.add('zm-cinema'); this.g.hud.zmCut(this.cut.story, BOSSES[b.boss].color);
+      this.g.hud.zmBoss(null);
+    },
+    updateCut(dt) {
+      const C = this.cut, g = this.g, b = C.b; C.t += dt;
+      this.tAll = (this.tAll || 0) + dt; this.ambience(dt);
+      b.t += dt; if (b.riseT > 0) b.riseT = Math.max(0, b.riseT - dt); b.syncMesh(dt);
+      INTRO[C.type].fx(this, b, C.t, dt); g.fx.update(dt);
+      // camera: per-boss path around the boss, looking at the head
+      const cp = INTRO[C.type].cam(C.t), cam = g.camera, bp = b.pos;
+      cam.position.set(bp.x + Math.sin(cp.ang) * cp.r, bp.y + cp.h + (cp.shake ? (Math.random() - 0.5) * cp.shake : 0), bp.z + Math.cos(cp.ang) * cp.r);
+      cam.lookAt(bp.x, bp.y + cp.look, bp.z); cam.fov = 55; cam.updateProjectionMatrix(); g.vmr.hide();
+      if (C.t >= C.dur || (g.input && g.input.consume && (g.input.consume('jump') || g.input.consume('interact')) && C.t > 1)) this.endCut();
+    },
+    endCut() {
+      const g = this.g, C = this.cut; this.cut = null; document.body.classList.remove('zm-cinema'); g.hud.zmCut(null);
+      if (C.b) { C.b.riseT = 0; g.hud.zmBoss(C.b.D.name, 1, C.b.D.color); }
+      g.camera.fov = g.baseFov(); g.camera.updateProjectionMatrix(); g.input.reset(); g.last = performance.now();
+    },
+
+    // ---- per frame extras ------------------------------------------------------------------
+    update(dt) {
+      baseUpdate.call(this, dt);
+      if (!this.g.player.alive) return;
+      this.updateBox(dt); this.updatePap(dt); this.updateQuest(dt);
+      for (const d of this.doors || []) if (d.open && d.openT < 1) { d.openT = Math.min(1, d.openT + dt * 1.5); d.bars.position.y = -d.openT * 4.6; if (d.openT >= 1) d.grp.visible = false; }
+      const left = this.phase === 'fight' ? this.toSpawn + this.zombies.filter(z => z.alive).length + (this.bossPending ? 1 : 0) : 0;
+      this.g.hud.zmLeft(left, this.phase === 'fight');
+    },
+    onKill(victim, killer, weaponId, head) {
+      baseOnKill.call(this, victim, killer, weaponId, head);
+      if (!victim.zombie || !killer || !killer.isPlayer) return;
+      const melee = BR.CONFIG.weapons[weaponId] && BR.CONFIG.weapons[weaponId].melee;
+      if (head && !melee) this.questEvent('headshot'); if (melee) this.questEvent('knife');
+      this.questEvent('kill', victim.pos);
+    },
+  });
 })();

@@ -5,6 +5,18 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.9.1', date: '2026-11-03', title: 'ZOMBIES: The Ravenhold Curse', notes: [
+    'Hollow Graves is now about 3x bigger: four zones (the Graveyard, Pumpkin Patch, Witch\'s Wood and Ravenhold Manor) behind buyable doors (750 / 1000 / 1250 points). Zombies only come from zones you have opened.',
+    '16 wall-buy stations spread across all zones (up from 6).',
+    'Mystery Box: 950 points for a random weapon, marked by a tall glowing beam you can see across the map. After a few spins the teddy bear can appear, refund you and move the box somewhere else.',
+    'Pack-a-Punch in Ravenhold Manor (5000 points): more than double damage, a bigger mag, a new name and a shimmering violet camo with helix tracers.',
+    'The HUD now shows how many zombies are left in the round.',
+    'A story: the Ravenhold Curse. Every boss is part of it (Silas Hale, Elinor Ravenhold, The Ossuary and Dr. Corvin Vale), and each one gets its own intro cutscene with a name card before the fight (jump or interact to skip).',
+    'Quests every 5 rounds (collect pages, light candles, ring the bell, feed the cauldron and more) give points and unlock lore pages about the bosses. Read them in the Journal (J on PC, or the book button).',
+    'Zombies look far more realistic: textured rotting skin and torn clothes, four types (villager, farmer, groom, gravedigger), sunken eyes, teeth, hanging jaws and exposed bone.',
+    'Zombies can now be highlighted with the enemy highlight setting (toned down for the night map).',
+    'The crosshair now stays visible while aiming down sights with iron sights (it still hides for scopes and optics).',
+  ] },
   { v: '1.9.0', date: '2026-11-03', title: 'ZOMBIES: Hollow Graves', notes: [
     'New mode: ZOMBIES. Endless rounds on Hollow Graves, a Halloween graveyard at night: a ruined chapel and bell tower, stone crypts, rows of headstones, glowing jack-o\'-lanterns, dead trees, lanterns, drifting mist, bats and lightning.',
     'Each round sends a set number of zombies (more every round). They get tougher and faster as the rounds go up, from shamblers to sprinters. They claw up out of the graves and come straight for you.',

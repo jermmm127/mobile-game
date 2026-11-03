@@ -1186,7 +1186,7 @@ body.zombies #topbar, body.zombies .btn.spawn, body.zombies .btn.mapbtn, body.zo
 .zm-timers { position: absolute; left: 50%; bottom: calc(118px + var(--sb)); transform: translateX(-50%); display: flex; gap: 10px; }
 .zm-timers span { font: 800 13px 'Outfit', sans-serif; letter-spacing: .08em; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,.45); }
 #zm-insta { color: #ff5a5a; box-shadow: 0 0 12px rgba(255, 70, 70, .5); } #zm-double { color: #ffd24a; box-shadow: 0 0 12px rgba(255, 210, 74, .5); }
-#zm-boss { position: absolute; left: 50%; top: calc(14px + var(--st)); transform: translateX(-50%); width: min(460px, 60vw); text-align: center; --bc: #ff7a1a; }
+#zm-boss { position: absolute; left: 50%; top: calc(6px + var(--st)); transform: translateX(-50%); width: min(460px, 60vw); text-align: center; --bc: #ff7a1a; }
 #zm-boss .zb-name { font: 900 15px 'Outfit', sans-serif; letter-spacing: .22em; color: #fff; text-shadow: 0 0 12px var(--bc), 0 2px 4px #000; }
 #zm-boss .zb-bar { margin-top: 5px; height: 10px; border-radius: 6px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.25); overflow: hidden; box-shadow: 0 0 14px var(--bc); }
 #zm-boss .zb-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--bc), #fff 160%); transition: width .2s; }
@@ -1202,6 +1202,43 @@ body.zombies #topbar, body.zombies .btn.spawn, body.zombies .btn.mapbtn, body.zo
 #zm-flash { position: absolute; inset: 0; background: #d8d0ff; opacity: 0; }
 #zm-flash.on { animation: zmFl .5s ease-out; } #zm-flash.on.nuke { background: #fff2c0; animation-duration: 1.2s; }
 @keyframes zmFl { 0% { opacity: .55; } 20% { opacity: .1; } 30% { opacity: .35; } 100% { opacity: 0; } }
+
+/* ---- zombies: counter, quest tracker, journal, lore card, boss cutscene ---- */
+.zm-left { position: absolute; left: max(112px, calc(var(--sl) + 106px)); top: calc(90px + var(--st)); font: 700 12px 'Outfit', sans-serif; letter-spacing: .16em; color: #f2c8b8; text-shadow: 0 1px 4px #000; }
+.zm-left b { font-size: 18px; color: #ff5a4a; margin-left: 4px; letter-spacing: 0; }
+.zm-quest { position: absolute; left: 50%; transform: translateX(-50%); top: calc(50px + var(--st)); width: min(250px, 40vw); padding: 8px 10px; border-radius: 10px; background: rgba(12, 6, 18, .62); border: 1px solid rgba(255, 178, 74, .45); box-shadow: 0 0 16px rgba(255, 140, 40, .2); display: grid; gap: 2px; }
+.zm-quest small { font: 800 9px 'Outfit', sans-serif; letter-spacing: .24em; color: #ffb24a; }
+.zm-quest b { font: 800 13px 'Outfit', sans-serif; color: #fff; } .zm-quest .zq-d { font: 500 10.5px/1.3 'Outfit', sans-serif; color: #e8d8c8; }
+.zm-quest .zq-bar { display: block; height: 4px; margin-top: 4px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; } .zm-quest .zq-bar u { display: block; height: 100%; background: linear-gradient(90deg, #ff7a1a, #ffd24a); transition: width .3s; }
+.zm-quest .zq-n { font: 700 10px 'Outfit', sans-serif; color: #ffd24a; font-style: normal; justify-self: end; }
+.zm-quest.pulse { animation: zqP .5s ease-out; } @keyframes zqP { 0% { transform: translateX(-50%) scale(1.06); box-shadow: 0 0 26px rgba(255,180,60,.7); } 100% { transform: translateX(-50%); } }
+.zm-jbtn { position: absolute; left: max(14px, calc(var(--sl) + 10px)); top: calc(62px + var(--st)); display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; pointer-events: auto; cursor: pointer;
+  background: rgba(20, 10, 14, .6); border: 1px solid rgba(255, 178, 74, .4); color: #ffd8a8; font: 700 10px 'Outfit', sans-serif; letter-spacing: .14em; }
+.zm-jbtn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.zm-lore { position: absolute; left: 50%; top: calc(50px + var(--st)); transform: translateX(-50%); width: min(460px, 62vw); padding: 9px 14px; border-radius: 12px; opacity: 0; pointer-events: none;
+  background: linear-gradient(160deg, rgba(40, 22, 12, .9), rgba(16, 8, 20, .9)); border: 1px solid rgba(255, 190, 110, .5); box-shadow: 0 10px 30px rgba(0,0,0,.6), 0 0 22px rgba(255, 140, 40, .25); }
+.zm-lore small { font: 800 9px 'Outfit', sans-serif; letter-spacing: .3em; color: #ffb24a; } .zm-lore b { display: block; margin: 2px 0 4px; font: 800 16px 'Outfit', sans-serif; color: #fff2dc; }
+.zm-lore p { margin: 0; font: 500 11.5px/1.4 'Outfit', sans-serif; color: #ecdcc8; }
+.zm-lore.on { animation: zmLore 11s ease-out forwards; } @keyframes zmLore { 0% { opacity: 0; transform: translate(-50%, 14px); } 5% { opacity: 1; transform: translate(-50%, 0); } 90% { opacity: 1; } 100% { opacity: 0; } }
+.zm-journal { position: absolute; inset: 0; background: rgba(6, 3, 10, .72); display: grid; place-items: center; pointer-events: auto; z-index: 20; }
+.zj-panel { width: min(620px, 88vw); max-height: 80vh; overflow-y: auto; padding: 16px 18px; border-radius: 14px; background: linear-gradient(170deg, #2a1a10, #120a14); border: 1px solid rgba(255, 190, 110, .5); }
+.zj-head { font: 900 15px 'Outfit', sans-serif; letter-spacing: .2em; color: #ffb24a; margin-bottom: 10px; display: flex; justify-content: space-between; } .zj-head span { font-size: 10px; color: #a89; letter-spacing: .1em; }
+.zj-e { padding: 8px 0; border-top: 1px solid rgba(255,190,110,.2); } .zj-e b { font: 800 13px 'Outfit', sans-serif; color: #fff2dc; } .zj-e p { margin: 3px 0 0; font: 500 12px/1.45 'Outfit', sans-serif; color: #e2d2c0; }
+.zj-e.lock { opacity: .55; }
+.zm-cut { position: absolute; inset: 0; pointer-events: none; opacity: 0; --cc: #ff7a1a; }
+.zm-cut.on { opacity: 1; }
+.zm-cut .bar { position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height .6s cubic-bezier(.2, .8, .2, 1); }
+.zm-cut .bar.t { top: 0; } .zm-cut .bar.b { bottom: 0; } .zm-cut.on .bar { height: 13vh; }
+.zm-cut .zc-card { position: absolute; left: max(40px, calc(var(--sl) + 30px)); bottom: calc(16vh + 10px); opacity: 0; }
+.zm-cut.on .zc-card { animation: zcIn 6.2s ease-out forwards; }
+.zm-cut .zc-name { display: block; font: 700 13px 'Outfit', sans-serif; letter-spacing: .4em; color: var(--cc); text-shadow: 0 0 10px var(--cc); }
+.zm-cut .zc-title { display: block; font: 900 clamp(30px, 6vw, 58px)/1 'Outfit', sans-serif; letter-spacing: .04em; color: #fff; text-shadow: 0 0 26px var(--cc), 0 4px 0 rgba(0,0,0,.7); }
+.zm-cut .zc-line { margin: 8px 0 0; max-width: 520px; font: 500 italic 14px 'Outfit', sans-serif; color: #f2e2d2; text-shadow: 0 1px 4px #000; font-style: normal; }
+.zm-cut .zc-skip { position: absolute; right: -9999px; }
+@keyframes zcIn { 0%, 22% { opacity: 0; transform: translateX(-30px); filter: blur(6px); } 32% { opacity: 1; transform: none; filter: none; } 88% { opacity: 1; } 100% { opacity: 0; } }
+body.zm-cinema #play > :not(#view):not(#zm-hud) { opacity: 0 !important; pointer-events: none !important; }
+body.zm-cinema #zm-hud > :not(#zm-cut) { visibility: hidden; }
+body:not(.zombies) .zm-jbtn { display: none; }
 
 </style>
 </head>
@@ -1226,7 +1263,7 @@ body.zombies #topbar, body.zombies .btn.spawn, body.zombies .btn.mapbtn, body.zo
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.9.0',
+  version: '1.9.1',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1456,6 +1493,18 @@ BR.CONFIG = {
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.9.1', date: '2026-11-03', title: 'ZOMBIES: The Ravenhold Curse', notes: [
+    'Hollow Graves is now about 3x bigger: four zones (the Graveyard, Pumpkin Patch, Witch\'s Wood and Ravenhold Manor) behind buyable doors (750 / 1000 / 1250 points). Zombies only come from zones you have opened.',
+    '16 wall-buy stations spread across all zones (up from 6).',
+    'Mystery Box: 950 points for a random weapon, marked by a tall glowing beam you can see across the map. After a few spins the teddy bear can appear, refund you and move the box somewhere else.',
+    'Pack-a-Punch in Ravenhold Manor (5000 points): more than double damage, a bigger mag, a new name and a shimmering violet camo with helix tracers.',
+    'The HUD now shows how many zombies are left in the round.',
+    'A story: the Ravenhold Curse. Every boss is part of it (Silas Hale, Elinor Ravenhold, The Ossuary and Dr. Corvin Vale), and each one gets its own intro cutscene with a name card before the fight (jump or interact to skip).',
+    'Quests every 5 rounds (collect pages, light candles, ring the bell, feed the cauldron and more) give points and unlock lore pages about the bosses. Read them in the Journal (J on PC, or the book button).',
+    'Zombies look far more realistic: textured rotting skin and torn clothes, four types (villager, farmer, groom, gravedigger), sunken eyes, teeth, hanging jaws and exposed bone.',
+    'Zombies can now be highlighted with the enemy highlight setting (toned down for the night map).',
+    'The crosshair now stays visible while aiming down sights with iron sights (it still hides for scopes and optics).',
+  ] },
   { v: '1.9.0', date: '2026-11-03', title: 'ZOMBIES: Hollow Graves', notes: [
     'New mode: ZOMBIES. Endless rounds on Hollow Graves, a Halloween graveyard at night: a ruined chapel and bell tower, stone crypts, rows of headstones, glowing jack-o\'-lanterns, dead trees, lanterns, drifting mist, bats and lightning.',
     'Each round sends a set number of zombies (more every round). They get tougher and faster as the rounds go up, from shamblers to sprinters. They claw up out of the graves and come straight for you.',
@@ -1762,6 +1811,11 @@ BR.Audio = {
   zThunder() { this.burst(120, 0.5, 2.2, 0.35); this.burst(60, 0.4, 2.8, 0.25); },
   zBuy() { this.tone(1046, 1046, 0.08, 0.14, 'square'); setTimeout(() => this.tone(1568, 1568, 0.16, 0.14, 'square'), 90); setTimeout(() => this.tone(2093, 2093, 0.2, 0.1, 'triangle'), 180); },
   zPower() { [523, 659, 784, 1046, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, f, 0.14, 0.12, 'triangle'), i * 70)); },
+  zDoor() { this.burst(300, 0.8, 0.6, 0.3); this.tone(120, 70, 0.5, 0.25, 'sawtooth'); },
+  zBox() { [392, 523, 659, 523, 784].forEach((f, i) => setTimeout(() => this.tone(f, f, 0.3, 0.1, 'triangle'), i * 180)); },
+  zTeddy() { this.tone(330, 160, 0.9, 0.18, 'sine'); setTimeout(() => this.tone(160, 80, 0.9, 0.18, 'sine'), 500); },
+  zPap() { this.tone(110, 440, 1.6, 0.25, 'sawtooth'); this.burst(3000, 1.2, 1.4, 0.12, 0, 'bandpass'); setTimeout(() => { this.tone(880, 880, 0.4, 0.15, 'triangle'); this.tone(1320, 1320, 0.6, 0.1, 'sine'); }, 1500); },
+  zBell() { for (let i = 0; i < 3; i++) setTimeout(() => { this.tone(392, 390, 2.2, 0.25, 'sine'); this.tone(784, 780, 1.6, 0.1, 'sine'); this.tone(1176, 1170, 1.0, 0.05, 'sine'); }, i * 900); },
   // firework pop (louder close up)
   pop(v) { this.burst(1400 + Math.random() * 1200, 0.9, 0.25, (v || 0.3) * 0.6); this.tone(220 + Math.random() * 80, 60, 0.3, (v || 0.3) * 0.5, 'sine'); setTimeout(() => this.burst(7000, 1.5, 0.4, (v || 0.3) * 0.18, 0, 'bandpass'), 90); },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },
@@ -1818,7 +1872,7 @@ BR.World = class World {
     this.arena = !!(opts && (opts.arena || opts.halloween));
     this.halloween = !!(opts && opts.halloween);
     if (this.halloween) this.groundCols = [0x2b3820, 0x1f2a17, 0x3a3122];   // dead grass, mud
-    this.size = this.arena ? 92 : M.size;
+    this.size = opts && opts.halloween ? 230 : this.arena ? 92 : M.size;
     this.half = M.size / 2;
     this.gridHalf = this.size / 2;     // collision grid spans this world's own size (the duel arena is 72 m)
     this.cell = M.cell;
@@ -1843,79 +1897,156 @@ BR.World = class World {
   }
 
   // ------------------------------------------------------------------ zombies: Hollow Graves
-  // A walled Halloween graveyard (about 84 x 84 m): a ruined chapel with a bell tower in the
-  // north, four stone mausoleums, low crumbling walls you can vault, rows of headstones, an
-  // iron-gated south entrance. Zombie spawn holes ring the yard; wall-buy outlines sit on walls.
+  // Four zones joined by buyable doors (collision boxes the zombies mode removes when bought):
+  //   THE GRAVEYARD (start, 84 x 84 m): ruined chapel + bell tower, mausoleums, headstone rows
+  //   PUMPKIN PATCH (east, door 750): barn, crop rows, scarecrows, hay bales
+  //   WITCH'S WOOD (west, door 1000): dense dead trees, the witch's hut + cauldron, standing stones
+  //   RAVENHOLD MANOR (north, door 1250): the ruined manor (Pack-a-Punch in the great hall), courtyard fountain
+  // Each zone lists its zombie spawn graves, wall buys, Mystery Box spots and quest spots.
   generateHalloween() {
-    const STONE = 0x4a4652, STONE2 = 0x3a3742, MOSS = 0x34402c, WOOD = 0x3b2a1e, IRON = 0x1c1b20, BONE = 0x8d8676, ROOF = 0x2a2530;
+    const STONE = 0x4a4652, STONE2 = 0x3a3742, MOSS = 0x34402c, WOOD = 0x3b2a1e, IRON = 0x1c1b20, BONE = 0x8d8676, ROOF = 0x2a2530, HAY = 0x8a7038, BRICK = 0x4a2a2a;
     const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
     const D = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
-    const R = this.rand, L = 42;
+    const R = this.rand, L = 42, WH = 3.2;
     this.pois = [{ x: 0, z: 0, name: 'Hollow Graves', type: 'arena' }];
     this.towns = [];
-    // perimeter: stone wall with a cap and iron fence spikes along the top
-    for (const s of [-1, 1]) {
-      B(-L, 0, s * L - 0.6, L, 3.2, s * L + 0.6, STONE2); D(-L, 3.2, s * L - 0.7, L, 3.45, s * L + 0.7, STONE);
-      B(s * L - 0.6, 0, -L, s * L + 0.6, 3.2, L, STONE2); D(s * L - 0.7, 3.2, -L, s * L + 0.7, 3.45, L, STONE);
-      for (let i = -L + 1; i < L; i += 1.4) { D(i - 0.04, 3.45, s * L - 0.04, i + 0.04, 4.5, s * L + 0.04, IRON); D(s * L - 0.04, 3.45, i - 0.04, s * L + 0.04, 4.5, i + 0.04, IRON); }
-    }
-    // south gate: two pillars with pumpkins on top (placed by the mode) and a closed iron gate
+    this.zmDoors = []; this.zmZones = {}; this.zmBuys = []; this.zmBoxSpots = []; this.zmSpawns = [];
+    const zone = (id, name) => (this.zmZones[id] = { id, name, spawns: [] });
+    zone('graveyard', 'The Graveyard'); zone('patch', 'Pumpkin Patch'); zone('wood', "Witch's Wood"); zone('manor', 'Ravenhold Manor');
+    // a wall along X or Z with door gaps: gaps = [[a0, a1], ...]
+    const wallX = (z, x0, x1, gaps, h) => { let a = x0; for (const [g0, g1] of (gaps || []).concat([[x1, x1]])) { if (g0 > a) { B(a, 0, z - 0.6, g0, h || WH, z + 0.6, STONE2); D(a, h || WH, z - 0.7, g0, (h || WH) + 0.25, z + 0.7, STONE); for (let i = a + 0.6; i < g0; i += 1.4) D(i - 0.04, (h || WH) + 0.25, z - 0.04, i + 0.04, (h || WH) + 1.3, z + 0.04, IRON); } a = g1; } };
+    const wallZ = (x, z0, z1, gaps, h) => { let a = z0; for (const [g0, g1] of (gaps || []).concat([[z1, z1]])) { if (g0 > a) { B(x - 0.6, 0, a, x + 0.6, h || WH, g0, STONE2); D(x - 0.7, h || WH, a, x + 0.7, (h || WH) + 0.25, g0, STONE); for (let i = a + 0.6; i < g0; i += 1.4) D(x - 0.04, (h || WH) + 0.25, i - 0.04, x + 0.04, (h || WH) + 1.3, i + 0.04, IRON); } a = g1; } };
+    const door = (id, name, cost, x0, z0, x1, z1, from, to) => { const box = B(x0, 0, z0, x1, 4.2, z1, WOOD, { hidden: true }); this.zmDoors.push({ id, name, cost, x0, z0, x1, z1, from, to, box, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2 }); };
+    const spawnRing = (zid, pts) => { for (const [x, z] of pts) { this.zmZones[zid].spawns.push({ x, z }); this.zmSpawns.push({ x, z, zone: zid }); } };
+    const buy = (zid, wid, x, y, z, nx, nz) => this.zmBuys.push([wid, x, y, z, nx, nz, zid]);
+
+    // ======================= THE GRAVEYARD (start) =======================
+    wallX(L, -L, L, [[-3.6, 3.6]]); wallX(-L, -L, L, [[17, 23]]); wallZ(L, -L, L, [[-3, 3]]); wallZ(-L, -L, L, [[-3, 3]]);
+    door('patch', 'Pumpkin Patch', 750, L - 0.7, -3, L + 0.7, 3, 'graveyard', 'patch');
+    door('wood', "Witch's Wood", 1000, -L - 0.7, -3, -L + 0.7, 3, 'graveyard', 'wood');
+    door('manor', 'Ravenhold Manor', 1250, 17, -L - 0.7, 23, -L + 0.7, 'graveyard', 'manor');
+    // south gate (closed iron gate between pillars)
     for (const x of [-4.5, 4.5]) { B(x - 0.9, 0, L - 1.2, x + 0.9, 4.6, L + 1.2, STONE); D(x - 1.05, 4.6, L - 1.35, x + 1.05, 4.9, L + 1.35, STONE2); }
+    B(-3.6, 0, L - 0.15, 3.6, 3.9, L + 0.15, IRON, { hidden: true });
     for (let x = -3.4; x <= 3.4; x += 0.45) D(x - 0.05, 0, L - 0.1, x + 0.05, 3.9, L + 0.1, IRON);
     D(-3.6, 3.0, L - 0.12, 3.6, 3.15, L + 0.12, IRON); D(-3.6, 1.0, L - 0.12, 3.6, 1.15, L + 0.12, IRON);
-    // ruined chapel (north): walls with door gaps, broken window holes, half-collapsed roof, bell tower
+    // ruined chapel + bell tower
     const cx = 0, cz = -22, cw = 9, cd = 7, ch = 6.5, t = 0.6;
-    B(cx - cw, 0, cz - cd, cx + cw, ch, cz - cd + t, STONE);                                    // back wall
-    B(cx - cw, 0, cz + cd - t, cx - 2, ch, cz + cd, STONE); B(cx + 2, 0, cz + cd - t, cx + cw, ch * 0.8, cz + cd, STONE);   // front with a door
+    B(cx - cw, 0, cz - cd, cx + cw, ch, cz - cd + t, STONE);
+    B(cx - cw, 0, cz + cd - t, cx - 2, ch, cz + cd, STONE); B(cx + 2, 0, cz + cd - t, cx + cw, ch * 0.8, cz + cd, STONE);
     B(cx - 2, 3.6, cz + cd - t, cx + 2, ch, cz + cd, STONE);
-    B(cx - cw, 0, cz - cd, cx - cw + t, ch, cz - 1.6, STONE); B(cx - cw, 0, cz + 1.6, cx - cw + t, ch * 0.7, cz + cd, STONE);  // west with a side door
+    B(cx - cw, 0, cz - cd, cx - cw + t, ch, cz - 1.6, STONE); B(cx - cw, 0, cz + 1.6, cx - cw + t, ch * 0.7, cz + cd, STONE);
     B(cx + cw - t, 0, cz - cd, cx + cw, ch * 0.85, cz - 1.6, STONE); B(cx + cw - t, 0, cz + 1.6, cx + cw, ch, cz + cd, STONE);
-    D(cx - cw - 0.2, ch, cz - cd - 0.2, cx + 1, ch + 0.4, cz + cd + 0.2, ROOF);              // what's left of the roof
+    D(cx - cw - 0.2, ch, cz - cd - 0.2, cx + 1, ch + 0.4, cz + cd + 0.2, ROOF);
     D(cx - 1, ch - 0.6, cz - cd, cx - 0.4, ch, cz + cd, WOOD); D(cx + 3, ch - 0.6, cz - cd, cx + 3.6, ch * 0.85, cz + cd, WOOD);
-    B(cx - 3, 0, cz - cd + t, cx + 3, 1.0, cz - cd + 2.2, STONE2);                            // altar step
-    D(cx - 0.15, 1.0, cz - cd + 1.0, cx + 0.15, 2.6, cz - cd + 1.3, BONE); D(cx - 0.7, 2.0, cz - cd + 1.0, cx + 0.7, 2.3, cz - cd + 1.3, BONE);   // cross
-    // bell tower on the north-east corner (climb it with the grapple)
+    B(cx - 3, 0, cz - cd + t, cx + 3, 1.0, cz - cd + 2.2, STONE2);
+    D(cx - 0.15, 1.0, cz - cd + 1.0, cx + 0.15, 2.6, cz - cd + 1.3, BONE); D(cx - 0.7, 2.0, cz - cd + 1.0, cx + 0.7, 2.3, cz - cd + 1.3, BONE);
     B(cx + cw - 3.5, 0, cz - cd - 3.5, cx + cw + 0.5, 13, cz - cd + 0.5, STONE2);
     D(cx + cw - 3.8, 13, cz - cd - 3.8, cx + cw + 0.8, 13.5, cz - cd + 0.8, STONE);
     D(cx + cw - 3.0, 13.5, cz - cd - 3.0, cx + cw, 15.5, cz - cd, ROOF); D(cx + cw - 2.2, 15.5, cz - cd - 2.2, cx + cw - 0.8, 17.5, cz - cd - 0.8, ROOF);
-    // mausoleums: stepped stone roofs and a dark doorway
     const crypt = (x, z, rot) => {
       const w = 3, d = 3.5, h = 3.6;
       B(x - w, 0, z - d, x + w, h, z + d, STONE);
       D(x - w - 0.3, h, z - d - 0.3, x + w + 0.3, h + 0.35, z + d + 0.3, STONE2); D(x - w + 0.5, h + 0.35, z - d + 0.4, x + w - 0.5, h + 0.9, z + d - 0.4, STONE2);
       D(x - w + 1.4, h + 0.9, z - d + 1, x + w - 1.4, h + 1.4, z + d - 1, ROOF);
       const fz = rot > 0 ? z + d : z - d, n = rot > 0 ? 1 : -1;
-      D(x - 1.1, 0, fz - 0.05 * n, x + 1.1, 2.4, fz + 0.06 * n, 0x0c0b10);                 // black doorway
-      D(x - 1.5, 2.4, fz - 0.05 * n, x + 1.5, 2.7, fz + 0.2 * n, BONE);                     // lintel
+      D(x - 1.1, 0, fz - 0.05 * n, x + 1.1, 2.4, fz + 0.06 * n, 0x0c0b10);
+      D(x - 1.5, 2.4, fz - 0.05 * n, x + 1.5, 2.7, fz + 0.2 * n, BONE);
       for (const sx of [-1.4, 1.4]) D(x + sx - 0.22, 0, fz, x + sx + 0.22, 2.4, fz + 0.3 * n, STONE2);
     };
     crypt(-25, -18, 1); crypt(25, -18, 1); crypt(-25, 20, -1); crypt(25, 20, -1);
-    // low crumbling walls (vaultable) + coffins + a dead-tree stump ring
     const lw = (x0, z0, x1, z1) => B(x0, 0, z0, x1, 1.0 + R() * 0.2, z1, MOSS);
-    lw(-14, 4, -6, 4.8); lw(6, 4, 14, 4.8); lw(-16, -6, -15.2, 2); lw(15.2, -6, 16, 2); lw(-10, 26, -3, 26.8); lw(3, 26, 10, 26.8);
-    lw(-36, -2, -30, -1.2); lw(30, 1.2, 36, 2);
-    for (const [x, z, a] of [[-8, 14, 0], [9, 13, 1], [0, 33, 0], [-30, 32, 1], [31, -31, 0]]) {
-      if (a) B(x - 0.5, 0, z - 1.1, x + 0.5, 0.75, z + 1.1, WOOD); else B(x - 1.1, 0, z - 0.5, x + 1.1, 0.75, z + 0.5, WOOD);
-    }
-    // headstones (visual only: rows across the yard, tilted a little by height variety) + grave mounds
-    for (let gx = -36; gx <= 36; gx += 4.2) for (let gz = -36; gz <= 38; gz += 5.2) {
-      if (Math.abs(gx) < 11 && gz > -31 && gz < -13) continue;             // chapel
-      if ((Math.abs(Math.abs(gx) - 25) < 5) && (Math.abs(Math.abs(gz) - 19) < 6)) continue;   // crypts
-      if (Math.abs(gx) < 6 && gz > 6 && gz < 30) continue;                 // the path up the middle
-      if (R() < 0.25) continue;
+    lw(-14, 4, -6, 4.8); lw(6, 4, 14, 4.8); lw(-16, -6, -15.2, 2); lw(15.2, -6, 16, 2); lw(-10, 26, -3, 26.8); lw(3, 26, 10, 26.8); lw(-36, -2, -30, -1.2); lw(30, 1.2, 36, 2);
+    for (const [x, z, a] of [[-8, 14, 0], [9, 13, 1], [0, 33, 0], [-30, 32, 1], [31, -31, 0]]) { if (a) B(x - 0.5, 0, z - 1.1, x + 0.5, 0.75, z + 1.1, WOOD); else B(x - 1.1, 0, z - 0.5, x + 1.1, 0.75, z + 0.5, WOOD); }
+    const stones = (x0, x1, z0, z1, skip) => { for (let gx = x0; gx <= x1; gx += 4.2) for (let gz = z0; gz <= z1; gz += 5.2) {
+      if (skip && skip(gx, gz)) continue; if (R() < 0.25) continue;
       const x = gx + (R() - 0.5) * 1.2, z = gz + (R() - 0.5) * 1.2, hh = 0.6 + R() * 0.7, ww = 0.35 + R() * 0.25;
-      D(x - ww, 0, z - 0.09, x + ww, hh, z + 0.09, R() < 0.5 ? STONE : 0x5a5662);
-      if (R() < 0.35) D(x - 0.1, hh, z - 0.08, x + 0.1, hh + 0.35, z + 0.08, STONE);
-      D(x - 0.45, 0, z + 0.2, x + 0.45, 0.16, z + 1.6, 0x2a2018);          // dirt mound
+      D(x - ww, 0, z - 0.09, x + ww, hh, z + 0.09, R() < 0.5 ? STONE : 0x5a5662); if (R() < 0.35) D(x - 0.1, hh, z - 0.08, x + 0.1, hh + 0.35, z + 0.08, STONE);
+      D(x - 0.45, 0, z + 0.2, x + 0.45, 0.16, z + 1.6, 0x2a2018); } };
+    stones(-36, 36, -36, 38, (gx, gz) => (Math.abs(gx) < 11 && gz > -31 && gz < -13) || (Math.abs(Math.abs(gx) - 25) < 5 && Math.abs(Math.abs(gz) - 19) < 6) || (Math.abs(gx) < 6 && gz > 6 && gz < 30) || (Math.abs(gz) < 6 && Math.abs(gx) > 36) || (gx > 14 && gx < 26 && gz < -34));
+    const ring = []; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + 0.2, r = 33 + (i % 3) * 2; ring.push([Math.cos(a) * r, Math.sin(a) * r]); }
+    spawnRing('graveyard', ring.concat([[-12, -20], [12, -30], [-20, 8], [20, 8]]));
+    buy('graveyard', 'smg', cx - 6, 1.7, cz + cd + 0.02, 0, 1); buy('graveyard', 'shotgun', cx + 6, 1.7, cz + cd + 0.02, 0, 1);
+    buy('graveyard', 'rifle', -25, 1.7, -18 + 3.5 + 0.02, 0, 1); buy('graveyard', 'revolver', 25, 1.7, -18 + 3.5 + 0.02, 0, 1);
+    buy('graveyard', 'holoar', -25, 1.7, 20 - 3.5 - 0.02, 0, -1); buy('graveyard', 'pistol', 25, 1.7, 20 - 3.5 - 0.02, 0, -1);
+    this.zmBoxSpots.push({ x: 0, z: 10, yaw: 0, zone: 'graveyard' }, { x: -25, z: -8, yaw: Math.PI / 2, zone: 'graveyard' });
+
+    // ======================= PUMPKIN PATCH (east) =======================
+    const PX0 = L, PX1 = 100, PZ = 34;
+    wallX(-PZ, PX0, PX1); wallX(PZ, PX0, PX1); wallZ(PX1, -PZ, PZ); wallZ(PX0, -PZ, -L + 0.1); wallZ(PX0, L - 0.1, PZ);
+    // barn: open front facing west, hayloft, roof
+    const bx0 = 74, bx1 = 92, bz0 = -24, bz1 = -8;
+    B(bx0, 0, bz0, bx1, 7, bz0 + 0.5, BRICK); B(bx0, 0, bz1 - 0.5, bx1, 7, bz1, BRICK); B(bx1 - 0.5, 0, bz0, bx1, 7, bz1, BRICK);
+    B(bx0, 0, bz0, bx0 + 0.5, 7, bz0 + 5, BRICK); B(bx0, 0, bz1 - 5, bx0 + 0.5, 7, bz1, BRICK); B(bx0, 5.2, bz0 + 5, bx0 + 0.5, 7, bz1 - 5, BRICK);
+    D(bx0 - 0.4, 7, bz0 - 0.4, bx1 + 0.4, 7.4, bz1 + 0.4, 0x3a1a1a); D(bx0 + 1, 7.4, bz0 + 1, bx1 - 1, 8.6, bz1 - 1, 0x3a1a1a);
+    B(bx0 + 8, 3.2, bz0 + 0.5, bx1 - 0.5, 3.5, bz1 - 0.5, WOOD);                                   // hayloft floor
+    for (let i = 0; i < 6; i++) B(bx0 + 9 + (i % 3) * 2.6, 3.5, bz0 + 2 + Math.floor(i / 3) * 5, bx0 + 11 + (i % 3) * 2.6, 4.6, bz0 + 4 + Math.floor(i / 3) * 5, HAY);
+    for (let i = 0; i < 5; i++) B(bx0 + 2 + i * 1.6, 0, bz1 - 3, bx0 + 3.3 + i * 1.6, 1.4 * (1 + (i % 2)), bz1 - 1.2, HAY);   // stairs of hay up
+    // crop rows, hay bales, scarecrow posts, a wagon
+    for (let x = 50; x < 96; x += 3.2) for (let z = 4; z < 30; z += 2.6) if (R() < 0.85) D(x - 0.6, 0, z - 0.25, x + 0.6, 0.25, z + 0.25, 0x2a3a18);
+    for (const [x, z] of [[56, -12], [62, -26], [58, 20], [70, 10], [90, 22], [96, -2], [52, -28]]) B(x - 1, 0, z - 0.7, x + 1, 1.3, z + 0.7, HAY);
+    for (const [x, z] of [[60, 12], [80, 26], [88, 6]]) { D(x - 0.08, 0, z - 0.08, x + 0.08, 2.6, z + 0.08, WOOD); D(x - 0.9, 2.0, z - 0.06, x + 0.9, 2.15, z + 0.06, WOOD); }
+    B(64, 0, -6, 69, 1.4, -3.6, WOOD); D(64.2, 0, -6.3, 65.2, 1.0, -3.3, 0x1c1b20);
+    for (const [x0, z0, x1, z1] of [[48, -16, 56, -15.4], [60, 0, 68, 0.6], [80, 0, 88, 0.6]]) B(x0, 0, z0, x1, 1.0, z1, WOOD);   // fences (vault)
+    spawnRing('patch', [[96, 30], [96, -30], [70, 31], [70, -31], [98, 4], [50, 30], [50, -30]]);
+    buy('patch', 'lmg', bx0 + 4, 1.7, bz1 + 0.02, 0, 1); buy('patch', 'hunter', bx1 + 0.02, 1.7, -16, 1, 0); buy('patch', 'shotgun', 69.1, 1.7, -4.8, 1, 0);
+    this.zmBoxSpots.push({ x: 84, z: -16, yaw: Math.PI / 2, zone: 'patch' });
+
+    // ======================= WITCH'S WOOD (west) =======================
+    const WX0 = -100, WX1 = -L;
+    wallX(-PZ, WX0, WX1); wallX(PZ, WX0, WX1); wallZ(WX0, -PZ, PZ); wallZ(WX1, -PZ, -L + 0.1); wallZ(WX1, L - 0.1, PZ);
+    // witch's hut: crooked walls, doorway east, pointed roof, chimney
+    const hx = -78, hz = 0;
+    B(hx - 5, 0, hz - 5, hx + 5, 4.5, hz - 4.5, WOOD); B(hx - 5, 0, hz + 4.5, hx + 5, 4.5, hz + 5, WOOD); B(hx - 5, 0, hz - 5, hx - 4.5, 4.5, hz + 5, WOOD);
+    B(hx + 4.5, 0, hz - 5, hx + 5, 4.5, hz - 1.4, WOOD); B(hx + 4.5, 0, hz + 1.4, hx + 5, 4.5, hz + 5, WOOD); B(hx + 4.5, 3, hz - 1.4, hx + 5, 4.5, hz + 1.4, WOOD);
+    D(hx - 5.6, 4.5, hz - 5.6, hx + 5.6, 5.0, hz + 5.6, 0x241a14); D(hx - 4, 5.0, hz - 4, hx + 4, 6.5, hz + 4, 0x241a14); D(hx - 2.4, 6.5, hz - 2.4, hx + 2.4, 8.2, hz + 2.4, 0x241a14); D(hx - 0.8, 8.2, hz - 0.8, hx + 0.8, 10.4, hz + 0.8, 0x241a14);
+    B(hx - 4, 4.5, hz + 2, hx - 2.8, 9, hz + 3.2, STONE2);
+    B(hx + 7, 0, hz - 1.2, hx + 9.4, 0.9, hz + 1.2, IRON);                                        // the cauldron (dressed by the mode)
+    // standing stones (circle) and the dead-tree thicket (trunks added by the mode)
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, x = -62 + Math.cos(a) * 7, z = -20 + Math.sin(a) * 7; B(x - 0.6, 0, z - 0.4, x + 0.6, 3 + (i % 3) * 0.6, z + 0.4, STONE2); }
+    B(-63, 0, -21, -61, 0.8, -19, STONE);                                                          // altar stone
+    spawnRing('wood', [[-96, 30], [-96, -30], [-70, 31], [-70, -31], [-98, 4], [-50, 30], [-50, -30]]);
+    buy('wood', 'dmr', hx - 5.02, 1.7, hz, -1, 0); buy('wood', 'sniper', -62 + 7 * Math.cos(0) + 0.62, 1.7, -20, 1, 0); buy('wood', 'smg', hx, 1.7, hz + 5.02, 0, 1);
+    this.zmBoxSpots.push({ x: -62, z: 12, yaw: 0, zone: 'wood' });
+
+    // ======================= RAVENHOLD MANOR (north) =======================
+    const MZ0 = -100, MZ1 = -L, MX = 34;
+    wallZ(-MX, MZ0, MZ1); wallZ(MX, MZ0, MZ1); wallX(MZ0, -MX, MX); wallX(MZ1, -MX, -L + 0.1); wallX(MZ1, L - 0.1, MX);
+    // the manor: a central great hall (Pack-a-Punch) with two wings, doorways front and sides
+    const m0 = -92, m1 = -70;
+    B(-14, 0, m0, 14, 9, m0 + 0.6, BRICK);                                                         // back
+    B(-14, 0, m1 - 0.6, -3, 9, m1, BRICK); B(3, 0, m1 - 0.6, 14, 9, m1, BRICK); B(-3, 5, m1 - 0.6, 3, 9, m1, BRICK);   // front with the great doors
+    B(-14, 0, m0, -13.4, 9, m1, BRICK); B(13.4, 0, m0, 14, 9, m1, BRICK);
+    D(-14.5, 9, m0 - 0.5, 14.5, 9.5, m1 + 0.5, ROOF); D(-12, 9.5, m0 + 1.5, 12, 12, m1 - 1.5, ROOF); D(-9, 12, m0 + 4, 9, 14, m1 - 4, ROOF);
+    for (const s of [-1, 1]) {                                                                     // wings
+      const w0 = s * 14, w1 = s * 28;
+      B(Math.min(w0, w1), 0, m0 + 4, Math.max(w0, w1), 6, m0 + 4.6, BRICK); B(Math.min(w0, w1), 0, m1 - 4.6, Math.max(w0, w1), 6, m1 - 4, BRICK);
+      B(w1 - 0.3, 0, m0 + 4, w1 + 0.3, 6, m0 + 9, BRICK); B(w1 - 0.3, 0, m1 - 9, w1 + 0.3, 6, m1 - 4, BRICK);
+      B(w0 - 0.3, 0, m0 + 4.6, w0 + 0.3, 6, m0 + 8, BRICK); B(w0 - 0.3, 0, m1 - 8, w0 + 0.3, 6, m1 - 4.6, BRICK);
+      D(Math.min(w0, w1) - 0.4, 6, m0 + 3.6, Math.max(w0, w1) + 0.4, 6.4, m1 - 3.6, ROOF);
+      for (let k = 0; k < 3; k++) D(s * (16 + k * 4) - 0.6, 2, m1 - 4.05, s * (16 + k * 4) + 0.6, 4, m1 - 3.95, 0xffb24a);  // lit windows
     }
-    // zombie spawn holes around the yard (broken graves), the player's start, and wall-buy spots
-    this.zmSpawns = [];
-    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2 + 0.2, r = 33 + (i % 3) * 2; this.zmSpawns.push({ x: Math.cos(a) * r, z: Math.sin(a) * r }); }
-    this.zmSpawns.push({ x: -12, z: -20 }, { x: 12, z: -30 }, { x: -20, z: 8 }, { x: 20, z: 8 });
+    for (let k = -2; k <= 2; k++) if (k) D(k * 4.5 - 0.7, 4.5, m1 + 0.02, k * 4.5 + 0.7, 7, m1 + 0.08, 0xffb24a);
+    // courtyard fountain + hedges
+    B(-3, 0, -58, 3, 0.9, -52, STONE); D(-2.5, 0.9, -57.5, 2.5, 1.0, -52.5, 0x3a5a8a); B(-0.4, 0.9, -55.4, 0.4, 3.0, -54.6, STONE);
+    for (const [x0, z0, x1, z1] of [[-28, -64, -16, -63], [16, -64, 28, -63], [-28, -50, -16, -49], [16, -50, 28, -49]]) B(x0, 0, z0, x1, 1.4, z1, 0x1e2a16);
+    spawnRing('manor', [[-30, -96], [30, -96], [-30, -48], [30, -48], [0, -97], [-31, -72], [31, -72]]);
+    buy('manor', 'hunter', -14.02, 1.7, -80, -1, 0); buy('manor', 'lmg', 14.02, 1.7, -80, 1, 0); buy('manor', 'dmr', -8, 1.7, m1 + 0.02, 0, 1); buy('manor', 'rifle', 8, 1.7, m1 + 0.02, 0, 1);
+    this.zmBoxSpots.push({ x: 0, z: -60, yaw: 0, zone: 'manor' });
+    this.zmPap = { x: 0, z: -86, yaw: 0, zone: 'manor' };
+    // quest spots (story): journal pages in each zone, ritual candles, the bell tower top, the cauldron, the altar
+    this.zmQuest = {
+      pages: [{ x: -7, z: -27.5 }, { x: 85, z: -12 }, { x: -76, z: 3 }, { x: 10, z: -88 }, { x: -30, z: 30 }],
+      candles: [{ x: -36, z: -36 }, { x: 36, z: -36 }, { x: 36, z: 36 }, { x: -36, z: 36 }],
+      bell: { x: 7.5, y: 13, z: -30.5 }, cauldron: { x: hx + 8.2, z: hz }, altar: { x: 0, z: -27.2 }, stones: { x: -62, z: -20 },
+    };
     this.spawns = [{ x: 0, z: 18, yaw: 0 }];
-    // wall buys: [weapon, x, y, z, normal x, normal z]
-    this.zmBuys = [['smg', cx - 6, 1.7, cz + cd + 0.02, 0, 1], ['shotgun', cx + 6, 1.7, cz + cd + 0.02, 0, 1], ['rifle', -25, 1.7, -18 + 3.5 + 0.02, 0, 1],
-      ['lmg', 25, 1.7, 20 - 3.5 - 0.02, 0, -1], ['dmr', 25, 1.7, -18 + 3.5 + 0.02, 0, 1], ['holoar', -25, 1.7, 20 - 3.5 - 0.02, 0, -1]];
+  }
+  // remove a collision box (a bought door)
+  removeBox(b) {
+    if (!b) return;
+    const i = this.boxes.indexOf(b); if (i >= 0) this.boxes.splice(i, 1);
+    for (const cell of this.cells) { const k = cell.indexOf(b); if (k >= 0) cell.splice(k, 1); }
   }
 
   // ------------------------------------------------------------------ duel arena
@@ -4352,6 +4483,14 @@ BR.Models = (function () {
         const g = c.createRadialGradient(x, y - 4, 1, x, y, 11); g.addColorStop(0, '#9dffcf'); g.addColorStop(0.5, '#1fa37a'); g.addColorStop(1, '#3b1a7a');
         c.fillStyle = g; c.beginPath(); c.arc(x, y, 9, 0, Math.PI); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.5)'; c.stroke(); }
     }, 256),
+    // Pack-a-Punch camo (zombies): swirling violet / teal moon-energy over black, always moving
+    pap: () => animTex(canvasTex('pap', (c, s) => {
+      c.fillStyle = '#07030f'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 46; i++) { let x = Math.random() * s, y = Math.random() * s; c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 8; k++) { x += Math.cos(k * 0.8 + i) * 18; y += Math.sin(k * 0.6 + i) * 18; c.lineTo(x, y); }
+        c.strokeStyle = i % 3 ? 'rgba(178,107,255,0.85)' : 'rgba(80,240,220,0.8)'; c.lineWidth = 1.5 + Math.random() * 2; c.shadowColor = c.strokeStyle; c.shadowBlur = 8; c.stroke(); }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.set(t * 0.12, Math.sin(t * 0.7) * 0.08); }),
     // knife-collection camos (v1.7.5)
     sabertooth: () => canvasTex('sabertooth', (c, s) => {
       const g = c.createLinearGradient(0, 0, s, 0); g.addColorStop(0, '#ffb000'); g.addColorStop(0.5, '#ff7a00'); g.addColorStop(1, '#ffcc33'); c.fillStyle = g; c.fillRect(0, 0, s, s);
@@ -4532,7 +4671,7 @@ BR.Models = (function () {
   const SKIN_FINISH = {
     gold: [0.5, 110], chrome: [0.7, 160], m_chrome: [0.7, 170], m_copper: [0.45, 100], liquidgold: [0.45, 160], diamond: [0.55, 200], damascus: [0.4, 130],
     holo: [0.3, 150], candy: [0.22, 110], opal: [0.3, 170], prism: [0.28, 150], scales: [0.25, 120], hyper: [0.15, 90], galaxy: [0.18, 100], nebula: [0.18, 100],
-    sabertooth: [0.25, 120], ultraviolet: [0.2, 110], emerald: [0.3, 160], tidewater: [0.25, 140], hyperspace: [0.2, 90], voidrift: [0.2, 100], acid: [0.15, 80],
+    pap: [0.3, 150], sabertooth: [0.25, 120], ultraviolet: [0.2, 110], emerald: [0.3, 160], tidewater: [0.25, 140], hyperspace: [0.2, 90], voidrift: [0.2, 100], acid: [0.15, 80],
     bloodmoon: [0.12, 70], circuit: [0.12, 70], electric: [0.12, 70], molten: [0.1, 60], inferno: [0.1, 60], aurora: [0.15, 80], m_volt: [0.15, 80], m_singularity: [0.25, 120],
     carbon: [0.12, 70], arctic: [0.05, 30], tiger: [0.06, 34], crimson: [0.08, 40], pixel: [0.06, 34], jungle: [0.04, 26], neon: [0.1, 60],
   };
@@ -4561,6 +4700,7 @@ BR.Models = (function () {
       case 'ultraviolet': m = new THREE.MeshPhongMaterial({ map: TEX.ultraviolet(), specular: 0xd8b8ff, shininess: 110, emissive: 0x0a0214 }); break;
       case 'emerald': m = new THREE.MeshPhongMaterial({ map: TEX.emerald(), specular: 0xc8ffe0, shininess: 180, emissive: 0xffffff, emissiveMap: TEX.emerald(), emissiveIntensity: 0.25 }); break;
       case 'tidewater': m = new THREE.MeshPhongMaterial({ map: TEX.tidewater(), specular: 0xdff8ff, shininess: 160, emissive: 0xffffff, emissiveMap: TEX.tidewater(), emissiveIntensity: 0.55 }); break;
+      case 'pap': m = new THREE.MeshPhongMaterial({ map: TEX.pap(), emissive: 0xffffff, emissiveMap: TEX.pap(), emissiveIntensity: 0.85, specular: 0xd8b8ff, shininess: 140 }); break;
       case 'opal': m = new THREE.MeshPhongMaterial({ map: TEX.opal(), specular: 0xffffff, shininess: 190, emissive: 0x1a1a24 }); break;
       // weapon-mastery camos (unlocked by kills, never sold)
       case 'm_copper': m = new THREE.MeshPhongMaterial({ color: 0xb8693a, specular: 0xffc8a0, shininess: 95, emissive: 0x1a0a04 }); break;
@@ -6786,7 +6926,17 @@ BR.Models = (function () {
       if (this.vmNade) this.scene.remove(this.vmNade);
       this.vmNade = BR.Shockwave.model(); this.vmNade.scale.setScalar(0.55); this.vmNade.visible = false; this.scene.add(this.vmNade);
 
-      this.lastWeapon = null;
+      this.lastWeapon = null; this.papModels = null;
+    }
+
+    // Pack-a-Punched guns (zombies): the same gun model in the animated Ravenhold camo, built on first use
+    papHolder(id) {
+      this.papModels = this.papModels || {};
+      if (!this.papModels[id]) {
+        const eq = BR.Profile.data.equip, m = BR.Models.weapon(id, 'pap', 'none', (eq.blueprints || {})[id]);
+        const holder = new THREE.Group(); holder.add(m); holder.userData.model = m; holder.visible = false; this.root.add(holder); this.papModels[id] = holder;
+      }
+      return this.papModels[id];
     }
 
     // ---- events from the game -------------------------------------------
@@ -6817,6 +6967,7 @@ BR.Models = (function () {
     update(dt, lookDX, lookDY) {
       const game = this.game, p = game.player, w = p.weapon, m = p.mover, Mv = BR.CONFIG.move;
       for (const id in this.models) this.models[id].visible = false;
+      if (this.papModels) for (const id in this.papModels) this.papModels[id].visible = false;
       // bolt cycle timer (runs even while scoped, when the gun is hidden)
       if (this.boltDelay > 0) { this.boltDelay -= dt; if (this.boltDelay <= 0) this.boltT = this.boltDur; }
       else if (this.boltT > 0) this.boltT = Math.max(0, this.boltT - dt);
@@ -6826,7 +6977,7 @@ BR.Models = (function () {
       if (!w || !w.def.pump) { this.pumpT = 0; this.pumpDelay = 0; }
       if (!w || m.dropping || (p.ads && w.def.scope) || (p.ads && w.def.optic && this.adsW > 0.8)) { this.hide(); if (p.ads && w && w.def.optic) this.adsW = Math.min(1, this.adsW + dt * 6); return; }
       this.root.visible = true;
-      const holder = this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
+      const holder = w.def.pap ? this.papHolder(w.id) : this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
       holder.visible = true;
 
       // Gloves can differ per weapon: swap the glove meshes in place (keeps the wrist launcher etc.)
@@ -8327,6 +8478,27 @@ BR.BotBrain = class BotBrain {
   const cyl = (r1, r2, len, seg) => { const g = new THREE.CylinderGeometry(r1, r2, len, seg || 8); g.translate(0, -len / 2, 0); return g; };
 
   // ======================================================================== zombie
+  // shared zombie textures: mottled rotting skin with veins, bruises and dried blood; stained, torn cloth
+  const zombieTex = () => mats.ztex || (mats.ztex = (() => {
+    const mk = (draw) => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); draw(x, 256); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+    const skin = mk((x, s) => {
+      x.fillStyle = '#9aa486'; x.fillRect(0, 0, s, s);
+      for (let i = 0; i < 260; i++) { const r = 4 + Math.random() * 22; const g = x.createRadialGradient(0, 0, 0, 0, 0, r); const c = ['rgba(90,110,70,', 'rgba(140,130,100,', 'rgba(70,60,80,', 'rgba(160,170,130,'][i % 4];
+        g.addColorStop(0, c + '0.35)'); g.addColorStop(1, c + '0)'); x.save(); x.translate(Math.random() * s, Math.random() * s); x.fillStyle = g; x.fillRect(-r, -r, r * 2, r * 2); x.restore(); }
+      x.strokeStyle = 'rgba(50,40,90,0.45)'; x.lineWidth = 1.2;
+      for (let i = 0; i < 26; i++) { let px = Math.random() * s, py = Math.random() * s; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (Math.random() - 0.5) * 26; py += Math.random() * 18; x.lineTo(px, py); } x.stroke(); }      // veins
+      for (let i = 0; i < 14; i++) { x.fillStyle = `rgba(70,8,8,${0.3 + Math.random() * 0.4})`; x.beginPath(); x.ellipse(Math.random() * s, Math.random() * s, 4 + Math.random() * 14, 3 + Math.random() * 8, Math.random() * 3, 0, 7); x.fill(); }   // blood
+      for (let i = 0; i < 1400; i++) { x.fillStyle = `rgba(0,0,0,${Math.random() * 0.12})`; x.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); }
+    });
+    const cloth = mk((x, s) => {
+      x.fillStyle = '#c8c0b0'; x.fillRect(0, 0, s, s);
+      for (let y = 0; y < s; y += 3) { x.fillStyle = `rgba(0,0,0,${0.05 + Math.random() * 0.06})`; x.fillRect(0, y, s, 1); }
+      for (let i = 0; i < 30; i++) { const r = 8 + Math.random() * 30; const g = x.createRadialGradient(0, 0, 0, 0, 0, r); const c = i % 3 ? 'rgba(60,40,20,' : 'rgba(90,10,10,';
+        g.addColorStop(0, c + '0.5)'); g.addColorStop(1, c + '0)'); x.save(); x.translate(Math.random() * s, Math.random() * s); x.fillStyle = g; x.fillRect(-r, -r, r * 2, r * 2); x.restore(); }   // dirt + blood stains
+      for (let i = 0; i < 10; i++) { x.fillStyle = 'rgba(20,10,8,0.85)'; x.beginPath(); const px = Math.random() * s, py = Math.random() * s; x.moveTo(px, py); for (let k = 0; k < 5; k++) x.lineTo(px + (Math.random() - 0.3) * 24, py + (Math.random() - 0.3) * 24); x.fill(); }   // tears
+    });
+    return { skin, cloth };
+  })());
   let PENDING = null;                                  // opts for buildMesh (runs inside the Actor constructor)
   BR.Zombie = class Zombie extends BR.Actor {
     constructor(game, opts) {
@@ -8344,37 +8516,58 @@ BR.BotBrain = class BotBrain {
     }
     get weapon() { return null; }
     buildMesh() {
-      const o = PENDING || {}, S = BR.actorGeo(), R = Math.random;
+      const o = PENDING || {}, S = BR.actorGeo(), R = Math.random, T = zombieTex();
       const g = new THREE.Group();
-      const skin = new THREE.MeshLambertMaterial({ color: [0x8a9a7c, 0x7d8a66, 0x9aa088, 0x6f7a5e, 0x8c8a74][Math.floor(R() * 5)] });
-      const shirt = lam([0x4a3b2e, 0x2f3540, 0x5a2222, 0x3c4a3a, 0x55524a][Math.floor(R() * 5)]);
-      const pants = lam([0x26221e, 0x2e2a3a, 0x3a2f24][Math.floor(R() * 3)]);
-      const blood = lam(0x4a0808), bone = lam(0xcfc6aa), eye = basic(o.eyes || 0xffa31a);
+      // four outfits from the story: villagers, Pumpkin Patch farmers, wedding-guest grooms, gravediggers
+      const kind = ['villager', 'farmer', 'groom', 'digger'][Math.floor(R() * 4)];
+      const skin = new THREE.MeshPhongMaterial({ map: T.skin, color: [0xd8e0c8, 0xc8d2b0, 0xe0dcc8, 0xbcc8a8][Math.floor(R() * 4)], specular: 0x2a3020, shininess: 22 });
+      const cloth = c => new THREE.MeshLambertMaterial({ map: T.cloth, color: c });
+      const top = cloth(kind === 'groom' ? 0x2a2a30 : kind === 'farmer' ? 0x8a3a2a : kind === 'digger' ? 0x5a4a38 : [0x7a6a52, 0x4a5a6a, 0x6a4a4a][Math.floor(R() * 3)]);
+      const bottom = cloth(kind === 'farmer' ? 0x3a5a8a : kind === 'groom' ? 0x1e1e24 : 0x3a3228);
+      const blood = new THREE.MeshPhongMaterial({ color: 0x3a0606, specular: 0x441010, shininess: 60 }), bone = lam(0xd8cfb4), dark = lam(0x120808), eye = basic(o.eyes || 0xffa31a);
       const body = new THREE.Group(); g.add(body);
-      body.add(mesh(S.hips, pants, 0, 0.97, 0));
-      const leg = x => { const hip = new THREE.Group(); hip.position.set(x, 0.96, 0); hip.add(mesh(S.thigh, pants));
-        const knee = new THREE.Group(); knee.position.y = -0.44; hip.add(knee); knee.add(mesh(S.shin, R() < 0.3 ? skin : pants)); knee.add(mesh(S.boot, S.boots, 0, -0.44, -0.04)); return { hip, knee }; };
-      const L = leg(-0.1), Rr = leg(0.1); body.add(L.hip, Rr.hip);
-      const upper = new THREE.Group(); upper.position.y = 1.0; body.add(upper);
-      upper.add(mesh(S.abdomen, R() < 0.5 ? skin : shirt, 0, 0.1, 0));
-      const chest = mesh(S.chest, shirt, 0, 0.36, 0); chest.scale.z = 0.62; upper.add(chest);
-      // torn shirt: exposed ribs + blood
-      const rib = new THREE.BoxGeometry(0.16, 0.018, 0.02);
-      for (let i = 0; i < 4; i++) upper.add(mesh(rib, bone, 0.05, 0.28 + i * 0.045, -0.13));
-      upper.add(mesh(new THREE.BoxGeometry(0.12, 0.16, 0.02), blood, -0.08, 0.36, -0.132));
-      upper.add(mesh(S.neck, skin, 0, 0.56, 0));
-      const head = new THREE.Group(); head.position.y = 0.7; upper.add(head);
-      const face = mesh(S.head, skin); face.scale.set(0.95, 1.1, 1); head.add(face);
-      const jaw = mesh(new THREE.BoxGeometry(0.13, 0.04, 0.1), skin, 0, -0.1, -0.05); jaw.rotation.x = 0.35; head.add(jaw);
-      head.add(mesh(new THREE.BoxGeometry(0.1, 0.035, 0.02), lam(0x1a0606), 0, -0.065, -0.112));      // open mouth
-      for (const x of [-0.045, 0.045]) { head.add(mesh(new THREE.SphereGeometry(0.018, 8, 6), eye, x, 0.025, -0.108)); const gl = sprite(o.eyes || 0xffa31a, 0.09); gl.position.set(x, 0.025, -0.12); head.add(gl); }
-      if (R() < 0.6) head.add(mesh(new THREE.SphereGeometry(0.125, 10, 6, 0, Math.PI * 2, 0, Math.PI / 3), lam(0x2a2420), 0, 0.02, 0.01));   // patchy hair
-      const arm = x => { const sh = new THREE.Group(); sh.position.set(x, 0.5, 0); upper.add(sh); sh.add(mesh(S.shoulder, shirt)); sh.add(mesh(S.upperArm, R() < 0.5 ? skin : shirt));
-        const el = new THREE.Group(); el.position.y = -0.28; sh.add(el); el.add(mesh(S.forearm, skin)); el.add(mesh(S.hand, skin, 0, -0.27, 0));
-        for (let f = -1; f <= 1; f++) el.add(mesh(new THREE.BoxGeometry(0.014, 0.07, 0.014), skin, f * 0.02, -0.33, -0.015));
+      const hips = mesh(S.hips, bottom, 0, 0.95, 0); hips.scale.set(0.9, 1, 0.9); body.add(hips);
+      const leg = x => { const hip = new THREE.Group(); hip.position.set(x, 0.94, 0); const th = mesh(S.thigh, bottom); th.scale.set(0.82, 1, 0.82); hip.add(th);
+        const knee = new THREE.Group(); knee.position.y = -0.44; hip.add(knee); const sh = mesh(S.shin, R() < 0.35 ? skin : bottom); sh.scale.set(0.78, 1, 0.78); knee.add(sh);
+        knee.add(mesh(S.boot, R() < 0.3 ? skin : S.boots, 0, -0.44, -0.04)); return { hip, knee }; };
+      const L = leg(-0.095), Rr = leg(0.095); body.add(L.hip, Rr.hip);
+      const upper = new THREE.Group(); upper.position.y = 0.98; body.add(upper);
+      const ab = mesh(S.abdomen, R() < 0.4 ? skin : top, 0, 0.1, 0); ab.scale.set(0.85, 1, 0.8); upper.add(ab);
+      const chest = mesh(S.chest, top, 0, 0.36, 0); chest.scale.set(0.88, 1, 0.6); upper.add(chest);
+      // a torn-open wound with ribs showing, blood down the front
+      upper.add(mesh(new THREE.BoxGeometry(0.15, 0.18, 0.02), dark, 0.06, 0.34, -0.118));
+      for (let i = 0; i < 4; i++) upper.add(mesh(new THREE.BoxGeometry(0.13, 0.016, 0.02), bone, 0.06, 0.28 + i * 0.04, -0.128));
+      upper.add(mesh(new THREE.BoxGeometry(0.1, 0.22, 0.012), blood, -0.07, 0.24, -0.124));
+      // shirt flaps hanging off
+      for (let i = 0; i < 3; i++) { const f = mesh(new THREE.PlaneGeometry(0.09, 0.16), top, -0.12 + i * 0.12, 0.06, -0.12); f.rotation.x = 0.2; f.material.side = THREE.DoubleSide; upper.add(f); }
+      if (kind === 'groom') { upper.add(mesh(new THREE.BoxGeometry(0.1, 0.22, 0.012), cloth(0xd8d2c0), 0, 0.42, -0.124)); upper.add(mesh(new THREE.BoxGeometry(0.08, 0.035, 0.03), dark, 0, 0.54, -0.13)); }
+      if (kind === 'digger') upper.add(mesh(new THREE.BoxGeometry(0.3, 0.42, 0.02), cloth(0x3a2e22), 0, 0.12, -0.13));
+      if (kind === 'farmer') for (const x of [-0.08, 0.08]) upper.add(mesh(new THREE.BoxGeometry(0.035, 0.36, 0.02), bottom, x, 0.36, -0.125));
+      const neck = mesh(S.neck, skin, 0, 0.55, 0.02); neck.scale.set(0.8, 1.1, 0.8); upper.add(neck);
+      // head: gaunt skull shape, sunken dark sockets with small glowing pupils, teeth, ears, lank hair
+      const head = new THREE.Group(); head.position.set(0, 0.69, 0.02); upper.add(head);
+      const face = mesh(S.head, skin); face.scale.set(0.88, 1.12, 0.98); head.add(face);
+      for (const x of [-0.042, 0.042]) { head.add(mesh(new THREE.SphereGeometry(0.03, 10, 8), dark, x, 0.025, -0.096)); head.add(mesh(new THREE.SphereGeometry(0.011, 8, 6), eye, x, 0.025, -0.121));
+        const gl = sprite(o.eyes || 0xffa31a, 0.07); gl.position.set(x, 0.025, -0.125); head.add(gl); const ear = mesh(new THREE.SphereGeometry(0.025, 8, 6), skin, x * 2.55, 0.0, 0.0); ear.scale.set(0.5, 1, 1); head.add(ear); }
+      { const nose = mesh(new THREE.ConeGeometry(0.018, 0.04, 4), dark, 0, -0.012, -0.112); nose.rotation.x = -1.4; head.add(nose); }                     // nose cavity
+      for (let i = 0; i < 6; i++) head.add(mesh(new THREE.BoxGeometry(0.012, 0.016, 0.01), bone, -0.03 + i * 0.012, -0.058, -0.106));
+      const jaw = new THREE.Group(); jaw.position.set(0, -0.07, -0.02); head.add(jaw);
+      jaw.add(mesh(new THREE.BoxGeometry(0.105, 0.035, 0.085), skin, 0, -0.02, -0.03));
+      for (let i = 0; i < 5; i++) jaw.add(mesh(new THREE.BoxGeometry(0.011, 0.014, 0.01), bone, -0.024 + i * 0.012, 0.0, -0.07));
+      if (kind === 'farmer') { head.add(mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.02, 14), lam(0x9a8040), 0, 0.1, 0)); head.add(mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.1, 12), lam(0x9a8040), 0, 0.15, 0)); }
+      else if (kind === 'digger') head.add(mesh(new THREE.SphereGeometry(0.128, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), cloth(0x2a2420), 0, 0.02, 0.0));
+      else { const hair = lam(0x1e1814); for (let i = 0; i < 9; i++) { const h = mesh(new THREE.BoxGeometry(0.018, 0.16 + R() * 0.1, 0.012), hair, Math.cos(i * 0.7 + 1.9) * 0.1, 0.0, Math.sin(i * 0.7 + 1.9) * 0.08 + 0.04); h.rotation.z = (R() - 0.5) * 0.3; head.add(h); }
+        head.add(mesh(new THREE.SphereGeometry(0.118, 10, 6, 0, Math.PI * 2, 0, Math.PI / 3), hair, 0, 0.03, 0.01)); }
+      // arms: thin, one torn sleeve showing a bloody forearm with bone at the elbow; long bony fingers
+      const arm = (x, torn) => { const sh = new THREE.Group(); sh.position.set(x, 0.49, 0.02); upper.add(sh); const sd = mesh(S.shoulder, top); sd.scale.setScalar(0.85); sh.add(sd);
+        const ua = mesh(S.upperArm, torn ? skin : top); ua.scale.set(0.78, 1.04, 0.78); sh.add(ua);
+        const el = new THREE.Group(); el.position.y = -0.29; sh.add(el); const fa = mesh(S.forearm, skin); fa.scale.set(0.75, 1.06, 0.75); el.add(fa);
+        if (torn) { el.add(mesh(new THREE.SphereGeometry(0.03, 8, 6), bone, 0, 0, 0.02)); el.add(mesh(new THREE.BoxGeometry(0.05, 0.12, 0.012), blood, 0, -0.12, -0.03)); }
+        el.add(mesh(new THREE.BoxGeometry(0.06, 0.06, 0.03), skin, 0, -0.29, 0));
+        for (let f = -1.5; f <= 1.5; f++) { const fg = mesh(new THREE.BoxGeometry(0.012, 0.09, 0.012), skin, f * 0.015, -0.36, -0.01); fg.rotation.x = 0.25; el.add(fg); }
         return { sh, el }; };
-      const AR = arm(0.22), AL = arm(-0.22);
-      g.userData = { body, upper, head, jaw, L, R: Rr, AR, AL, mat: skin, t: R() * 6, yaw: 0, gait: 0.9 + R() * 0.3, reachArm: R() < 0.5 ? 1 : -1 };
+      const tornR = R() < 0.5, AR = arm(0.2, tornR), AL = arm(-0.2, !tornR);
+      g.userData = { body, upper, head, jaw, L, R: Rr, AR, AL, mat: skin, t: R() * 6, yaw: 0, gait: 0.9 + R() * 0.3, reachArm: R() < 0.5 ? 1 : -1, kind };
       BR.collapseMeshes(g);
       return g;
     }
@@ -8413,7 +8606,7 @@ BR.BotBrain = class BotBrain {
       u.AR.sh.rotation.set(rR, 0, -0.12); u.AL.sh.rotation.set(rL, 0, 0.12);
       u.AR.el.rotation.x = -0.35; u.AL.el.rotation.x = -0.35;
     }
-    flash() { if (!this.mesh) return; const m = this.mesh.userData.mat; m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.6; clearTimeout(this._flashTO); this._flashTO = setTimeout(() => m.emissive.setHex(0x000000), 70); }
+    flash() { if (!this.mesh) return; const m = this.mesh.userData.mat; if (!this._flashTO) this._flashPrev = m.emissive.getHex(); m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.6; clearTimeout(this._flashTO); this._flashTO = setTimeout(() => { m.emissive.setHex(this._flashPrev || 0); this._flashTO = null; }, 70); }
     dieVisual() {
       if (!this.mesh) return;
       const u = this.mesh.userData;
@@ -8431,7 +8624,9 @@ BR.BotBrain = class BotBrain {
       const z = this.z, p = this.target = this.g.player;
       if (!p || !z.alive) return;
       if (z.riseT > 0) { z.input.mx = z.input.mz = 0; return; }
-      const dx = p.pos.x - z.pos.x, dz = p.pos.z - z.pos.z, dy = p.pos.y - z.pos.y, d = Math.hypot(dx, dz);
+      const goal = this.goal || p.pos;                      // a door waypoint when you're in another zone
+      const dx = goal.x - z.pos.x, dz = goal.z - z.pos.z, dy = p.pos.y - z.pos.y, d = Math.hypot(dx, dz);
+      const dp = Math.hypot(p.pos.x - z.pos.x, p.pos.z - z.pos.z);
       let yaw = Math.atan2(-dx, -dz);
       // unstick: if we're pushing but not moving, jump and side-step for a moment
       if (d > 1.6 && z.mover.speedH < 0.35 && z.mover.onGround) this.stuckT += dt; else this.stuckT = Math.max(0, this.stuckT - dt * 2);
@@ -8441,14 +8636,14 @@ BR.BotBrain = class BotBrain {
       const zm = this.g.zm; if (zm) { let sx = 0, sz = 0; for (const o of zm.zombies) { if (o === z || !o.alive) continue; const ex = z.pos.x - o.pos.x, ez = z.pos.z - o.pos.z, e2 = ex * ex + ez * ez; if (e2 < 0.8 && e2 > 1e-4) { sx += ex / e2; sz += ez / e2; } }
         if (sx || sz) yaw = Math.atan2(-(dx / Math.max(d, 0.1) * 2 + sx * 0.25), -(dz / Math.max(d, 0.1) * 2 + sz * 0.25)); }
       z.yaw = dampAngle(z.yaw, yaw, 9, dt);
-      z.input.mz = d > 1.05 ? 1 : 0; z.input.mx = 0;
+      z.input.mz = d > 1.05 || this.goal ? 1 : 0; z.input.mx = 0;
       // swipe
       if (z.attackT > 0) {
         z.attackT -= dt;
-        if (!z.hitDone && z.attackT < 0.28) { z.hitDone = true; if (d < 1.9 && Math.abs(dy) < 1.8 && p.alive) { this.g.applyDamage(p, z, z.stats.dmg, false, { x: p.pos.x, y: p.pos.y + 1.2, z: p.pos.z }, 'zombie'); BR.Audio.zSwipe && BR.Audio.zSwipe(); } }
-      } else if (d < 1.55 && Math.abs(dy) < 1.8 && z.attackCd <= 0) { z.attackT = 0.55; z.attackCd = 1.15; z.hitDone = false; }
+        if (!z.hitDone && z.attackT < 0.28) { z.hitDone = true; if (dp < 1.9 && Math.abs(dy) < 1.8 && p.alive) { this.g.applyDamage(p, z, z.stats.dmg, false, { x: p.pos.x, y: p.pos.y + 1.2, z: p.pos.z }, 'zombie'); BR.Audio.zSwipe && BR.Audio.zSwipe(); } }
+      } else if (dp < 1.55 && Math.abs(dy) < 1.8 && z.attackCd <= 0) { z.attackT = 0.55; z.attackCd = 1.15; z.hitDone = false; }
       // groans
-      z.groanT -= dt; if (z.groanT <= 0) { z.groanT = 3 + Math.random() * 7; if (d < 30) BR.Audio.zGroan && BR.Audio.zGroan(d); }
+      z.groanT -= dt; if (z.groanT <= 0) { z.groanT = 3 + Math.random() * 7; if (dp < 30) BR.Audio.zGroan && BR.Audio.zGroan(dp); }
     }
   };
 
@@ -8845,16 +9040,16 @@ BR.BotBrain = class BotBrain {
       z.mover.dropping = false; z.mover.pos.set(sp.x, g.world.groundAt(sp.x, sp.z, 20), sp.z);
       z.yaw = Math.random() * 6.28;
       z.brain = new BR.ZombieBrain(z, g);
-      g.scene.add(z.mesh); g.actors.push(z); this.zombies.push(z);
+      g.scene.add(z.mesh); g.actors.push(z); this.zombies.push(z); g.highlightActor(z);
       if (z.riseT > 0) g.fx.burst(z.pos.clone().setY(z.pos.y + 0.2), [0x3a2a1e, 0x5a4a3a, 0x241a12], 10, 3, 0.1, 0.8, 9);   // dirt bursting up
       return z;
     }
     spawnBoss() {
       const g = this.g, type = BOSS_ORDER[(this.round / ZC.bossEvery - 1) % BOSS_ORDER.length];
       const b = this.boss = new BR.ZBoss(g, this, type, this.round);
-      const p = g.player.pos, cands = (g.world.zmSpawns || []).slice().sort((a, c) => Math.hypot(c.x - p.x, c.z - p.z) - Math.hypot(a.x - p.x, a.z - p.z)), sp = cands[0] || { x: 0, z: -30 };
+      const p = g.player.pos, cands = (g.world.zmSpawns || []).filter(s => !this.unlocked || this.unlocked.has(s.zone || 'graveyard')).sort((a, c) => Math.hypot(c.x - p.x, c.z - p.z) - Math.hypot(a.x - p.x, a.z - p.z)), sp = cands[0] || { x: 0, z: -30 };
       b.mover.dropping = false; b.mover.pos.set(sp.x, g.world.groundAt(sp.x, sp.z, 20), sp.z);
-      g.scene.add(b.mesh); g.actors.push(b); this.zombies.push(b);
+      g.scene.add(b.mesh); g.actors.push(b); this.zombies.push(b); g.highlightActor(b);
       g.fx.burst(b.pos.clone().setY(b.pos.y + 1), [b.D.color, 0xffffff, 0x2a1a10], 70, 10, 0.14, 1.4, 6);
       this.shockRing(b.pos.clone(), 10, 0, b.D.color, true);
       g.cam.shake = Math.max(g.cam.shake, 0.5); this.lightning(1);
@@ -9127,6 +9322,387 @@ BR.BotBrain = class BotBrain {
       this.proj = []; this.haz = []; this.powers = [];
     }
   };
+})();
+
+// =============================================================================
+// ZOMBIES, part 2 — the story of Hollow Graves, quests + journal, boss intro cutscenes,
+// zones + buyable doors (zombies path through open doors), the Mystery Box, Pack-a-Punch,
+// and a zombies-left counter. Extends BR.ZombieMode / BR.ZombieBrain / the bosses above.
+// =============================================================================
+(function () {
+  const U = BR.util, ZC = BR.ZOMBIE_CFG, BOSSES = BR.ZOMBIE_BOSSES;
+  const addMat = c => new THREE.MeshBasicMaterial({ color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const sprite = (c, s) => { const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: BR.Effects.tex().dot, color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); m.scale.setScalar(s); return m; };
+  const lam = c => new THREE.MeshLambertMaterial({ color: c });
+  const mesh = (geo, mat, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x || 0, y || 0, z || 0); return o; };
+
+  // ---------------------------------------------------------------- the story
+  // Ravenhold, 1893: a wedding, a funeral and a ritual on the night of the harvest moon.
+  BR.ZOMBIE_STORY = {
+    prologue: { title: 'Hollow Graves, 1893', text: 'The night the harvest moon bled, the village of Hollow Graves held a wedding, a funeral and a ritual. By dawn, only the dead came home. Survive the night. Learn what happened. End it.' },
+    bosses: {
+      pumpkin: { name: 'SILAS HALE', title: 'THE PUMPKIN KING', line: 'The groundskeeper kept his promise. He will never dig another grave. He will fill them.' },
+      banshee: { name: 'ELINOR RAVENHOLD', title: 'THE WEEPING BRIDE', line: 'She rang the bell for her wedding. You answered.' },
+      colossus: { name: 'THE OSSUARY', title: 'THE BONE COLOSSUS', line: 'Forty years of graves, stitched into one. It only remembers the shovel.' },
+      plague: { name: 'DR. CORVIN VALE', title: 'THE PLAGUE DOCTOR', line: 'Death is a disease. He found the cure. You are the side effect.' },
+    },
+    lore: [
+      { title: 'The Doctor\'s Journal', text: 'Dr. Corvin Vale: "Death is only a disease, and every disease has a cure. Lord Ravenhold has given me his crypts, his daughter\'s dowry and his groundskeeper. I need nothing more than a harvest moon."' },
+      { title: 'The Groundskeeper', text: 'Silas Hale dug every grave in Hollow Graves for forty years. Vale promised he would never have to dig another. He kept that promise: Silas became the Pumpkin King, keeper of a harvest of the dead.' },
+      { title: 'The Lantern Head', text: 'The flame in the Pumpkin King\'s head is Silas\' last breath. Vale carved the lantern and sealed it in, so the harvest would never be left untended.' },
+      { title: 'The Wedding Bell', text: 'Elinor Ravenhold rang this bell to call her guests. The groom never came. Vale needed a healthy heart for his first patient. She still waits at the altar, and she still weeps.' },
+      { title: 'The Witch of the Wood', text: 'Morwen of the wood warned the village about the doctor. Vale burned her hut and stole her cauldron\'s recipe: the Bone Draught, which knits the dead together into one.' },
+      { title: 'The Ossuary', text: 'The Bone Colossus is every grave Silas ever filled, poured through Morwen\'s draught and stood up on its own. It has a thousand names and remembers none of them.' },
+      { title: 'Lord Ravenhold\'s Machine', text: 'Ravenhold sealed his manor and built a machine under the great hall to undo Vale\'s work, fed by moonlight. He called it the Pack-a-Punch. It was never finished. Until you.' },
+      { title: 'The Cure', text: 'Vale wears the beaked mask to breathe his own cure. The crows are his nurses. Put the doctor down and the harvest moon will set... but every cure has a relapse.' },
+    ],
+  };
+  const STORY = BR.ZOMBIE_STORY;
+  for (const k in STORY.bosses) { BOSSES[k].name = STORY.bosses[k].title; BOSSES[k].sub = STORY.bosses[k].name; }
+
+  // per-boss cinematic intros: camera path + their own effects while they arrive
+  const INTRO = {
+    pumpkin: { cam: (t) => ({ ang: 0.4 + t * 0.12, r: 9 - t * 0.6, h: 0.8 + t * 0.15, look: 3 }), fx(Z, b, t, dt) { if (Math.random() < dt * 30) Z.g.fx.burst(b.pos.clone().setY(b.pos.y + Math.random() * 2), [0xff7a1a, 0xffd24a, 0xff3a00], 3, 4, 0.12, 0.9, -2); } },
+    banshee: { cam: (t) => ({ ang: t * 0.6, r: 8, h: 2 + Math.sin(t) * 0.5, look: 3 }), fx(Z, b, t, dt) { b.mover.pos.y = Z.g.world.groundAt(b.pos.x, b.pos.z, 20) + Math.max(0, 8 - t * 3); if (Math.random() < dt * 25) Z.g.fx.burst(b.pos.clone().setY(b.pos.y + 2), [0x9fe8ff, 0xffffff], 3, 3, 0.08, 1.2, -1); } },
+    colossus: { cam: (t) => ({ ang: -0.3, r: 12 - t * 1.0, h: 1.2, look: 3.8, shake: t > 1 && t < 3 ? 0.15 : 0 }), fx(Z, b, t, dt) { if (Math.random() < dt * 20) Z.g.fx.burst(b.pos.clone(), [0xd8d0b8, 0x6a5a48, 0x2a1a10], 4, 7, 0.14, 1.0, 9); } },
+    plague: { cam: (t) => ({ ang: 1.2 - t * 0.25, r: 7, h: 2.2, look: 2.6 }), fx(Z, b, t, dt) { if (t < 2.4 && Math.random() < dt * 30) { const a = Math.random() * 6.28, r = 6 - t * 2.2; Z.g.fx.burst(b.pos.clone().add(new THREE.Vector3(Math.cos(a) * r, 2 + Math.random() * 2, Math.sin(a) * r)), [0x101010, 0x7dff3a], 2, 1, 0.1, 0.5, 0); } } },
+  };
+
+  // ---------------------------------------------------------------- zones + navigation
+  const zoneAt = (x, z) => x > 42.6 ? 'patch' : x < -42.6 ? 'wood' : z < -42.6 ? 'manor' : 'graveyard';
+  BR.zombieZoneAt = zoneAt;
+  const baseBrainUpdate = BR.ZombieBrain.prototype.update;
+  BR.ZombieBrain.prototype.update = function (dt) {
+    // across zones: walk to the door between this zone and the graveyard hub, then on to you
+    const z = this.z, p = this.g.player, zm = this.g.zm;
+    if (zm && zm.doors && p) {
+      const za = zoneAt(z.pos.x, z.pos.z), zp = zoneAt(p.pos.x, p.pos.z);
+      if (za !== zp) {
+        const d = zm.doors.find(o => o.open && o.to === (za !== 'graveyard' ? za : zp));
+        if (d) { this.goal = this._gv || (this._gv = new THREE.Vector3()); this.goal.set(d.cx, p.pos.y, d.cz);
+          const r = baseBrainUpdate.call(this, dt); this.goal = null; return r; }
+      }
+    }
+    return baseBrainUpdate.call(this, dt);
+  };
+
+  // ---------------------------------------------------------------- quests
+  const QUESTS = [
+    { id: 'pages', title: 'Lost Journal', desc: 'Find 3 pages of the doctor\'s journal', goal: 3 },
+    { id: 'candles', title: 'Ritual Candles', desc: 'Light the 4 ritual candles at the graveyard corners', goal: 4 },
+    { id: 'headshots', title: 'The Lantern\'s Flame', desc: 'Kill 15 zombies with headshots', goal: 15 },
+    { id: 'bell', title: 'The Wedding Bell', desc: 'Climb the bell tower and ring the bell', goal: 1 },
+    { id: 'cauldron', title: 'Bone Draught', desc: 'Kill 12 zombies near the witch\'s cauldron (or in the chapel if the wood is locked)', goal: 12 },
+    { id: 'stones', title: 'The Ossuary Circle', desc: 'Survive 40 s inside the standing stones (or at the chapel altar)', goal: 40 },
+    { id: 'knife', title: 'Gravedigger\'s Work', desc: 'Get 10 knife kills', goal: 10 },
+    { id: 'pap', title: 'Ravenhold\'s Machine', desc: 'Pack-a-Punch a weapon', goal: 1 },
+  ];
+  BR.ZOMBIE_QUESTS = QUESTS;
+
+  const ZM = BR.ZombieMode.prototype;
+  const baseStart = ZM.start, baseUpdate = ZM.update, baseOnKill = ZM.onKill, baseNext = ZM.nextRound, baseDecorate = ZM.decorate;
+  ZM._spawnZombieBase = ZM.spawnZombie; ZM._spawnBossBase = ZM.spawnBoss;
+
+  Object.assign(ZM, {
+    start() {
+      this.unlocked = new Set(['graveyard']); this.journal = [STORY.prologue]; this.questN = 0; this.quest = null; this.papCount = 0;
+      baseStart.call(this);
+      this.buildDoors(); this.buildBox(); this.buildPap();
+      this.g.hud.zmLore(STORY.prologue.title, STORY.prologue.text);
+      this.g.hud.zmJournal(this.journal);
+    },
+    decorate() {
+      baseDecorate.call(this);
+      const W = this.g.world, deco = this.deco, R = Math.random;
+      // Pumpkin Patch: rows of jack-o'-lanterns + scarecrows
+      const pumpMat = new THREE.MeshPhongMaterial({ color: 0xff7a1a, emissive: 0x3a1400, shininess: 25 });
+      const pg = new THREE.SphereGeometry(0.3, 10, 8);
+      for (let x = 50; x < 96; x += 3.2) for (let z = 4; z < 30; z += 2.6) if (R() < 0.45) { const p = mesh(pg, pumpMat, x + (R() - 0.5), 0.2, z + (R() - 0.5)); p.scale.set(1 + R() * 0.5, 0.75, 1 + R() * 0.5); deco.add(p); }
+      for (const [x, z] of [[60, 12], [80, 26], [88, 6]]) { const s = new THREE.Group(); s.position.set(x, 0, z);
+        s.add(mesh(new THREE.ConeGeometry(0.42, 1.0, 8, 1, true), lam(0x5a3a1a), 0, 1.5, 0)); s.add(mesh(new THREE.SphereGeometry(0.24, 10, 8), pumpMat, 0, 2.3, 0));
+        s.add(mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.04, 12), lam(0x8a7038), 0, 2.5, 0)); s.add(mesh(new THREE.ConeGeometry(0.18, 0.3, 10), lam(0x8a7038), 0, 2.66, 0));
+        const gl = sprite(0xff8a1a, 0.6); gl.position.set(0, 2.3, -0.24); s.add(gl); deco.add(s); }
+      // Witch's Wood: a thicket of dead trees (collision trunks) + the cauldron's green brew + stone-circle runes
+      const bark = lam(0x1a1512);
+      for (let i = 0; i < 26; i++) { const x = -96 + R() * 50, z = -30 + R() * 60; if (Math.hypot(x + 78, z) < 9 || Math.hypot(x + 62, z + 20) < 9 || Math.hypot(x + 62, z - 12) < 3 || (x > -50 && Math.abs(z) < 5)) continue;
+        const h = 6 + R() * 6, t = new THREE.Group(); t.position.set(x, 0, z); t.add(mesh(new THREE.CylinderGeometry(0.14, 0.34, h, 6).translate(0, h / 2, 0), bark));
+        for (let k = 0; k < 4; k++) { const b = mesh(new THREE.CylinderGeometry(0.03, 0.09, h * 0.4, 5).translate(0, h * 0.2, 0), bark, 0, h * (0.5 + k * 0.1), 0); b.rotation.set(0, k * 1.7, (R() - 0.5) * 2.2); t.add(b); }
+        deco.add(t); W.addBox(x - 0.28, 0, z - 0.28, x + 0.28, h, z + 0.28, 0x1a1512, { hidden: true }); }
+      const Q = W.zmQuest, cq = Q.cauldron;
+      const caul = mesh(new THREE.SphereGeometry(1.0, 16, 10, 0, Math.PI * 2, Math.PI * 0.35, Math.PI * 0.65), lam(0x141418), cq.x, 1.0, cq.z); deco.add(caul);
+      const brew = mesh(new THREE.CircleGeometry(0.85, 20), new THREE.MeshBasicMaterial({ color: 0x7dff3a }), cq.x, 1.45, cq.z); brew.rotation.x = -Math.PI / 2; deco.add(brew);
+      const bg = sprite(0x7dff3a, 3); bg.position.set(cq.x, 1.8, cq.z); bg.material.opacity = 0.45; deco.add(bg); this.flicker.push(bg); this.brew = { x: cq.x, z: cq.z };
+      // Ravenhold Manor: lit chandelier glow in the great hall and ghost-lights in the windows
+      for (const [x, z] of [[0, -80], [-8, -84], [8, -84]]) { const c = sprite(0xffc46a, 3); c.position.set(x, 7.2, z); c.material.opacity = 0.5; deco.add(c); this.flicker.push(c); }
+      const L = new THREE.PointLight(0xb26bff, 1.6, 22, 2); L.position.set(0, 4, -84); deco.add(L);
+    },
+
+    // ---- doors ------------------------------------------------------------------
+    buildDoors() {
+      const g = this.g, sc = g.scene;
+      this.doors = (g.world.zmDoors || []).map(d => {
+        const grp = new THREE.Group(); grp.position.set(d.cx, 0, d.cz); sc.add(grp);
+        const alongX = d.x1 - d.x0 > d.z1 - d.z0, w = alongX ? d.x1 - d.x0 : d.z1 - d.z0;
+        const plank = lam(0x4a3220), iron = lam(0x1c1b20), bars = new THREE.Group(); grp.add(bars);
+        for (let i = 0; i < 6; i++) { const p = mesh(new THREE.BoxGeometry(alongX ? w : 0.25, 0.42, alongX ? 0.25 : w), plank, 0, 0.5 + i * 0.6, 0); p.rotation[alongX ? 'z' : 'x'] = (i % 2 ? 0.08 : -0.06); bars.add(p); }
+        for (const s of [-1, 1]) bars.add(mesh(new THREE.BoxGeometry(alongX ? 0.2 : 0.3, 4, alongX ? 0.3 : 0.2), iron, alongX ? s * w * 0.35 : 0, 2, alongX ? 0 : s * w * 0.35));
+        // price sign
+        const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const c = cv.getContext('2d');
+        c.fillStyle = '#1a0e08'; c.fillRect(0, 0, 256, 96); c.strokeStyle = '#ffb24a'; c.lineWidth = 4; c.strokeRect(4, 4, 248, 88);
+        c.fillStyle = '#ffe2b0'; c.font = '700 26px Outfit, sans-serif'; c.textAlign = 'center'; c.fillText(d.name.toUpperCase(), 128, 40); c.fillStyle = '#ffb24a'; c.font = '900 30px Outfit, sans-serif'; c.fillText(d.cost + ' PTS', 128, 78);
+        const sign = mesh(new THREE.PlaneGeometry(1.8, 0.68), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), side: THREE.DoubleSide }), 0, 2.5, 0);
+        if (!alongX) sign.rotation.y = Math.PI / 2; sign.position[alongX ? 'z' : 'x'] = 0.2; bars.add(sign);
+        return Object.assign({}, d, { grp, bars, open: false, openT: 0 });
+      });
+    },
+    openDoor(d) {
+      const g = this.g; d.open = true; g.world.removeBox(d.box); this.unlocked.add(d.to);
+      g.fx.burst(new THREE.Vector3(d.cx, 1.5, d.cz), [0x8a6a4a, 0x4a3220, 0xffd24a], 40, 7, 0.12, 1.0, 9);
+      g.hud.zmBanner(d.name.toUpperCase(), 'Area opened', 'done'); BR.Audio.zDoor && BR.Audio.zDoor();
+      if (this.quest) this.refreshQuestSpots();
+    },
+
+    // ---- the Mystery Box ---------------------------------------------------------
+    buildBox() {
+      const g = this.g, sc = g.scene, grp = new THREE.Group(); sc.add(grp);
+      const wood = new THREE.MeshPhongMaterial({ color: 0x3a2414, shininess: 20 }), trim = new THREE.MeshPhongMaterial({ color: 0xc89b3c, specular: 0xffe2a0, shininess: 80 });
+      grp.add(mesh(new THREE.BoxGeometry(2.0, 0.8, 0.9), wood, 0, 0.4, 0));
+      for (const x of [-0.95, 0.95]) grp.add(mesh(new THREE.BoxGeometry(0.08, 0.82, 0.92), trim, x, 0.4, 0));
+      const lid = new THREE.Group(); lid.position.set(0, 0.8, -0.45); grp.add(lid); lid.add(mesh(new THREE.BoxGeometry(2.0, 0.16, 0.9), wood, 0, 0.08, 0.45)); lid.add(mesh(new THREE.BoxGeometry(2.02, 0.04, 0.92), trim, 0, 0.17, 0.45));
+      // question marks glowing on the sides
+      const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d'); c.font = '900 52px Outfit, sans-serif'; c.textAlign = 'center'; c.fillStyle = '#9fe8ff'; c.shadowColor = '#4fd0ff'; c.shadowBlur = 10; c.fillText('?', 32, 50);
+      const qm = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+      for (const z of [-0.46, 0.46]) { const q = mesh(new THREE.PlaneGeometry(0.5, 0.5), qm, 0, 0.42, z); if (z < 0) q.rotation.y = Math.PI; grp.add(q); }
+      // the beam: a tall pillar of light seen from anywhere on the map
+      const beam = mesh(new THREE.CylinderGeometry(0.32, 0.55, 140, 16, 1, true), addMat(0x3ab8ff), 0, 70, 0); beam.material.opacity = 0.2; grp.add(beam);
+      const core = mesh(new THREE.CylinderGeometry(0.07, 0.12, 140, 10, 1, true), addMat(0xbff0ff), 0, 70, 0); core.material.opacity = 0.55; grp.add(core);
+      const gl = sprite(0x7fd8ff, 4); gl.position.y = 1.2; gl.material.opacity = 0.5; grp.add(gl);
+      const show = new THREE.Group(); show.position.y = 1.45; grp.add(show);
+      this.box = { grp, lid, beam, core, show, state: 'idle', t: 0, uses: 0, spot: 0, wid: null };
+      this.placeBox(0);
+    },
+    placeBox(i) {
+      const spots = this.g.world.zmBoxSpots, s = spots[i]; const b = this.box; b.spot = i;
+      b.grp.position.set(s.x, this.g.world.groundAt(s.x, s.z, 3), s.z); b.grp.rotation.y = s.yaw || 0; b.grp.visible = true;
+      this.g.fx.burst(b.grp.position.clone().setY(b.grp.position.y + 1), [0x7fd8ff, 0xffffff], 40, 8, 0.1, 1, 0);
+    },
+    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr']; },
+    updateBox(dt) {
+      const b = this.box; if (!b) return; b.t += dt;
+      b.beam.material.opacity = 0.16 + 0.06 * Math.sin(this.tAll * 2); b.beam.rotation.y += dt * 0.4;
+      const openK = b.state === 'idle' ? 0 : 1; b.lid.rotation.x = U.lerp(b.lid.rotation.x, -1.6 * openK, Math.min(1, dt * 8));
+      if (b.state === 'rolling') {
+        b.swapT = (b.swapT || 0) - dt;
+        if (b.swapT <= 0) { b.swapT = 0.06 + b.t * 0.06; const pool = this.boxPool(); this.showBoxGun(pool[Math.floor(Math.random() * pool.length)]); BR.Audio.click(); }
+        b.show.position.y = 1.0 + Math.min(1, b.t / 1.2) * 0.8;
+        if (b.t > 3.2) { // result
+          b.uses++;
+          if (b.uses >= 4 && Math.random() < 0.22 && this.g.world.zmBoxSpots.filter(s => this.unlocked.has(s.zone)).length > 1) { this.boxTeddy(); return; }
+          const pool = this.boxPool().filter(w => !this.g.player.hasWeapon(w)); b.wid = pool[Math.floor(Math.random() * pool.length)] || 'smg';
+          this.showBoxGun(b.wid); b.state = 'offer'; b.t = 0; BR.Audio.zBuy && BR.Audio.zBuy();
+        }
+      } else if (b.state === 'offer') { b.show.rotation.y += dt * 1.5; b.show.position.y = 1.8 - Math.min(1, b.t / 7) * 0.8; if (b.t > 7) this.boxClose(); }
+      else if (b.state === 'teddy') {
+        b.show.position.y = 1.8 + b.t * 0.5;
+        if (b.t > 2.6) { // the box flies away to a new spot
+          b.grp.position.y += dt * 30;
+          if (b.t > 3.6) { const spots = this.g.world.zmBoxSpots, ok = spots.map((s, i) => i).filter(i => i !== b.spot && this.unlocked.has(spots[i].zone)); this.placeBox(ok[Math.floor(Math.random() * ok.length)]); this.boxClose(); b.uses = 0; }
+        }
+      }
+    },
+    showBoxGun(wid) { const b = this.box; while (b.show.children.length) b.show.remove(b.show.children[0]); const m = BR.Models.worldWeapon(wid); m.scale.setScalar(1.5); m.rotation.y = Math.PI / 2; b.show.add(m); },
+    boxClose() { const b = this.box; b.state = 'idle'; b.t = 0; b.wid = null; while (b.show.children.length) b.show.remove(b.show.children[0]); },
+    boxTeddy() {
+      const b = this.box; b.state = 'teddy'; b.t = 0; while (b.show.children.length) b.show.remove(b.show.children[0]);
+      const fur = lam(0x7a5a3a), t = new THREE.Group(); t.add(mesh(new THREE.SphereGeometry(0.22, 10, 8), fur, 0, 0, 0)); t.add(mesh(new THREE.SphereGeometry(0.16, 10, 8), fur, 0, 0.3, 0));
+      for (const x of [-0.11, 0.11]) t.add(mesh(new THREE.SphereGeometry(0.06, 8, 6), fur, x, 0.44, 0)); t.add(mesh(new THREE.SphereGeometry(0.05, 6, 4), lam(0x1a0a0a), 0, 0.3, -0.15)); b.show.add(t);
+      this.addPoints(950); this.g.hud.zmBanner('BYE BYE', 'The box is moving… follow the beam', 'done'); BR.Audio.zTeddy && BR.Audio.zTeddy();
+    },
+
+    // ---- Pack-a-Punch ------------------------------------------------------------
+    buildPap() {
+      const g = this.g, P = g.world.zmPap; if (!P) return;
+      const grp = new THREE.Group(); grp.position.set(P.x, 0, P.z); g.scene.add(grp);
+      const stone = new THREE.MeshPhongMaterial({ color: 0x2a2436, shininess: 40 }), brass = new THREE.MeshPhongMaterial({ color: 0xb08a3c, specular: 0xffe2a0, shininess: 90 });
+      grp.add(mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.5, 8), stone, 0, 0.25, 0)); grp.add(mesh(new THREE.BoxGeometry(1.8, 1.6, 1.2), stone, 0, 1.3, 0));
+      for (const x of [-1.05, 1.05]) grp.add(mesh(new THREE.CylinderGeometry(0.16, 0.2, 3.4, 8), brass, x, 1.7, 0));
+      grp.add(mesh(new THREE.BoxGeometry(2.5, 0.3, 1.3), brass, 0, 3.3, 0));
+      const core = mesh(new THREE.SphereGeometry(0.42, 18, 14), new THREE.MeshBasicMaterial({ color: 0xc06bff }), 0, 2.55, 0); grp.add(core);
+      const rings = []; for (let i = 0; i < 3; i++) { const r = mesh(new THREE.TorusGeometry(0.7 + i * 0.16, 0.025, 6, 40), addMat(i === 1 ? 0x50f0dc : 0xc06bff), 0, 2.55, 0); grp.add(r); rings.push(r); }
+      const glow = sprite(0xc06bff, 5); glow.position.y = 2.55; glow.material.opacity = 0.5; grp.add(glow);
+      const slot = mesh(new THREE.BoxGeometry(1.2, 0.3, 0.1), new THREE.MeshBasicMaterial({ color: 0x50f0dc }), 0, 1.5, -0.61); grp.add(slot);
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const c = cv.getContext('2d'); c.font = '900 34px Outfit, sans-serif'; c.textAlign = 'center'; c.fillStyle = '#e9d5ff'; c.shadowColor = '#b26bff'; c.shadowBlur = 12; c.fillText('PACK-A-PUNCH', 128, 44);
+      const sign = mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true }), 0, 3.3, -0.66); sign.rotation.y = Math.PI; grp.add(sign);
+      const show = new THREE.Group(); show.position.set(0, 1.9, -0.9); grp.add(show);
+      this.pap = { grp, core, rings, glow, show, x: P.x, z: P.z - 1.4, busy: 0 };
+    },
+    updatePap(dt) {
+      const P = this.pap; if (!P) return; const t = this.tAll;
+      P.rings.forEach((r, i) => { r.rotation.set(t * (0.6 + i * 0.3), t * (0.9 - i * 0.2), i); });
+      P.core.scale.setScalar(1 + 0.08 * Math.sin(t * 4)); P.glow.material.opacity = 0.4 + 0.15 * Math.sin(t * 3) + (P.busy > 0 ? 0.4 : 0);
+      if (P.busy > 0) { P.busy -= dt; P.show.rotation.y += dt * 6; if (Math.random() < dt * 30) this.g.fx.burst(P.grp.position.clone().setY(2.55), [0xc06bff, 0x50f0dc, 0xffffff], 2, 3, 0.08, 0.5, 0);
+        if (P.busy <= 0) { while (P.show.children.length) P.show.remove(P.show.children[0]); } }
+    },
+    papWeapon(w) {
+      const NAMES = { smg: 'Spectral Chopper', shotgun: 'Grave Digger', rifle: 'Reaper\'s Toll', holoar: 'Phantom Lance', dmr: 'Witch\'s Eye', lmg: 'Harvest Moon', sniper: 'Raven\'s Gaze', hunter: 'Bone Splitter', revolver: 'Hex Six', pistol: 'Lantern of Souls' };
+      const d = w.def;
+      w.def = Object.assign({}, d, { name: NAMES[w.id] || d.name + ' Mk II', dmg: d.dmg * 2.2, mag: Math.round(d.mag * 1.5), reload: d.reload * 0.85, recoil: d.recoil * 0.8, pap: true, tier: 3 });
+      w.mag = w.def.mag; this.g.player.ammo[d.ammo] = BR.CONFIG.ammoCap[d.ammo];
+      this.papCount++;
+    },
+
+    // ---- interact: doors, wall buys, the box, Pack-a-Punch, quest objects ----------------
+    updateBuys() {
+      const g = this.g, p = g.player, near = (x, z, r, y) => Math.hypot(x - p.pos.x, z - p.pos.z) < r && (y === undefined || Math.abs(y - p.pos.y) < 2.5);
+      this.near = null;
+      for (const d of this.doors || []) if (!d.open && near(d.cx, d.cz, 3)) { this.near = { k: 'door', o: d, txt: `Open ${d.name} · ${d.cost}` }; break; }
+      if (!this.near) for (const b of this.buys || []) if (near(b.x, b.z, 2.3, b.y - 1.7)) { const have = p.hasWeapon(b.wid); this.near = { k: 'buy', o: b, txt: have ? `Ammo · ${Math.round(b.cost / 2)}` : `Buy ${b.name} · ${b.cost}` }; break; }
+      const B = this.box; if (!this.near && B && near(B.grp.position.x, B.grp.position.z, 2.6)) {
+        if (B.state === 'idle') this.near = { k: 'box', txt: 'Mystery Box · 950' };
+        else if (B.state === 'offer') this.near = { k: 'boxtake', txt: 'Take ' + BR.CONFIG.weapons[B.wid].name };
+      }
+      const P = this.pap; if (!this.near && P && near(P.x, P.z, 2.6)) { const w = p.weapon; this.near = { k: 'pap', txt: !w || w.def.melee ? 'Pack-a-Punch · hold a gun' : w.def.pap ? 'Already upgraded' : `Pack-a-Punch ${w.def.name} · 5000` }; }
+      if (!this.near && this.quest && this.quest.spots) for (const s of this.quest.spots) if (!s.done && s.interact && near(s.x, s.z, 2.4, s.y)) { this.near = { k: 'quest', o: s, txt: s.interact }; break; }
+      g.hud.prompt(this.near ? this.near.txt : null);
+    },
+    interact() {
+      const g = this.g, p = g.player, N = this.near; if (!N) return false;
+      const pay = c => { if (this.points < c) { g.hud.toast('Not enough points', 900); BR.Audio.click(); return false; } this.points -= c; g.hud.zmPoints(this.points, -c); return true; };
+      if (N.k === 'door') { if (pay(N.o.cost)) this.openDoor(N.o); return true; }
+      if (N.k === 'buy') {
+        const b = N.o, have = p.hasWeapon(b.wid), cost = have ? Math.round(b.cost / 2) : b.cost, def = BR.CONFIG.weapons[b.wid];
+        if (!pay(cost)) return true;
+        if (have) { const w = p.slots.find(s => s && s.id === b.wid); if (w) w.mag = w.def.mag; p.ammo[def.ammo] = BR.CONFIG.ammoCap[def.ammo]; }
+        else this.giveGun(b.wid);
+        BR.Audio.zBuy && BR.Audio.zBuy(); g.hud.toast(have ? 'Ammo refilled' : def.name + ' bought', 1000); return true;
+      }
+      if (N.k === 'box') { if (pay(950)) { const B = this.box; B.state = 'rolling'; B.t = 0; B.swapT = 0; BR.Audio.zBox && BR.Audio.zBox(); } return true; }
+      if (N.k === 'boxtake') { const B = this.box; this.giveGun(B.wid); g.hud.toast(BR.CONFIG.weapons[B.wid].name, 1000); this.boxClose(); BR.Audio.pickup(); return true; }
+      if (N.k === 'pap') {
+        const w = p.weapon; if (!w || w.def.melee || w.def.pap) return true;
+        if (!pay(5000)) return true;
+        const P = this.pap; P.busy = 2.4; while (P.show.children.length) P.show.remove(P.show.children[0]); const m = BR.Models.worldWeapon(w.id); m.scale.setScalar(1.4); P.show.add(m);
+        this.papWeapon(w); g.vmr.lastWeapon = null;
+        g.hud.zmBanner(w.def.name.toUpperCase(), 'Pack-a-Punched: double damage, bigger mag', 'power', '#c06bff'); BR.Audio.zPap && BR.Audio.zPap();
+        this.questEvent('pap'); return true;
+      }
+      if (N.k === 'quest') { this.questSpot(N.o); return true; }
+      return false;
+    },
+    giveGun(wid) {
+      const p = this.g.player, def = BR.CONFIG.weapons[wid];
+      const i = p.giveWeapon(wid, def.mag);
+      if (i < 0) { const c = p.cur === 2 ? 0 : p.cur; p.slots[c] = BR.Weapons.create(wid, def.mag); p.switchTo(c); }
+      p.ammo[def.ammo] = BR.CONFIG.ammoCap[def.ammo];
+    },
+
+    // ---- spawning only in opened zones -------------------------------------------------
+    spawnZombie(at, riseT, speedOverride) {
+      if (!at) { const p = this.g.player.pos, W = this.g.world, open = (W.zmSpawns || []).filter(s => this.unlocked.has(s.zone || 'graveyard'));
+        const far = open.filter(s => Math.hypot(s.x - p.x, s.z - p.z) > 12 && Math.hypot(s.x - p.x, s.z - p.z) < 70); const list = far.length ? far : open; at = list[Math.floor(Math.random() * list.length)]; }
+      return BR.ZombieMode.prototype._spawnZombieBase.call(this, at, riseT, speedOverride);
+    },
+
+    // ---- quests every 5 rounds (story lore + points) ---------------------------------------
+    nextRound() {
+      baseNext.call(this);
+      if (this.round % 5 === 0) this.startQuest();
+    },
+    startQuest() {
+      const def = QUESTS[this.questN % QUESTS.length], tier = Math.floor(this.questN / QUESTS.length);
+      this.quest = { def, n: 0, goal: Math.round(def.goal * (1 + tier * 0.5)), reward: 600 + this.round * 40, lore: STORY.lore[this.questN % STORY.lore.length], t: 0 };
+      this.refreshQuestSpots();
+      this.g.hud.zmQuest(this.quest);
+      setTimeout(() => this.g.hud.zmBanner('NEW QUEST', def.title + ': ' + def.desc, 'quest'), 2600);
+    },
+    refreshQuestSpots() {
+      const Q = this.quest; if (!Q) return; const W = this.g.world, QS = W.zmQuest, sc = this.g.scene;
+      if (Q.spots) for (const s of Q.spots) if (s.mesh) sc.remove(s.mesh);
+      Q.spots = [];
+      const mk = (x, y, z, col, interact, kind) => { const grp = new THREE.Group(); grp.position.set(x, y, z); const gl = sprite(col, 1.6); gl.material.opacity = 0.7; grp.add(gl); sc.add(grp); const s = { x, y, z, mesh: grp, gl, interact, kind, done: false }; Q.spots.push(s); return s; };
+      const id = Q.def.id;
+      if (id === 'pages') { const open = QS.pages.filter(pp => this.unlocked.has(BR.zombieZoneAt(pp.x, pp.z))); const pool = open.concat([{ x: -14, z: 30 }, { x: 18, z: -6 }, { x: -33, z: -12 }]).slice(0, Q.goal);
+        for (const pg of pool) { const s = mk(pg.x, this.g.world.groundAt(pg.x, pg.z, 3) + 1, pg.z, 0xfff2c0, null, 'page'); const page = mesh(new THREE.PlaneGeometry(0.35, 0.45), new THREE.MeshBasicMaterial({ color: 0xf2e6c8, side: THREE.DoubleSide })); s.mesh.add(page); s.page = page; } }
+      else if (id === 'candles') for (const c of QS.candles) { const s = mk(c.x, 0.9, c.z, 0x666666, 'Light the ritual candle', 'candle'); s.mesh.add(mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.9, 8), lam(0xeae0c8), 0, -0.45, 0)); s.gl.material.opacity = 0.15; }
+      else if (id === 'bell') mk(QS.bell.x, QS.bell.y + 1.2, QS.bell.z, 0xffd24a, 'Ring the wedding bell', 'bell');
+      else if (id === 'cauldron') { const open = this.unlocked.has('wood'); Q.zone = open ? { x: QS.cauldron.x, z: QS.cauldron.z, r: 8 } : { x: 0, z: -22, r: 8 }; mk(Q.zone.x, 2.5, Q.zone.z, 0x7dff3a, null, 'area'); }
+      else if (id === 'stones') { const open = this.unlocked.has('wood'); Q.zone = open ? { x: QS.stones.x, z: QS.stones.z, r: 6 } : { x: QS.altar.x, z: QS.altar.z, r: 4 }; mk(Q.zone.x, 2.5, Q.zone.z, 0xff2a2a, null, 'area'); }
+    },
+    questSpot(s) {
+      if (s.done) return; s.done = true;
+      if (s.kind === 'candle') { s.gl.material.color.setHex(0xffb24a); s.gl.material.opacity = 0.8; s.gl.scale.setScalar(1.2); BR.Audio.zFire && BR.Audio.zFire(); }
+      else if (s.kind === 'bell') { BR.Audio.zBell && BR.Audio.zBell(); this.g.cam.shake = Math.max(this.g.cam.shake, 0.2); }
+      this.questProgress(1);
+    },
+    questEvent(kind, n) {
+      const Q = this.quest; if (!Q) return; const id = Q.def.id;
+      if ((id === 'headshots' && kind === 'headshot') || (id === 'knife' && kind === 'knife') || (id === 'pap' && kind === 'pap')) this.questProgress(n || 1);
+      if (id === 'cauldron' && kind === 'kill' && n && Math.hypot(n.x - Q.zone.x, n.z - Q.zone.z) < Q.zone.r) this.questProgress(1);
+    },
+    questProgress(k) {
+      const Q = this.quest; if (!Q) return; Q.n = Math.min(Q.goal, Q.n + k); this.g.hud.zmQuest(Q);
+      if (Q.n >= Q.goal) this.completeQuest();
+    },
+    completeQuest() {
+      const Q = this.quest, g = this.g; this.quest = null; this.questN++;
+      if (Q.spots) for (const s of Q.spots) if (s.mesh) g.scene.remove(s.mesh);
+      this.addPoints(Q.reward); this.journal.push(Q.lore);
+      g.hud.zmQuest(null); g.hud.zmJournal(this.journal);
+      g.hud.zmBanner('QUEST COMPLETE', Q.def.title + '  ·  +' + Q.reward + ' points', 'slain');
+      setTimeout(() => g.hud.zmLore(Q.lore.title, Q.lore.text), 1500);
+      BR.Audio.zPower && BR.Audio.zPower();
+    },
+    updateQuest(dt) {
+      const Q = this.quest; if (!Q) return; const p = this.g.player;
+      Q.t += dt;
+      if (Q.spots) for (const s of Q.spots) { if (s.done && s.kind === 'page') continue; s.mesh.position.y = s.y + Math.sin(this.tAll * 2 + s.x) * 0.15; if (s.page) s.page.rotation.y += dt * 2;
+        if (s.kind === 'page' && !s.done && Math.hypot(s.x - p.pos.x, s.z - p.pos.z) < 1.6 && Math.abs(s.y - 1 - p.pos.y) < 2.5) { s.done = true; this.g.scene.remove(s.mesh); BR.Audio.pickup(); this.questProgress(1); } }
+      if (Q.def.id === 'stones' && Q.zone && Math.hypot(p.pos.x - Q.zone.x, p.pos.z - Q.zone.z) < Q.zone.r) { Q.acc = (Q.acc || 0) + dt; if (Q.acc >= 1) { Q.acc -= 1; this.questProgress(1); } }
+    },
+
+    // ---- boss intro cutscene -------------------------------------------------------------
+    spawnBoss() {
+      ZM._spawnBossBase.call(this);
+      const b = this.boss; if (!b) return;
+      b.riseT = b.riseMax = 3.2;
+      this.cut = { t: 0, dur: 6.2, b, type: b.boss, story: STORY.bosses[b.boss] };
+      document.body.classList.add('zm-cinema'); this.g.hud.zmCut(this.cut.story, BOSSES[b.boss].color);
+      this.g.hud.zmBoss(null);
+    },
+    updateCut(dt) {
+      const C = this.cut, g = this.g, b = C.b; C.t += dt;
+      this.tAll = (this.tAll || 0) + dt; this.ambience(dt);
+      b.t += dt; if (b.riseT > 0) b.riseT = Math.max(0, b.riseT - dt); b.syncMesh(dt);
+      INTRO[C.type].fx(this, b, C.t, dt); g.fx.update(dt);
+      // camera: per-boss path around the boss, looking at the head
+      const cp = INTRO[C.type].cam(C.t), cam = g.camera, bp = b.pos;
+      cam.position.set(bp.x + Math.sin(cp.ang) * cp.r, bp.y + cp.h + (cp.shake ? (Math.random() - 0.5) * cp.shake : 0), bp.z + Math.cos(cp.ang) * cp.r);
+      cam.lookAt(bp.x, bp.y + cp.look, bp.z); cam.fov = 55; cam.updateProjectionMatrix(); g.vmr.hide();
+      if (C.t >= C.dur || (g.input && g.input.consume && (g.input.consume('jump') || g.input.consume('interact')) && C.t > 1)) this.endCut();
+    },
+    endCut() {
+      const g = this.g, C = this.cut; this.cut = null; document.body.classList.remove('zm-cinema'); g.hud.zmCut(null);
+      if (C.b) { C.b.riseT = 0; g.hud.zmBoss(C.b.D.name, 1, C.b.D.color); }
+      g.camera.fov = g.baseFov(); g.camera.updateProjectionMatrix(); g.input.reset(); g.last = performance.now();
+    },
+
+    // ---- per frame extras ------------------------------------------------------------------
+    update(dt) {
+      baseUpdate.call(this, dt);
+      if (!this.g.player.alive) return;
+      this.updateBox(dt); this.updatePap(dt); this.updateQuest(dt);
+      for (const d of this.doors || []) if (d.open && d.openT < 1) { d.openT = Math.min(1, d.openT + dt * 1.5); d.bars.position.y = -d.openT * 4.6; if (d.openT >= 1) d.grp.visible = false; }
+      const left = this.phase === 'fight' ? this.toSpawn + this.zombies.filter(z => z.alive).length + (this.bossPending ? 1 : 0) : 0;
+      this.g.hud.zmLeft(left, this.phase === 'fight');
+    },
+    onKill(victim, killer, weaponId, head) {
+      baseOnKill.call(this, victim, killer, weaponId, head);
+      if (!victim.zombie || !killer || !killer.isPlayer) return;
+      const melee = BR.CONFIG.weapons[weaponId] && BR.CONFIG.weapons[weaponId].melee;
+      if (head && !melee) this.questEvent('headshot'); if (melee) this.questEvent('knife');
+      this.questEvent('kill', victim.pos);
+    },
+  });
 })();
 
 </script>
@@ -10475,14 +11051,14 @@ BR.Keybinds = {
     ['fire', 'Fire', 'Combat'], ['ads', 'Aim down sights', 'Combat'], ['reload', 'Reload', 'Combat'], ['inspect', 'Inspect', 'Combat'],
     ['grenade', 'Shockwave grenade', 'Combat'], ['stim', 'Stim', 'Combat'],
     ['slot0', 'Weapon 1', 'Weapons'], ['slot1', 'Weapon 2', 'Weapons'], ['slot2', 'Knife slot', 'Weapons'], ['swap', 'Next weapon', 'Weapons'], ['knife', 'Knife toggle', 'Weapons'],
-    ['interact', 'Open chest / swap gun', 'Other'], ['map', 'Map', 'Other'], ['spawnmenu', 'Spawn menu (practice)', 'Other'], ['pause', 'Pause', 'Other'],
+    ['interact', 'Open chest / swap gun / buy', 'Other'], ['journal', 'Zombies journal', 'Other'], ['map', 'Map', 'Other'], ['spawnmenu', 'Spawn menu (practice)', 'Other'], ['pause', 'Pause', 'Other'],
   ],
   DEFAULTS: {
     forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
     jump: ['Space', null], crouch: ['ShiftLeft', 'KeyC'], grapple: ['KeyG', 'Mouse1'],
     fire: ['Mouse0', null], ads: ['Mouse2', null], reload: ['KeyR', null], inspect: ['KeyV', null], grenade: ['KeyT', null], stim: ['KeyF', null],
     slot0: ['Digit1', null], slot1: ['Digit2', null], slot2: ['Digit3', null], swap: ['KeyQ', 'WheelDown'], knife: ['KeyX', null],
-    interact: ['KeyE', null], map: ['KeyM', 'Tab'], spawnmenu: ['KeyB', null], pause: ['Escape', 'KeyP'],
+    interact: ['KeyE', null], journal: ['KeyJ', null], map: ['KeyM', 'Tab'], spawnmenu: ['KeyB', null], pause: ['Escape', 'KeyP'],
   },
   capturing: null,
   load() {
@@ -11663,6 +12239,12 @@ BR.HUD = class HUD {
   <div id="zm-hud" class="hidden">
     <div class="zm-round"><b id="zm-round">0</b></div>
     <div class="zm-points"><span id="zm-points">0</span><i id="zm-pop"></i></div>
+    <div id="zm-left" class="zm-left hidden">ZOMBIES <b>0</b></div>
+    <div id="zm-quest" class="zm-quest hidden"><small>QUEST</small><b class="zq-t"></b><span class="zq-d"></span><i class="zq-bar"><u></u></i><em class="zq-n"></em></div>
+    <button class="zm-jbtn" data-act="journal" aria-label="Journal"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg><span>JOURNAL</span></button>
+    <div id="zm-lore" class="zm-lore"><small>STORY UNLOCKED</small><b></b><p></p></div>
+    <div id="zm-journal" class="zm-journal hidden" data-act="journal"><div class="zj-panel"><div class="zj-head">THE HOLLOW GRAVES JOURNAL <span>tap to close</span></div><div class="zj-list"></div></div></div>
+    <div id="zm-cut" class="zm-cut"><i class="bar t"></i><i class="bar b"></i><div class="zc-card"><small class="zc-name"></small><b class="zc-title"></b><p class="zc-line"></p><span class="zc-skip">tap JUMP to skip</span></div></div>
     <div class="zm-timers"><span id="zm-insta" class="hidden">INSTA-KILL <b></b></span><span id="zm-double" class="hidden">DOUBLE POINTS <b></b></span></div>
     <div id="zm-boss" class="hidden"><div class="zb-name"></div><div class="zb-bar"><i></i></div></div>
     <div id="zm-banner"><b></b><span></span></div>
@@ -12199,7 +12781,7 @@ BR.HUD = class HUD {
     const prism = !!(optic && w.def.optic === 'prism'), acog = !!(optic && w.def.optic === 'acog');
     this.set('scope2', e.scope2, prism, el => el.classList.toggle('on', prism));
     this.set('scope3', e.scope3, acog, el => el.classList.toggle('on', acog));
-    this.set('xh', e.crosshair, !!(scoped || holo || optic), (el, v) => el.classList.toggle('hide', v));
+    this.set('xh', e.crosshair, !!(scoped || optic), (el, v) => el.classList.toggle('hide', v));   // the crosshair stays up while aiming (only scopes / magnified optics replace it)
 
     // Low health vignette + storm tint
     const hurt = 1 - Math.max(0, p.health) / A.maxHealth;
@@ -12325,6 +12907,24 @@ BR.HUD = class HUD {
   zmBanner(t, sub, kind, col) {
     const b = this.$('zm-banner'); b.querySelector('b').textContent = t; b.querySelector('span').textContent = sub || '';
     b.className = ''; void b.offsetWidth; b.className = 'on ' + (kind || ''); b.style.setProperty('--zc', col || '');
+  }
+  zmLeft(n, on) { const e = this.$('zm-left'); if (!e) return; e.classList.toggle('hidden', !on); this.set('zmLeftN', e, n, (el, v) => { el.querySelector('b').textContent = v; }); }
+  zmQuest(q) {
+    const e = this.$('zm-quest'); if (!e) return;
+    if (!q) { e.classList.add('hidden'); return; }
+    e.classList.remove('hidden'); e.querySelector('.zq-t').textContent = q.def.title; e.querySelector('.zq-d').textContent = q.def.desc;
+    e.querySelector('.zq-bar u').style.width = Math.round(q.n / q.goal * 100) + '%'; e.querySelector('.zq-n').textContent = q.n + ' / ' + q.goal;
+    e.classList.remove('pulse'); void e.offsetWidth; e.classList.add('pulse');
+  }
+  zmLore(title, text) { const e = this.$('zm-lore'); e.querySelector('b').textContent = title; e.querySelector('p').textContent = text; e.className = 'zm-lore'; void e.offsetWidth; e.className = 'zm-lore on'; }
+  zmJournal(list) { this._journal = list; const L = this.$('zm-journal').querySelector('.zj-list'); L.innerHTML = list.map((j, i) => `<div class="zj-e"><b>${i ? 'Entry ' + i + ' · ' : ''}${j.title}</b><p>${j.text}</p></div>`).join('') + (list.length < 9 ? '<div class="zj-e lock"><b>More pages are lost...</b><p>Complete quests (every 5 rounds) to recover them.</p></div>' : ''); }
+  zmJournalToggle(force) { const e = this.$('zm-journal'); const on = force !== undefined ? force : e.classList.contains('hidden'); e.classList.toggle('hidden', !on); }
+  zmCut(story, col) {
+    const e = this.$('zm-cut'); if (!e) return;
+    if (!story) { e.className = 'zm-cut'; return; }
+    e.querySelector('.zc-name').textContent = story.name; e.querySelector('.zc-title').textContent = story.title; e.querySelector('.zc-line').textContent = story.line;
+    e.style.setProperty('--cc', '#' + (col || 0xff7a1a).toString(16).padStart(6, '0'));
+    e.className = 'zm-cut'; void e.offsetWidth; e.className = 'zm-cut on';
   }
   zmLightning() { const f = this.$('zm-flash'); f.className = ''; void f.offsetWidth; f.className = 'on'; }
   zmNuke() { const f = this.$('zm-flash'); f.className = ''; void f.offsetWidth; f.className = 'on nuke'; }
@@ -12657,17 +13257,17 @@ BR.Game = class Game {
   // ------------------------------------------------------------ enemy highlight
   // Tints every other player's own materials so they read clearly in shade, foliage and clutter.
   // It's a colour tint only: walls still hide them (no seeing through geometry).
-  applyHighlight() {
-    const mode = this.settings.highlight || 'off', k = mode === 'bright' ? 0.5 : mode === 'subtle' ? 0.22 : 0;
+  applyHighlight() { for (const a of this.actors || []) this.highlightActor(a); }
+  // tint one actor (bots, zombies as they spawn, bosses) by the Enemy highlight setting
+  highlightActor(a) {
+    if (!a || a.isPlayer || !a.mesh) return;
+    const mode = this.settings.highlight || 'off', k = (mode === 'bright' ? 0.5 : mode === 'subtle' ? 0.22 : 0) * (a.zombie ? 0.32 : 1);   // night map: zombies need far less tint
     const col = this._hlc || (this._hlc = new THREE.Color(0xff3b30));
-    for (const a of this.actors || []) {
-      if (a.isPlayer || !a.mesh) continue;
-      a.mesh.traverse(o => {
-        if (!o.isMesh || !o.material || !o.material.emissive) return;
-        if (!o.userData.hlOwn) { o.material = o.material.clone(); o.userData.hlOwn = true; o.userData.hlBase = o.material.emissive.clone(); }
-        o.material.emissive.copy(o.userData.hlBase).lerp(col, k);
-      });
-    }
+    a.mesh.traverse(o => {
+      if (!o.isMesh || !o.material || !o.material.emissive) return;
+      if (!o.userData.hlOwn) { const old = o.material; o.material = old.clone(); o.userData.hlOwn = true; o.userData.hlBase = o.material.emissive.clone(); if (a.mesh.userData.mat === old) a.mesh.userData.mat = o.material; }
+      o.material.emissive.copy(o.userData.hlBase).lerp(col, k);
+    });
   }
 
   // ------------------------------------------------------------ sun shadows (Graphics: High)
@@ -13133,6 +13733,7 @@ BR.Game = class Game {
       if (this.freezeT <= 0) { this.freezeT = 0; this.hud.freeze(false); this.startVictory(); }
       return;
     }
+    if (this.zm && this.zm.cut) { this.zm.updateCut(dt); return; }      // zombies boss intro cutscene
     if (p.alive && this.state === 'playing') this.controlPlayer(dt);
     else p.fireHeld = false;
     this.simulate(dt);
@@ -13330,6 +13931,7 @@ BR.Game = class Game {
       else if (this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; }
       else if (this.zm) this.zm.interact();
     }
+    if (inp.consume('journal') && this.zm) this.hud.zmJournalToggle();
     if (inp.consume('pause')) this.pause();
     if (inp.consume('map')) this.hud.toggleMap();
     if (inp.consume('spawnmenu')) this.openSpawnMenu();
@@ -13438,11 +14040,13 @@ BR.Game = class Game {
   }
 
   tracerOpts(actor) {
+    if (actor.isPlayer && actor.weapon && actor.weapon.def.pap) return { style: 'helix', color2: 0x50f0dc };      // Pack-a-Punched: moon-energy helix
     if (!actor.isPlayer) return null;
     return BR.Models.tracerOpts(this.playerTracer(actor), this.time);
   }
 
   tracerColor(actor) {
+    if (actor.isPlayer && actor.weapon && actor.weapon.def.pap) return 0xc06bff;
     if (!actor.isPlayer) return 0xff9a6b;
     return BR.Models.tracerColor(this.playerTracer(actor), this.time);
   }
