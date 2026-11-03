@@ -853,7 +853,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.5.2',
+  version: '1.5.3',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -997,7 +997,7 @@ BR.CONFIG = {
     butterfly: { name: 'Butterfly Knife', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 150, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.2 },
     knife:   { name: 'Karambit', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.2 },
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x8e96a3 },
-    smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 1100, mag: 35, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.0035, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.0095, recoilH: 0.012, zoom: 1.3, tier: 1, color: 0x3fa6c4 },
+    smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 1100, mag: 35, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.0035, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.0095, recoilH: 0.012, zoom: 1.3, tier: 1, color: 0x2f3237 },
     // Wide horizontal pellet line (tightens when aiming), shell-by-shell reload you can cancel by firing
     shotgun: { name: 'Breacher', ammo: 'shells', dmg: 13, pellets: 8, pattern: 'line', rpm: 80, mag: 6, reload: 0.42, shellReload: true, spread: 0.10, ads: 0.6, bloom: 0, bloomMax: 0, range: 20, head: 1.4, recoil: 0.05, zoom: 1.15, tier: 1, color: 0xc7772f, knockback: 13 },
     rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 45, reload: 2.4, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.015, recoilH: 0.018, zoom: 1.5, tier: 2, color: 0x2e3136 },
@@ -3952,25 +3952,56 @@ BR.Models = (function () {
       hands(g, [0, -0.07, 0.03], [-0.012, -0.095, 0.0], [0, 0.05, 0.02]);
       anchors(g, -0.2, 0.045, [-0.03, 0.0, 0.04]);
     },
+    // SMG: a compact open-bolt machine pistol. Boxy receiver under a ribbed top cover
+    // with a short rail and sight ears front and rear, side channels and a row of
+    // slanted grooves, a knurled barrel nut, the mag inside the grip, a front lip,
+    // and an extended folding skeleton stock with a ribbed butt pad. Micro red dot on top.
     smg(g, S, M) {
       const k = kit(g);
-      k.box(0.06, 0.08, 0.3, 0, 0.03, -0.08, S);                  // receiver
-      k.box(0.065, 0.02, 0.26, 0, 0.08, -0.08, M.dark);           // top rail
-      for (let i = 0; i < 6; i++) k.box(0.067, 0.008, 0.012, 0, 0.093, -0.19 + i * 0.04, M.metal);
-      k.cyl(0.016, 0.12, 0, 0.035, -0.28, M.metal, 'z');          // barrel
-      magGroup(g, [k.box(0.035, 0.18, 0.045, 0, -0.08, -0.12, M.dark)]); // long mag
-      hands(g, [0, -0.07, 0.03], [0, -0.07, -0.21], [0.035, 0.05, -0.02]);
-      k.box(0.04, 0.11, 0.05, 0, -0.06, 0.03, M.grip, 0.2);       // grip
-      k.box(0.03, 0.09, 0.035, 0, -0.04, -0.21, M.grip);          // foregrip
-      k.box(0.012, 0.012, 0.18, 0.02, 0.02, 0.15, M.metal);       // stock rods
-      k.box(0.012, 0.012, 0.18, -0.02, 0.02, 0.15, M.metal);
-      k.box(0.05, 0.07, 0.015, 0, 0.0, 0.24, M.grip);             // butt plate
+      const Z = x => 0.03 + (x - 330) * 0.00078, Y = y => -0.07 - (y - 230) * 0.00078;
+      const prof = profiler(g, Z, Y);
+      const BY = Y(127);
+      // barrel, crown, knurled nut
+      k.cyl(0.0092, Z(125) - Z(35), 0, BY, (Z(35) + Z(125)) / 2, M.dark, 'z', 14);
+      k.cyl(0.0098, 0.004, 0, BY, Z(35) - 0.001, M.metal, 'z', 14);
+      k.cyl(0.021, Z(166) - Z(120), 0, BY, (Z(120) + Z(166)) / 2, M.dark, 'z', 20);
+      for (let i = 0; i < 7; i++) k.cyl(0.0215, 0.0016, 0, BY, Z(126 + i * 5.5), M.grip, 'z', 20);
+      // receiver + front lip, top cover, rail with cross slots, sight ears
+      prof([[115, 80], [490, 80], [490, 168], [165, 168], [160, 188], [118, 188], [113, 160]], 0.05, S);
+      prof([[150, 82], [160, 70], [480, 70], [488, 82], [488, 98], [150, 98]], 0.054, M.dark, 0.003);
+      k.box(0.026, 0.006, Z(410) - Z(205), 0, Y(64), (Z(205) + Z(410)) / 2, M.dark);
+      for (let i = 0; i < 10; i++) k.box(0.027, 0.003, 0.006, 0, Y(62), Z(212 + i * 21), M.metal);
+      for (const [x0, x1] of [[165, 202], [432, 478]]) for (const sx of [-1, 1]) prof([[x0, 72], [x0 + 5, 56], [x1 - 4, 56], [x1, 72]], 0.01, M.dark, 0.0015, sx * 0.018);
+      k.cyl(0.004, 0.012, 0, Y(60), Z(455), M.metal, 'z', 8);                          // rear aperture post
+      // side detail: two long channels, slanted grooves, cocking knob, selector, push pin
+      for (const sx of [-1, 1]) {
+        for (const yy of [106, 118]) k.box(0.002, 0.004, Z(430) - Z(205), sx * 0.0255, Y(yy), (Z(205) + Z(430)) / 2, M.grip);
+        for (let i = 0; i < 9; i++) { const x = 182 + i * 30; prof([[x, 140], [x + 9, 140], [x + 1, 162], [x - 8, 162]], 0.0008, M.grip, 0, sx * 0.0254); }
+        k.cyl(0.004, 0.003, sx * 0.026, Y(150), Z(330), M.metal, 'x', 10);
+      }
+      k.cyl(0.006, 0.014, -0.032, Y(92), Z(240), M.metal, 'x', 10);                    // cocking knob
+      k.box(0.004, 0.012, 0.016, 0.027, Y(150), Z(318), M.metal);                       // selector
+      // trigger guard + trigger, grip housing the mag
+      prof([[205, 186], [212, 186], [214, 206], [280, 206], [282, 186], [290, 186], [288, 216], [208, 214]], 0.012, M.dark, 0.0015);
+      prof([[245, 188], [251, 188], [253, 198], [248, 206], [244, 204], [246, 198]], 0.006, M.metal, 0.001);
+      prof([[286, 168], [386, 168], [389, 322], [292, 322], [285, 278], [294, 250], [284, 220], [292, 194]], 0.042, M.grip, 0.005);
+      for (let i = 0; i < 4; i++) k.box(0.0435, 0.002, 0.03, 0, Y(250 + i * 14), Z(352), M.dark);   // grip texture
+      const mag = [prof([[298, 300], [354, 300], [356, 462], [300, 462]], 0.032, M.dark, 0.003)];
+      mag.push(k.box(0.036, 0.008, Z(358) - Z(296), 0, Y(464), (Z(296) + Z(358)) / 2, M.grip));
+      magGroup(g, mag);
+      // folding skeleton stock (extended): hinge block, arm with two cut-outs, ribbed pad
+      prof([[488, 92], [522, 92], [522, 136], [488, 142]], 0.04, M.dark, 0.003);
+      k.cyl(0.006, 0.044, 0, Y(112), Z(506), M.metal, 'x', 10);
+      prof([[518, 96], [705, 96], [775, 150], [775, 168], [698, 126], [518, 130]], 0.02, M.dark, 0.003);
+      for (const [x0, x1] of [[552, 600], [620, 668]]) prof([[x0, 104], [x1, 104], [x1 - 4, 120], [x0 + 4, 120]], 0.021, M.grip, 0);
+      prof([[770, 144], [806, 144], [812, 156], [812, 268], [796, 270], [782, 252], [770, 172]], 0.036, M.dark, 0.004);
+      for (let i = 0; i < 7; i++) k.box(0.037, 0.006, 0.004, 0, Y(170 + i * 13), Z(812) + 0.001, M.grip);
       // Micro red dot (T2-style): QD mount, housing with a front hood + lip, rear rim, capped
       // turrets, battery cap, coated lens (clear centre, blue-violet edge) and a crisp dot with glow
-      const RY = 0.126, RZ = -0.07;
-      k.box(0.034, 0.014, 0.05, 0, 0.1, RZ + 0.004, M.dark);                                  // mount base
-      k.box(0.006, 0.01, 0.022, 0.02, 0.098, RZ + 0.012, M.metal);                           // QD lever
-      k.box(0.026, 0.016, 0.034, 0, 0.108, RZ + 0.002, M.scopeTube);                          // body saddle
+      const RY = Y(62) + 0.035, RZ = Z(300);
+      k.box(0.034, 0.014, 0.05, 0, RY - 0.026, RZ + 0.004, M.dark);                                  // mount base
+      k.box(0.006, 0.01, 0.022, 0.02, RY - 0.028, RZ + 0.012, M.metal);                           // QD lever
+      k.box(0.026, 0.016, 0.034, 0, RY - 0.018, RZ + 0.002, M.scopeTube);                          // body saddle
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.0215, 0.0215, 0.05, 32, 1, true), M.scopeTube);
       body.rotation.x = Math.PI / 2; body.position.set(0, RY, RZ); g.add(body);
       const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.0235, 0.0225, 0.014, 32, 1, true), M.scopeTube);
@@ -3988,7 +4019,9 @@ BR.Models = (function () {
       const rd = new THREE.Mesh(new THREE.CircleGeometry(0.0021, 16), M.reticle); rd.position.set(0, RY, RZ - 0.0294); g.add(rd);
       const ss = new THREE.Object3D(); ss.position.set(0, RY, RZ); g.add(ss);
       g.userData.sight = ss; g.userData.sightDist = 0.37;
-      anchors(g, -0.34, 0.035, [-0.04, -0.01, 0.03]);
+      g.userData.sightDist = 0.37;
+      hands(g, [0, -0.07, Z(336)], [0, -0.04, Z(175)], [-0.034, Y(92), Z(240)]);
+      anchors(g, Z(35) - 0.006, BY, [-0.03, -0.02, 0.12]);
     },
     shotgun(g, S, M) {
       const k = kit(g);
@@ -4484,17 +4517,31 @@ BR.Models = (function () {
     smg: {
       neonrush: { name: 'Neon Rush', rarity: 'Legendary', price: 900, body: 0x14161c, accent: 0x23262e, glow: 0x22e6ff,
         mod(g, k, P) {
-          k.box(0.07, 0.072, 0.16, 0, 0.035, -0.3, P.A);                          // angular barrel shroud
-          for (let i = 0; i < 4; i++) k.box(0.072, 0.006, 0.02, 0, 0.045, -0.36 + i * 0.035, P.G);
-          for (const x of [-0.031, 0.031]) glowStrip(k, P.G, 0.26, x, 0.0, -0.08);
-          k.box(0.03, 0.006, 0.05, 0, -0.005, -0.38, P.G);
+          k.box(0.05, 0.05, 0.07, 0, 0.01, -0.165, P.A);                          // angular barrel shroud
+          for (let i = 0; i < 3; i++) k.box(0.052, 0.005, 0.012, 0, 0.022, -0.19 + i * 0.022, P.G);
+          for (const x of [-0.0265, 0.0265]) glowStrip(k, P.G, 0.24, x, 0.03, 0.0);
+          k.box(0.022, 0.005, 0.04, 0, -0.016, -0.17, P.G);
+        } },
+      scarlet: { name: 'Scarlet Drum', rarity: 'Legendary', price: 1100, body: 0xe8121c, accent: 0x161616, glow: 0xff3b3b,
+        mod(g, k, P) {
+          // long barrel (muzzle moves forward), handstop, heavy drum in place of the stick mag
+          k.cyl(0.0085, 0.2, 0, 0.01, -0.3, P.B, 'z', 14);
+          k.cyl(0.0092, 0.006, 0, 0.01, -0.4, P.A, 'z', 14);
+          const u = g.userData; u.muzzle.position.z -= 0.2; u.flash.position.z -= 0.2;
+          k.box(0.016, 0.03, 0.02, 0, -0.026, -0.1, P.A);
+          const mg = u.mag; mg.children.forEach(c => { c.visible = false; });
+          const drum = [k.cyl(0.058, 0.034, 0.018, -0.21, 0.036, P.B, 'x', 28), k.cyl(0.058, 0.034, -0.018, -0.21, 0.036, P.B, 'x', 28),
+            k.cyl(0.02, 0.074, 0, -0.21, 0.036, P.A, 'x', 16), k.box(0.03, 0.08, 0.04, 0, -0.13, 0.036, P.B),
+            k.cyl(0.0595, 0.004, 0, -0.21, 0.036, P.G, 'x', 28)];
+          for (const m of drum) mg.attach(m);
+          k.box(0.026, 0.012, 0.08, 0, 0.041, 0.25, P.A);                         // cheek rest on the stock arm
         } },
       hornet: { name: 'Hornet', rarity: 'Epic', price: 500, body: 0xf2c200, accent: 0x111111, glow: 0xffe14d,
         mod(g, k, P) {
-          for (let i = 0; i < 6; i++) k.box(0.062, 0.082, 0.014, 0, 0.03, -0.2 + i * 0.045, P.A);  // hazard bands
-          k.box(0.05, 0.05, 0.05, 0, 0.035, -0.36, P.A);                          // muzzle brake
-          for (const x of [-0.026, 0.026]) k.box(0.004, 0.02, 0.03, x, 0.035, -0.36, P.G);
-          k.box(0.06, 0.08, 0.02, 0, 0.0, 0.25, P.A);
+          for (let i = 0; i < 6; i++) k.box(0.052, 0.07, 0.012, 0, 0.033, -0.11 + i * 0.045, P.A);  // hazard bands
+          k.box(0.034, 0.034, 0.04, 0, 0.01, -0.215, P.A);                        // muzzle brake
+          for (const x of [-0.018, 0.018]) k.box(0.004, 0.016, 0.026, x, 0.01, -0.215, P.G);
+          k.box(0.038, 0.09, 0.012, 0, -0.07, 0.402, P.A);
         } },
     },
     shotgun: {
@@ -4610,12 +4657,12 @@ BR.Models = (function () {
         mod(g, k, P) {
           const G = liveGlow(0x39ff14), M2 = liveGlow(0xff2bd6);
           anim(g, t => { const f = Math.floor(t * 8) % 5 === 0; G.color.setHex(f ? 0xff2bd6 : 0x39ff14); M2.color.setHex(f ? 0x39ff14 : 0xff2bd6); });
-          for (const x of [-0.034, 0.034]) { k.box(0.004, 0.01, 0.3, x, 0.03, -0.12, G); k.box(0.004, 0.01, 0.2, x, -0.02, -0.08, M2); }
+          for (const x of [-0.027, 0.027]) { k.box(0.004, 0.008, 0.26, x, 0.035, 0.0, G); k.box(0.004, 0.008, 0.2, x, -0.012, 0.0, M2); }
           const cubes = [];
-          for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.014, 0.014), i % 2 ? G : M2); g.add(c); cubes.push({ c, ox: (Math.random() - 0.5) * 0.12, oy: 0.07 + Math.random() * 0.06, oz: -0.35 + Math.random() * 0.4, s: Math.random() * 10 }); }
+          for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.014, 0.014), i % 2 ? G : M2); g.add(c); cubes.push({ c, ox: (Math.random() - 0.5) * 0.12, oy: 0.08 + Math.random() * 0.05, oz: -0.15 + Math.random() * 0.3, s: Math.random() * 10 }); }
           anim(g, t => cubes.forEach(q => { const j = Math.floor(t * 10 + q.s) % 7 === 0 ? 0.02 : 0; q.c.position.set(q.ox + j, q.oy + Math.sin(t * 3 + q.s) * 0.01, q.oz); q.c.rotation.set(t + q.s, t * 2, 0); }));
-          k.box(0.066, 0.07, 0.12, 0, 0.032, -0.33, chrome(0x1a1a24));
-          for (let i = 0; i < 4; i++) k.box(0.068, 0.008, 0.012, 0, 0.04, -0.37 + i * 0.03, i % 2 ? G : M2);
+          k.box(0.05, 0.05, 0.05, 0, 0.01, -0.16, chrome(0x1a1a24));
+          for (let i = 0; i < 4; i++) k.box(0.052, 0.006, 0.008, 0, 0.018, -0.18 + i * 0.013, i % 2 ? G : M2);
         } },
     },
     shotgun: {
@@ -4709,12 +4756,12 @@ BR.Models = (function () {
       synthwave: { name: 'Synthwave', rarity: 'Mythic', price: 2200, body: 0x2a0b4a, bodyGloss: 2, accent: 0xff2fa8, accentGloss: 2, glow: 0xff2fa8,
         mod(g, k, P) {
           const sun = liveGlow(0xffb000), pink = liveGlow(0xff2fa8), cyan = liveGlow(0x1de9ff);
-          for (let i = 0; i < 4; i++) k.box(0.064, 0.006, 0.07 - i * 0.012, 0, 0.0 + i * 0.012, 0.0, i % 2 ? pink : sun);   // sunset stripes
+          for (let i = 0; i < 4; i++) k.box(0.0515, 0.006, 0.07 - i * 0.012, 0, 0.0 + i * 0.012, 0.03, i % 2 ? pink : sun);   // sunset stripes
           const bars = [];
-          for (let i = 0; i < 7; i++) for (const x of [-0.033, 0.033]) { const b = k.box(0.004, 0.04, 0.012, x, 0.02, -0.2 + i * 0.022, i % 2 ? cyan : pink); bars.push({ b, i }); }
+          for (let i = 0; i < 7; i++) for (const x of [-0.027, 0.027]) { const b = k.box(0.004, 0.04, 0.012, x, 0.02, -0.12 + i * 0.022, i % 2 ? cyan : pink); bars.push({ b, i }); }
           anim(g, t => bars.forEach(({ b, i }) => { const v = 0.3 + 0.7 * Math.abs(Math.sin(t * 7 + i * 0.9) * Math.sin(t * 3.1 + i)); b.scale.y = v; b.position.y = 0.0 + v * 0.02; }));    // equalizer
-          k.box(0.07, 0.004, 0.3, 0, 0.073, -0.1, cyan);
-          k.box(0.05, 0.05, 0.05, 0, 0.035, -0.36, chrome(0xff2fa8));
+          for (const x of [-0.0275, 0.0275]) k.box(0.003, 0.004, 0.3, x, 0.05, 0.005, cyan);
+          k.box(0.046, 0.046, 0.05, 0, 0.01, -0.155, chrome(0xff2fa8));
         } },
     },
     shotgun: {
@@ -4827,11 +4874,11 @@ BR.Models = (function () {
       hellfire: { name: 'Hellfire', rarity: 'Mythic', caseOnly: true, body: 0x1a0505, bodyGloss: 1, accent: 0x3a0a0a, glow: 0xff3a00,
         mod(g, k, P) {
           const fire = new THREE.MeshPhongMaterial({ map: TEX.inferno(), emissive: 0xffffff, emissiveMap: TEX.inferno(), emissiveIntensity: 1 });
-          k.box(0.066, 0.084, 0.24, 0, 0.032, -0.1, fire);
-          const skull = new THREE.Group(); skull.position.set(0, 0.035, -0.36); g.add(skull);
+          k.box(0.0535, 0.078, 0.29, 0, 0.016, 0.008, fire);
+          const skull = new THREE.Group(); skull.position.set(0, 0.01, -0.235); g.add(skull);
           skull.add(new THREE.Mesh(new THREE.SphereGeometry(0.032, 12, 10), chrome(0xe8e2d0)));
           for (const x of [-0.012, 0.012]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6), liveGlow(0xff3a00)); e.position.set(x, 0.006, -0.026); skull.add(e); }
-          orbiters(g, 6, new THREE.ConeGeometry(0.008, 0.03, 6), liveGlow(0xff7a00), 0, 0.035, -0.36, 0.05, 5, 'z');
+          orbiters(g, 6, new THREE.ConeGeometry(0.008, 0.03, 6), liveGlow(0xff7a00), 0, 0.01, -0.235, 0.05, 5, 'z');
         }, tracer: { name: 'Hellfire Signature', style: 'phoenix', color: 0xffe14d, color2: 0xff2a00 }, reload: { style: 'twirl', fx: 0xff5a00 } },
     },
     shotgun: {
