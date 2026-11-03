@@ -212,6 +212,46 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 #toast.on { opacity: 1; transform: translate(-50%, 0); }
 #state-tag { position: absolute; top: calc(50% + 34px); left: 50%; transform: translateX(-50%); font: 600 10px var(--ui); letter-spacing: 0.3em; color: rgba(255, 255, 255, 0.75); opacity: 0; transition: opacity 0.15s; text-shadow: 0 1px 3px #000; }
 #state-tag.on { opacity: 1; }
+/* ---- victory ---- */
+#play.vic > :not(#view):not(#victory):not(#vignette) { opacity: 0 !important; pointer-events: none !important; transition: opacity .5s; }
+#victory { position: absolute; inset: 0; pointer-events: none; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: calc(3vh + var(--st, 0px)); text-align: center; }
+#victory .v-flash { position: absolute; inset: 0; background: radial-gradient(circle, #fff6d8 0%, rgba(255, 210, 80, .6) 40%, transparent 75%); opacity: 0; }
+#victory .v-rays { position: absolute; left: 50%; top: 22%; width: 190vmax; height: 190vmax; margin: -95vmax 0 0 -95vmax; opacity: 0;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 214, 90, .22) 0deg 7deg, transparent 7deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 55%); mask-image: radial-gradient(circle, #000 0%, transparent 55%); }
+#victory .v-glow { position: absolute; left: 50%; top: 20%; width: 70vmin; height: 40vmin; margin: -20vmin 0 0 -35vmin; border-radius: 50%; background: radial-gradient(ellipse, rgba(255, 190, 40, .5), transparent 70%); opacity: 0; }
+#victory .v-rank { position: relative; font: italic 800 34px var(--display); color: #1a1100; background: linear-gradient(180deg, #fff3b0, #ffc93a 55%, #e08a00); padding: 0 14px 0 10px; border-radius: 6px; box-shadow: 0 0 24px rgba(255, 201, 58, .8), 0 3px 0 #7a4a00; opacity: 0; }
+#victory .v-rank span { font-size: .6em; vertical-align: .5em; margin-right: 1px; }
+#victory .v-title { position: relative; margin-top: 2px; font: italic 900 clamp(44px, 13vmin, 100px)/1 var(--display); letter-spacing: .02em; white-space: nowrap; }
+#victory .v-title i { display: inline-block; font-style: inherit; opacity: 0; color: transparent; padding: 0 .01em;
+  background: linear-gradient(100deg, #fff8d8 0%, #ffd24a 35%, #ff9a1f 60%, #fff3b0 100%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(255, 190, 40, .75)) drop-shadow(0 4px 0 rgba(90, 40, 0, .9)); }
+#victory .v-sub { position: relative; margin-top: 6px; font: 700 13px var(--ui); letter-spacing: .5em; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.8); opacity: 0; }
+#victory .v-stats { position: absolute; bottom: calc(5vh + var(--sb, 0px)); left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+#victory .v-stats div { display: grid; min-width: 78px; padding: 6px 10px; border-radius: 8px; background: rgba(10, 12, 18, .55); border: 1px solid rgba(255, 210, 90, .45); opacity: 0; }
+#victory .v-stats b { font: 800 22px var(--display); color: #ffd24a; font-variant-numeric: tabular-nums; }
+#victory .v-stats span { font: 600 9px var(--ui); letter-spacing: .18em; color: rgba(255,255,255,.75); }
+#victory .v-conf i { position: absolute; top: -5%; left: calc(var(--x) * 1%); width: 8px; height: 14px; border-radius: 2px; opacity: 0;
+  background: hsl(calc(var(--c) * 68 + 300), 95%, 62%); }
+#victory.on .v-flash { animation: vFlash .9s ease-out; }
+#victory.on .v-rays { animation: vRays 1s .1s ease-out forwards, vSpin 18s linear infinite; }
+#victory.on .v-glow { animation: vFade .8s .2s ease-out forwards; }
+#victory.on .v-rank { animation: vRank .6s .25s cubic-bezier(.2, 1.8, .4, 1) forwards; }
+#victory.on .v-title i { animation: vLetter .55s calc(.4s + var(--i) * .07s) cubic-bezier(.2, 1.7, .4, 1) forwards, vShine 2.4s calc(1.3s + var(--i) * .05s) ease-in-out infinite; }
+#victory.on .v-sub { animation: vUp .5s 1s ease-out forwards; }
+#victory.on .v-stats div { animation: vUp .45s ease-out forwards; }
+#victory.on .v-stats div:nth-child(1) { animation-delay: 1.1s; } #victory.on .v-stats div:nth-child(2) { animation-delay: 1.2s; } #victory.on .v-stats div:nth-child(3) { animation-delay: 1.3s; }
+#victory.on .v-conf i { animation: vConf calc(2.6s + var(--d) * .14s) calc(.3s + var(--d) * .12s) linear infinite; }
+@keyframes vFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes vRays { to { opacity: 1; } }
+@keyframes vSpin { to { transform: rotate(360deg); } }
+@keyframes vFade { to { opacity: 1; } }
+@keyframes vRank { 0% { opacity: 0; transform: scale(3) rotate(-12deg); } 100% { opacity: 1; transform: none; } }
+@keyframes vLetter { 0% { opacity: 0; transform: translateY(-60px) scale(1.8) rotate(-8deg); } 100% { opacity: 1; transform: none; } }
+@keyframes vShine { 0%, 100% { background-position: 0 0; } 50% { background-position: 100% 0; } }
+@keyframes vUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: none; } }
+@keyframes vConf { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 1; transform: translateY(115vh) translateX(40px) rotate(720deg); } }
+
 /* ---- kill reward ---- */
 #killflash { position: absolute; inset: 0; pointer-events: none; opacity: 0;
   background: radial-gradient(ellipse at center, transparent 52%, rgba(255, 48, 64, 0.38) 100%); }
@@ -988,7 +1028,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.7.6',
+  version: '1.7.7',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1375,6 +1415,16 @@ BR.Audio = {
     if (head) setTimeout(() => { this.tone(1760 * st, 1760 * st, 0.26, 0.14, 'triangle'); this.tone(3520, 3500, 0.34, 0.08, 'sine'); }, 140);
     if (streak >= 2) setTimeout(() => { this.tone(1980 * st, 1990 * st, 0.3, 0.12, 'square'); this.tone(990 * st, 995 * st, 0.3, 0.1, 'triangle'); }, 200);
   },
+  // victory fanfare: a rising arpeggio into a bright held chord with a shimmer on top
+  victory() {
+    const N = [523.25, 659.25, 783.99, 1046.5];
+    N.forEach((f, i) => setTimeout(() => { this.tone(f, f, 0.22, 0.2, 'triangle'); this.tone(f * 2, f * 2, 0.14, 0.06, 'sine'); }, i * 110));
+    setTimeout(() => { for (const f of [523.25, 659.25, 783.99, 1046.5]) this.tone(f, f * 1.003, 1.4, 0.11, 'triangle');
+      this.tone(2093, 2100, 1.2, 0.05, 'sine'); this.tone(130.8, 65.4, 0.6, 0.35, 'sine'); this.burst(6000, 1.5, 0.8, 0.06, 0, 'bandpass'); }, 470);
+    setTimeout(() => { this.tone(1568, 1568, 0.3, 0.08, 'sine'); this.tone(2093, 2093, 0.5, 0.07, 'sine'); }, 1150);
+  },
+  // firework pop (louder close up)
+  pop(v) { this.burst(1400 + Math.random() * 1200, 0.9, 0.25, (v || 0.3) * 0.6); this.tone(220 + Math.random() * 80, 60, 0.3, (v || 0.3) * 0.5, 'sine'); setTimeout(() => this.burst(7000, 1.5, 0.4, (v || 0.3) * 0.18, 0, 'bandpass'), 90); },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },
   pickup() { this.tone(660, 990, 0.09, 0.12, 'sine'); },
   click() { this.tone(1800, 1700, 0.03, 0.08, 'square'); },
@@ -6104,9 +6154,14 @@ BR.Models = (function () {
           spin.add(m); holder.add(spin);
           holder.userData.spin = { obj: spin, axis };
         } else if (id === 'butterfly') {
-          // held like a hammer grip: handles in the fist, blade angled forward and in
-          m.rotation.set(-0.8, 0.3, 0.5); m.scale.setScalar(1.0);
-          m.userData.baseRot = m.rotation.clone();
+          // Two held poses (blended every frame): IDLE, the knife lying almost flat at the bottom
+          // right with the blade pointing left across the screen; UP, blade straight up in the fist
+          // with the edge toward the centre (the draw / inspect show beat). Model +Y = blade, -Z = edge.
+          const basis = (y, z) => { const Y = new THREE.Vector3(...y).normalize(), X = new THREE.Vector3().crossVectors(Y, new THREE.Vector3(...z)).normalize();
+            return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, new THREE.Vector3().crossVectors(X, Y))); };
+          m.userData.qIdle = basis([-0.92, 0.13, -0.38], [0.12, 1, -0.2]);
+          m.userData.qUp = basis([-0.18, 1, -0.22], [1, 0.1, -0.15]);
+          m.quaternion.copy(m.userData.qIdle); m.scale.setScalar(1.12);
           // everything pivots inside the fist about the handle pin, so the held (safe) handle can
           // stay put while the blade and bite handle flip round it
           const inner = new THREE.Group(); while (m.children.length) inner.add(m.children[0]); m.add(inner);
@@ -6211,7 +6266,7 @@ BR.Models = (function () {
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 3.4 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
     hide() { if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
@@ -6264,7 +6319,8 @@ BR.Models = (function () {
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
-      if (w.id === 'butterfly') { hx = 0.17 * s; hy = -0.13; hz = -0.42; }
+      if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
+      let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
       if (w.id === 'bayonet') { hx = 0.16 * s; hy = -0.15; hz = -0.42; }
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
@@ -6302,15 +6358,19 @@ BR.Models = (function () {
           // with the palm turned in, the bite handle flicks open forward, the blade rolls out of the
           // safe handle as the bite handle swings down into the palm, then the wrist turns back out
           // and the knife settles into the hold
+          // (matched to the reference clip) the fist comes up from below holding the closed knife
+          // upright, the bite handle fans out while the whole knife spins round in a big sweeping arc,
+          // the blade flips into place, a short upright beat, then the wrist lays it down flat
           const rise = smooth(t / 0.14);
-          oy += -(1 - rise) * 0.2; orx += (1 - rise) * 0.25; ox -= (1 - rise) * 0.03;
-          const palm = win(t, 0.04, 0.16, 0.56, 0.8);                                   // palm turned toward you while it opens
-          orz += 0.06 * palm; ox -= 0.01 * palm;
-          // eased phases + a small catch-settle when the blade lands in the open position
-          const p1 = easeInOut((t - 0.14) / 0.2), p2 = easeInOut((t - 0.36) / 0.28), settle = win(t, 0.62, 0.68, 0.68, 0.82);
-          bfly = { a: Math.PI + Math.PI * p1, flip: Math.PI + Math.PI * p2 - 0.16 * settle, roll: 0 };
-          orx -= 0.08 * win(t, 0.36, 0.48, 0.56, 0.72);
-          this.bflySwish(t, [0.2, 0.44]);
+          oy += -(1 - rise) * 0.24; orx += (1 - rise) * 0.35; ox += (1 - rise) * 0.05;
+          bUp = 1 - smooth((t - 0.74) / 0.22);
+          const p1 = easeInOut((t - 0.12) / 0.3), p2 = easeInOut((t - 0.36) / 0.24), settle = win(t, 0.58, 0.63, 0.63, 0.75);
+          bfly = { a: Math.PI + Math.PI * p1, flip: Math.PI + Math.PI * p2 - 0.14 * settle, roll: Math.PI * 2 * easeInOut((t - 0.14) / 0.34) };
+          const sw = win(t, 0.12, 0.2, 0.4, 0.52);                                       // the wrist carves the arc
+          ory += 0.45 * Math.sin((t - 0.12) / 0.4 * Math.PI * 2) * sw; ox -= 0.04 * sw; oy += 0.05 * sw;
+          const hold = win(t, 0.55, 0.62, 0.72, 0.86);                                   // upright beat
+          oy += 0.06 * hold; ox -= 0.03 * hold; orz += 0.1 * hold;
+          this.bflySwish(t, [0.2, 0.36, 0.5]);
         } else if (w.id === 'bayonet') {
           // Bayonet deploy: the fist comes up, flicks the knife out of the hand so it spins end over
           // end once in the air above the fist, and catches it back in the hammer grip (small dip on the catch)
@@ -6345,16 +6405,20 @@ BR.Models = (function () {
           // Balisong inspect: a quick chaplin, a roll of the whole knife around the hand, then the
           // long show-off pose (wrist turned to the camera, bite handle swung out so the handles
           // spread in a V behind the blade), a fast close-and-rollover catch, and back to the hold
-          const c1 = win(t, 0.03, 0.1, 0.11, 0.19);                                     // chaplin
-          const rl = easeInOut((t - 0.18) / 0.2);                                       // roll around the hand
-          const show = win(t, 0.38, 0.47, 0.74, 0.81);                                  // show pose
-          const vee = win(t, 0.4, 0.5, 0.72, 0.79);                                     // handles spread
-          const rov = easeInOut((t - 0.8) / 0.15);                                      // rollover catch
-          bfly = { a: Math.PI * c1 + 1.9 * vee, flip: -Math.PI * 2 * rov, roll: Math.PI * 2 * rl };
-          ory += 0.22 * show + Math.sin(t * Math.PI * 1.2) * 0.025 * show;             // present it, with a slow sway
-          orz += 0.16 * show; orx -= 0.08 * show; ox -= 0.035 * show; oy += 0.05 * show; oz -= 0.02 * show;
-          orx -= 0.1 * win(t, 0.8, 0.86, 0.88, 0.95);
-          this.bflySwish(t, [0.08, 0.22, 0.3, 0.84]);
+          // (matched to the reference clip) raise it upright toward the centre, spread the handles into a
+          // V, a spinning flourish that sweeps an arc, a long upright show pose with a slow sway, a quick
+          // chaplin, then lay it back down flat
+          const raise = win(t, 0, 0.08, 0.86, 0.96);
+          bUp = raise; ox -= 0.07 * raise; oy += 0.09 * raise; oz -= 0.03 * raise;
+          const vee = win(t, 0.1, 0.18, 0.24, 0.3);
+          const spin = easeInOut((t - 0.3) / 0.2), rl = easeInOut((t - 0.32) / 0.18);
+          const show = win(t, 0.5, 0.56, 0.76, 0.82);
+          const chap = win(t, 0.82, 0.86, 0.86, 0.92);
+          bfly = { a: 1.9 * vee + Math.PI * chap, flip: -Math.PI * 2 * spin, roll: Math.PI * 2 * rl };
+          const sw = win(t, 0.3, 0.36, 0.46, 0.52);
+          ory += 0.35 * Math.sin((t - 0.3) / 0.22 * Math.PI * 2) * sw; oy += 0.03 * sw;
+          ory += 0.25 * show + Math.sin(t * Math.PI * 2.4) * 0.03 * show; orz += 0.12 * show; orx -= 0.05 * show;
+          this.bflySwish(t, [0.14, 0.34, 0.44, 0.85]);
         } else if (w.id === 'bayonet') {
           // Bayonet inspect: raise it and turn the flat of the blade to the camera, roll the knife a
           // full turn in the fingers, show the other side, then toss-flip it and catch
@@ -6608,7 +6672,7 @@ BR.Models = (function () {
         ud.handleA.rotation.x = bfly ? bfly.a : 0; ud.handleB.rotation.x = -fl;
         // roll spins the knife's parts around the handle axis inside the fist (the hand itself stays put)
         if (inner) { inner.rotation.set(fl, bfly && bfly.roll ? bfly.roll : 0, 0); const c = Math.cos(fl), sn = Math.sin(fl); inner.position.set(0, pv.y - (pv.y * c - pv.z * sn), pv.z - (pv.y * sn + pv.z * c)); }
-        const br = model.userData.baseRot; if (br) model.rotation.copy(br);
+        if (model.userData.qIdle) model.quaternion.copy(model.userData.qIdle).slerp(model.userData.qUp, bUp);
       }
       // Bayonet toss / roll: the knife moves inside the (still) fist about its balance point
       if (ud.bayonet && ud.inner) {
@@ -8104,7 +8168,7 @@ BR.Effects = class Effects {
     this.ti = 0; this.pi = 0;
     // Sparks: soft glowing streaks with velocity + gravity, stretched along their motion
     this.sparks = [];
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 260; i++) {
       const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: T.spark, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
       m.visible = false; m.frustumCulled = false; scene.add(m);
       this.sparks.push({ m, p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, max: 1, s: 0.05, g: 9 });
@@ -8430,6 +8494,45 @@ BR.Effects = class Effects {
     orb.position.copy(chest);
     if (head) { const flare = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xfff0b0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
       add(flare, 0.3, (t, m) => { m.scale.setScalar(0.6 + t * 9); m.material.opacity = 1 - t / 0.3; }); flare.position.copy(c).setY(c.y + 1.65); }
+  }
+
+  // ---- victory show
+  victory(p) {
+    const sc = this.scene, fins = this.fins || (this.fins = []);
+    const mat = (c, op) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const add = (mesh, life, upd) => { mesh.frustumCulled = false; sc.add(mesh); fins.push({ mesh, life, upd, t: 0, vic: true }); return mesh; };
+    this.burst(p.clone().setY(p.y + 1), [0xffd24a, 0xffffff, 0xffe9a0], 60, 10, 0.1, 1.2, 4);
+    for (let i = 0; i < 3; i++) {
+      const r = add(new THREE.Mesh(new THREE.RingGeometry(0.5, 0.66, 64), mat(i ? 0xffffff : 0xffc93a, 1)), 1.2 + i * 0.25, (t, m, d) => { const k = Math.max(0, t - i * 0.18); m.scale.setScalar(1 + k * (14 - i * 3)); m.material.opacity = Math.max(0, 1 - k / (1 - i * 0.1)); });
+      r.position.copy(p).setY(p.y + 0.06 + i * 0.02); r.rotation.x = -Math.PI / 2;
+    }
+    // golden pillar of light that holds for the whole show
+    const pil = add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.3, 60, 32, 1, true), mat(0xffd24a, 0)), 5.5, (t, m) => { m.material.opacity = Math.min(0.14, t * 0.5) * (1 - Math.max(0, t - 4.6) / 0.9); m.rotation.y = t * 0.6; m.scale.x = m.scale.z = 1 + 0.06 * Math.sin(t * 5); });
+    pil.position.copy(p).setY(p.y + 30);
+    const core = add(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 60, 20, 1, true), mat(0xffe08a, 0)), 5.5, (t, m) => { m.material.opacity = Math.min(0.12, t * 0.6) * (1 - Math.max(0, t - 4.6) / 0.9); });
+    core.position.copy(pil.position);
+    // a slowly turning halo on the ground
+    const halo = add(new THREE.Mesh(new THREE.RingGeometry(1.4, 1.62, 64), mat(0xffd24a, 0)), 5.5, (t, m) => { m.material.opacity = Math.min(0.7, t) * (1 - Math.max(0, t - 4.6) / 0.9); m.rotation.z = t * 0.8; m.scale.setScalar(1 + 0.08 * Math.sin(t * 4)); });
+    halo.position.copy(p).setY(p.y + 0.05); halo.rotation.x = -Math.PI / 2;
+  }
+  firework(at) {
+    const pal = [[0xff3df2, 0xffffff], [0x1de9ff, 0xffffff], [0xffd24a, 0xff7a00], [0x39ff88, 0xffffff], [0xff3b4e, 0xffd24a], [0xb48cff, 0x1de9ff]];
+    const c = pal[Math.floor(Math.random() * pal.length)];
+    this.burst(at, [c[0], c[0], c[1]], 34, 11, 0.12, 1.3, 3.5);
+    const fins = this.fins || (this.fins = []), T = BR.Effects.tex();
+    const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: c[0], transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    fl.position.copy(at); fl.frustumCulled = false; this.scene.add(fl);
+    fins.push({ mesh: fl, life: 0.45, t: 0, vic: true, upd: (t, m) => { m.scale.setScalar(1.5 + t * 14); m.material.opacity = Math.pow(1 - t / 0.45, 2); } });
+    const rg = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.ring, color: c[1], transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    rg.position.copy(at); rg.frustumCulled = false; this.scene.add(rg);
+    fins.push({ mesh: rg, life: 0.6, t: 0, vic: true, upd: (t, m) => { m.scale.setScalar(1 + t * 22); m.material.opacity = 1 - t / 0.6; } });
+  }
+  confetti(at) {
+    this.burst(at, [0xff3df2, 0x1de9ff, 0xffd24a, 0x39ff88, 0xff5a3a, 0xffffff], 8, 2.2, 0.09, 2.2, 1.6);
+  }
+  victoryEnd() {
+    if (!this.fins) return;
+    for (let i = this.fins.length - 1; i >= 0; i--) { const f = this.fins[i]; if (!f.vic) continue; if (f.mesh) { this.scene.remove(f.mesh); if (!f.mesh.isSprite) f.mesh.geometry.dispose(); f.mesh.material.dispose(); } this.fins.splice(i, 1); }
   }
 
   update(dt) {
@@ -10016,6 +10119,12 @@ BR.HUD = class HUD {
   <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
   <div id="killflash"></div>
+  <div id="victory" class="hidden"><div class="v-flash"></div><div class="v-rays"></div><div class="v-glow"></div>
+    <div class="v-rank"><span>#</span>1</div>
+    <div class="v-title">${'VICTORY'.split('').map((c, i) => `<i style="--i:${i}">${c}</i>`).join('')}</div>
+    <div class="v-sub">LAST ONE STANDING</div>
+    <div class="v-stats"><div><b data-k="kills">0</b><span>KILLS</span></div><div><b data-k="damage">0</b><span>DAMAGE</span></div><div><b data-k="total">0</b><span>PLAYERS</span></div></div>
+    <div class="v-conf">${Array.from({ length: 26 }, (_, i) => `<i style="--x:${(i * 37) % 100};--d:${(i * 13) % 10};--c:${i % 5}"></i>`).join('')}</div></div>
   <div id="killban"><u class="kb-ring"></u><u class="kb-ring r2"></u><i class="kb-skull"><svg viewBox="0 0 64 64"><path d="M32 4C18 4 8 14 8 27c0 8 4 14 9 17v8c0 2 2 4 4 4h3v-6h4v6h8v-6h4v6h3c2 0 4-2 4-4v-8c5-3 9-9 9-17C56 14 46 4 32 4zm-11 32a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm22 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-11 9-4-6h8z"/></svg></i><b class="kb-t">ELIMINATED</b><span class="kb-n"></span><em class="kb-x"></em><s class="kb-c"></s></div>
   <div id="state-tag"></div>
   <div id="tech"></div>
@@ -10601,6 +10710,21 @@ BR.HUD = class HUD {
     if (f) { f.className = ''; void f.offsetWidth; f.className = 'on' + (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak' : ''); }
   }
 
+  // Victory overlay (null hides it): rays, #1 badge, letter-by-letter VICTORY with a shine sweep,
+  // stats counting up, falling confetti. The HUD controls fade out underneath.
+  victory(r) {
+    const v = this.$('victory'), play = this.$('play'); if (!v) return;
+    cancelAnimationFrame(this._vRAF);
+    if (!r) { v.classList.add('hidden'); v.classList.remove('on'); play && play.classList.remove('vic'); return; }
+    v.classList.remove('hidden'); v.classList.remove('on'); void v.offsetWidth; v.classList.add('on'); play && play.classList.add('vic');
+    const tgt = { kills: r.kills || 0, damage: Math.round(r.damage || 0), total: r.total || 0 }, t0 = performance.now();
+    const els = [...v.querySelectorAll('.v-stats b')];
+    const tick = () => { const k = Math.min(1, Math.max(0, (performance.now() - t0 - 1100) / 1300)), e = 1 - Math.pow(1 - k, 3);
+      for (const b of els) b.textContent = Math.round(tgt[b.dataset.k] * e);
+      if (k < 1) this._vRAF = requestAnimationFrame(tick); };
+    tick();
+  }
+
   hitmarker(head, kill) {
     const h = this.el.hitmarker;
     h.className = '';
@@ -11033,6 +11157,7 @@ BR.Game = class Game {
   // ------------------------------------------------------------------ match
   // opts.practice: no bots, no storm, spawn menu, respawn on death
   startMatch(opts) {
+    this.endVictory();
     const S = this.settings, C = BR.CONFIG;
     this.duel = null; document.body.classList.remove('duel');
     const practiceMode = !!(opts && opts.practice);
@@ -11304,6 +11429,8 @@ BR.Game = class Game {
     dt = Math.min(dt, 0.05);
     // hit-stop: a split second of slow motion when you get a kill
     if (this.hitStop > 0) { this.hitStop -= dt; dt *= 0.3; }
+    // victory: starts in slow motion and eases back to full speed
+    if (this.victory) { this.victory.rt += dt; const k = Math.min(1, this.victory.rt / 1.8); dt *= 0.25 + 0.75 * k * k; }
     if (this.state === 'playing' || this.state === 'dead' || this.state === 'won') this.update(dt);
     else if (this.state === 'menu') this.updateDemo(dt);
     else if (this.state === 'shop') this.updateShop(dt);
@@ -11400,13 +11527,15 @@ BR.Game = class Game {
         }
       } else if (!p.alive) { this.state = 'dead'; this.endT = BR.CONFIG.match.endDelay; }
       else if (!this.practice && this.aliveCount() === 1) {
-        this.state = 'won'; this.endT = 1.6;
+        this.state = 'won'; this.endT = 5.4;
         this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time };
-        this.hud.toast('Victory!', 2000);
+        this.startVictory();
       }
     } else if (this.state === 'dead' || this.state === 'won') {
       this.endT -= dt;
+      if (this.victory) this.updateVictory(dt);
       if (this.endT <= 0) {
+        this.endVictory();
         this.state = 'end';
         this.input.unlock();
         this.hud.prompt(null);
@@ -11416,6 +11545,60 @@ BR.Game = class Game {
         BR.updateCoins();
       }
     }
+  }
+
+  // ---- Victory: slow motion, the camera pulls out to orbit your character celebrating (arms up,
+  // fist pumps, a jump and a spin) inside a golden light pillar, fireworks and confetti all around,
+  // a fanfare, and the VICTORY overlay with your stats counting up. Then the results screen.
+  startVictory() {
+    const p = this.player;
+    this.victory = { t: 0, rt: 0, nextFw: 0.35, nextConf: 0.1, yaw0: p.yaw, fw: 0 };
+    if (!p.mesh) { p.mesh = p.buildMesh(); this.scene.add(p.mesh); p.syncMesh(0.016); }
+    p.mesh.visible = true; p.fireHeld = false;
+    this.fx.victory && this.fx.victory(p.pos.clone());
+    this.hud.victory(this.result);
+    BR.Audio.victory && BR.Audio.victory();
+    this.input.unlock && this.input.unlock();
+  }
+  updateVictory(dt) {
+    const v = this.victory, p = this.player; v.t += dt;
+    if (!p.mesh) return;
+    // celebrate: arms raised in a V with fist pumps, a hop at 0.5 s, a full spin at 1.4 s, then bouncing
+    const u = p.mesh.userData, t = v.t;
+    const pump = Math.sin(t * 7) * 0.22 * Math.min(1, t * 2);
+    if (u.AR && u.AL) {
+      u.AR.sh.rotation.set(-2.75 + pump, 0, -0.32); u.AL.sh.rotation.set(-2.75 - pump, 0, 0.32);
+      u.AR.el.rotation.set(-0.35 - Math.max(0, pump), 0, 0); u.AL.el.rotation.set(-0.35 - Math.max(0, -pump), 0, 0);
+    }
+    const hop = t > 0.5 && t < 1.05 ? Math.sin((t - 0.5) / 0.55 * Math.PI) * 0.55 : Math.abs(Math.sin(t * 4.2)) * 0.06 * Math.min(1, Math.max(0, t - 1.1));
+    p.mesh.position.y = p.mover.pos.y + hop;
+    const spin = BR.util.clamp((t - 1.4) / 0.7, 0, 1);
+    p.mesh.rotation.y = (u.yaw || p.yaw) + Math.PI * 2 * (spin * spin * (3 - 2 * spin));
+    if (u.head) u.head.rotation.x = -0.3;
+    if (u.gun) u.gun.visible = false;
+    // fireworks + confetti
+    const at = this._vfw || (this._vfw = new THREE.Vector3());
+    if (t > v.nextFw && t < 4.6) {
+      v.nextFw = t + 0.26 + Math.random() * 0.22; v.fw++;
+      // behind the character as seen from the orbiting camera, so they burst in frame
+      const cam = this.camera.position, bx = p.pos.x - cam.x, bz = p.pos.z - cam.z, bl = Math.hypot(bx, bz) || 1;
+      const a = Math.atan2(bz, bx) + (Math.random() - 0.5) * 1.6, r = 5 + Math.random() * 6;
+      at.set(p.pos.x + Math.cos(a) * r, p.pos.y + 3.5 + Math.random() * 4.5, p.pos.z + Math.sin(a) * r);
+      this.fx.firework && this.fx.firework(at);
+      BR.Audio.pop && BR.Audio.pop(Math.max(0.15, 0.45 - v.fw * 0.01));
+    }
+    if (t > v.nextConf && t < 4.2) {
+      v.nextConf = t + 0.12;
+      at.set(p.pos.x + (Math.random() - 0.5) * 5, p.pos.y + 4.5 + Math.random() * 1.5, p.pos.z + (Math.random() - 0.5) * 5);
+      this.fx.confetti && this.fx.confetti(at);
+    }
+  }
+  endVictory() {
+    if (!this.victory) return;
+    this.victory = null;
+    this.hud.victory(null);
+    if (this.fx && this.fx.victoryEnd) this.fx.victoryEnd();
+    if (this.camera) { this.camera.fov = this.baseFov ? this.baseFov() : this.camera.fov; this.camera.updateProjectionMatrix(); }
   }
 
   controlPlayer(dt) {
@@ -11883,6 +12066,16 @@ BR.Game = class Game {
   updateCamera(dt) {
     const p = this.player, m = p.mover, cam = this.camera, C = BR.CONFIG, U = BR.util;
     const c = this.cam;
+    if (this.victory && p.alive) {
+      // Victory cam: dolly out of your eyes into an orbit around your character, looking up at them
+      const v = this.victory, e = BR.util.clamp(v.t / 1.3, 0, 1), k = 1 - Math.pow(1 - e, 3);
+      const ang = v.yaw0 + v.t * 0.42, R = 0.2 + 3.9 * k, cx = m.pos.x, cy = m.pos.y + 1.15, cz = m.pos.z;
+      cam.position.set(cx - Math.sin(ang) * R, cy + 0.5 - 0.55 * k + Math.sin(v.t * 0.7) * 0.12, cz - Math.cos(ang) * R);
+      cam.up.set(0, 1, 0); cam.lookAt(cx, cy + 0.95 * k, cz);           // low heroic angle, looking up past them at the sky
+      cam.fov = U.damp(cam.fov, 62, 3, dt); cam.updateProjectionMatrix();
+      this.vmr.hide();
+      return;
+    }
     if (!p.alive) {
       // Death cam: drift up and orbit the spot where you went down
       c.orbit += dt * 0.35;

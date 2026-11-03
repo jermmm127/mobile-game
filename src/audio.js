@@ -100,6 +100,16 @@ BR.Audio = {
     if (head) setTimeout(() => { this.tone(1760 * st, 1760 * st, 0.26, 0.14, 'triangle'); this.tone(3520, 3500, 0.34, 0.08, 'sine'); }, 140);
     if (streak >= 2) setTimeout(() => { this.tone(1980 * st, 1990 * st, 0.3, 0.12, 'square'); this.tone(990 * st, 995 * st, 0.3, 0.1, 'triangle'); }, 200);
   },
+  // victory fanfare: a rising arpeggio into a bright held chord with a shimmer on top
+  victory() {
+    const N = [523.25, 659.25, 783.99, 1046.5];
+    N.forEach((f, i) => setTimeout(() => { this.tone(f, f, 0.22, 0.2, 'triangle'); this.tone(f * 2, f * 2, 0.14, 0.06, 'sine'); }, i * 110));
+    setTimeout(() => { for (const f of [523.25, 659.25, 783.99, 1046.5]) this.tone(f, f * 1.003, 1.4, 0.11, 'triangle');
+      this.tone(2093, 2100, 1.2, 0.05, 'sine'); this.tone(130.8, 65.4, 0.6, 0.35, 'sine'); this.burst(6000, 1.5, 0.8, 0.06, 0, 'bandpass'); }, 470);
+    setTimeout(() => { this.tone(1568, 1568, 0.3, 0.08, 'sine'); this.tone(2093, 2093, 0.5, 0.07, 'sine'); }, 1150);
+  },
+  // firework pop (louder close up)
+  pop(v) { this.burst(1400 + Math.random() * 1200, 0.9, 0.25, (v || 0.3) * 0.6); this.tone(220 + Math.random() * 80, 60, 0.3, (v || 0.3) * 0.5, 'sine'); setTimeout(() => this.burst(7000, 1.5, 0.4, (v || 0.3) * 0.18, 0, 'bandpass'), 90); },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },
   pickup() { this.tone(660, 990, 0.09, 0.12, 'sine'); },
   click() { this.tone(1800, 1700, 0.03, 0.08, 'square'); },

@@ -231,6 +231,7 @@ BR.Game = class Game {
   // ------------------------------------------------------------------ match
   // opts.practice: no bots, no storm, spawn menu, respawn on death
   startMatch(opts) {
+    this.endVictory();
     const S = this.settings, C = BR.CONFIG;
     this.duel = null; document.body.classList.remove('duel');
     const practiceMode = !!(opts && opts.practice);
@@ -502,6 +503,8 @@ BR.Game = class Game {
     dt = Math.min(dt, 0.05);
     // hit-stop: a split second of slow motion when you get a kill
     if (this.hitStop > 0) { this.hitStop -= dt; dt *= 0.3; }
+    // victory: starts in slow motion and eases back to full speed
+    if (this.victory) { this.victory.rt += dt; const k = Math.min(1, this.victory.rt / 1.8); dt *= 0.25 + 0.75 * k * k; }
     if (this.state === 'playing' || this.state === 'dead' || this.state === 'won') this.update(dt);
     else if (this.state === 'menu') this.updateDemo(dt);
     else if (this.state === 'shop') this.updateShop(dt);
@@ -598,13 +601,15 @@ BR.Game = class Game {
         }
       } else if (!p.alive) { this.state = 'dead'; this.endT = BR.CONFIG.match.endDelay; }
       else if (!this.practice && this.aliveCount() === 1) {
-        this.state = 'won'; this.endT = 1.6;
+        this.state = 'won'; this.endT = 5.4;
         this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time };
-        this.hud.toast('Victory!', 2000);
+        this.startVictory();
       }
     } else if (this.state === 'dead' || this.state === 'won') {
       this.endT -= dt;
+      if (this.victory) this.updateVictory(dt);
       if (this.endT <= 0) {
+        this.endVictory();
         this.state = 'end';
         this.input.unlock();
         this.hud.prompt(null);
@@ -614,6 +619,60 @@ BR.Game = class Game {
         BR.updateCoins();
       }
     }
+  }
+
+  // ---- Victory: slow motion, the camera pulls out to orbit your character celebrating (arms up,
+  // fist pumps, a jump and a spin) inside a golden light pillar, fireworks and confetti all around,
+  // a fanfare, and the VICTORY overlay with your stats counting up. Then the results screen.
+  startVictory() {
+    const p = this.player;
+    this.victory = { t: 0, rt: 0, nextFw: 0.35, nextConf: 0.1, yaw0: p.yaw, fw: 0 };
+    if (!p.mesh) { p.mesh = p.buildMesh(); this.scene.add(p.mesh); p.syncMesh(0.016); }
+    p.mesh.visible = true; p.fireHeld = false;
+    this.fx.victory && this.fx.victory(p.pos.clone());
+    this.hud.victory(this.result);
+    BR.Audio.victory && BR.Audio.victory();
+    this.input.unlock && this.input.unlock();
+  }
+  updateVictory(dt) {
+    const v = this.victory, p = this.player; v.t += dt;
+    if (!p.mesh) return;
+    // celebrate: arms raised in a V with fist pumps, a hop at 0.5 s, a full spin at 1.4 s, then bouncing
+    const u = p.mesh.userData, t = v.t;
+    const pump = Math.sin(t * 7) * 0.22 * Math.min(1, t * 2);
+    if (u.AR && u.AL) {
+      u.AR.sh.rotation.set(-2.75 + pump, 0, -0.32); u.AL.sh.rotation.set(-2.75 - pump, 0, 0.32);
+      u.AR.el.rotation.set(-0.35 - Math.max(0, pump), 0, 0); u.AL.el.rotation.set(-0.35 - Math.max(0, -pump), 0, 0);
+    }
+    const hop = t > 0.5 && t < 1.05 ? Math.sin((t - 0.5) / 0.55 * Math.PI) * 0.55 : Math.abs(Math.sin(t * 4.2)) * 0.06 * Math.min(1, Math.max(0, t - 1.1));
+    p.mesh.position.y = p.mover.pos.y + hop;
+    const spin = BR.util.clamp((t - 1.4) / 0.7, 0, 1);
+    p.mesh.rotation.y = (u.yaw || p.yaw) + Math.PI * 2 * (spin * spin * (3 - 2 * spin));
+    if (u.head) u.head.rotation.x = -0.3;
+    if (u.gun) u.gun.visible = false;
+    // fireworks + confetti
+    const at = this._vfw || (this._vfw = new THREE.Vector3());
+    if (t > v.nextFw && t < 4.6) {
+      v.nextFw = t + 0.26 + Math.random() * 0.22; v.fw++;
+      // behind the character as seen from the orbiting camera, so they burst in frame
+      const cam = this.camera.position, bx = p.pos.x - cam.x, bz = p.pos.z - cam.z, bl = Math.hypot(bx, bz) || 1;
+      const a = Math.atan2(bz, bx) + (Math.random() - 0.5) * 1.6, r = 5 + Math.random() * 6;
+      at.set(p.pos.x + Math.cos(a) * r, p.pos.y + 3.5 + Math.random() * 4.5, p.pos.z + Math.sin(a) * r);
+      this.fx.firework && this.fx.firework(at);
+      BR.Audio.pop && BR.Audio.pop(Math.max(0.15, 0.45 - v.fw * 0.01));
+    }
+    if (t > v.nextConf && t < 4.2) {
+      v.nextConf = t + 0.12;
+      at.set(p.pos.x + (Math.random() - 0.5) * 5, p.pos.y + 4.5 + Math.random() * 1.5, p.pos.z + (Math.random() - 0.5) * 5);
+      this.fx.confetti && this.fx.confetti(at);
+    }
+  }
+  endVictory() {
+    if (!this.victory) return;
+    this.victory = null;
+    this.hud.victory(null);
+    if (this.fx && this.fx.victoryEnd) this.fx.victoryEnd();
+    if (this.camera) { this.camera.fov = this.baseFov ? this.baseFov() : this.camera.fov; this.camera.updateProjectionMatrix(); }
   }
 
   controlPlayer(dt) {
@@ -1081,6 +1140,16 @@ BR.Game = class Game {
   updateCamera(dt) {
     const p = this.player, m = p.mover, cam = this.camera, C = BR.CONFIG, U = BR.util;
     const c = this.cam;
+    if (this.victory && p.alive) {
+      // Victory cam: dolly out of your eyes into an orbit around your character, looking up at them
+      const v = this.victory, e = BR.util.clamp(v.t / 1.3, 0, 1), k = 1 - Math.pow(1 - e, 3);
+      const ang = v.yaw0 + v.t * 0.42, R = 0.2 + 3.9 * k, cx = m.pos.x, cy = m.pos.y + 1.15, cz = m.pos.z;
+      cam.position.set(cx - Math.sin(ang) * R, cy + 0.5 - 0.55 * k + Math.sin(v.t * 0.7) * 0.12, cz - Math.cos(ang) * R);
+      cam.up.set(0, 1, 0); cam.lookAt(cx, cy + 0.95 * k, cz);           // low heroic angle, looking up past them at the sky
+      cam.fov = U.damp(cam.fov, 62, 3, dt); cam.updateProjectionMatrix();
+      this.vmr.hide();
+      return;
+    }
     if (!p.alive) {
       // Death cam: drift up and orbit the spot where you went down
       c.orbit += dt * 0.35;

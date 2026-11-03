@@ -194,6 +194,12 @@ BR.HUD = class HUD {
   <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
   <div id="killflash"></div>
+  <div id="victory" class="hidden"><div class="v-flash"></div><div class="v-rays"></div><div class="v-glow"></div>
+    <div class="v-rank"><span>#</span>1</div>
+    <div class="v-title">${'VICTORY'.split('').map((c, i) => `<i style="--i:${i}">${c}</i>`).join('')}</div>
+    <div class="v-sub">LAST ONE STANDING</div>
+    <div class="v-stats"><div><b data-k="kills">0</b><span>KILLS</span></div><div><b data-k="damage">0</b><span>DAMAGE</span></div><div><b data-k="total">0</b><span>PLAYERS</span></div></div>
+    <div class="v-conf">${Array.from({ length: 26 }, (_, i) => `<i style="--x:${(i * 37) % 100};--d:${(i * 13) % 10};--c:${i % 5}"></i>`).join('')}</div></div>
   <div id="killban"><u class="kb-ring"></u><u class="kb-ring r2"></u><i class="kb-skull"><svg viewBox="0 0 64 64"><path d="M32 4C18 4 8 14 8 27c0 8 4 14 9 17v8c0 2 2 4 4 4h3v-6h4v6h8v-6h4v6h3c2 0 4-2 4-4v-8c5-3 9-9 9-17C56 14 46 4 32 4zm-11 32a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm22 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-11 9-4-6h8z"/></svg></i><b class="kb-t">ELIMINATED</b><span class="kb-n"></span><em class="kb-x"></em><s class="kb-c"></s></div>
   <div id="state-tag"></div>
   <div id="tech"></div>
@@ -777,6 +783,21 @@ BR.HUD = class HUD {
     k.className = ''; void k.offsetWidth; k.className = 'on' + cls;
     clearTimeout(this._kbTO); this._kbTO = setTimeout(() => { k.className = 'out' + cls; }, 1500 + Math.min(o.streak || 1, 4) * 150);
     if (f) { f.className = ''; void f.offsetWidth; f.className = 'on' + (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak' : ''); }
+  }
+
+  // Victory overlay (null hides it): rays, #1 badge, letter-by-letter VICTORY with a shine sweep,
+  // stats counting up, falling confetti. The HUD controls fade out underneath.
+  victory(r) {
+    const v = this.$('victory'), play = this.$('play'); if (!v) return;
+    cancelAnimationFrame(this._vRAF);
+    if (!r) { v.classList.add('hidden'); v.classList.remove('on'); play && play.classList.remove('vic'); return; }
+    v.classList.remove('hidden'); v.classList.remove('on'); void v.offsetWidth; v.classList.add('on'); play && play.classList.add('vic');
+    const tgt = { kills: r.kills || 0, damage: Math.round(r.damage || 0), total: r.total || 0 }, t0 = performance.now();
+    const els = [...v.querySelectorAll('.v-stats b')];
+    const tick = () => { const k = Math.min(1, Math.max(0, (performance.now() - t0 - 1100) / 1300)), e = 1 - Math.pow(1 - k, 3);
+      for (const b of els) b.textContent = Math.round(tgt[b.dataset.k] * e);
+      if (k < 1) this._vRAF = requestAnimationFrame(tick); };
+    tick();
   }
 
   hitmarker(head, kill) {

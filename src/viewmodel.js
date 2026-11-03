@@ -94,9 +94,14 @@
           spin.add(m); holder.add(spin);
           holder.userData.spin = { obj: spin, axis };
         } else if (id === 'butterfly') {
-          // held like a hammer grip: handles in the fist, blade angled forward and in
-          m.rotation.set(-0.8, 0.3, 0.5); m.scale.setScalar(1.0);
-          m.userData.baseRot = m.rotation.clone();
+          // Two held poses (blended every frame): IDLE, the knife lying almost flat at the bottom
+          // right with the blade pointing left across the screen; UP, blade straight up in the fist
+          // with the edge toward the centre (the draw / inspect show beat). Model +Y = blade, -Z = edge.
+          const basis = (y, z) => { const Y = new THREE.Vector3(...y).normalize(), X = new THREE.Vector3().crossVectors(Y, new THREE.Vector3(...z)).normalize();
+            return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, new THREE.Vector3().crossVectors(X, Y))); };
+          m.userData.qIdle = basis([-0.92, 0.13, -0.38], [0.12, 1, -0.2]);
+          m.userData.qUp = basis([-0.18, 1, -0.22], [1, 0.1, -0.15]);
+          m.quaternion.copy(m.userData.qIdle); m.scale.setScalar(1.12);
           // everything pivots inside the fist about the handle pin, so the held (safe) handle can
           // stay put while the blade and bite handle flip round it
           const inner = new THREE.Group(); while (m.children.length) inner.add(m.children[0]); m.add(inner);
@@ -201,7 +206,7 @@
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 3.4 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
     hide() { if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
@@ -254,7 +259,8 @@
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
-      if (w.id === 'butterfly') { hx = 0.17 * s; hy = -0.13; hz = -0.42; }
+      if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
+      let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
       if (w.id === 'bayonet') { hx = 0.16 * s; hy = -0.15; hz = -0.42; }
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
@@ -292,15 +298,19 @@
           // with the palm turned in, the bite handle flicks open forward, the blade rolls out of the
           // safe handle as the bite handle swings down into the palm, then the wrist turns back out
           // and the knife settles into the hold
+          // (matched to the reference clip) the fist comes up from below holding the closed knife
+          // upright, the bite handle fans out while the whole knife spins round in a big sweeping arc,
+          // the blade flips into place, a short upright beat, then the wrist lays it down flat
           const rise = smooth(t / 0.14);
-          oy += -(1 - rise) * 0.2; orx += (1 - rise) * 0.25; ox -= (1 - rise) * 0.03;
-          const palm = win(t, 0.04, 0.16, 0.56, 0.8);                                   // palm turned toward you while it opens
-          orz += 0.06 * palm; ox -= 0.01 * palm;
-          // eased phases + a small catch-settle when the blade lands in the open position
-          const p1 = easeInOut((t - 0.14) / 0.2), p2 = easeInOut((t - 0.36) / 0.28), settle = win(t, 0.62, 0.68, 0.68, 0.82);
-          bfly = { a: Math.PI + Math.PI * p1, flip: Math.PI + Math.PI * p2 - 0.16 * settle, roll: 0 };
-          orx -= 0.08 * win(t, 0.36, 0.48, 0.56, 0.72);
-          this.bflySwish(t, [0.2, 0.44]);
+          oy += -(1 - rise) * 0.24; orx += (1 - rise) * 0.35; ox += (1 - rise) * 0.05;
+          bUp = 1 - smooth((t - 0.74) / 0.22);
+          const p1 = easeInOut((t - 0.12) / 0.3), p2 = easeInOut((t - 0.36) / 0.24), settle = win(t, 0.58, 0.63, 0.63, 0.75);
+          bfly = { a: Math.PI + Math.PI * p1, flip: Math.PI + Math.PI * p2 - 0.14 * settle, roll: Math.PI * 2 * easeInOut((t - 0.14) / 0.34) };
+          const sw = win(t, 0.12, 0.2, 0.4, 0.52);                                       // the wrist carves the arc
+          ory += 0.45 * Math.sin((t - 0.12) / 0.4 * Math.PI * 2) * sw; ox -= 0.04 * sw; oy += 0.05 * sw;
+          const hold = win(t, 0.55, 0.62, 0.72, 0.86);                                   // upright beat
+          oy += 0.06 * hold; ox -= 0.03 * hold; orz += 0.1 * hold;
+          this.bflySwish(t, [0.2, 0.36, 0.5]);
         } else if (w.id === 'bayonet') {
           // Bayonet deploy: the fist comes up, flicks the knife out of the hand so it spins end over
           // end once in the air above the fist, and catches it back in the hammer grip (small dip on the catch)
@@ -335,16 +345,20 @@
           // Balisong inspect: a quick chaplin, a roll of the whole knife around the hand, then the
           // long show-off pose (wrist turned to the camera, bite handle swung out so the handles
           // spread in a V behind the blade), a fast close-and-rollover catch, and back to the hold
-          const c1 = win(t, 0.03, 0.1, 0.11, 0.19);                                     // chaplin
-          const rl = easeInOut((t - 0.18) / 0.2);                                       // roll around the hand
-          const show = win(t, 0.38, 0.47, 0.74, 0.81);                                  // show pose
-          const vee = win(t, 0.4, 0.5, 0.72, 0.79);                                     // handles spread
-          const rov = easeInOut((t - 0.8) / 0.15);                                      // rollover catch
-          bfly = { a: Math.PI * c1 + 1.9 * vee, flip: -Math.PI * 2 * rov, roll: Math.PI * 2 * rl };
-          ory += 0.22 * show + Math.sin(t * Math.PI * 1.2) * 0.025 * show;             // present it, with a slow sway
-          orz += 0.16 * show; orx -= 0.08 * show; ox -= 0.035 * show; oy += 0.05 * show; oz -= 0.02 * show;
-          orx -= 0.1 * win(t, 0.8, 0.86, 0.88, 0.95);
-          this.bflySwish(t, [0.08, 0.22, 0.3, 0.84]);
+          // (matched to the reference clip) raise it upright toward the centre, spread the handles into a
+          // V, a spinning flourish that sweeps an arc, a long upright show pose with a slow sway, a quick
+          // chaplin, then lay it back down flat
+          const raise = win(t, 0, 0.08, 0.86, 0.96);
+          bUp = raise; ox -= 0.07 * raise; oy += 0.09 * raise; oz -= 0.03 * raise;
+          const vee = win(t, 0.1, 0.18, 0.24, 0.3);
+          const spin = easeInOut((t - 0.3) / 0.2), rl = easeInOut((t - 0.32) / 0.18);
+          const show = win(t, 0.5, 0.56, 0.76, 0.82);
+          const chap = win(t, 0.82, 0.86, 0.86, 0.92);
+          bfly = { a: 1.9 * vee + Math.PI * chap, flip: -Math.PI * 2 * spin, roll: Math.PI * 2 * rl };
+          const sw = win(t, 0.3, 0.36, 0.46, 0.52);
+          ory += 0.35 * Math.sin((t - 0.3) / 0.22 * Math.PI * 2) * sw; oy += 0.03 * sw;
+          ory += 0.25 * show + Math.sin(t * Math.PI * 2.4) * 0.03 * show; orz += 0.12 * show; orx -= 0.05 * show;
+          this.bflySwish(t, [0.14, 0.34, 0.44, 0.85]);
         } else if (w.id === 'bayonet') {
           // Bayonet inspect: raise it and turn the flat of the blade to the camera, roll the knife a
           // full turn in the fingers, show the other side, then toss-flip it and catch
@@ -598,7 +612,7 @@
         ud.handleA.rotation.x = bfly ? bfly.a : 0; ud.handleB.rotation.x = -fl;
         // roll spins the knife's parts around the handle axis inside the fist (the hand itself stays put)
         if (inner) { inner.rotation.set(fl, bfly && bfly.roll ? bfly.roll : 0, 0); const c = Math.cos(fl), sn = Math.sin(fl); inner.position.set(0, pv.y - (pv.y * c - pv.z * sn), pv.z - (pv.y * sn + pv.z * c)); }
-        const br = model.userData.baseRot; if (br) model.rotation.copy(br);
+        if (model.userData.qIdle) model.quaternion.copy(model.userData.qIdle).slerp(model.userData.qUp, bUp);
       }
       // Bayonet toss / roll: the knife moves inside the (still) fist about its balance point
       if (ud.bayonet && ud.inner) {

@@ -31,7 +31,7 @@ BR.Effects = class Effects {
     this.ti = 0; this.pi = 0;
     // Sparks: soft glowing streaks with velocity + gravity, stretched along their motion
     this.sparks = [];
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 260; i++) {
       const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: T.spark, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
       m.visible = false; m.frustumCulled = false; scene.add(m);
       this.sparks.push({ m, p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, max: 1, s: 0.05, g: 9 });
@@ -357,6 +357,45 @@ BR.Effects = class Effects {
     orb.position.copy(chest);
     if (head) { const flare = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xfff0b0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
       add(flare, 0.3, (t, m) => { m.scale.setScalar(0.6 + t * 9); m.material.opacity = 1 - t / 0.3; }); flare.position.copy(c).setY(c.y + 1.65); }
+  }
+
+  // ---- victory show
+  victory(p) {
+    const sc = this.scene, fins = this.fins || (this.fins = []);
+    const mat = (c, op) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const add = (mesh, life, upd) => { mesh.frustumCulled = false; sc.add(mesh); fins.push({ mesh, life, upd, t: 0, vic: true }); return mesh; };
+    this.burst(p.clone().setY(p.y + 1), [0xffd24a, 0xffffff, 0xffe9a0], 60, 10, 0.1, 1.2, 4);
+    for (let i = 0; i < 3; i++) {
+      const r = add(new THREE.Mesh(new THREE.RingGeometry(0.5, 0.66, 64), mat(i ? 0xffffff : 0xffc93a, 1)), 1.2 + i * 0.25, (t, m, d) => { const k = Math.max(0, t - i * 0.18); m.scale.setScalar(1 + k * (14 - i * 3)); m.material.opacity = Math.max(0, 1 - k / (1 - i * 0.1)); });
+      r.position.copy(p).setY(p.y + 0.06 + i * 0.02); r.rotation.x = -Math.PI / 2;
+    }
+    // golden pillar of light that holds for the whole show
+    const pil = add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.3, 60, 32, 1, true), mat(0xffd24a, 0)), 5.5, (t, m) => { m.material.opacity = Math.min(0.14, t * 0.5) * (1 - Math.max(0, t - 4.6) / 0.9); m.rotation.y = t * 0.6; m.scale.x = m.scale.z = 1 + 0.06 * Math.sin(t * 5); });
+    pil.position.copy(p).setY(p.y + 30);
+    const core = add(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 60, 20, 1, true), mat(0xffe08a, 0)), 5.5, (t, m) => { m.material.opacity = Math.min(0.12, t * 0.6) * (1 - Math.max(0, t - 4.6) / 0.9); });
+    core.position.copy(pil.position);
+    // a slowly turning halo on the ground
+    const halo = add(new THREE.Mesh(new THREE.RingGeometry(1.4, 1.62, 64), mat(0xffd24a, 0)), 5.5, (t, m) => { m.material.opacity = Math.min(0.7, t) * (1 - Math.max(0, t - 4.6) / 0.9); m.rotation.z = t * 0.8; m.scale.setScalar(1 + 0.08 * Math.sin(t * 4)); });
+    halo.position.copy(p).setY(p.y + 0.05); halo.rotation.x = -Math.PI / 2;
+  }
+  firework(at) {
+    const pal = [[0xff3df2, 0xffffff], [0x1de9ff, 0xffffff], [0xffd24a, 0xff7a00], [0x39ff88, 0xffffff], [0xff3b4e, 0xffd24a], [0xb48cff, 0x1de9ff]];
+    const c = pal[Math.floor(Math.random() * pal.length)];
+    this.burst(at, [c[0], c[0], c[1]], 34, 11, 0.12, 1.3, 3.5);
+    const fins = this.fins || (this.fins = []), T = BR.Effects.tex();
+    const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: c[0], transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    fl.position.copy(at); fl.frustumCulled = false; this.scene.add(fl);
+    fins.push({ mesh: fl, life: 0.45, t: 0, vic: true, upd: (t, m) => { m.scale.setScalar(1.5 + t * 14); m.material.opacity = Math.pow(1 - t / 0.45, 2); } });
+    const rg = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.ring, color: c[1], transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    rg.position.copy(at); rg.frustumCulled = false; this.scene.add(rg);
+    fins.push({ mesh: rg, life: 0.6, t: 0, vic: true, upd: (t, m) => { m.scale.setScalar(1 + t * 22); m.material.opacity = 1 - t / 0.6; } });
+  }
+  confetti(at) {
+    this.burst(at, [0xff3df2, 0x1de9ff, 0xffd24a, 0x39ff88, 0xff5a3a, 0xffffff], 8, 2.2, 0.09, 2.2, 1.6);
+  }
+  victoryEnd() {
+    if (!this.fins) return;
+    for (let i = this.fins.length - 1; i >= 0; i--) { const f = this.fins[i]; if (!f.vic) continue; if (f.mesh) { this.scene.remove(f.mesh); if (!f.mesh.isSprite) f.mesh.geometry.dispose(); f.mesh.material.dispose(); } this.fins.splice(i, 1); }
   }
 
   update(dt) {

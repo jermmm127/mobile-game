@@ -26,7 +26,7 @@ const server = http.createServer((req, res) => {
   await page.goto(url);
   await page.waitForFunction(() => window.BR && BR.game);
   // the older checks below cover the karambit, so carry it (the bayonet is the default knife and has its own checks)
-  await page.evaluate(() => { BR.Profile.data.equip.melee = 'knife'; BR.game.refreshCosmetics(); });
+  await page.evaluate(() => { BR.Profile.data.equip.melee = 'knife'; BR.Profile.save(); BR.game.refreshCosmetics(); });
 
   const mech = await page.evaluate(() => {
     const dt = 1 / 60, yawFor = (dx, dz) => Math.atan2(-dx, -dz);
@@ -182,6 +182,7 @@ const server = http.createServer((req, res) => {
   });
   // Parachute + practice mode + HUD editor coverage
   const extra = await page.evaluate(() => {
+    BR.Profile.data.equip.melee = 'knife'; BR.Profile.save(); BR.game.refreshCosmetics(); 
     const r = {}, flat = new BR.World(1); flat.boxes = []; flat.cells = flat.cells.map(() => []);
     const fall = (pressAt) => {
       const m = new BR.Mover(flat); m.pos.set(0, 110, 0); m.dropping = true; let t = 0, openedAt = null, landV = 0;
@@ -365,6 +366,7 @@ const server = http.createServer((req, res) => {
   }));
   // 1v1 duel: arena, loadouts, rounds, timeout rule, first-to-N, rematch
   const duel = await page.evaluate(() => {
+    BR.Profile.data.equip.melee = 'knife'; BR.Profile.save(); BR.game.refreshCosmetics(); 
     const g = BR.game, o = {};
     g.startDuel({ diff: 'hard', target: 3, roundTime: 60, loadout: ['sniper', 'smg'] });
     o.arena = g.world.arena && g.world.size < 100 && g.actors.length === 2;
@@ -633,6 +635,25 @@ const server = http.createServer((req, res) => {
       const kb = document.getElementById('killban');
       out.killReward = { banner: kb.className.includes('on') && /HEADSHOT|KILL/.test(kb.textContent), flash: document.getElementById('killflash').className.includes('on'), hitStop: g.hitStop > 0, fx: (g.fx.fins || []).length > fins0 };
       g.hitStop = 0; }
+    // v1.7.7: butterfly poses matched to the reference clip; victory sequence
+    { P.data.equip.melee = 'butterfly'; g.settings.bots = 2; g.startMatch(); g.refreshCosmetics(); const pl = g.player, vm2 = g.vmr; pl.mover.dropping = false; pl.cur = 2; vm2.lastWeapon = null;
+      const mdl = vm2.models.butterfly.userData.model, ud2 = mdl.userData; let upMid = 9, rollSeen = 0;
+      for (let i = 0; i < 70; i++) { vm2.update(1 / 60, 0, 0); if (i === 40) upMid = mdl.quaternion.angleTo(ud2.qUp); rollSeen = Math.max(rollSeen, Math.abs(ud2.inner.rotation.y)); }
+      const flatEnd = mdl.quaternion.angleTo(ud2.qIdle);
+      vm2.startInspect(pl.weapon); let upInsp = 9; for (let i = 0; i < 90; i++) { vm2.update(1 / 60, 0, 0); if (i === 60) upInsp = mdl.quaternion.angleTo(ud2.qUp); }
+      out.bfly2 = { upMid, flatEnd, rollSeen, upInsp, dur: vm2.inspectDur };
+      P.data.equip.melee = 'knife'; g.refreshCosmetics();
+      // win: kill every bot -> victory show, then the results screen
+      const p3 = g.player; p3.mover.dropping = false; p3.mover.onGround = true;
+      for (const a of g.actors) if (!a.isPlayer && a.alive) g.kill(a, p3, 'rifle', false);
+      g.state = 'playing'; g.update(1 / 60);
+      const eye = p3.pos.clone().setY(p3.pos.y + 1.6); for (let i = 0; i < 90; i++) g.update(1 / 60);
+      const vicEl = document.getElementById('victory');
+      out.victory = { state: g.state, active: !!g.victory, overlay: !vicEl.classList.contains('hidden') && vicEl.classList.contains('on'), hudHidden: document.getElementById('play').classList.contains('vic'),
+        body: !!(p3.mesh && p3.mesh.visible), camOut: g.camera.position.distanceTo(eye) > 2, armsUp: !!(p3.mesh && p3.mesh.userData.AR.sh.rotation.x < -2), vmHidden: !g.vmr.root.visible };
+      for (let i = 0; i < 60 * 7 && g.state !== 'end'; i++) g.update(1 / 60);
+      out.victory.ended = g.state === 'end' && !g.victory && vicEl.classList.contains('hidden') && !document.getElementById('play').classList.contains('vic') && !document.getElementById('end').classList.contains('hidden');
+      g.hud.show('end', false); }
     // mastery + daily
     const before = P.owns('skins', 'm_copper'); let got = []; for (let i = 0; i < 10; i++) got = got.concat(P.addKill('smg'));
     out.mastery = { before, after: P.owns('skins', 'm_copper'), got: got.join() };
@@ -751,6 +772,8 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],
+    ['victory: orbit cam, celebrating character, overlay, HUD hidden, then results', v17.victory.state === 'won' && v17.victory.active && v17.victory.overlay && v17.victory.hudHidden && v17.victory.body && v17.victory.camOut && v17.victory.armsUp && v17.victory.vmHidden && v17.victory.ended],
     ['tracers are soft camera-facing beams with a glowing head (no boxes)', v17.beams && v17.beamOk],
     ['spray: first shot light, climb ramps up, smooth side sway, view recovers after', v17.spray.ramps && v17.spray.flips <= 4 && v17.spray.recovered],
     ['kill reward: banner + screen flash + hit-stop + on-body burst', v17.killReward.banner && v17.killReward.flash && v17.killReward.hitStop && v17.killReward.fx],
