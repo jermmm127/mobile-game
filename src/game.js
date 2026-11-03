@@ -82,8 +82,10 @@ BR.Game = class Game {
 
   // Saturation: a CSS filter on the 3D canvas only (HUD stays untouched)
   applyColor() {
-    const sat = this.settings.saturation ?? 1, c = this.renderer.domElement;
-    const f = Math.abs(sat - 1) < 0.01 ? '' : `saturate(${sat})`;
+    // base grade: slightly desaturated with a touch more contrast (tactical-shooter look),
+    // then the player's own saturation setting on top
+    const sat = (this.settings.saturation ?? 1) * 0.88, c = this.renderer.domElement;
+    const f = `saturate(${sat.toFixed(3)}) contrast(1.06)`;
     if (c.style.filter !== f) c.style.filter = f;
   }
 
@@ -133,7 +135,7 @@ BR.Game = class Game {
   // ------------------------------------------------------------ scene setup
   buildScene(seed, demo, opts) {
     if (this.scene) this.disposeScene();
-    const fogCol = 0xbcd8ee;                                    // matches the sky dome's horizon band
+    const fogCol = 0xbfcfda;                                    // matches the sky dome's horizon band
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(fogCol);
     this.scene.fog = new THREE.Fog(fogCol, 70, this.fogFar || 230);

@@ -880,7 +880,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.6.1',
+  version: '1.6.2',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -1294,13 +1294,14 @@ BR.Audio = {
 // (x/z) so queries only look at nearby boxes.
 // =============================================================================
 const PAL = {
-  ground: 0x7d9a5a, cliff: 0x5d6b4c,
-  walls: [0xd8cbb3, 0xc9b8a6, 0xb7c4c8, 0xd6c19a, 0xc4b1c9, 0xa9bfa5],
-  floor: 0x8a7a66, roof: 0x6b5d55,
-  containers: [0xd0643b, 0x3f78b5, 0xb8433f, 0x4f9a6a, 0xd9a441],
-  crate: 0xa77b4f, rock: 0x8d8f8a, trunk: 0x6b4a2f, leaves: 0x4f7d3c,
-  parkour: 0xf2a33a, parkourAlt: 0x2f3b4a, cover: 0x9d9a90, tower: 0x5f6f86,
-  pad: 0x2fe0ff, padBase: 0x2a3340, trim: 0x5b5048, lamp: 0x30343a, lampGlow: 0xffe9a8, fence: 0x8a6a48, pillar: 0x7c86a0,
+  // Muted, grounded palette (concrete, plaster, steel, weathered paint) for a competitive-shooter read
+  ground: 0x6f8a4e, cliff: 0x5a6150,
+  walls: [0xb9b4aa, 0xa9a59c, 0x9ea2a2, 0xb2a790, 0x9b988f, 0xa6a194],
+  floor: 0x6f6a62, roof: 0x4a4845,
+  containers: [0x8a5a3c, 0x45607a, 0x763a35, 0x4d6650, 0x8c784a],
+  crate: 0x7a6247, rock: 0x7b7a74, trunk: 0x5a4330, leaves: 0x4a6a38,
+  parkour: 0xa8854a, parkourAlt: 0x363b42, cover: 0x8a8882, tower: 0x585e66,
+  pad: 0x38c2dc, padBase: 0x2a3036, trim: 0x47433f, lamp: 0x2e3135, lampGlow: 0xffe6b0, fence: 0x6e5a44, pillar: 0x6b7077,
 };
 
 BR.World = class World {
@@ -2428,7 +2429,7 @@ BR.World = class World {
     gt.repeat.set(S / 5, S / 5);
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
-    const GC = this.groundCols || [0x749f4e, 0x5f8c42, 0xa8a95a];
+    const GC = this.groundCols || [0x6b8649, 0x58713f, 0x9a9462];
     const grass = new THREE.Color(GC[0]), grass2 = new THREE.Color(GC[1]), dry = new THREE.Color(GC[2]), dirt = new THREE.Color(0x9c8460);
     const c = new THREE.Color();
     const towns = this.towns || [];
@@ -2487,7 +2488,7 @@ BR.World = class World {
     const SUN = new THREE.Vector3(420, 300, 300).normalize();
     const skyG = new THREE.SphereGeometry(900, 32, 16);
     const sp = skyG.attributes.position, sc = new Float32Array(sp.count * 3);
-    const zen = new THREE.Color(0x1d58c0), mid = new THREE.Color(0x4f9be6), hor = new THREE.Color(0xc9e4f6), warm = new THREE.Color(0xffc98f), c = new THREE.Color(), v = new THREE.Vector3();
+    const zen = new THREE.Color(0x2a5a96), mid = new THREE.Color(0x6a98c4), hor = new THREE.Color(0xc4d4de), warm = new THREE.Color(0xf2c896), c = new THREE.Color(), v = new THREE.Vector3();
     for (let i = 0; i < sp.count; i++) {
       v.set(sp.getX(i), sp.getY(i), sp.getZ(i)).normalize();
       const k = BR.util.clamp(v.y, 0, 1);
@@ -2537,7 +2538,7 @@ BR.World = class World {
       }
       g.setAttribute('color', new THREE.BufferAttribute(cl, 3)); return g;
     };
-    const far = new THREE.InstancedMesh(mountainGeo(true, 0x6f86a8, 0x9db0cc), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), 26);
+    const far = new THREE.InstancedMesh(mountainGeo(true, 0x77879a, 0xa6b2bf), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), 26);
     for (let i = 0; i < 26; i++) {
       const a = i / 26 * Math.PI * 2 + R() * 0.2, r = (this.arena ? H + 240 : H + 430) + R() * 120, hgt = 140 + R() * 160, wid = 120 + R() * 90;
       o.position.set(Math.cos(a) * r, hgt / 2 - 4, Math.sin(a) * r); o.scale.set(wid, hgt, wid); o.rotation.set(0, R() * 6, 0);
@@ -2545,7 +2546,7 @@ BR.World = class World {
     }
     scene.add(far);
     const nHill = this.arena ? 22 : 9;      // a few distant islands out at sea (the arena keeps its ring of hills)
-    const near = new THREE.InstancedMesh(mountainGeo(false, 0x4a7048, 0x86a37a), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), nHill);
+    const near = new THREE.InstancedMesh(mountainGeo(false, 0x56644e, 0x8a9580), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), nHill);
     for (let i = 0; i < nHill; i++) {
       const a = i / nHill * Math.PI * 2 + R() * 0.4, r = (this.arena ? H + 120 : H + 300) + R() * 90, hgt = this.arena ? 50 + R() * 60 : 35 + R() * 45, wid = 90 + R() * 70;
       o.position.set(Math.cos(a) * r, hgt / 2 - 3, Math.sin(a) * r); o.scale.set(wid, hgt, wid); o.rotation.set(0, R() * 6, 0);
@@ -2563,18 +2564,18 @@ BR.World = class World {
         const px = bp.getX(i) * r + x, py = bp.getY(i) * r * 0.8 + y, pz = bp.getZ(i) * r + z;
         cp.push(px, py, pz);
         const shade = BR.util.clamp((py + 0.9) / 1.6, 0, 1);
-        cc2.setHex(0xb9c6d6).lerp(new THREE.Color(0xffffff), shade);
+        cc2.setHex(0xaab4c0).lerp(new THREE.Color(0xeef2f5), shade);
         ccol.push(cc2.r, cc2.g, cc2.b);
       }
     }
     const cloudG = new THREE.BufferGeometry();
     cloudG.setAttribute('position', new THREE.Float32BufferAttribute(cp, 3));
     cloudG.setAttribute('color', new THREE.Float32BufferAttribute(ccol, 3));
-    const cl = new THREE.InstancedMesh(cloudG, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), 34);
-    for (let i = 0; i < 34; i++) {
+    const cl = new THREE.InstancedMesh(cloudG, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, transparent: true, opacity: 0.82, depthWrite: false }), 22);
+    for (let i = 0; i < 22; i++) {
       const a = R() * Math.PI * 2, r = 250 + R() * 520;
       o.position.set(Math.cos(a) * r, 150 + R() * 90, Math.sin(a) * r);
-      const sz = 14 + R() * 18; o.scale.set(sz * (1.2 + R() * 0.8), sz * (0.7 + R() * 0.4), sz); o.rotation.set(0, R() * 6, 0);
+      const sz = 16 + R() * 20; o.scale.set(sz * (1.6 + R() * 1.0), sz * (0.32 + R() * 0.18), sz * 1.2); o.rotation.set(0, R() * 6, 0);
       o.updateMatrix(); cl.setMatrixAt(i, o.matrix);
     }
     scene.add(cl);
@@ -2774,7 +2775,7 @@ BR.World = class World {
     const bushG = new THREE.IcosahedronGeometry(1, 1); bushG.computeVertexNormals();
     const bush = this.collector(bushG, new THREE.MeshLambertMaterial({ color: 0xffffff }), nB * 2);
     const BG = [0x55803e, 0x4a7a3a, 0x5f8f42, 0x6b9446, 0x47703a], bc = new THREE.Color();
-    const tuft = this.collector(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
+    const tuft = this.collector(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x66804a }), nG);
     let bi = 0, gi = 0;
     for (let tries = 0; tries < (nB + nG) * 2 && (bi < nB || gi < nG); tries++) {
       const x = (R() * 2 - 1) * (H - 4), z = (R() * 2 - 1) * (H - 4);
@@ -2913,14 +2914,25 @@ function makeTileTexture(grass) {
     tex.anisotropy = 4;
     return tex;
   }
-  for (let i = 0; i < 900; i++) {
-    const a = grass ? 0.08 : 0.05;
-    ctx.fillStyle = r() < 0.5 ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`;
-    ctx.fillRect(Math.floor(r() * s), Math.floor(r() * s), 2, 2);
+  // Weathered concrete / plaster: layered soft mottling, fine grain, small pits, a faint
+  // formwork seam and streaks. No hard tile borders (those made the world read as blocks).
+  cv.width = cv.height = 256;
+  const S3 = 256;
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S3, S3);
+  for (let i = 0; i < 90; i++) {
+    const x = r() * S3, y = r() * S3, rad = 6 + r() * 40, dark = r() < 0.55;
+    for (const [ox, oy] of [[0, 0], [S3, 0], [-S3, 0], [0, S3], [0, -S3]]) {
+      const gr = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
+      gr.addColorStop(0, dark ? `rgba(0,0,0,${0.035 + r() * 0.05})` : `rgba(255,255,255,${0.04 + r() * 0.05})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr; ctx.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
+    }
   }
-  ctx.strokeStyle = grass ? 'rgba(0,0,0,0.10)' : 'rgba(0,0,0,0.16)';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(1.5, 1.5, s - 3, s - 3);
+  for (let i = 0; i < 5000; i++) { const v = r(); ctx.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.03 + r() * 0.05})` : `rgba(255,255,255,${0.03 + r() * 0.05})`; ctx.fillRect(r() * S3, r() * S3, 1, 1); }
+  for (let i = 0; i < 120; i++) { ctx.fillStyle = `rgba(0,0,0,${0.12 + r() * 0.12})`; const x = r() * S3, y = r() * S3, w = 1 + r() * 2; ctx.fillRect(x, y, w, w); }   // pits
+  for (let i = 0; i < 14; i++) { const x = r() * S3, l = 30 + r() * 90, gr = ctx.createLinearGradient(0, 0, 0, l);     // rain streaks
+    gr.addColorStop(0, 'rgba(0,0,0,0.06)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.fillRect(x, r() * S3, 2 + r() * 4, l); }
+  ctx.fillStyle = 'rgba(0,0,0,0.07)'; ctx.fillRect(0, 127, S3, 1.5);                                   // faint formwork seam
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, 129, S3, 1);
   const tex = new THREE.CanvasTexture(cv);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.anisotropy = 4;
@@ -9822,8 +9834,10 @@ BR.Game = class Game {
 
   // Saturation: a CSS filter on the 3D canvas only (HUD stays untouched)
   applyColor() {
-    const sat = this.settings.saturation ?? 1, c = this.renderer.domElement;
-    const f = Math.abs(sat - 1) < 0.01 ? '' : `saturate(${sat})`;
+    // base grade: slightly desaturated with a touch more contrast (tactical-shooter look),
+    // then the player's own saturation setting on top
+    const sat = (this.settings.saturation ?? 1) * 0.88, c = this.renderer.domElement;
+    const f = `saturate(${sat.toFixed(3)}) contrast(1.06)`;
     if (c.style.filter !== f) c.style.filter = f;
   }
 
@@ -9873,7 +9887,7 @@ BR.Game = class Game {
   // ------------------------------------------------------------ scene setup
   buildScene(seed, demo, opts) {
     if (this.scene) this.disposeScene();
-    const fogCol = 0xbcd8ee;                                    // matches the sky dome's horizon band
+    const fogCol = 0xbfcfda;                                    // matches the sky dome's horizon band
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(fogCol);
     this.scene.fog = new THREE.Fog(fogCol, 70, this.fogFar || 230);

@@ -335,7 +335,7 @@ const server = http.createServer((req, res) => {
     const asp0 = g.camera.aspect; g.settings.stretch = 1; g.resize(); const asp1 = g.camera.aspect;
     g.settings.saturation = 1.6; g.applyColor(); const filt = g.renderer.domElement.style.filter;
     g.settings.stretch = 0; g.settings.saturation = 1; g.resize();
-    r.video = { asp0, asp1, filt, reset: g.renderer.domElement.style.filter === '' && Math.abs(g.camera.aspect - asp0) < 1e-6 };
+    r.video = { asp0, asp1, filt, reset: /saturate\(0\.88/.test(g.renderer.domElement.style.filter) && Math.abs(g.camera.aspect - asp0) < 1e-6 };
     r.editable = ['slot0', 'slot1', 'slot2', 'interact', 'map', 'pause', 'fire', 'jump', 'knife', 'spawnmenu', 'stim'].every(k => keys.includes(k));
     return r;
   });
@@ -520,7 +520,7 @@ const server = http.createServer((req, res) => {
     ['hunting rifle is accurate from the hip, even moving/airborne', extra.hunter.hunterAir < extra.hunter.sniperStill * 0.5 && extra.hunter.hunterAir < extra.hunter.hunterStill * 2 && extra.hunter.light],
     ['bot aim eases in and respects its turn rate', extra.botAim.first < extra.botAim.peak * 0.5 && extra.botAim.peak <= extra.botAim.cap + 1e-6 && extra.botAim.err < 0.02],
     ['stim: 4s cooldown, speed boost, heals 10/s for 5s', extra.stim.used && !extra.stim.again && extra.stim.vBoost > BR_RUN * 1.2 && extra.stim.vAfter < BR_RUN * 1.05 && extra.stim.hp1 >= 29 && extra.stim.hp1 <= 31 && extra.stim.hpEnd === 70 && extra.stim.cdBack && extra.stim.ready && extra.stim.hudBtn],
-    ['stretched res widens the picture; saturation filters the 3D view', extra.video.asp1 < extra.video.asp0 / 1.5 && /saturate\(1\.6\)/.test(extra.video.filt) && extra.video.reset],
+    ['stretched res widens the picture; saturation filters the 3D view', extra.video.asp1 < extra.video.asp0 / 1.5 && /saturate\(1\.40?8/.test(extra.video.filt) && extra.video.reset],
     ['karambit gives a movement speed boost', extra.newstuff.knifeSpeed > BR_RUN * 1.15],
     ['sniper + hunting rifle are bolt actions (bolt lifts, pulls back, returns)', extra.newstuff.bolts && extra.newstuff.sniperBolt && extra.newstuff.lift > 0.8 && extra.newstuff.back > 0.05 && extra.newstuff.settled],
     ['stim + grapple have first-person arm animations', extra.fpAnims.injSeen && extra.fpAnims.injGone && extra.fpAnims.launchSeen && extra.fpAnims.launchGone],
