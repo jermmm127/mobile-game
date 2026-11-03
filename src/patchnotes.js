@@ -1,0 +1,82 @@
+'use strict';
+// =============================================================================
+// PATCH NOTES — every update with the date it shipped (newest first). Shown on the
+// Patch Notes page (menu dock → NOTES). Add a new entry at the TOP for each release
+// and bump CONFIG.version to match.
+// =============================================================================
+BR.PATCH_NOTES = [
+  { v: '1.7.8', date: '2026-11-03', title: 'Stair fix + patch notes', notes: [
+    'Fixed: in two-floor buildings the stair opening looked sealed over once you went upstairs. The trim band between floors is now a strip around the outside walls only.',
+    'Fixed: the base trim no longer pokes up through the ground floor.',
+    'New Patch Notes page (menu → NOTES): every update with the date it was added.',
+  ] },
+  { v: '1.7.7', date: '2026-11-03', title: 'Butterfly rework + Victory show', notes: [
+    'Butterfly knife animations rebuilt: flat idle at the bottom right, a spinning fan-open draw with an upright beat, and a new inspect (V-spread, flourish, show pose, chaplin).',
+    'Winning a battle royale now plays a victory show: slow motion, an orbiting camera on your celebrating character, a golden light pillar, fireworks, confetti, a fanfare and a VICTORY screen with your stats.',
+  ] },
+  { v: '1.7.6', date: '2026-11-03', title: 'Gunplay feel', notes: [
+    'Tracers are smooth glowing beams with a bright head (no more blocky streaks). Softer impacts and sparks.',
+    'Spray recoil you can control: a light first shot, a climb that levels off, a smooth side-to-side sway, and the view settles back when you let go.',
+    'Kills feel like a reward: a skull banner with your streak and coins, a screen flash, a burst on the body, a heavier kill sound and a split second of slow motion.',
+  ] },
+  { v: '1.7.5', date: '2026-11-03', title: 'M9 Bayonet', notes: [
+    'New default knife: an M9-style bayonet that you flick and flip into your hand on draw, with its own inspect.',
+    '9 bayonet blueprints (Emberfang, Glacier, Gamma Burst, Solar Crown, Singularity and more), 4 new camos, new case items.',
+    'Speedometer (m/s) under the crosshair, toggle in Settings.',
+    'Movement slowed down again (run, slide, wall-run and grapple speeds).',
+  ] },
+  { v: '1.7.4', date: '2026-11-03', title: 'Nightshade', notes: [
+    'Refined butterfly knife base model.',
+    'New Mythic butterfly blueprint Nightshade: purple aura round the blade and a glowing blade trail.',
+  ] },
+  { v: '1.7.3', date: '2026-11-03', title: 'K/D + DMR optic', notes: [
+    'K/D ratio in your stats and the Ranked panel.',
+    'The DMR gets its own prism optic (different from the sniper scope).',
+    'Karambit spins on a finger through the ring; cleaner knife animations.',
+  ] },
+  { v: '1.7.2', date: '2026-11-03', title: 'Crosshair tweak', notes: ['Slightly bigger shotgun crosshair.'] },
+  { v: '1.7.1', date: '2026-11-03', title: 'Per-gun camos', notes: ['Camos now equip per gun (or ALL guns at once).'] },
+  { v: '1.7.0', date: '2026-11-03', title: 'Season 2', notes: [
+    'New weapons: LMG and DMR.',
+    'An animated blueprint for every gun with new reload styles, Season 2 camos and gloves, the Nova Case.',
+    'Kill finishers, gloves per weapon, weapon mastery camos, daily rewards, enemy highlight setting, spinning case previews.',
+    'Bigger battle royale map; dropped guns show their blueprint.',
+  ] },
+  { v: '1.6.7', date: '2026-11-03', title: 'Movement + knives', notes: ['Wall-run only while holding jump.', 'New karambit animations and a natural butterfly grip.'] },
+  { v: '1.6.6', date: '2026-11-03', title: 'Butterfly tricks', notes: ['Butterfly animations rebuilt from standard balisong tricks.'] },
+  { v: '1.6.5', date: '2026-11-03', title: 'Case pictures', notes: ['Case items show pictures of the real models.', 'Cleaner karambit inspect.', 'Square shotgun reticle.'] },
+  { v: '1.6.4', date: '2026-11-03', title: 'No wallbangs', notes: ['Fixed: bullets could pass through walls in the 1v1 arena.', 'Advanced touch sensitivity settings.'] },
+  { v: '1.6.3', date: '2026-11-03', title: 'Two-slot spawn menu', notes: ['Smaller butterfly knife.', 'Pick two guns in the spawn menu.'] },
+  { v: '1.6.2', date: '2026-11-03', title: 'Tactical look', notes: ['A cleaner, competitive-shooter visual style.'] },
+  { v: '1.6.1', date: '2026-11-03', title: 'Visual pass', notes: ['Filmic colour grade, better lighting, shadows on High graphics.'] },
+  { v: '1.6.0', date: '2026-11-03', title: 'Weapon pictures', notes: ['Weapon buttons and loadout menus show the real gun models.', 'Bigger sniper bipod, recoil tweaks.'] },
+  { v: '1.5.11', date: '2026-11-03', title: 'Inspect button', notes: ['Reload inspects your knife (or a gun with a full mag).', 'Butterfly fist grip and a cleaner flip.'] },
+  { v: '1.5.10', date: '2026-11-03', title: 'Pistol', notes: ['Longer pistol.'] },
+  { v: '1.5.9', date: '2026-11-03', title: 'Karambit grip', notes: ['Karambit held in a closed fist.'] },
+  { v: '1.5.8', date: '2026-11-03', title: 'Melee picker', notes: ['Choose karambit or butterfly in the inventory.', 'Cleaner karambit, slimmer hunting rifle, longer pistol with an extended mag.'] },
+  { v: '1.5.7', date: '2026-11-03', title: 'New pistol model', notes: ['Polymer-frame striker pistol.'] },
+  { v: '1.5.6', date: '2026-11-03', title: 'New hunting rifle model', notes: ['Classic wooden bolt-action.'] },
+  { v: '1.5.5', date: '2026-11-03', title: 'New sniper model', notes: ['Heavy long-range sniper.'] },
+  { v: '1.5.4', date: '2026-11-03', title: 'New shotgun model', notes: ['Pump-action shotgun that racks after every shot.'] },
+  { v: '1.5.3', date: '2026-11-03', title: 'New SMG model', notes: ['Compact machine-pistol SMG + Scarlet Drum skin.'] },
+  { v: '1.5.2', date: '2026-11-03', title: 'New Holo AR model', notes: ['Suppressed Holo AR with a cleaner holo sight.'] },
+  { v: '1.5.1', date: '2026-11-03', title: 'New rifle model', notes: ['AK-pattern rifle.'] },
+  { v: '1.5', date: '2026-11-03', title: 'Butterfly + Revolver', notes: ['Butterfly knife and revolver, with skins.', 'Weaker Easy bots; separate opacity for the weapon slots.'] },
+  { v: '1.4', date: '2026-11-03', title: 'Look pass', notes: ['Anti-aliasing, bevelled guns, smoother trees.', 'Closer aim-down-sights, hip sway, slower run.'] },
+  { v: '1.3.3', date: '2026-11-03', title: 'SMG buff', notes: ['SMG fires faster (1100 rpm, 35-round mag).'] },
+  { v: '1.3.2', date: '2026-11-03', title: '60 fps pass', notes: ['World tiles + culling, lighter scenery and bots, adaptive resolution.'] },
+  { v: '1.3.1', date: '2026-11-03', title: 'Inventory', notes: ['Inventory with a drag-to-inspect 3D preview.'] },
+  { v: '1.3', date: '2026-11-03', title: 'Release Case', notes: ['Release Case, per-gun and signature tracers.', 'Ranked mode and kill feed cosmetics.', 'Karambit flip, signature reloads, island map.'] },
+  { v: '1.2', date: '2026-11-02', title: 'Polish', notes: ['Karambit ring roll, cleaner weapon slots, round minimap.', 'New sky, better trees, cars and gloves; dropped guns bounce and have name tags.'] },
+  { v: '1.1', date: '2026-11-02', title: 'Shockwave', notes: ['Shockwave grenades, hit feedback, styled tracers, new menu, more skins.'] },
+  { v: '1.0', date: '2026-11-02', title: '1v1 Duels', notes: ['1v1 Duel mode in The Yard arena.', 'Mythic blueprints.'] },
+  { v: '0.9', date: '2026-11-02', title: 'Bolt actions', notes: ['Bolt-action sniper and hunting rifle, karambit speed boost, detailed map.', 'Stim and grapple arm animations, CS-style karambit idle.'] },
+  { v: '0.8', date: '2026-11-02', title: 'Stim', notes: ['Stim shot; stretched resolution and saturation settings.'] },
+  { v: '0.7', date: '2026-11-02', title: 'Characters', notes: ['Humanoid characters, smooth aim, one-life matchmaking queue, hunting rifle.'] },
+  { v: '0.6', date: '2026-11-02', title: 'Practice mode', notes: ['Parachute drop, practice mode + spawn menu, fully custom HUD, speed effects.'] },
+  { v: '0.5', date: '2026-11-02', title: 'Arms + blueprints', notes: ['First-person arms and gloves, new animations, blueprints shop.'] },
+  { v: '0.4', date: '2026-11-02', title: 'Big map', notes: ['Big named map, accounts, crosshair editor, iron sights, real tracers.'] },
+  { v: '0.3', date: '2026-11-02', title: 'Shop', notes: ['Shop + coins, karambit, grapple, Holo AR, live menu trailer.'] },
+  { v: '0.2', date: '2026-11-02', title: 'Controls', notes: ['Fullscreen button, HUD layout editor, chests, more guns, movement tech.'] },
+  { v: '0.1', date: '2026-11-02', title: 'First playable', notes: ['Mobile battle royale prototype: movement tech, bots, storm, loot, touch controls.'] },
+];

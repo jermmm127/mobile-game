@@ -419,6 +419,10 @@
     game.hud.show('ranks', true);
   };
   $('btn-ranks').addEventListener('click', () => { BR.Audio.init(); openRanks(); });
+  // patch notes
+  $('btn-notes').addEventListener('click', () => { BR.Audio.init(); game.hud.patchNotes(); game.hud.show('patchnotes', true); });
+  $('pn-x').addEventListener('click', () => game.hud.show('patchnotes', false));
+  game.hud.notesBadge();
   $('rk-x').addEventListener('click', () => game.hud.show('ranks', false));
   $('btn-duel').addEventListener('click', () => { BR.Audio.init(); BR.openDuelMenu('setup'); });
   $('dm-go').addEventListener('click', dmGo);

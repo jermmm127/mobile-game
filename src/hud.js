@@ -285,6 +285,7 @@ BR.HUD = class HUD {
         <button id="btn-inv" class="dk inv"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>INVENTORY</span></button>
         <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span></button>
         <button id="btn-ranks" class="dk ranks"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg><span>RANKED</span></button>
+        <button id="btn-notes" class="dk notes"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/></svg><span>NOTES</span><em>NEW</em></button>
         <button id="btn-settings" class="dk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>SETTINGS</span></button>
         <button id="btn-hud" class="dk"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="8" cy="12" r="1.6"/><circle cx="16" cy="12" r="1.6"/></svg><span>HUD</span></button>
         <button id="btn-fs" class="dk"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>FULL</span></button>
@@ -524,6 +525,15 @@ BR.HUD = class HUD {
     <div class="sp-sec">LEADERBOARD · SEASON 1</div>
     <div id="rk-board" class="rk-board"></div>
     <div class="dm-note">Earn RP in every match: placement + kills in Battle Royale, wins in 1v1 Duels. Reaching Gold, Diamond, Master and Predator unlocks exclusive kill feed banners.</div>
+  </div>
+</div>
+
+<div id="patchnotes" class="overlay hidden">
+  <div class="panel metal wide pn-panel">
+    <button id="pn-x" class="xbtn" aria-label="Close">✕</button>
+    <div class="ptitle">PATCH NOTES</div>
+    <div id="pn-cur" class="pn-cur"></div>
+    <div id="pn-list" class="pn-list"></div>
   </div>
 </div>
 
@@ -783,6 +793,24 @@ BR.HUD = class HUD {
     k.className = ''; void k.offsetWidth; k.className = 'on' + cls;
     clearTimeout(this._kbTO); this._kbTO = setTimeout(() => { k.className = 'out' + cls; }, 1500 + Math.min(o.streak || 1, 4) * 150);
     if (f) { f.className = ''; void f.offsetWidth; f.className = 'on' + (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak' : ''); }
+  }
+
+  // Patch notes page: every update, newest first, with the date it shipped (latest 3 open)
+  patchNotes() {
+    const list = BR.PATCH_NOTES || [], esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const fmt = d => { const [y, m, dd] = d.split('-').map(Number); return new Date(y, m - 1, dd).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); };
+    this.$('pn-cur').textContent = 'You are on v' + BR.CONFIG.version + ' · ' + list.length + ' updates';
+    let lastDate = '';
+    this.$('pn-list').innerHTML = list.map((e, i) => {
+      const day = e.date !== lastDate ? `<div class="pn-day">${fmt(e.date)}</div>` : ''; lastDate = e.date;
+      return day + `<details class="pn-e${i === 0 ? ' latest' : ''}"${i < 3 ? ' open' : ''}><summary><b class="pn-v">v${esc(e.v)}</b><span class="pn-t">${esc(e.title)}</span>${i === 0 ? '<em>LATEST</em>' : ''}<i class="pn-d">${fmt(e.date)}</i></summary><ul>${e.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></details>`;
+    }).join('');
+    try { localStorage.setItem('velocity-royale.notesSeen', list[0] ? list[0].v : ''); } catch (e) { /* private mode */ }
+    this.notesBadge();
+  }
+  notesBadge() {
+    let seen = ''; try { seen = localStorage.getItem('velocity-royale.notesSeen') || ''; } catch (e) { /* private mode */ }
+    const b = this.$('btn-notes'); if (b) b.classList.toggle('fresh', !!(BR.PATCH_NOTES && BR.PATCH_NOTES[0] && seen !== BR.PATCH_NOTES[0].v));
   }
 
   // Victory overlay (null hides it): rays, #1 badge, letter-by-letter VICTORY with a shine sweep,

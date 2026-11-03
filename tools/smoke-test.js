@@ -654,6 +654,16 @@ const server = http.createServer((req, res) => {
       for (let i = 0; i < 60 * 7 && g.state !== 'end'; i++) g.update(1 / 60);
       out.victory.ended = g.state === 'end' && !g.victory && vicEl.classList.contains('hidden') && !document.getElementById('play').classList.contains('vic') && !document.getElementById('end').classList.contains('hidden');
       g.hud.show('end', false); }
+    // v1.7.8: stair holes stay open (no slab over them); patch notes page
+    { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
+      for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
+        for (let f = 1; f < B.floors; f++) covered += g.world.boxes.filter(o => hx > o.x0 && hx < o.x1 && hz > o.z0 && hz < o.z1 && o.y1 > f * B.fh - 0.3 && o.y0 < f * B.fh + 0.2).length; }
+      const NOTES = BR.PATCH_NOTES || [];
+      document.getElementById('btn-notes').click();
+      const shown = !document.getElementById('patchnotes').classList.contains('hidden'), rows = document.querySelectorAll('#pn-list details').length;
+      const sorted = NOTES.every((e, i) => i === 0 || e.date <= NOTES[i - 1].date), dated = NOTES.every(e => /^\d{4}-\d{2}-\d{2}$/.test(e.date) && e.notes.length);
+      document.getElementById('pn-x').click();
+      out.v178 = { buildings2: n, covered, notes: NOTES.length, latest: NOTES[0] && NOTES[0].v, shown, rows, sorted, dated, closed: document.getElementById('patchnotes').classList.contains('hidden'), badgeOff: !document.getElementById('btn-notes').classList.contains('fresh') }; }
     // mastery + daily
     const before = P.owns('skins', 'm_copper'); let got = []; for (let i = 0; i < 10; i++) got = got.concat(P.addKill('smg'));
     out.mastery = { before, after: P.owns('skins', 'm_copper'), got: got.join() };
@@ -670,6 +680,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const run = 5.9, BR_RUN = run;
+  const BR_VERSION = (require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'config.js'), 'utf8').match(/version: '([^']+)'/) || [])[1];
   const checks = [
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
     ['crouch while running slides with a boost', mech.slide > run + 3],
@@ -772,6 +783,8 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['two-floor buildings: nothing covers the stair hole', v17.v178.buildings2 > 0 && v17.v178.covered === 0],
+    ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
     ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],
     ['victory: orbit cam, celebrating character, overlay, HUD hidden, then results', v17.victory.state === 'won' && v17.victory.active && v17.victory.overlay && v17.victory.hudHidden && v17.victory.body && v17.victory.camOut && v17.victory.armsUp && v17.victory.vmHidden && v17.victory.ended],
     ['tracers are soft camera-facing beams with a glowing head (no boxes)', v17.beams && v17.beamOk],

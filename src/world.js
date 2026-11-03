@@ -804,12 +804,18 @@ BR.World = class World {
     this.addBox(x0 - 0.2, H + 0.3, z1 - pt + 0.2, x1 + 0.2, ph, z1 + 0.2, PAL.trim);
     this.addBox(x0 - 0.2, H + 0.3, z0 + pt - 0.2, x0 + pt - 0.2, ph, z1 - pt + 0.2, PAL.trim);
     this.addBox(x1 - pt + 0.2, H + 0.3, z0 + pt - 0.2, x1 + 0.2, ph, z1 - pt + 0.2, PAL.trim);
-    // Decorative trim bands between floors + a base course (visual only)
-    for (let f = 1; f < floors; f++) {
-      const y = f * fh;
-      this.addBox(x0 - 0.08, y - 0.12, z0 - 0.08, x1 + 0.08, y + 0.08, z1 + 0.08, PAL.trim, { decor: true });
-    }
-    this.addBox(x0 - 0.06, 0, z0 - 0.06, x1 + 0.06, 0.35, z1 + 0.06, PAL.trim, { decor: true });
+    // Decorative trim bands between floors + a base course (visual only). Four strips hugging the
+    // outside walls (sunk into the wall thickness) -- NOT one slab across the footprint, which used
+    // to sit over the stair hole and hide the opening from upstairs (and poke up through the floor).
+    const band = (ya, yb, o) => {
+      const e = t - 0.05;                       // stops short of the inner wall face (no flicker inside)
+      this.addBox(x0 - o, ya, z0 - o, x1 + o, yb, z0 + e, PAL.trim, { decor: true });
+      this.addBox(x0 - o, ya, z1 - e, x1 + o, yb, z1 + o, PAL.trim, { decor: true });
+      this.addBox(x0 - o, ya, z0 + e, x0 + e, yb, z1 - e, PAL.trim, { decor: true });
+      this.addBox(x1 - e, ya, z0 + e, x1 + o, yb, z1 - e, PAL.trim, { decor: true });
+    };
+    for (let f = 1; f < floors; f++) band(f * fh - 0.12, f * fh + 0.08, 0.08);
+    band(0, 0.35, 0.06);
     // Loot: a guaranteed gun on every floor (in a corner, clear of the stairs),
     // extra items, and sometimes a chest inside or on the roof.
     const cx0 = x0 + t + 1.7, cx1 = x1 - t - 0.9, cz0 = z0 + t + 0.9, cz1 = z1 - t - 0.9;
