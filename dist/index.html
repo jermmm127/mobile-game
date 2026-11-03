@@ -883,7 +883,7 @@ body.duel #topbar .dp { display: flex; }
   filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)) drop-shadow(0 0 8px var(--rc)); }
 .cs-card.big .cc-img { width: 146px; height: 68px; }
 /* Shotgun crosshair: four corner brackets forming a square that opens with the spread */
-.xh.sq { --sqh: max(calc(var(--gap) * 0.62), calc(var(--len) * 0.6 + 6px)); --sql: calc(var(--len) * 0.6); }
+.xh.sq { --sqh: max(calc(var(--gap) * 0.78), calc(var(--len) * 0.75 + 8px)); --sql: calc(var(--len) * 0.72); }
 .xh.sq i { display: block; width: var(--sql); height: var(--sql); background: transparent; box-shadow: none; border: 0 solid var(--xc); box-sizing: border-box;
   top: auto; bottom: auto; left: auto; right: auto; }
 .xh.sq .c-t { left: calc(-1 * var(--sqh)); top: calc(-1 * var(--sqh)); border-left-width: var(--thick); border-top-width: var(--thick); border-top-left-radius: 6px; }
@@ -934,7 +934,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.7.1',
+  version: '1.7.2',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
