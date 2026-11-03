@@ -46,11 +46,29 @@ BR.Game = class Game {
     requestAnimationFrame(t => this.loop(t));
   }
 
+  // Adaptive resolution: holds 60 fps. Dropped frames -> render a little smaller; smooth for a
+  // while -> creep back up, but never past a level that already stuttered. The HUD stays sharp.
+  adaptResolution(ms) {
+    const P = this.perf; if (!P || (this.state !== 'playing' && this.state !== 'dead' && this.state !== 'won')) return;
+    if (ms > 80) return;                                   // tab switch / hitch, not steady load
+    if (ms > 19.5) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);
+    if (P.slow > 12 && P.scale > 0.55) {
+      P.cap = Math.min(P.cap, P.scale - 0.01); P.scale = Math.max(0.55, P.scale * 0.88); P.slow = 0; P.good = 0; P.calm = 0;
+      this.renderer.setPixelRatio(this.basePR * P.scale); this.resize();
+    } else if (ms < 18) {
+      P.good += ms / 1000; P.calm = (P.calm || 0) + ms / 1000;
+      if (P.calm > 30 && P.cap < 1) { P.cap = Math.min(1, P.cap + 0.05); P.calm = 0; }   // a one-off hitch doesn't cap you forever
+      if (P.good > 8 && P.scale < P.cap) { P.scale = Math.min(P.cap, P.scale * 1.06); P.good = 0; this.renderer.setPixelRatio(this.basePR * P.scale); this.resize(); }
+    } else P.good = 0;
+  }
+
   baseFov() { return this.settings.fov || BR.CONFIG.camera.fov; }
 
   applyGraphics() {
     const g = BR.CONFIG.graphics[this.settings.gfx] || BR.CONFIG.graphics.medium;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, g.pixelRatio));
+    this.basePR = Math.min(window.devicePixelRatio || 1, g.pixelRatio);
+    this.perf = { scale: 1, cap: 1, slow: 0, good: 0 };
+    this.renderer.setPixelRatio(this.basePR);
     this.fogFar = g.fogFar;
     this.detail = g.detail;
     if (this.scene && this.scene.fog) this.scene.fog.far = g.fogFar;
@@ -414,6 +432,7 @@ BR.Game = class Game {
     let dt = (now - this.last) / 1000;
     this.last = now;
     if (!(dt > 0)) dt = 0.016;
+    this.adaptResolution(dt * 1000);
     this.fpsAcc += dt; this.fpsN++;
     if (this.fpsAcc > 0.5) { this.fpsVal = this.fpsN / this.fpsAcc; this.fpsAcc = 0; this.fpsN = 0; }
     dt = Math.min(dt, 0.05);
@@ -1010,6 +1029,8 @@ BR.Game = class Game {
     r.clear();
     if (this.state === 'shop') { r.render(this.shopScene, this.shopCam); return; }
     if (!this.scene) return;
+    // skip map tiles past the fog (invisible anyway)
+    if (this.world && this.scene.fog) this.world.cullChunks(this.camera.position.x, this.camera.position.z, this.scene.fog.far + 30);
     r.render(this.scene, this.camera);
     if ((this.state === 'playing' || this.state === 'won' || this.state === 'paused') && this.player && this.player.alive) {
       r.clearDepth();

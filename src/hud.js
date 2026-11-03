@@ -577,7 +577,8 @@ BR.HUD = class HUD {
   }
 
   fps(v, on) {
-    this.set('fps', this.el.fps, on ? Math.round(v) + ' fps' : '');
+    const sc = BR.game && BR.game.perf ? Math.round(BR.game.perf.scale * 100) : 100;
+    this.set('fps', this.el.fps, on ? Math.round(v) + ' fps' + (sc < 100 ? ' · ' + sc + '% res' : '') : '');
   }
 
   killfeed(html, cls) {

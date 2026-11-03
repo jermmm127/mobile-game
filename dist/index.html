@@ -852,7 +852,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.3.1',
+  version: '1.3.2',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -2262,7 +2262,16 @@ BR.World = class World {
   buildMeshes(scene, detail) {
     const tex = makeTileTexture();
     const lowDetail = detail !== undefined && detail < 0.5;
-    const vis = this.boxes.filter(b => !b.hidden).concat(lowDetail ? this.decor.filter(b => !b.fine) : this.decor);
+    const visAll = this.boxes.filter(b => !b.hidden).concat(lowDetail ? this.decor.filter(b => !b.fine) : this.decor);
+    // Split the world into 64 m tiles (one mesh each) so the GPU skips off-screen and fogged-out tiles
+    const TILE = 128, tiles = new Map();
+    for (const b of visAll) {
+      const k = Math.floor(((b.x0 + b.x1) / 2 + this.half) / TILE) + ',' + Math.floor(((b.z0 + b.z1) / 2 + this.half) / TILE);
+      if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(b);
+    }
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, map: tex });
+    let first = null;
+    for (const vis of tiles.values()) {
     const count = vis.length;
     const pos = new Float32Array(count * 24 * 3);
     const nor = new Float32Array(count * 24 * 3);
@@ -2317,20 +2326,70 @@ BR.World = class World {
     g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     g.setIndex(new THREE.BufferAttribute(idx, 1));
     g.computeBoundingSphere();
-    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, map: tex });
     const mesh = new THREE.Mesh(g, mat);
     mesh.matrixAutoUpdate = false;
     scene.add(mesh);
+    this.addChunk(mesh, g.boundingSphere.center, g.boundingSphere.radius);
+    first = first || mesh;
+    }
+    const mesh = first;
 
     this.buildGround(scene);
     this.buildScenery(scene, detail === undefined ? 1 : detail);
     return mesh;
   }
 
+  // ---- performance: tiles + culling ---------------------------------------
+  addChunk(obj, center, radius) { (this.chunks || (this.chunks = [])).push({ obj, x: center.x, z: center.z, r: radius }); }
+  // Hide tiles past the fog (they'd be invisible anyway) - cheap, once per frame
+  cullChunks(cx, cz, far) {
+    const C = this.chunks; if (!C) return;
+    for (let i = 0; i < C.length; i++) { const c = C[i], d = Math.hypot(c.x - cx, c.z - cz) - c.r; c.obj.visible = d < far; }
+  }
+  // Drop-in for THREE.InstancedMesh used while building scenery: collects instances, then
+  // flush() splits them into 80 m tiles with real bounds so off-screen tiles are culled.
+  collector(geo, mat) {
+    const self = this, M = [], Cl = [];
+    const col = {
+      count: 0, instanceColor: { needsUpdate: false },
+      setMatrixAt(i, m) { M[i] = m.clone(); if (i + 1 > this.count) this.count = i + 1; },
+      setColorAt(i, c) { Cl[i] = c.clone(); },
+      flush(scene) {
+        const n = Math.min(this.count, M.length); if (!n) return;
+        if (!geo.boundingSphere) geo.computeBoundingSphere();
+        const gr = geo.boundingSphere.radius + geo.boundingSphere.center.length(), TILE = 320, H = self.half;
+        const tiles = new Map();
+        for (let i = 0; i < n; i++) { if (!M[i]) continue; const e = M[i].elements, k = Math.floor((e[12] + H) / TILE) + ',' + Math.floor((e[14] + H) / TILE); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(i); }
+        const v = new THREE.Vector3();
+        for (const ids of tiles.values()) {
+          // geometry view sharing the buffers, with this tile's bounding sphere
+          const view = new THREE.BufferGeometry();
+          for (const a in geo.attributes) view.setAttribute(a, geo.attributes[a]);
+          if (geo.index) view.setIndex(geo.index);
+          let cx = 0, cy = 0, cz = 0;
+          for (const i of ids) { const e = M[i].elements; cx += e[12]; cy += e[13]; cz += e[14]; }
+          cx /= ids.length; cy /= ids.length; cz /= ids.length;
+          let r = 0;
+          for (const i of ids) { const e = M[i].elements, sc = Math.max(v.set(e[0], e[1], e[2]).length(), v.set(e[4], e[5], e[6]).length(), v.set(e[8], e[9], e[10]).length());
+            r = Math.max(r, Math.hypot(e[12] - cx, e[13] - cy, e[14] - cz) + gr * sc); }
+          view.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy, cz), r);
+          view._shared = true;
+          const im = new THREE.InstancedMesh(view, mat, ids.length);
+          ids.forEach((i, j) => { im.setMatrixAt(j, M[i]); if (Cl[i]) im.setColorAt(j, Cl[i]); });
+          if (im.instanceColor) im.instanceColor.needsUpdate = true;
+          scene.add(im);
+          self.addChunk(im, v.set(cx, cy, cz), r);
+        }
+      },
+    };
+    (this._pend || (this._pend = [])).push(col);
+    return col;
+  }
+
   // Ground with painted grass/dirt variation (vertex colors) under a tiled detail texture.
   buildGround(scene) {
     const gt = makeTileTexture(true);
-    const S = this.arena ? 420 : this.size + 300, segs = this.arena ? 60 : 180;
+    const S = this.arena ? 420 : this.size + 300, segs = this.arena ? 40 : 120;
     const H0 = this.half, island = !this.arena;
     const sand = new THREE.Color(0xd9c58e), wetSand = new THREE.Color(0xb9a46e), seabed = new THREE.Color(0x6f8a7a);
     gt.repeat.set(S / 5, S / 5);
@@ -2505,38 +2564,40 @@ BR.World = class World {
     if (this.trees.length) {
       const trunkG = new THREE.CylinderGeometry(0.17, 0.3, 1, 7); trunkG.translate(0, 0.5, 0);
       const flareG = new THREE.CylinderGeometry(0.3, 0.46, 0.35, 7); flareG.translate(0, 0.175, 0);
-      const trunk = new THREE.InstancedMesh(trunkG, new THREE.MeshLambertMaterial({ color: 0x6a4a2e, flatShading: true }), this.trees.length);
-      const flare = new THREE.InstancedMesh(flareG, new THREE.MeshLambertMaterial({ color: 0x5a3e26, flatShading: true }), this.trees.length);
+      const trunk = this.collector(trunkG, new THREE.MeshLambertMaterial({ color: 0x6a4a2e, flatShading: true }), this.trees.length);
+      const flare = this.collector(flareG, new THREE.MeshLambertMaterial({ color: 0x5a3e26, flatShading: true }), this.trees.length);
       this.trees.forEach((t, i) => {
         o.position.set(t.x, 0, t.z); o.rotation.set(0, t.tone * 6, 0); o.scale.set(1, t.h + 0.6, 1); o.updateMatrix(); trunk.setMatrixAt(i, o.matrix);
         o.scale.set(1, 1, 1); o.updateMatrix(); flare.setMatrixAt(i, o.matrix);
       });
-      scene.add(trunk, flare);
+
     }
     if (leafy.length) {
-      const blobG = new THREE.IcosahedronGeometry(1, 1);
-      const lv = new THREE.InstancedMesh(blobG, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), leafy.length * 5);
-      const GR = [0x4f8a3a, 0x3f7a34, 0x5e9a40, 0x6aa648, 0x4a7f3e];
-      const lay = [[0, 0.35, 0, 1], [0.55, 0.05, 0.25, 0.68], [-0.5, 0.1, -0.3, 0.7], [0.15, 0.95, -0.05, 0.62], [-0.2, 0.0, 0.55, 0.6]];
-      let k = 0;
-      leafy.forEach((t, i) => {
-        const base = GR[Math.floor(t.tone * GR.length)];
-        lay.forEach(([dx, dy, dz, sc], j) => {
-          const sz = t.s * sc;
-          o.position.set(t.x + dx * t.s, t.h + dy * t.s, t.z + dz * t.s); o.scale.set(sz, sz * 0.92, sz); o.rotation.set(j, i + j, 0);
-          o.updateMatrix(); lv.setMatrixAt(k, o.matrix);
-          lv.setColorAt(k++, tc.setHex(base).multiplyScalar(0.88 + (j === 3 ? 0.22 : j * 0.04)));
-        });
+      // one merged canopy geometry (smooth main blob + 4 low-poly blobs, shaded per blob), one instance per tree
+      const lay = [[0, 0.35, 0, 1, 1], [0.55, 0.05, 0.25, 0.68, 0], [-0.5, 0.1, -0.3, 0.7, 0], [0.15, 0.95, -0.05, 0.62, 0], [-0.2, 0.0, 0.55, 0.6, 0]];
+      const cp = [], cn = [], cc = [], sh = new THREE.Color(), mtx = new THREE.Matrix4();
+      lay.forEach(([dx, dy, dz, sc, det], j) => {
+        const b = new THREE.IcosahedronGeometry(1, det).toNonIndexed();
+        b.applyMatrix4(mtx.makeRotationY(j * 1.3)); b.scale(sc, sc * 0.92, sc); b.translate(dx, dy, dz); b.computeVertexNormals();
+        const pa = b.attributes.position, na = b.attributes.normal, k = 0.86 + (j === 3 ? 0.24 : j * 0.04);
+        for (let i = 0; i < pa.count; i++) { cp.push(pa.getX(i), pa.getY(i), pa.getZ(i)); cn.push(na.getX(i), na.getY(i), na.getZ(i)); sh.setScalar(k * (0.85 + 0.15 * Math.max(0, na.getY(i)))); cc.push(sh.r, sh.g, sh.b); }
       });
-      lv.instanceColor.needsUpdate = true;
-      scene.add(lv);
+      const canopy = new THREE.BufferGeometry();
+      canopy.setAttribute('position', new THREE.Float32BufferAttribute(cp, 3)); canopy.setAttribute('normal', new THREE.Float32BufferAttribute(cn, 3)); canopy.setAttribute('color', new THREE.Float32BufferAttribute(cc, 3));
+      canopy.computeBoundingSphere();
+      const lv = this.collector(canopy, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+      const GR = [0x4f8a3a, 0x3f7a34, 0x5e9a40, 0x6aa648, 0x4a7f3e];
+      leafy.forEach((t, i) => {
+        o.position.set(t.x, t.h, t.z); o.scale.set(t.s, t.s, t.s); o.rotation.set(0, t.tone * 6.28, 0);
+        o.updateMatrix(); lv.setMatrixAt(i, o.matrix); lv.setColorAt(i, tc.setHex(GR[Math.floor(t.tone * GR.length)]));
+      });
     }
     if (pines.length) {
       const cone = new THREE.ConeGeometry(1, 1, 8, 1, false);
       const cp2 = cone.attributes.position;
       for (let i = 0; i < cp2.count; i++) if (cp2.getY(i) < 0) cp2.setY(i, cp2.getY(i) + (Math.hypot(cp2.getX(i), cp2.getZ(i)) > 0.5 ? -0.12 : 0));   // droopy tips
       cone.computeVertexNormals();
-      const pm = new THREE.InstancedMesh(cone, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), pines.length * 4);
+      const pm = this.collector(cone, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), pines.length * 4);
       const PG = [0x2f5a35, 0x2a5232, 0x376640, 0x2c5e3c];
       let k = 0;
       pines.forEach((t, i) => {
@@ -2547,8 +2608,7 @@ BR.World = class World {
           pm.setColorAt(k++, tc.setHex(PG[Math.floor(t.tone * PG.length)]).multiplyScalar(0.9 + tier * 0.06));
         }
       });
-      pm.instanceColor.needsUpdate = true;
-      scene.add(pm);
+
     }
 
     // Cars: one modelled, vertex-coloured mesh per car (shared geometry per paint colour)
@@ -2557,6 +2617,7 @@ BR.World = class World {
       m.position.set(c.x, 0, c.z); m.rotation.y = (c.axis === 'x' ? 0 : Math.PI / 2) + (c.flip ? Math.PI : 0);
       m.matrixAutoUpdate = false; m.updateMatrix();
       scene.add(m);
+      this.addChunk(m, m.position, 3);
     }
 
     // ---- Natural rock: ridges / rocks / ledges are hidden collision boxes drawn as jittered,
@@ -2611,46 +2672,46 @@ BR.World = class World {
     }
     if (chunks.length) {
       const geos = [rockGeo(11), rockGeo(29)], mats = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-      const half = Math.ceil(chunks.length / 2), meshes = geos.map((gg, i) => new THREE.InstancedMesh(gg, mats, i ? chunks.length - half : half));
+      const half = Math.ceil(chunks.length / 2), meshes = geos.map((gg, i) => this.collector(gg, mats, i ? chunks.length - half : half));
       const rcol = new THREE.Color();
       chunks.forEach((q, i) => {
         const m = meshes[i < half ? 0 : 1], j = i < half ? i : i - half;
         o.position.set(q.x, q.y, q.z); o.rotation.set(q.rx || 0, q.ry, (q.rx || 0) * 0.7); o.scale.set(q.sx, q.sy, q.sz); o.updateMatrix();
         m.setMatrixAt(j, o.matrix); m.setColorAt(j, rcol.setRGB(0.55 * q.tone + 0.05, 0.56 * q.tone + 0.05, 0.53 * q.tone + 0.04).multiplyScalar(1.15));
       });
-      meshes.forEach(m => { m.instanceColor.needsUpdate = true; scene.add(m); });
+
     }
 
     // Props from the dressing pass (instanced: one draw call each)
     const P = this.props, col = new THREE.Color();
     const inst = (geo, mat, list, place) => {
       if (!list.length) return null;
-      const m = new THREE.InstancedMesh(geo, mat, list.length);
+      const m = this.collector(geo, mat, list.length);
       list.forEach((q, i) => { place(q, i); o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
-      scene.add(m); return m;
+      return m;
     };
-    // oil drums with lids and rib bands
+    // Props with two-tone vertex colours (one draw call per tile instead of several):
+    // drums with dark rib bands, logs with cut ends, stumps with ring tops
+    const twoTone = (geo, sideHex, capHex, extra) => {
+      const g = geo.toNonIndexed(); const parts = [g].concat(extra || []); let n = 0; parts.forEach(q => n += q.attributes.position.count);
+      const P = new Float32Array(n * 3), N = new Float32Array(n * 3), C = new Float32Array(n * 3), cs = new THREE.Color(sideHex), cc = new THREE.Color(capHex), cr = new THREE.Color(0x2a2d33);
+      let o2 = 0;
+      parts.forEach((q, pi) => { const pa = q.attributes.position, na = q.attributes.normal;
+        for (let i = 0; i < pa.count; i++, o2++) { P.set([pa.getX(i), pa.getY(i), pa.getZ(i)], o2 * 3); N.set([na.getX(i), na.getY(i), na.getZ(i)], o2 * 3);
+          const c3 = pi > 0 ? cr : Math.abs(na.getY(i)) > 0.9 ? cc : cs; C.set([c3.r, c3.g, c3.b], o2 * 3); } });
+      const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.BufferAttribute(P, 3)); out.setAttribute('normal', new THREE.BufferAttribute(N, 3)); out.setAttribute('color', new THREE.BufferAttribute(C, 3)); out.computeBoundingSphere(); return out;
+    };
     const BC = [0x2f6fa8, 0xb8433f, 0x3f7a4a, 0x8a5a32];
-    const drum = inst(new THREE.CylinderGeometry(0.3, 0.3, 0.95, 12), new THREE.MeshLambertMaterial({ color: 0xffffff }), P.barrels, q => {
+    const ribs = [0.3 - 0.475, 0.65 - 0.475].map(y => new THREE.CylinderGeometry(0.315, 0.315, 0.05, 12).toNonIndexed().translate(0, y, 0));
+    const drum = inst(twoTone(new THREE.CylinderGeometry(0.3, 0.3, 0.95, 12), 0xffffff, 0xd8d8d8, ribs), new THREE.MeshLambertMaterial({ vertexColors: true }), P.barrels, q => {
       o.position.set(q.x, q.tip ? 0.3 : 0.475, q.z); o.scale.set(1, 1, 1); o.rotation.set(q.tip ? Math.PI / 2 : 0, q.x * 3, 0);
     });
-    if (drum) { P.barrels.forEach((q, i) => drum.setColorAt(i, col.setHex(BC[q.c]))); drum.instanceColor.needsUpdate = true; }
-    const ribG = new THREE.CylinderGeometry(0.315, 0.315, 0.05, 12);
-    for (const yy of [0.3, 0.65]) inst(ribG, new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), P.barrels.filter(q => !q.tip), q => {
-      o.position.set(q.x, yy, q.z); o.scale.set(1, 1, 1); o.rotation.set(0, 0, 0);
-    });
-    // logs (bark) + their cut ends, stumps with rings
-    const bark = new THREE.MeshLambertMaterial({ color: 0x5e4129, flatShading: true }), cut = new THREE.MeshLambertMaterial({ color: 0xc9a46c });
-    inst(new THREE.CylinderGeometry(1, 1, 1, 9), bark, P.logs, q => {
+    if (drum) P.barrels.forEach((q, i) => drum.setColorAt(i, col.setHex(BC[q.c])));
+    const woodMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    inst(twoTone(new THREE.CylinderGeometry(1, 1, 1, 9), 0x5e4129, 0xc9a46c), woodMat, P.logs, q => {
       o.position.set(q.x, q.r, q.z); o.scale.set(q.r, q.L, q.r); o.rotation.set(q.alongX ? 0 : Math.PI / 2, 0, q.alongX ? Math.PI / 2 : 0);
     });
-    const ends = [];
-    P.logs.forEach(q => { for (const sgn of [-1, 1]) ends.push({ x: q.x + (q.alongX ? sgn * q.L / 2 : 0), z: q.z + (q.alongX ? 0 : sgn * q.L / 2), r: q.r, alongX: q.alongX }); });
-    inst(new THREE.CylinderGeometry(1, 1, 0.04, 9), cut, ends, q => {
-      o.position.set(q.x, q.r, q.z); o.scale.set(q.r * 0.92, 1, q.r * 0.92); o.rotation.set(q.alongX ? 0 : Math.PI / 2, 0, q.alongX ? Math.PI / 2 : 0);
-    });
-    inst(new THREE.CylinderGeometry(0.85, 1, 1, 9), bark, P.stumps, q => { o.position.set(q.x, q.h / 2, q.z); o.scale.set(q.s, q.h, q.s); o.rotation.set(0, q.x, 0); });
-    inst(new THREE.CylinderGeometry(1, 1, 0.02, 9), cut, P.stumps, q => { o.position.set(q.x, q.h + 0.01, q.z); o.scale.set(q.s * 0.85, 1, q.s * 0.85); o.rotation.set(0, q.x, 0); });
+    inst(twoTone(new THREE.CylinderGeometry(0.85, 1, 1, 9), 0x5e4129, 0xc9a46c), woodMat, P.stumps, q => { o.position.set(q.x, q.h / 2, q.z); o.scale.set(q.s, q.h, q.s); o.rotation.set(0, q.x, 0); });
     // loose boulders round the rocks
     inst(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x8a8c86, flatShading: true }), P.boulders, q => {
       o.position.set(q.x, q.s * 0.45, q.z); o.scale.set(q.s * 1.2, q.s * 0.8, q.s); o.rotation.set(q.x, q.z, 0);
@@ -2673,9 +2734,9 @@ BR.World = class World {
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
     const nB = this.arena ? 0 : Math.floor(700 * detail), nG = this.arena ? 0 : Math.floor(5000 * detail);
-    const bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), nB * 3);
+    const bush = this.collector(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), nB * 3);
     const BG = [0x55803e, 0x4a7a3a, 0x5f8f42, 0x6b9446, 0x47703a], bc = new THREE.Color();
-    const tuft = new THREE.InstancedMesh(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
+    const tuft = this.collector(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x6f9a4a }), nG);
     let bi = 0, gi = 0;
     for (let tries = 0; tries < (nB + nG) * 2 && (bi < nB || gi < nG); tries++) {
       const x = (R() * 2 - 1) * (H - 4), z = (R() * 2 - 1) * (H - 4);
@@ -2695,11 +2756,11 @@ BR.World = class World {
     }
     bush.count = bi; tuft.count = gi;
     if (bush.instanceColor) bush.instanceColor.needsUpdate = true;
-    scene.add(bush, tuft);
+
     // Wildflower patches
     const nF = this.arena ? 0 : Math.floor(2400 * detail), FC = [0xf4f4f4, 0xf2d24a, 0xe0546a, 0x9a6ad9, 0xf28a3c];
     if (nF > 0) {
-      const fl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), nF);
+      const fl = this.collector(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), nF);
       let fi = 0;
       for (let tries = 0; tries < nF && fi < nF; tries++) {
         const px = (R() * 2 - 1) * (H - 6), pz = (R() * 2 - 1) * (H - 6);
@@ -2710,9 +2771,11 @@ BR.World = class World {
           o.updateMatrix(); fl.setMatrixAt(fi, o.matrix); fl.setColorAt(fi, col.setHex(c)); fi++;
         }
       }
-      fl.count = fi; if (fl.instanceColor) fl.instanceColor.needsUpdate = true;
-      scene.add(fl);
+      fl.count = fi;
     }
+    // build all the collected instanced scenery as culled 80 m tiles
+    for (const c of this._pend || []) c.flush(scene);
+    this._pend = [];
   }
 
   // Top-down picture of the map for the minimap.
@@ -5079,6 +5142,7 @@ BR.Models = (function () {
           const rise = smooth(t / 0.08), out = 1 - smooth((t - 0.6) / 0.4);
           oy += -(1 - rise) * 0.16 + out * rise * 0.06;
           ox += -out * rise * 0.06; oz += -out * 0.14;
+          ox += 0.18 * win(t, 0, 0.1, 0.5, 0.72); oy -= 0.02 * win(t, 0, 0.1, 0.5, 0.72);                           // the flip happens out to the right side
           orz += -out * 0.3; orx += out * 0.15;
           spinAng = easeInOut(t / 0.6) * Math.PI * 4;                       // starts right away
           ringW = win(t, 0, 0.07, 0.52, 0.68);                              // index finger in the ring while it rolls
@@ -5506,6 +5570,22 @@ BR.Models = (function () {
 // Actors; bots just get a `brain` (see bot.js) that fills in their input.
 // =============================================================================
 const SHARED = {};
+// Merge the meshes that sit directly in the same joint group and share a material into one
+// mesh (geometry baked into the group's space). Joints keep animating; far fewer draw calls.
+function collapseMeshes(group, skip) {
+  for (const ch of group.children.slice()) if (!ch.isMesh && ch !== skip) collapseMeshes(ch, skip);
+  const byMat = new Map();
+  for (const ch of group.children) if (ch.isMesh && !ch.isInstancedMesh) { if (!byMat.has(ch.material)) byMat.set(ch.material, []); byMat.get(ch.material).push(ch); }
+  for (const [mat, list] of byMat) {
+    if (list.length < 2) continue;
+    let n = 0; const parts = list.map(m => { m.updateMatrix(); const gg = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(m.matrix); n += gg.attributes.position.count; return gg; });
+    const P = new Float32Array(n * 3), N = new Float32Array(n * 3); let o = 0;
+    for (const gg of parts) { P.set(gg.attributes.position.array, o * 3); if (!gg.attributes.normal) gg.computeVertexNormals(); N.set(gg.attributes.normal.array, o * 3); o += gg.attributes.position.count; gg.dispose(); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); geo.computeBoundingSphere();
+    for (const m of list) group.remove(m);
+    group.add(new THREE.Mesh(geo, mat));
+  }
+}
 const _ikA = new THREE.Vector3(), _ikB = new THREE.Vector3(), _ikC = new THREE.Vector3(), _ikV = new THREE.Vector3();
 const _ikD = new THREE.Vector3(), _ikE = new THREE.Vector3(), _ikP = new THREE.Vector3(), _ikQ = new THREE.Quaternion();
 const _DOWN = new THREE.Vector3(0, -1, 0);
@@ -5776,6 +5856,7 @@ BR.Actor = class Actor {
     chute.position.y = 1.5; chute.visible = false;
     g.add(chute);
     g.userData = { body, upper, head, L, R, AR, AL, gun, mat, chute, t: 0, yaw: this.yaw, pitch: 0 };
+    collapseMeshes(g, gun);          // ~33 draw calls per bot -> ~14 (parts on the same joint share one mesh per material)
     return g;
   }
 
@@ -6349,7 +6430,7 @@ BR.Loot = class Loot {
     for (const it of this.items) {
       if (it.air) this.toss(it, dt, W);
       if (doCull) {
-        it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 70 && Math.abs(it.pos.z - viewer.z) < 70;
+        it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 50 && Math.abs(it.pos.z - viewer.z) < 50;
         const lb = it.mesh.userData.label;
         if (lb) lb.visible = it.mesh.visible && Math.abs(it.pos.x - viewer.x) + Math.abs(it.pos.z - viewer.z) < 18 && Math.abs(it.pos.y - viewer.y) < 6;
       }
@@ -8673,7 +8754,8 @@ BR.HUD = class HUD {
   }
 
   fps(v, on) {
-    this.set('fps', this.el.fps, on ? Math.round(v) + ' fps' : '');
+    const sc = BR.game && BR.game.perf ? Math.round(BR.game.perf.scale * 100) : 100;
+    this.set('fps', this.el.fps, on ? Math.round(v) + ' fps' + (sc < 100 ? ' · ' + sc + '% res' : '') : '');
   }
 
   killfeed(html, cls) {
@@ -8958,11 +9040,29 @@ BR.Game = class Game {
     requestAnimationFrame(t => this.loop(t));
   }
 
+  // Adaptive resolution: holds 60 fps. Dropped frames -> render a little smaller; smooth for a
+  // while -> creep back up, but never past a level that already stuttered. The HUD stays sharp.
+  adaptResolution(ms) {
+    const P = this.perf; if (!P || (this.state !== 'playing' && this.state !== 'dead' && this.state !== 'won')) return;
+    if (ms > 80) return;                                   // tab switch / hitch, not steady load
+    if (ms > 19.5) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);
+    if (P.slow > 12 && P.scale > 0.55) {
+      P.cap = Math.min(P.cap, P.scale - 0.01); P.scale = Math.max(0.55, P.scale * 0.88); P.slow = 0; P.good = 0; P.calm = 0;
+      this.renderer.setPixelRatio(this.basePR * P.scale); this.resize();
+    } else if (ms < 18) {
+      P.good += ms / 1000; P.calm = (P.calm || 0) + ms / 1000;
+      if (P.calm > 30 && P.cap < 1) { P.cap = Math.min(1, P.cap + 0.05); P.calm = 0; }   // a one-off hitch doesn't cap you forever
+      if (P.good > 8 && P.scale < P.cap) { P.scale = Math.min(P.cap, P.scale * 1.06); P.good = 0; this.renderer.setPixelRatio(this.basePR * P.scale); this.resize(); }
+    } else P.good = 0;
+  }
+
   baseFov() { return this.settings.fov || BR.CONFIG.camera.fov; }
 
   applyGraphics() {
     const g = BR.CONFIG.graphics[this.settings.gfx] || BR.CONFIG.graphics.medium;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, g.pixelRatio));
+    this.basePR = Math.min(window.devicePixelRatio || 1, g.pixelRatio);
+    this.perf = { scale: 1, cap: 1, slow: 0, good: 0 };
+    this.renderer.setPixelRatio(this.basePR);
     this.fogFar = g.fogFar;
     this.detail = g.detail;
     if (this.scene && this.scene.fog) this.scene.fog.far = g.fogFar;
@@ -9326,6 +9426,7 @@ BR.Game = class Game {
     let dt = (now - this.last) / 1000;
     this.last = now;
     if (!(dt > 0)) dt = 0.016;
+    this.adaptResolution(dt * 1000);
     this.fpsAcc += dt; this.fpsN++;
     if (this.fpsAcc > 0.5) { this.fpsVal = this.fpsN / this.fpsAcc; this.fpsAcc = 0; this.fpsN = 0; }
     dt = Math.min(dt, 0.05);
@@ -9922,6 +10023,8 @@ BR.Game = class Game {
     r.clear();
     if (this.state === 'shop') { r.render(this.shopScene, this.shopCam); return; }
     if (!this.scene) return;
+    // skip map tiles past the fog (invisible anyway)
+    if (this.world && this.scene.fog) this.world.cullChunks(this.camera.position.x, this.camera.position.z, this.scene.fog.far + 30);
     r.render(this.scene, this.camera);
     if ((this.state === 'playing' || this.state === 'won' || this.state === 'paused') && this.player && this.player.alive) {
       r.clearDepth();

@@ -240,6 +240,7 @@
           const rise = smooth(t / 0.08), out = 1 - smooth((t - 0.6) / 0.4);
           oy += -(1 - rise) * 0.16 + out * rise * 0.06;
           ox += -out * rise * 0.06; oz += -out * 0.14;
+          ox += 0.18 * win(t, 0, 0.1, 0.5, 0.72); oy -= 0.02 * win(t, 0, 0.1, 0.5, 0.72);                           // the flip happens out to the right side
           orz += -out * 0.3; orx += out * 0.15;
           spinAng = easeInOut(t / 0.6) * Math.PI * 4;                       // starts right away
           ringW = win(t, 0, 0.07, 0.52, 0.68);                              // index finger in the ring while it rolls

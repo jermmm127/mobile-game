@@ -396,6 +396,20 @@ const server = http.createServer((req, res) => {
     return { seconds: n / 30, alive: g.aliveCount(), msPerStep: (performance.now() - t0) / n };
   });
 
+  // performance: tiled + culled world, draw-call budget, adaptive resolution
+  const perf = await page.evaluate(() => {
+    const g = BR.game; g.settings.bots = 29; g.startMatch(); g.player.takeDamage = () => false;
+    for (let i = 0; i < 30 * 30; i++) g.update(1 / 30);
+    const W = g.world, info = g.renderer.info; info.autoReset = false;
+    let calls = 0, tris = 0;
+    for (let i = 0; i < 10; i++) { info.reset(); g.render(); calls += info.render.calls; tris += info.render.triangles; }
+    info.autoReset = true;
+    W.cullChunks(0, 0, 100); const hidden = W.chunks.filter(c => !c.obj.visible).length;
+    const P = g.perf, s0 = P.scale; g.state = 'playing';
+    for (let i = 0; i < 40; i++) g.adaptResolution(28);
+    const dropped = P.scale; for (let i = 0; i < 700; i++) g.adaptResolution(16);
+    return { chunks: W.chunks.length, hidden, calls: calls / 10, tris: Math.round(tris / 10), s0, dropped, recovered: P.scale, cap: P.cap, botMeshes: g.actors[1].mesh ? (() => { let n = 0; g.actors[1].mesh.traverse(o => { if (o.isMesh) n++; }); return n; })() : 0 };
+  });
   const run = 7.4, BR_RUN = run;
   const checks = [
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
@@ -467,10 +481,12 @@ const server = http.createServer((req, res) => {
     ['duel: rounds score, loadout menu between rounds, new loadout applies', duel.round1 === '1-0' && duel.loadoutMenu && duel.newLoadout],
     ['duel: time-out goes to more HP; first to N ends with rematch', duel.timeout && duel.end],
     ['mythic blueprints exist for every weapon and animate', duel.mythic >= 9 && duel.mythicAnim],
+    ['performance: tiled world culled past the fog, < 200 draw calls, lean bots', perf.chunks > 20 && perf.hidden > 5 && perf.calls < 200 && perf.botMeshes < 26],
+    ['adaptive resolution drops on slow frames and recovers (capped)', perf.dropped < perf.s0 && perf.recovered > perf.dropped && perf.recovered <= perf.cap + 1e-9],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ mech, combat, acct, extra, death, queue, duel, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

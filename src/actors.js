@@ -4,6 +4,22 @@
 // Actors; bots just get a `brain` (see bot.js) that fills in their input.
 // =============================================================================
 const SHARED = {};
+// Merge the meshes that sit directly in the same joint group and share a material into one
+// mesh (geometry baked into the group's space). Joints keep animating; far fewer draw calls.
+function collapseMeshes(group, skip) {
+  for (const ch of group.children.slice()) if (!ch.isMesh && ch !== skip) collapseMeshes(ch, skip);
+  const byMat = new Map();
+  for (const ch of group.children) if (ch.isMesh && !ch.isInstancedMesh) { if (!byMat.has(ch.material)) byMat.set(ch.material, []); byMat.get(ch.material).push(ch); }
+  for (const [mat, list] of byMat) {
+    if (list.length < 2) continue;
+    let n = 0; const parts = list.map(m => { m.updateMatrix(); const gg = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(m.matrix); n += gg.attributes.position.count; return gg; });
+    const P = new Float32Array(n * 3), N = new Float32Array(n * 3); let o = 0;
+    for (const gg of parts) { P.set(gg.attributes.position.array, o * 3); if (!gg.attributes.normal) gg.computeVertexNormals(); N.set(gg.attributes.normal.array, o * 3); o += gg.attributes.position.count; gg.dispose(); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); geo.computeBoundingSphere();
+    for (const m of list) group.remove(m);
+    group.add(new THREE.Mesh(geo, mat));
+  }
+}
 const _ikA = new THREE.Vector3(), _ikB = new THREE.Vector3(), _ikC = new THREE.Vector3(), _ikV = new THREE.Vector3();
 const _ikD = new THREE.Vector3(), _ikE = new THREE.Vector3(), _ikP = new THREE.Vector3(), _ikQ = new THREE.Quaternion();
 const _DOWN = new THREE.Vector3(0, -1, 0);
@@ -274,6 +290,7 @@ BR.Actor = class Actor {
     chute.position.y = 1.5; chute.visible = false;
     g.add(chute);
     g.userData = { body, upper, head, L, R, AR, AL, gun, mat, chute, t: 0, yaw: this.yaw, pitch: 0 };
+    collapseMeshes(g, gun);          // ~33 draw calls per bot -> ~14 (parts on the same joint share one mesh per material)
     return g;
   }
 

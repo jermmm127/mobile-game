@@ -153,7 +153,7 @@ BR.Loot = class Loot {
     for (const it of this.items) {
       if (it.air) this.toss(it, dt, W);
       if (doCull) {
-        it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 70 && Math.abs(it.pos.z - viewer.z) < 70;
+        it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 50 && Math.abs(it.pos.z - viewer.z) < 50;
         const lb = it.mesh.userData.label;
         if (lb) lb.visible = it.mesh.visible && Math.abs(it.pos.x - viewer.x) + Math.abs(it.pos.z - viewer.z) < 18 && Math.abs(it.pos.y - viewer.y) < 6;
       }
