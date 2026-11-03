@@ -442,9 +442,9 @@
           if (q.kind === 'heal') { p.health = Math.min(BR.CONFIG.actor.maxHealth, p.health + 25); BR.Audio.pickup(); continue; }
           this.xp += q.v * greed;
           if (Math.random() < 0.5) BR.Audio.pop && BR.Audio.pop(0.12);
-          while (this.xp >= need(this.level)) { this.xp -= need(this.level); this.level++; this.pendingLv++; g.fx.burst(new THREE.Vector3(p.pos.x, p.pos.y + 1, p.pos.z), [0x45e0ff, 0xffd24a, 0xffffff], 30, 6, 0.08, 0.6, -1); }
         }
       }
+      while (this.xp >= need(this.level)) { this.xp -= need(this.level); this.level++; this.pendingLv++; g.fx.burst(new THREE.Vector3(p.pos.x, p.pos.y + 1, p.pos.z), [0x45e0ff, 0xffd24a, 0xffffff], 30, 6, 0.08, 0.6, -1); }
       if (this.gems.length > 260) { const q = this.gems.shift(); this.root.remove(q.m); this.xp += q.v; }   // too many on the floor: auto-collect the oldest
     }
 

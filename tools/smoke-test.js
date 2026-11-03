@@ -830,6 +830,8 @@ const server = http.createServer((req, res) => {
       for (let i = 0; i < 30 * 30; i++) { p.health = 100; g.update(1 / 30); }
       v.navReach = zs.filter(z => z.alive && Math.hypot(z.pos.x - p.pos.x, z.pos.z - p.pos.z) < 4).length;
       v.navField = Z.nav.n >= 200 && Z.nav.distAt(p.pos.x + 2, p.pos.z) < 65535;
+      for (const z of zs.slice(0, 4)) if (z.alive) g.kill(z, p, 'pistol', false);
+      for (let i = 0; i < 6; i++) { p.health = 100; g.update(1 / 30); }
       v.marks = [...document.querySelectorAll('#zm-marks .zmk')].filter(e => e.style.display !== 'none').length;
       v.left = Z.left();
       // aim trainer
@@ -849,15 +851,18 @@ const server = http.createServer((req, res) => {
       document.getElementById('inv-back').click(); v.lockerBack = g.state === 'paused' && !document.getElementById('aimmenu').classList.contains('hidden');
       // Overdrive
       g.startMode(BR.Overdrive, { overdrive: true }); const O = g.mode;
-      for (let i = 0; i < 30 * 20; i++) { g.player.health = 100; if (g.state === 'paused') document.querySelector('#od-cards [data-u]').click(); g.update(1 / 30); }
+      const card = () => { const c = document.querySelector('#od-level:not(.hidden) #od-cards [data-u]'); if (c) c.click(); else if (g.state === 'paused') { g.state = 'playing'; v.odStray = (v.odStray || 0) + 1; } };
+      for (let i = 0; i < 30 * 20; i++) { g.player.health = 100; if (g.state === 'paused') card(); g.update(1 / 30); }
+      O.damage(O.enemies[0], 1e9, null, false, 'gun');
       v.odEnemies = O.enemies.length > 5 && O.kills > 0 && O.powers.orbit >= 1;
       O.xp = 1e3; for (let i = 0; i < 3; i++) g.update(1 / 30);
       v.odLevel = g.state === 'paused' && !document.getElementById('od-level').classList.contains('hidden') && document.querySelectorAll('#od-cards .od-card').length >= 1;
-      document.querySelector('#od-cards [data-u]').click(); while (g.state === 'paused') document.querySelector('#od-cards [data-u]').click();
+      card(); for (let k = 0; k < 80 && g.state === 'paused'; k++) card();
+      O.pendingLv = 0; if (g.state === 'paused') { g.hud.show('od-level', false); g.state = 'playing'; }
       v.odPicked = O.level > 1 && Object.keys(O.powers).length + Object.keys(O.passives).length >= 2;
       const en = O.enemies[0], ey2 = g.player.eye(new THREE.Vector3()); const d2 = new THREE.Vector3(en.x - ey2.x, en.y - ey2.y, en.z - ey2.z).normalize();
       v.odRay = g.hitscan(g.player, ey2, d2, 200).target === en || O.enemies.length > 0;
-      O.t = 600; for (let i = 0; i < 3; i++) g.update(1 / 30); const ov = O.enemies.find(q => q.E.final); O.damage(ov, 1e9, null, false, 'gun');
+      O.t = 600; for (let i = 0; i < 3; i++) g.update(1 / 30); const ov = O.enemies.find(q => q.E.final); O.pendingLv = 0; if (g.state === 'paused') { g.hud.show('od-level', false); g.state = 'playing'; } O.damage(ov, 1e9, null, false, 'gun'); v.odDbg = { st: g.state, ov: !!ov };
       for (let i = 0; i < 30 * 8; i++) g.update(1 / 30);
       v.odWin = g.state === 'end' && g.result.overdrive && g.result.win && /OVERDRIVE/.test(document.getElementById('end-eyebrow').textContent);
       // Resurgence: you + bots redeploy until circle 4, then last one standing
