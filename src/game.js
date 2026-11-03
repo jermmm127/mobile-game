@@ -151,6 +151,7 @@ BR.Game = class Game {
 
   // ------------------------------------------------------------ scene setup
   buildScene(seed, demo, opts) {
+    if (this.zm) { this.zm.dispose(); this.zm = null; document.body.classList.remove('zombies'); }
     if (this.scene) this.disposeScene();
     const fogCol = 0xbfcfda;                                    // matches the sky dome's horizon band
     this.scene = new THREE.Scene();
@@ -293,6 +294,28 @@ BR.Game = class Game {
     this.hud.show('menu', false); this.hud.show('end', false); this.hud.show('pause', false); this.hud.show('duelmenu', false);
     this.hud.show('play', true);
     this.startRound();
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
+  }
+
+  // ---- Zombies: endless rounds on the Halloween graveyard (see zombies.js)
+  startZombies() {
+    const C = BR.CONFIG;
+    this.endVictory(); this.freezeT = 0; this.hud.freeze(false);
+    this.duel = null; document.body.classList.remove('duel', 'practice');
+    this.buildScene(Math.floor(Math.random() * 1e9), false, { halloween: true });
+    this.diff = C.difficulty.normal; this.practice = false; this.result = null;
+    document.body.classList.add('zombies');
+    this.zone.mesh.visible = false;
+    this.zm = new BR.ZombieMode(this);
+    this.zm.start();
+    this.total = 1; this.swapItem = null; this.lastPoi = this.world.pois[0];
+    this.hud.toggleMap(false);
+    this.hud.show('menu', false); this.hud.show('end', false); this.hud.show('pause', false); this.hud.show('duelmenu', false);
+    this.hud.show('play', true);
+    this.input.reset();
+    this.cam.off = C.actor.standHeight - C.actor.eyeFromTop; this.cam.fov = this.baseFov();
+    this.state = 'playing'; this.last = performance.now();
+    this.applyShadows();
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
   }
 
@@ -481,6 +504,7 @@ BR.Game = class Game {
   }
   toMenu() {
     this.state = 'menu';
+    if (this.zm) { this.zm.dispose(); this.zm = null; document.body.classList.remove('zombies'); }
     if (this.duel) { this.duel = null; document.body.classList.remove('duel'); this.hud.show('duelmenu', false); }
     this.input.unlock();
     this.hud.show('pause', false);
@@ -518,7 +542,7 @@ BR.Game = class Game {
     for (const a of this.actors) if (a.brain && a.alive && !frozen) a.brain.update(dt);
     for (const a of this.actors) a.update(dt);
     for (const a of this.actors) {
-      if (!a.alive || a.mover.dropping) continue;
+      if (!a.alive || a.mover.dropping || a.zombie) continue;
       a.pickupT -= dt;
       if (a.pickupT <= 0) {
         a.pickupT = 0.12;
@@ -526,7 +550,7 @@ BR.Game = class Game {
         if (a === this.player) this.swapItem = s;
       }
     }
-    if (!this.practice && !this.duel) {
+    if (!this.practice && !this.duel && !this.zm) {
       this.zone.update(dt);
       const dps = this.zone.dps;
       for (const a of this.actors) {
@@ -565,7 +589,7 @@ BR.Game = class Game {
     this.chest = p.alive && !p.mover.dropping ? this.loot.nearestChest(p, 2.2) : null;
     if (this.chest) this.hud.prompt('Open chest');
     else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
-    else this.hud.prompt(null);
+    else if (!this.zm) this.hud.prompt(null);
 
     // Player parachute (look up to see it)
     const pc = this.playerChute;
@@ -595,6 +619,7 @@ BR.Game = class Game {
 
     // Match end
     if (this.duel) this.updateDuel(dt);
+    else if (this.zm && this.state === 'playing') this.zm.update(dt);
     else if (this.state === 'playing') {
       if (!p.alive && this.practice) {
         // Practice: respawn where you fell after a moment
@@ -751,6 +776,7 @@ BR.Game = class Game {
     if (inp.consume('interact')) {
       if (this.chest && !this.chest.taken) { this.loot.openChest(p, this.chest); this.chest = null; }
       else if (this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; }
+      else if (this.zm) this.zm.interact();
     }
     if (inp.consume('pause')) this.pause();
     if (inp.consume('map')) this.hud.toggleMap();
@@ -829,16 +855,18 @@ BR.Game = class Game {
     const box = this._hb || (this._hb = {});
     for (const a of this.actors) {
       if (a === shooter || !a.alive) continue;
-      const m = a.mover;
-      const cx = m.pos.x, cy = m.pos.y + m.h * 0.5, cz = m.pos.z;
+      const m = a.mover, HB = a.hitbox;                 // optional custom hitbox (giant zombie bosses)
+      const bh = HB ? HB.h : m.h, br = HB ? HB.r : 0.34, hr = HB ? HB.headR : 0.24, hy = HB ? HB.headY : bh - 0.2;
+      const cx = m.pos.x, cy = m.pos.y + bh * 0.5, cz = m.pos.z;
       const lx = cx - o.x, ly = cy - o.y, lz = cz - o.z;
       const tc = lx * d.x + ly * d.y + lz * d.z;
-      if (tc < -1 || tc > best + 1) continue;
-      if (lx * lx + ly * ly + lz * lz - tc * tc > 4.8) continue;
-      const th = U.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, cx, m.pos.y + m.h - 0.2, cz, 0.24, best);
+      if (tc < -1 - bh || tc > best + 1 + bh) continue;
+      const cull = HB ? (bh * 0.5 + br + hr + 0.5) ** 2 : 4.8;
+      if (lx * lx + ly * ly + lz * lz - tc * tc > cull) continue;
+      const th = U.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, cx, m.pos.y + hy, cz, hr, best);
       if (th < best) { best = th; actor = a; head = true; }
-      box.x0 = cx - 0.34; box.x1 = cx + 0.34; box.z0 = cz - 0.34; box.z1 = cz + 0.34;
-      box.y0 = m.pos.y; box.y1 = m.pos.y + m.h - 0.4;
+      box.x0 = cx - br; box.x1 = cx + br; box.z0 = cz - br; box.z1 = cz + br;
+      box.y0 = m.pos.y; box.y1 = m.pos.y + (HB ? HB.bodyTop : m.h - 0.4);
       const tb = U.rayAABB(o.x, o.y, o.z, ix, iy, iz, box, best);
       if (tb < best) { best = tb; actor = a; head = false; }
     }
@@ -872,8 +900,10 @@ BR.Game = class Game {
     if (!victim.alive) return;
     if (victim.isPlayer && attacker && !attacker.isPlayer) dmg *= this.diff.playerDamageMult;
     else if (!victim.isPlayer && attacker && !attacker.isPlayer) dmg *= BR.CONFIG.match.botVsBotDamage;
+    if (this.zm && attacker && attacker.isPlayer) dmg *= this.zm.damageMult(victim);       // Insta-Kill
     const shieldBefore = victim.shield;
     const died = victim.takeDamage(dmg);
+    if (this.zm && attacker && attacker.isPlayer && victim.zombie) this.zm.onHit(victim, dmg, head);
     const shieldHit = shieldBefore > 0;
     if (attacker) attacker.damageDealt += dmg;
     victim.lastAttacker = attacker;
@@ -907,9 +937,10 @@ BR.Game = class Game {
     victim.fireHeld = false;
     if (victim.mover.grapple) victim.mover.releaseGrapple();
     if (killer) killer.kills++;
-    this.loot.dropAll(victim);
+    if (!this.zm) this.loot.dropAll(victim);
     victim.dieVisual();
     if (this.demo) return;
+    if (this.zm) { this.zm.onKill(victim, killer, weaponId, head); return; }
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const nm = a => `<b class="${a.isPlayer ? 'me' : ''}">${esc(a.name)}</b>`;
     const how = weaponId === 'storm' ? 'storm' : weaponId === 'shockwave' ? 'Shockwave' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');

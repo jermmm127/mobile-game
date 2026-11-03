@@ -729,6 +729,60 @@ const server = http.createServer((req, res) => {
       tiger.traverse(o => { if (o.material && o.material.map && o.material.envMap) envT++; }); gold.traverse(o => { if (o.material && o.material.reflectivity >= 0.4) envG++; });
       out.v183 = { pauseHid, pauseBack, font, frz, held, after, shotgunRpm: C.weapons.shotgun.rpm, lift: C.shockwave.lift, envT, envG,
         meleeHidden: (() => { document.getElementById('btn-inv').click(); document.querySelector('#inv-tabs button[data-cat="skins"]').click(); const h = document.getElementById('inv-melee').classList.contains('hidden'); document.querySelector('#inv-tabs button[data-cat="blueprints"]').click(); const v = !document.getElementById('inv-melee').classList.contains('hidden'); document.getElementById('inv-back').click(); return h && v; })() }; }
+    // v1.9.0: zombies mode
+    { const zr = {};
+      zr.card = !!document.getElementById('btn-zombies');
+      document.getElementById('btn-zombies').click();
+      const p = g.player, Z = g.zm; let taken = 0; const td = p.takeDamage.bind(p); p.takeDamage = (a, bs) => { taken += a; return td(a, bs); };
+      zr.map = g.world.halloween && (g.world.zmSpawns || []).length >= 10 && Z.buys.length >= 4 && document.body.classList.contains('zombies');
+      for (let i = 0; i < 60 * 5; i++) g.update(1 / 60);
+      zr.round1 = Z.round === 1 && Z.zombies.length > 0 && !document.getElementById('zm-hud').classList.contains('hidden');
+      const z0 = Z.zombies.find(z => z.alive); const d0 = z0.pos.distanceTo(p.pos);
+      for (let i = 0; i < 60 * 3; i++) g.update(1 / 60);
+      zr.chase = Z.zombies.every(z => !z.alive || z.brain.target === p) && z0.pos.distanceTo(p.pos) < d0 - 1;
+      // a zombie next to you swipes
+      p.health = 100; p.shield = 0; taken = 0; const zz = Z.spawnZombie({ x: p.pos.x + 0.9, z: p.pos.z }, 0);
+      for (let i = 0; i < 60 * 2; i++) g.update(1 / 60);
+      zr.swipe = taken > 0;
+      // clear the round: kill everything that's left
+      p.takeDamage = () => false; let pts0 = Z.points;
+      const killAll = () => { for (const z of Z.zombies.slice()) if (z.alive) g.applyDamage(z, p, 1e6, true, { x: z.pos.x, y: z.pos.y + 1.6, z: z.pos.z }, 'pistol'); };
+      for (let k = 0; k < 40 && Z.round === 1; k++) { Z.toSpawn = 0; killAll(); for (let i = 0; i < 30; i++) g.update(1 / 60); }
+      zr.points = Z.points > pts0; zr.kills = Z.kills > 0;
+      for (let i = 0; i < 60 * 9 && Z.round < 2; i++) g.update(1 / 60);
+      const s1 = BR.zombieRoundStats(1), s5 = BR.zombieRoundStats(5), s15 = BR.zombieRoundStats(15);
+      zr.round2 = Z.round === 2; zr.scales = s5.hp > s1.hp && s15.hp > s5.hp && s5.count > s1.count && s15.mix[2] > s5.mix[2];
+      // jump to round 9 and clear it -> round 10 brings a boss
+      Z.round = 9; Z.toSpawn = 0; killAll(); for (let i = 0; i < 60 * 3; i++) g.update(1 / 60);
+      for (let i = 0; i < 60 * 10 && Z.round < 10; i++) g.update(1 / 60);
+      for (let i = 0; i < 60 * 3; i++) g.update(1 / 60);
+      zr.boss = Z.round === 10 && !!Z.boss && Z.boss.boss === 'pumpkin' && !document.getElementById('zm-boss').classList.contains('hidden');
+      // boss takes damage, dies, pays out
+      if (Z.boss) { const bo = Z.boss; pts0 = Z.points; g.applyDamage(bo, p, 50, true, { x: bo.pos.x, y: bo.pos.y + 3.4, z: bo.pos.z }, 'rifle'); const hit = bo.health < bo.maxHp;
+        g.applyDamage(bo, p, 1e7, false, { x: bo.pos.x, y: bo.pos.y + 1, z: bo.pos.z }, 'rifle'); zr.bossDies = hit && !bo.alive && Z.points >= pts0 + 2000 && Z.powers.length >= 2 && !Z.boss; }
+      // every boss type runs its moves
+      zr.moves = {};
+      for (const t of ['pumpkin', 'banshee', 'colossus', 'plague']) {
+        Z.round = { pumpkin: 10, banshee: 20, colossus: 30, plague: 40 }[t];
+        const bo = new BR.ZBoss(g, Z, t, Z.round); bo.mover.pos.set(p.pos.x, 0, p.pos.z - 6); bo.riseT = 0; g.scene.add(bo.mesh); Z.zombies.push(bo); g.actors.push(bo); Z.boss = bo;
+        const seen = new Set(); for (let i = 0; i < 60 * 14; i++) { Z.toSpawn = 0; g.update(1 / 60); if (bo.move) seen.add(bo.move.id); }
+        zr.moves[t] = seen.size; bo.alive = false; bo.deathT = g.time - 5; Z.boss = null;
+      }
+      // power-ups
+      Z.dropPower(p.pos.clone(), 'instakill'); for (let i = 0; i < 10; i++) g.update(1 / 60);
+      const w = p.slots[0]; w.mag = 1; Z.dropPower(p.pos.clone(), 'maxammo'); for (let i = 0; i < 10; i++) g.update(1 / 60);
+      zr.powers = Z.insta > 0 && w.mag === w.def.mag;
+      // wall buy
+      const by = Z.buys.find(x => x.wid === 'smg'); Z.points = 5000; p.mover.pos.set(by.x, g.world.groundAt(by.x, by.z, 3), by.z); g.update(1 / 60);
+      const promptOk = /Buy/.test(document.getElementById('prompt') ? document.getElementById('prompt').textContent : 'Buy');
+      g.input.press('interact'); g.update(1 / 60);
+      zr.buy = promptOk && p.hasWeapon('smg') && Z.points === 5000 - by.cost;
+      // death ends the run on the round reached
+      p.takeDamage = td; Z.phase = 'fight'; g.applyDamage(p, Z.zombies.find(z => z.alive) || null, 1e6, false, { x: p.pos.x, y: p.pos.y + 1, z: p.pos.z }, 'zombie');
+      for (let i = 0; i < 60 * 4 && g.state !== 'end'; i++) g.update(1 / 60);
+      zr.death = g.state === 'end' && g.result && g.result.zombies && /ROUND/.test(document.getElementById('end-place').textContent);
+      g.hud.show('end', false);
+      out.zm = zr; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -858,6 +912,9 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['zombies: Halloween map, round 1 starts, zombies rise and chase the player and swipe', v17.zm.card && v17.zm.map && v17.zm.round1 && v17.zm.chase && v17.zm.swipe],
+    ['zombies: points + kills, rounds advance and get stronger, boss on round 10 with a health bar', v17.zm.points && v17.zm.kills && v17.zm.round2 && v17.zm.scales && v17.zm.boss && v17.zm.bossDies],
+    ['zombies: all four bosses use their moves; power-ups, wall buys, death ends the run', Object.values(v17.zm.moves).every(n => n >= 2) && v17.zm.powers && v17.zm.buy && v17.zm.death],
     ['pause -> settings hides the pause menu and BACK restores it', v17.v183.pauseHid && v17.v183.pauseBack],
     ['last-kill freeze frame holds the world, then the victory show', v17.v183.frz && v17.v183.held && v17.v183.after],
     ['one font everywhere, slower shotgun, higher shockwave, camo finishes, melee picker only on blueprints', v17.v183.font && v17.v183.shotgunRpm < 80 && v17.v183.lift >= 28 && v17.v183.envT > 0 && v17.v183.envG > 0 && v17.v183.meleeHidden],

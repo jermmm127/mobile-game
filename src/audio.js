@@ -110,6 +110,19 @@ BR.Audio = {
   },
   // freeze frame: a deep impact boom + a high suspended ring
   freeze() { this.tone(90, 30, 0.9, 0.5, 'sine'); this.burst(600, 0.7, 0.5, 0.3); this.tone(2637, 2637, 1.0, 0.07, 'sine'); this.tone(3951, 3950, 0.8, 0.04, 'sine'); },
+  // ---- zombies
+  zGroan(d) { const v = 0.12 / (1 + d / 6); this.tone(110 + Math.random() * 40, 70 + Math.random() * 20, 0.7, v, 'sawtooth'); this.burst(300, 2, 0.5, v * 0.6, 0, 'bandpass'); },
+  zSwipe() { this.burst(1200, 1, 0.12, 0.2, 0, 'bandpass'); this.tone(160, 60, 0.12, 0.2, 'sine'); },
+  zRound(start) { const N = start ? [196, 233, 196, 147] : [147, 175, 220, 294]; N.forEach((f, i) => setTimeout(() => { this.tone(f, f * 0.995, 0.9, 0.12, 'triangle'); this.tone(f / 2, f / 2, 1.1, 0.08, 'sine'); }, i * 260)); },
+  zRoar() { this.tone(90, 40, 1.4, 0.45, 'sawtooth'); this.burst(200, 0.8, 1.2, 0.35); this.tone(140, 70, 1.2, 0.2, 'square'); },
+  zScream() { this.tone(1400, 2200, 1.0, 0.18, 'sawtooth'); this.tone(1800, 900, 1.1, 0.12, 'sine'); this.burst(4000, 1.2, 0.9, 0.15, 0, 'bandpass'); },
+  zBlink() { this.tone(900, 200, 0.35, 0.15, 'sine'); this.burst(2500, 1.5, 0.3, 0.1, 0, 'bandpass'); },
+  zFire() { this.burst(800, 0.7, 0.4, 0.2); this.tone(220, 120, 0.3, 0.12, 'sawtooth'); },
+  zBoom(d) { const v = 0.4 / (1 + (d || 0) / 10); this.burst(500, 0.8, 0.6, v); this.tone(80, 40, 0.5, v, 'sine'); },
+  zCrows() { for (let i = 0; i < 6; i++) setTimeout(() => this.tone(1100 + Math.random() * 300, 700, 0.18, 0.1, 'sawtooth'), i * 120); },
+  zThunder() { this.burst(120, 0.5, 2.2, 0.35); this.burst(60, 0.4, 2.8, 0.25); },
+  zBuy() { this.tone(1046, 1046, 0.08, 0.14, 'square'); setTimeout(() => this.tone(1568, 1568, 0.16, 0.14, 'square'), 90); setTimeout(() => this.tone(2093, 2093, 0.2, 0.1, 'triangle'), 180); },
+  zPower() { [523, 659, 784, 1046, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, f, 0.14, 0.12, 'triangle'), i * 70)); },
   // firework pop (louder close up)
   pop(v) { this.burst(1400 + Math.random() * 1200, 0.9, 0.25, (v || 0.3) * 0.6); this.tone(220 + Math.random() * 80, 60, 0.3, (v || 0.3) * 0.5, 'sine'); setTimeout(() => this.burst(7000, 1.5, 0.4, (v || 0.3) * 0.18, 0, 'bandpass'), 90); },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },

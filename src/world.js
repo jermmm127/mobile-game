@@ -19,7 +19,9 @@ const PAL = {
 BR.World = class World {
   constructor(seed, opts) {
     const M = BR.CONFIG.map;
-    this.arena = !!(opts && opts.arena);
+    this.arena = !!(opts && (opts.arena || opts.halloween));
+    this.halloween = !!(opts && opts.halloween);
+    if (this.halloween) this.groundCols = [0x2b3820, 0x1f2a17, 0x3a3122];   // dead grass, mud
     this.size = this.arena ? 92 : M.size;
     this.half = M.size / 2;
     this.gridHalf = this.size / 2;     // collision grid spans this world's own size (the duel arena is 72 m)
@@ -41,7 +43,83 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [], rockFill: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    if (this.arena) this.generateArena(); else this.generate();
+    if (this.halloween) this.generateHalloween(); else if (this.arena) this.generateArena(); else this.generate();
+  }
+
+  // ------------------------------------------------------------------ zombies: Hollow Graves
+  // A walled Halloween graveyard (about 84 x 84 m): a ruined chapel with a bell tower in the
+  // north, four stone mausoleums, low crumbling walls you can vault, rows of headstones, an
+  // iron-gated south entrance. Zombie spawn holes ring the yard; wall-buy outlines sit on walls.
+  generateHalloween() {
+    const STONE = 0x4a4652, STONE2 = 0x3a3742, MOSS = 0x34402c, WOOD = 0x3b2a1e, IRON = 0x1c1b20, BONE = 0x8d8676, ROOF = 0x2a2530;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    const D = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    const R = this.rand, L = 42;
+    this.pois = [{ x: 0, z: 0, name: 'Hollow Graves', type: 'arena' }];
+    this.towns = [];
+    // perimeter: stone wall with a cap and iron fence spikes along the top
+    for (const s of [-1, 1]) {
+      B(-L, 0, s * L - 0.6, L, 3.2, s * L + 0.6, STONE2); D(-L, 3.2, s * L - 0.7, L, 3.45, s * L + 0.7, STONE);
+      B(s * L - 0.6, 0, -L, s * L + 0.6, 3.2, L, STONE2); D(s * L - 0.7, 3.2, -L, s * L + 0.7, 3.45, L, STONE);
+      for (let i = -L + 1; i < L; i += 1.4) { D(i - 0.04, 3.45, s * L - 0.04, i + 0.04, 4.5, s * L + 0.04, IRON); D(s * L - 0.04, 3.45, i - 0.04, s * L + 0.04, 4.5, i + 0.04, IRON); }
+    }
+    // south gate: two pillars with pumpkins on top (placed by the mode) and a closed iron gate
+    for (const x of [-4.5, 4.5]) { B(x - 0.9, 0, L - 1.2, x + 0.9, 4.6, L + 1.2, STONE); D(x - 1.05, 4.6, L - 1.35, x + 1.05, 4.9, L + 1.35, STONE2); }
+    for (let x = -3.4; x <= 3.4; x += 0.45) D(x - 0.05, 0, L - 0.1, x + 0.05, 3.9, L + 0.1, IRON);
+    D(-3.6, 3.0, L - 0.12, 3.6, 3.15, L + 0.12, IRON); D(-3.6, 1.0, L - 0.12, 3.6, 1.15, L + 0.12, IRON);
+    // ruined chapel (north): walls with door gaps, broken window holes, half-collapsed roof, bell tower
+    const cx = 0, cz = -22, cw = 9, cd = 7, ch = 6.5, t = 0.6;
+    B(cx - cw, 0, cz - cd, cx + cw, ch, cz - cd + t, STONE);                                    // back wall
+    B(cx - cw, 0, cz + cd - t, cx - 2, ch, cz + cd, STONE); B(cx + 2, 0, cz + cd - t, cx + cw, ch * 0.8, cz + cd, STONE);   // front with a door
+    B(cx - 2, 3.6, cz + cd - t, cx + 2, ch, cz + cd, STONE);
+    B(cx - cw, 0, cz - cd, cx - cw + t, ch, cz - 1.6, STONE); B(cx - cw, 0, cz + 1.6, cx - cw + t, ch * 0.7, cz + cd, STONE);  // west with a side door
+    B(cx + cw - t, 0, cz - cd, cx + cw, ch * 0.85, cz - 1.6, STONE); B(cx + cw - t, 0, cz + 1.6, cx + cw, ch, cz + cd, STONE);
+    D(cx - cw - 0.2, ch, cz - cd - 0.2, cx + 1, ch + 0.4, cz + cd + 0.2, ROOF);              // what's left of the roof
+    D(cx - 1, ch - 0.6, cz - cd, cx - 0.4, ch, cz + cd, WOOD); D(cx + 3, ch - 0.6, cz - cd, cx + 3.6, ch * 0.85, cz + cd, WOOD);
+    B(cx - 3, 0, cz - cd + t, cx + 3, 1.0, cz - cd + 2.2, STONE2);                            // altar step
+    D(cx - 0.15, 1.0, cz - cd + 1.0, cx + 0.15, 2.6, cz - cd + 1.3, BONE); D(cx - 0.7, 2.0, cz - cd + 1.0, cx + 0.7, 2.3, cz - cd + 1.3, BONE);   // cross
+    // bell tower on the north-east corner (climb it with the grapple)
+    B(cx + cw - 3.5, 0, cz - cd - 3.5, cx + cw + 0.5, 13, cz - cd + 0.5, STONE2);
+    D(cx + cw - 3.8, 13, cz - cd - 3.8, cx + cw + 0.8, 13.5, cz - cd + 0.8, STONE);
+    D(cx + cw - 3.0, 13.5, cz - cd - 3.0, cx + cw, 15.5, cz - cd, ROOF); D(cx + cw - 2.2, 15.5, cz - cd - 2.2, cx + cw - 0.8, 17.5, cz - cd - 0.8, ROOF);
+    // mausoleums: stepped stone roofs and a dark doorway
+    const crypt = (x, z, rot) => {
+      const w = 3, d = 3.5, h = 3.6;
+      B(x - w, 0, z - d, x + w, h, z + d, STONE);
+      D(x - w - 0.3, h, z - d - 0.3, x + w + 0.3, h + 0.35, z + d + 0.3, STONE2); D(x - w + 0.5, h + 0.35, z - d + 0.4, x + w - 0.5, h + 0.9, z + d - 0.4, STONE2);
+      D(x - w + 1.4, h + 0.9, z - d + 1, x + w - 1.4, h + 1.4, z + d - 1, ROOF);
+      const fz = rot > 0 ? z + d : z - d, n = rot > 0 ? 1 : -1;
+      D(x - 1.1, 0, fz - 0.05 * n, x + 1.1, 2.4, fz + 0.06 * n, 0x0c0b10);                 // black doorway
+      D(x - 1.5, 2.4, fz - 0.05 * n, x + 1.5, 2.7, fz + 0.2 * n, BONE);                     // lintel
+      for (const sx of [-1.4, 1.4]) D(x + sx - 0.22, 0, fz, x + sx + 0.22, 2.4, fz + 0.3 * n, STONE2);
+    };
+    crypt(-25, -18, 1); crypt(25, -18, 1); crypt(-25, 20, -1); crypt(25, 20, -1);
+    // low crumbling walls (vaultable) + coffins + a dead-tree stump ring
+    const lw = (x0, z0, x1, z1) => B(x0, 0, z0, x1, 1.0 + R() * 0.2, z1, MOSS);
+    lw(-14, 4, -6, 4.8); lw(6, 4, 14, 4.8); lw(-16, -6, -15.2, 2); lw(15.2, -6, 16, 2); lw(-10, 26, -3, 26.8); lw(3, 26, 10, 26.8);
+    lw(-36, -2, -30, -1.2); lw(30, 1.2, 36, 2);
+    for (const [x, z, a] of [[-8, 14, 0], [9, 13, 1], [0, 33, 0], [-30, 32, 1], [31, -31, 0]]) {
+      if (a) B(x - 0.5, 0, z - 1.1, x + 0.5, 0.75, z + 1.1, WOOD); else B(x - 1.1, 0, z - 0.5, x + 1.1, 0.75, z + 0.5, WOOD);
+    }
+    // headstones (visual only: rows across the yard, tilted a little by height variety) + grave mounds
+    for (let gx = -36; gx <= 36; gx += 4.2) for (let gz = -36; gz <= 38; gz += 5.2) {
+      if (Math.abs(gx) < 11 && gz > -31 && gz < -13) continue;             // chapel
+      if ((Math.abs(Math.abs(gx) - 25) < 5) && (Math.abs(Math.abs(gz) - 19) < 6)) continue;   // crypts
+      if (Math.abs(gx) < 6 && gz > 6 && gz < 30) continue;                 // the path up the middle
+      if (R() < 0.25) continue;
+      const x = gx + (R() - 0.5) * 1.2, z = gz + (R() - 0.5) * 1.2, hh = 0.6 + R() * 0.7, ww = 0.35 + R() * 0.25;
+      D(x - ww, 0, z - 0.09, x + ww, hh, z + 0.09, R() < 0.5 ? STONE : 0x5a5662);
+      if (R() < 0.35) D(x - 0.1, hh, z - 0.08, x + 0.1, hh + 0.35, z + 0.08, STONE);
+      D(x - 0.45, 0, z + 0.2, x + 0.45, 0.16, z + 1.6, 0x2a2018);          // dirt mound
+    }
+    // zombie spawn holes around the yard (broken graves), the player's start, and wall-buy spots
+    this.zmSpawns = [];
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2 + 0.2, r = 33 + (i % 3) * 2; this.zmSpawns.push({ x: Math.cos(a) * r, z: Math.sin(a) * r }); }
+    this.zmSpawns.push({ x: -12, z: -20 }, { x: 12, z: -30 }, { x: -20, z: 8 }, { x: 20, z: 8 });
+    this.spawns = [{ x: 0, z: 18, yaw: 0 }];
+    // wall buys: [weapon, x, y, z, normal x, normal z]
+    this.zmBuys = [['smg', cx - 6, 1.7, cz + cd + 0.02, 0, 1], ['shotgun', cx + 6, 1.7, cz + cd + 0.02, 0, 1], ['rifle', -25, 1.7, -18 + 3.5 + 0.02, 0, 1],
+      ['lmg', 25, 1.7, 20 - 3.5 - 0.02, 0, -1], ['dmr', 25, 1.7, -18 + 3.5 + 0.02, 0, 1], ['holoar', -25, 1.7, 20 - 3.5 - 0.02, 0, -1]];
   }
 
   // ------------------------------------------------------------------ duel arena

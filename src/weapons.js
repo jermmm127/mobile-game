@@ -100,6 +100,7 @@ BR.Weapons = {
         pd.copy(dir).addScaledVector(u, Math.cos(a) * rr).addScaledVector(v, Math.sin(a) * rr).normalize();
       }
       const hit = game.hitscan(actor, eye, pd, maxRange);
+      if (actor.isPlayer && game.zm) game.zm.shotAt(eye, pd, hit.t);
       end.copy(eye).addScaledVector(pd, hit.t);
       if (hit.actor) {
         const falloff = hit.t <= d.range ? 1 : Math.max(0.55, 1 - 0.45 * (hit.t - d.range) / d.range);

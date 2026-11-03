@@ -274,6 +274,14 @@ BR.Profile = {
   // Coins for a finished match. Returns the breakdown so the end screen can show it.
   award(r) {
     const C = BR.CONFIG.coins;
+    if (r.zombies) {        // zombies: coins for rounds survived, kills and bosses (no Ranked RP)
+      const parts = [['Rounds ×' + Math.max(0, r.round - 1), Math.max(0, r.round - 1) * 20], ['Zombies ×' + r.kills, Math.floor(r.kills * 2)]];
+      if (r.bosses) parts.push(['Bosses ×' + r.bosses, r.bosses * 250]);
+      const total = parts.reduce((s, p) => s + p[1], 0);
+      this.data.coins += total; this.data.stats.zmBest = Math.max(this.data.stats.zmBest || 0, r.round); this.data.stats.zmKills = (this.data.stats.zmKills || 0) + r.kills;
+      this.save();
+      return { total, parts, unlocked: [] };
+    }
     const parts = [];
     if (r.kills) parts.push(['Kills ×' + r.kills, r.kills * C.perKill]);
     if (r.damage > 0) parts.push(['Damage', Math.floor(r.damage * C.perDamage)]);

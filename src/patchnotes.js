@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.9.0', date: '2026-11-03', title: 'ZOMBIES: Hollow Graves', notes: [
+    'New mode: ZOMBIES. Endless rounds on Hollow Graves, a Halloween graveyard at night: a ruined chapel and bell tower, stone crypts, rows of headstones, glowing jack-o\'-lanterns, dead trees, lanterns, drifting mist, bats and lightning.',
+    'Each round sends a set number of zombies (more every round). They get tougher and faster as the rounds go up, from shamblers to sprinters. They claw up out of the graves and come straight for you.',
+    'Classic zombies rules: start with a pistol and 500 points, earn points for hits and kills (more for headshots and knife kills), buy guns off the walls, and grab Max Ammo, Insta-Kill, Double Points and Nuke power-ups. Health regenerates if you avoid damage.',
+    'A unique boss every 10 rounds, each with its own model, three moves and effects: The Pumpkin King (fireball volleys, a leaping ground slam, summons), The Weeping Bride (blinks, a wailing scream, homing spirit orbs you can shoot down), The Bone Colossus (charges, bone spikes from the ground, a roar that calls runners), The Plague Doctor (toxic flasks, a murder of crows, vanishing behind you). They return stronger after round 40.',
+    'Runs end when you die; you get coins for rounds survived, zombies and bosses.',
+  ] },
   { v: '1.8.3', date: '2026-11-03', title: 'Freeze frame, polish and tuning', notes: [
     'Winning now hits a freeze frame on the final kill: the world stops, the view drains of colour and pushes in with a flash and speed lines, then the victory show plays.',
     'Every camo and blueprint got a graphics pass: sharper (double-resolution) patterns, real reflective finishes (mirror chrome and gold, clear-coat glossy camos, satin matte camos), reflective knife blades, and blueprint glow strips that gently breathe.',

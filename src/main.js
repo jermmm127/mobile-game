@@ -277,6 +277,7 @@
   $('q-cancel').addEventListener('click', () => { if (qTimer !== 'found') { cancelQueue(); if (game.state !== 'menu') game.toMenu(); } });
   const practice = () => { BR.Audio.init(); tryFullscreen(); game.startMatch({ practice: true }); };
   $('btn-practice').addEventListener('click', practice);
+  $('btn-zombies').addEventListener('click', () => { BR.Audio.init(); game.startZombies(); });
   // spawn menu
   // weapon cards with pictures of the real models
   BR.WeaponIcons.build();
@@ -326,6 +327,7 @@
   $('btn-play').addEventListener('click', play);
   $('btn-again').addEventListener('click', () => {
     if (game.result && game.result.duel && game.lastDuel) { BR.Audio.init(); game.startDuel(game.lastDuel); }   // rematch, same settings
+    else if (game.result && game.result.zombies) { BR.Audio.init(); game.startZombies(); }
     else play();
   });
 

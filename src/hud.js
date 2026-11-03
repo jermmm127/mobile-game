@@ -197,6 +197,14 @@ BR.HUD = class HUD {
   <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
   <div id="killflash"></div>
+  <div id="zm-hud" class="hidden">
+    <div class="zm-round"><b id="zm-round">0</b></div>
+    <div class="zm-points"><span id="zm-points">0</span><i id="zm-pop"></i></div>
+    <div class="zm-timers"><span id="zm-insta" class="hidden">INSTA-KILL <b></b></span><span id="zm-double" class="hidden">DOUBLE POINTS <b></b></span></div>
+    <div id="zm-boss" class="hidden"><div class="zb-name"></div><div class="zb-bar"><i></i></div></div>
+    <div id="zm-banner"><b></b><span></span></div>
+    <div id="zm-flash"></div>
+  </div>
   <div id="freezefx"><i class="fz-flash"></i><i class="fz-lines"></i><i class="fz-frame"></i></div>
   <div id="victory" class="hidden"><div class="v-flash"></div><div class="v-rays"></div><div class="v-glow"></div>
     <div class="v-rank"><span>#</span>1</div>
@@ -284,6 +292,12 @@ BR.HUD = class HUD {
           <span class="m-tag">TRAINING</span>
           <span class="m-title">PRACTICE</span>
           <span class="m-sub">No bots · spawn anything</span>
+        </button>
+        <button id="btn-zombies" class="mode zombies">
+          <span class="m-tag">NEW · HALLOWEEN</span>
+          <span class="m-title">ZOMBIES</span>
+          <span class="m-sub">Hollow Graves · endless rounds</span>
+          <span class="m-skull"><svg viewBox="0 0 64 64"><path d="M32 4C18 4 8 14 8 27c0 8 4 14 9 17v8c0 2 2 4 4 4h3v-6h4v6h8v-6h4v6h3c2 0 4-2 4-4v-8c5-3 9-9 9-17C56 14 46 4 32 4zm-11 32a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm22 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-11 9-4-6h8z"/></svg></span>
         </button>
       </div>
       <div class="dock">
@@ -826,6 +840,32 @@ BR.HUD = class HUD {
     const b = this.$('btn-notes'); if (b) b.classList.toggle('fresh', !!(BR.PATCH_NOTES && BR.PATCH_NOTES[0] && seen !== BR.PATCH_NOTES[0].v));
   }
 
+  // ---- zombies HUD
+  zmShow(on) { const z = this.$('zm-hud'); if (z) z.classList.toggle('hidden', !on); }
+  zmRound(n) { const e = this.$('zm-round'); if (!e) return; e.textContent = n || ''; e.parentElement.classList.remove('flash'); void e.offsetWidth; if (n) e.parentElement.classList.add('flash'); }
+  zmPoints(v, delta) {
+    this.$('zm-points').textContent = Math.round(v).toLocaleString();
+    if (delta) { const pop = document.createElement('i'); pop.className = 'zm-p' + (delta < 0 ? ' neg' : ''); pop.textContent = (delta > 0 ? '+' : '') + delta; pop.style.left = (8 + Math.random() * 30) + 'px';
+      const host = this.$('zm-pop'); host.appendChild(pop); setTimeout(() => pop.remove(), 900); }
+  }
+  zmTimers(insta, dbl) {
+    const s = (id, t) => { const e = this.$(id); const on = t > 0; e.classList.toggle('hidden', !on); if (on) e.querySelector('b').textContent = Math.ceil(t); };
+    s('zm-insta', insta); s('zm-double', dbl);
+  }
+  zmBoss(name, frac, col) {
+    const b = this.$('zm-boss'); if (!b) return;
+    if (!name) { b.classList.add('hidden'); return; }
+    b.classList.remove('hidden'); b.querySelector('.zb-name').textContent = name;
+    if (col !== undefined) b.style.setProperty('--bc', '#' + col.toString(16).padStart(6, '0'));
+    b.querySelector('.zb-bar i').style.width = Math.max(0, frac * 100) + '%';
+  }
+  zmBanner(t, sub, kind, col) {
+    const b = this.$('zm-banner'); b.querySelector('b').textContent = t; b.querySelector('span').textContent = sub || '';
+    b.className = ''; void b.offsetWidth; b.className = 'on ' + (kind || ''); b.style.setProperty('--zc', col || '');
+  }
+  zmLightning() { const f = this.$('zm-flash'); f.className = ''; void f.offsetWidth; f.className = 'on'; }
+  zmNuke() { const f = this.$('zm-flash'); f.className = ''; void f.offsetWidth; f.className = 'on nuke'; }
+
   // Last-kill freeze frame: desaturate + zoom the frozen view, white flash, speed-line frame
   freeze(on) {
     const play = this.$('play'), f = this.$('freezefx'); if (!play || !f) return;
@@ -1018,10 +1058,10 @@ BR.HUD = class HUD {
 
   showEnd(r) {
     const $ = this.$;
-    $('end-eyebrow').textContent = r.duel ? (r.win ? 'DUEL WON' : 'DUEL LOST') : r.win ? 'VICTORY' : 'ELIMINATED';
-    $('end-place').textContent = r.duel ? `${r.score[0]} – ${r.score[1]}` : r.win ? '#1' : '#' + r.place;
-    $('btn-again').textContent = r.duel ? 'REMATCH' : 'QUEUE NEW MATCH';
-    $('end-sub').textContent = r.duel ? r.by : r.win ? `Last one standing out of ${r.total}.` : `${r.by} · out of ${r.total}`;
+    $('end-eyebrow').textContent = r.zombies ? 'YOU DIED · ZOMBIES' : r.duel ? (r.win ? 'DUEL WON' : 'DUEL LOST') : r.win ? 'VICTORY' : 'ELIMINATED';
+    $('end-place').textContent = r.zombies ? `ROUND ${r.round}` : r.duel ? `${r.score[0]} – ${r.score[1]}` : r.win ? '#1' : '#' + r.place;
+    $('btn-again').textContent = r.zombies ? 'PLAY AGAIN' : r.duel ? 'REMATCH' : 'QUEUE NEW MATCH';
+    $('end-sub').textContent = r.zombies ? `Survived ${Math.max(0, r.round - 1)} rounds · ${r.kills} zombies · ${r.bosses || 0} bosses · ${(r.points || 0).toLocaleString()} points` : r.duel ? r.by : r.win ? `Last one standing out of ${r.total}.` : `${r.by} · out of ${r.total}`;
     $('end-kills').textContent = r.kills;
     $('end-dmg').textContent = Math.round(r.damage);
     $('end-time').textContent = fmtTime(r.time);

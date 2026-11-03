@@ -181,6 +181,7 @@ BR.Actor = class Actor {
     if (!this.alive) return;
     const w = this.weapon;
     this.input.speedMult = w && w.def.speedMult ? w.def.speedMult : 1;
+    if (this.zSlowT > 0) this.input.speedMult *= 0.55;          // slowed by a zombie boss (scream / roar)
     // Stim: boost + heal 10 ticks a second
     const SC = BR.CONFIG.stim;
     if (this.stimCd > 0) this.stimCd = Math.max(0, this.stimCd - dt);
@@ -403,3 +404,8 @@ BR.Actor = class Actor {
     u.chute.visible = false;
   }
 };
+
+// shared with zombies.js: the humanoid part geometry + the draw-call merger
+BR.actorGeo = sharedGeo;
+BR.collapseMeshes = collapseMeshes;
+BR.dampAngle = dampAngle;
