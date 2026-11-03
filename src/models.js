@@ -372,14 +372,20 @@ BR.Models = (function () {
   function roundedBox(w, h, d) {
     const key = w.toFixed(4) + '|' + h.toFixed(4) + '|' + d.toFixed(4);
     if (RB[key]) return RB[key];
-    const r = Math.min(w, h, d) * 0.2, g = new THREE.BoxGeometry(w, h, d, 2, 2, 2), p = g.attributes.position;
+    // corners rounded with a real radius and SMOOTH normals (each vertex's normal points away from
+    // the inner core box), so edges catch the light like machined parts instead of hard box seams
+    const r = Math.min(w, h, d) * 0.3, g = new THREE.BoxGeometry(w, h, d, 3, 3, 3), p = g.attributes.position, nr = g.attributes.normal;
     const hx = w / 2 - r, hy = h / 2 - r, hz = d / 2 - r, v = new THREE.Vector3(), c = new THREE.Vector3();
     for (let i = 0; i < p.count; i++) {
       v.set(p.getX(i), p.getY(i), p.getZ(i));
+      // spread the inner grid lines toward the edges so the bevel gets most of the segments
+      const sq = (a, hh) => { const t = a / (hh + r); return Math.sign(t) * Math.pow(Math.abs(t), 0.55) * (hh + r); };
+      v.set(sq(v.x, hx), sq(v.y, hy), sq(v.z, hz));
       c.set(Math.max(-hx, Math.min(hx, v.x)), Math.max(-hy, Math.min(hy, v.y)), Math.max(-hz, Math.min(hz, v.z)));
-      v.sub(c); if (v.lengthSq() > 1e-12) { v.setLength(r); p.setXYZ(i, c.x + v.x, c.y + v.y, c.z + v.z); }
+      v.sub(c);
+      if (v.lengthSq() > 1e-12) { v.normalize(); p.setXYZ(i, c.x + v.x * r, c.y + v.y * r, c.z + v.z * r); nr.setXYZ(i, v.x, v.y, v.z); }
     }
-    g.computeVertexNormals(); g._shared = true;
+    g._shared = true;
     return (RB[key] = g);
   }
   BR.roundedBox = roundedBox;
@@ -387,7 +393,7 @@ BR.Models = (function () {
     return {
       box(w, h, d, x, y, z, mat, rx) { const m = new THREE.Mesh(ROUND ? roundedBox(w, h, d) : new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); if (rx) m.rotation.x = rx; g.add(m); return m; },
       cyl(r, len, x, y, z, mat, axis, seg) {
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, seg || 10), mat);
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, Math.max(16, seg || 0)), mat);
         m.position.set(x, y, z);
         if (axis === 'z') m.rotation.x = Math.PI / 2; else if (axis === 'x') m.rotation.z = Math.PI / 2;
         g.add(m); return m;
@@ -471,8 +477,9 @@ BR.Models = (function () {
         if (p.length === 4) sh.quadraticCurveTo(Z(p[0]), Y(p[1]), Z(p[2]), Y(p[3]));
         else if (i === 0) sh.moveTo(Z(p[0]), Y(p[1])); else sh.lineTo(Z(p[0]), Y(p[1]));
       });
-      const d = Math.max(0.002, w - 2 * bevel);
-      const geo = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 2, curveSegments: 10 });
+      // wider, rounder bevels (capped by the part's thickness) so receivers and stocks read as moulded / machined
+      const be = Math.min(bevel * 1.7, w * 0.3), d = Math.max(0.002, w - 2 * be);
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: be > 0, bevelThickness: be, bevelSize: be * 0.75, bevelOffset: -be * 0.35, bevelSegments: 4, curveSegments: 14 });
       geo.translate(0, 0, -d / 2); geo.rotateY(-Math.PI / 2);
       const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 6, uv.getY(i) * 6);
       const m = new THREE.Mesh(geo, mat); m.position.x = x0 || 0; g.add(m); return m;
@@ -849,8 +856,25 @@ BR.Models = (function () {
       prof([[-0.18, -0.01], [-0.18, 0.082], [0.12, 0.082], [0.145, 0.06], [0.145, -0.01]], 0.07, S, 0.005);
       k.box(0.074, 0.02, 0.22, 0, 0.094, -0.04, M.dark);                                        // feed cover
       for (let i = 0; i < 5; i++) k.box(0.076, 0.004, 0.006, 0, 0.105, -0.12 + i * 0.04, M.metal);
-      for (const z of [-0.1, 0.02]) k.box(0.012, 0.05, 0.012, 0, 0.125, z, M.dark);              // carry handle
-      k.box(0.016, 0.014, 0.15, 0, 0.152, -0.04, M.grip);
+      // top rail + ACOG-style 4x prism scope (round eyepiece view when aimed: def.optic 'acog')
+      k.box(0.024, 0.008, 0.2, 0, 0.108, -0.04, M.dark);
+      for (let i = 0; i < 9; i++) k.box(0.025, 0.004, 0.006, 0, 0.1135, -0.13 + i * 0.022, M.metal);
+      const AY = 0.146, AZ = -0.03;
+      k.box(0.03, 0.018, 0.06, 0, 0.122, AZ, M.dark);                                             // mount
+      k.box(0.034, 0.008, 0.016, 0.004, 0.118, AZ + 0.012, M.metal);                              // throw lever
+      k.cyl(0.019, 0.1, 0, AY, AZ, M.scopeTube, 'z', 24);                                          // body
+      const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.025, 0.03, 24), M.scopeTube); bell.rotation.x = -Math.PI / 2; bell.position.set(0, AY, AZ - 0.065); g.add(bell);
+      k.cyl(0.0255, 0.018, 0, AY, AZ - 0.088, M.scopeTube, 'z', 24);                               // objective
+      const ep = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.017, 0.03, 24), M.scopeTube); ep.rotation.x = -Math.PI / 2; ep.position.set(0, AY, AZ + 0.064); g.add(ep);
+      const cup = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.003, 8, 24), M.grip); cup.position.set(0, AY, AZ + 0.08); g.add(cup);
+      k.box(0.03, 0.022, 0.034, 0, AY + 0.008, AZ - 0.005, M.scopeTube);                         // turret housing
+      k.cyl(0.0075, 0.012, 0.018, AY + 0.004, AZ - 0.005, M.metal, 'x', 16);                       // windage cap
+      k.cyl(0.0075, 0.012, 0, AY + 0.024, AZ - 0.005, M.metal, 'y', 16);                           // elevation cap
+      const fib = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.004, 0.07), cache.mat.acogFiber || (cache.mat.acogFiber = new THREE.MeshBasicMaterial({ color: 0xff3a2a })));
+      fib.position.set(0, AY + 0.021, AZ + 0.032); g.add(fib);                                      // fibre-optic illumination strip
+      const lensA = new THREE.Mesh(new THREE.CircleGeometry(0.0225, 24), M.lensCoat); lensA.position.set(0, AY, AZ - 0.098); lensA.rotation.y = Math.PI; g.add(lensA);
+      const lensB = new THREE.Mesh(new THREE.CircleGeometry(0.016, 24), M.lensCoat); lensB.position.set(0, AY, AZ + 0.08); g.add(lensB);
+      const chv = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 3), M.reticle); chv.position.set(0, AY, AZ + 0.0805); chv.rotation.z = Math.PI / 2; g.add(chv);
       k.cyl(0.027, 0.34, 0, BY, -0.35, M.dark, 'z', 14);                                        // perforated shroud
       for (let i = 0; i < 7; i++) for (const a of [0.6, 1.57, 2.54]) k.box(0.012, 0.008, 0.02, Math.cos(a) * 0.026, BY + Math.sin(a) * 0.026, -0.22 - i * 0.045, M.grip);
       k.cyl(0.0125, 0.24, 0, BY, -0.62, M.metal, 'z', 12);
@@ -865,8 +889,8 @@ BR.Models = (function () {
       prof([[0.06, -0.006], [0.1, -0.006], [0.122, -0.11], [0.112, -0.122], [0.086, -0.122], [0.078, -0.06], [0.066, -0.03]], 0.04, M.grip, 0.005);
       prof([[0.14, 0.07], [0.36, 0.05], [0.372, 0.045], [0.372, -0.1], [0.33, -0.1], [0.17, -0.02], [0.14, -0.01]], 0.052, S, 0.005);
       k.box(0.054, 0.15, 0.014, 0, -0.025, 0.375, M.grip);
-      irons(g, M, 0.124, 0.06, -0.5, true);
-      g.userData.sightDist = 0.36;
+      const sightL = new THREE.Object3D(); sightL.position.set(0, AY, AZ + 0.03); g.add(sightL);
+      g.userData.sight = sightL; g.userData.sightDist = 0.36;
       hands(g, [0, -0.075, 0.09], [0, -0.07, -0.3], [0.05, 0.05, -0.05]);
       anchors(g, -0.8, BY, [-0.045, -0.02, 0.16]);
     },

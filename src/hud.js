@@ -169,6 +169,9 @@ BR.HUD = class HUD {
   <div id="shockfx"></div>
   <div id="scope"><div class="scope-ring"></div></div>
   <div id="scope2"><div class="s2-win"><i class="s2-h l"></i><i class="s2-h r"></i><i class="s2-post l"></i><i class="s2-post r"></i><b class="s2-chev"></b><i class="s2-bdc b1"></i><i class="s2-bdc b2"></i><i class="s2-bdc b3"></i></div></div>
+  <div id="scope3"><div class="a3-win"><i class="a3-h l"></i><i class="a3-h r"></i><i class="a3-v"></i><b class="a3-chev"></b><i class="a3-dot"></i>
+    <i class="a3-bdc" style="--y:34px;--w:30px"></i><i class="a3-bdc" style="--y:58px;--w:22px"></i><i class="a3-bdc" style="--y:80px;--w:16px"></i><i class="a3-bdc" style="--y:100px;--w:11px"></i>
+    <i class="a3-n" style="--y:34px">4</i><i class="a3-n" style="--y:58px">6</i><i class="a3-n" style="--y:80px">8</i></div></div>
   <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
   <div id="hitcrit"></div>
@@ -577,7 +580,7 @@ BR.HUD = class HUD {
       mag: $('mag'), reserve: $('reserve'), reloadBar: $('reload-bar'), reloadFill: $('reload-bar').firstElementChild,
       shieldFill: $('shield-fill'), healthFill: $('health-fill'), shieldTxt: $('shield-txt'), healthTxt: $('health-txt'),
       slots: Array.from(document.querySelectorAll('#play > .slot')),
-      prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'), scope2: $('scope2'),
+      prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'), scope2: $('scope2'), scope3: $('scope3'),
       dmgDirs: $('dmg-dirs'), dmgNums: $('dmg-nums'), vignette: $('vignette'), zoneTint: $('zone-tint'),
       stateTag: $('state-tag'), speedfx: $('speedfx'), speedvig: $('speedvig'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
       grapBtn: document.querySelector('.btn.grapple'), stimBtn: document.querySelector('.btn.stim'), stimfx: $('stimfx'), crouchBtn: document.querySelector('.btn.crouch'), jumpBtn: document.querySelector('.btn.jump'),
@@ -706,9 +709,11 @@ BR.HUD = class HUD {
     const scoped = p.ads && w && w.def.scope && p.alive;
     const holo = p.ads && w && !w.def.scope && !w.def.melee && game.vmr.adsW > 0.7; // sights replace the crosshair
     this.set('scope', e.scope, !!scoped, el => el.classList.toggle('on', !!scoped));
-    // DMR prism optic: its own eyepiece once the gun is up
+    // magnified optics: their own eyepiece once the gun is up (DMR prism, LMG ACOG)
     const optic = p.ads && w && w.def.optic && p.alive && game.vmr.adsW > 0.8;
-    this.set('scope2', e.scope2, !!optic, el => el.classList.toggle('on', !!optic));
+    const prism = !!(optic && w.def.optic === 'prism'), acog = !!(optic && w.def.optic === 'acog');
+    this.set('scope2', e.scope2, prism, el => el.classList.toggle('on', prism));
+    this.set('scope3', e.scope3, acog, el => el.classList.toggle('on', acog));
     this.set('xh', e.crosshair, !!(scoped || holo || optic), (el, v) => el.classList.toggle('hide', v));
 
     // Low health vignette + storm tint

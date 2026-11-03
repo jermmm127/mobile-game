@@ -610,11 +610,15 @@ const server = http.createServer((req, res) => {
       const fresh = tryLoad(null), migrated = tryLoad({ equip: { melee: 'knife' } }), kept = tryLoad({ equip: { melee: 'butterfly' }, meleeV: 2 });
       P.data.equip.melee = 'bayonet'; g.refreshCosmetics(); p.cur = 2; vm.lastWeapon = null; let maxFlip = 0, maxLift = 0;
       const inr = vm.models.bayonet.userData.model.userData.inner;
-      for (let i = 0; i < 70; i++) { vm.update(1 / 60, 0, 0); maxFlip = Math.max(maxFlip, Math.abs(inr.rotation.x)); maxLift = Math.max(maxLift, inr.position.y); }
+      const bm = vm.models.bayonet.userData.model; let upBeat = 9, flipMid = 0;
+      for (let i = 0; i < 70; i++) { vm.update(1 / 60, 0, 0); maxFlip = Math.max(maxFlip, Math.abs(inr.rotation.x)); maxLift = Math.max(maxLift, inr.position.y); if (i === 16) { upBeat = bm.quaternion.angleTo(bm.userData.qUp); flipMid = inr.rotation.x; } }
+      const idleOk = bm.quaternion.angleTo(bm.userData.qIdle) < 0.05;
+      vm.startInspect(p.weapon); let face2 = 9; for (let i = 0; i < Math.round(4.6 * 60 * 0.5); i++) vm.update(1 / 60, 0, 0); face2 = bm.quaternion.angleTo(bm.userData.qUp2);
+      for (let i = 0; i < 160; i++) vm.update(1 / 60, 0, 0);
       const BB = BR.Models.BLUEPRINTS.bayonet || {}, ids = Object.keys(BB).filter(k => k !== 'default');
       const caseR = BR.CaseItems.all('release').filter(e => e.id.startsWith('bayonet:')).length, caseN = BR.CaseItems.all('nova').filter(e => e.id.startsWith('bayonet:')).length;
       const cm = BR.Models.weapon('bayonet', 'sabertooth', 'none'); const camoBlade = !!cm.userData.blade.material.map;
-      out.bayonet = { fresh, migrated, kept, slot: p.slots[2] && p.slots[2].id, maxFlip, maxLift, settled: Math.abs(inr.rotation.x) < 0.01 && Math.abs(inr.position.y) < 0.002, fist: vm.knifeHands.RB.visible,
+      out.bayonet = { fresh, migrated, kept, slot: p.slots[2] && p.slots[2].id, maxFlip, maxLift, upBeat, flipMid, idleOk, face2, settled: Math.abs(inr.rotation.x) < 0.01 && Math.abs(inr.position.y) < 0.002, fist: vm.knifeHands.RB.visible,
         bps: ids.length, caseR, caseN, camoBlade, trail: !!(BB.emberfang && BB.emberfang.trail), newCamos: ['sabertooth', 'ultraviolet', 'emerald', 'tidewater'].every(k => BR.Models.SKINS[k]) };
       g.settings.showSpeed = true; p.mover.vel.set(7, 0, 0); g.update ? null : null; g.hud.speed(p.mover.speedH, true);
       const sp = document.getElementById('speedo'); out.bayonet.speedo = sp && sp.style.display !== 'none' && sp.textContent.includes('7.0') && /M\/S/i.test(sp.textContent);
@@ -654,6 +658,14 @@ const server = http.createServer((req, res) => {
       for (let i = 0; i < 60 * 7 && g.state !== 'end'; i++) g.update(1 / 60);
       out.victory.ended = g.state === 'end' && !g.victory && vicEl.classList.contains('hidden') && !document.getElementById('play').classList.contains('vic') && !document.getElementById('end').classList.contains('hidden');
       g.hud.show('end', false); }
+    // v1.7.9: LMG ACOG eyepiece; smooth bevelled boxes
+    { g.startMatch({ practice: true }); g.state = 'playing'; const pL = g.player; pL.mover.dropping = false; pL.mover.onGround = true; pL.slots[0] = BR.Weapons.create('lmg'); pL.cur = 0; g.vmr.lastWeapon = null;
+      g.input.ads = true; for (let i = 0; i < 40; i++) g.update(1 / 60);
+      const s3 = document.getElementById('scope3');
+      out.acog = { on: s3.classList.contains('on'), prismOff: !document.getElementById('scope2').classList.contains('on'), sniperOff: !document.getElementById('scope').classList.contains('on'), zoomed: g.camera.fov < 50, gunHidden: !g.vmr.root.visible, model: !!BR.Models.weapon('lmg').userData.sight };
+      g.input.ads = false; for (let i = 0; i < 20; i++) g.update(1 / 60); out.acog.off = !s3.classList.contains('on');
+      const rb = BR.roundedBox(0.1, 0.05, 0.2), nn = rb.attributes.normal; let diag = 0; for (let i = 0; i < nn.count; i++) { const ax = Math.max(Math.abs(nn.getX(i)), Math.abs(nn.getY(i)), Math.abs(nn.getZ(i))); if (ax < 0.95) diag++; }
+      out.smooth = diag; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -783,6 +795,8 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['LMG ACOG: round eyepiece on aim, zooms, hides the gun, turns off', v17.acog.on && v17.acog.prismOff && v17.acog.sniperOff && v17.acog.zoomed && v17.acog.gunHidden && v17.acog.off && v17.acog.model],
+    ['weapon boxes have smooth rounded bevels (curved edge normals)', v17.smooth > 50],
     ['two-floor buildings: nothing covers the stair hole', v17.v178.buildings2 > 0 && v17.v178.covered === 0],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
     ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],
@@ -790,7 +804,7 @@ const server = http.createServer((req, res) => {
     ['tracers are soft camera-facing beams with a glowing head (no boxes)', v17.beams && v17.beamOk],
     ['spray: first shot light, climb ramps up, smooth side sway, view recovers after', v17.spray.ramps && v17.spray.flips <= 4 && v17.spray.recovered],
     ['kill reward: banner + screen flash + hit-stop + on-body burst', v17.killReward.banner && v17.killReward.flash && v17.killReward.hitStop && v17.killReward.fx],
-    ['M9 bayonet: default knife, flips into the hand on draw and settles in the fist', v17.bayonet.fresh === 'bayonet' && v17.bayonet.migrated === 'bayonet' && v17.bayonet.kept === 'butterfly' && v17.bayonet.slot === 'bayonet' && v17.bayonet.maxFlip > 2 && v17.bayonet.maxLift > 0.05 && v17.bayonet.settled && v17.bayonet.fist],
+    ['M9 bayonet: default knife, flips into the hand on draw and settles in the fist', v17.bayonet.fresh === 'bayonet' && v17.bayonet.migrated === 'bayonet' && v17.bayonet.kept === 'butterfly' && v17.bayonet.slot === 'bayonet' && v17.bayonet.maxFlip > 2 && v17.bayonet.upBeat < 0.4 && v17.bayonet.flipMid > 1 && v17.bayonet.idleOk && v17.bayonet.face2 < 0.3 && v17.bayonet.settled && v17.bayonet.fist],
     ['bayonet blueprints (shop + both cases), camo on the blade, new camos, trails', v17.bayonet.bps >= 9 && v17.bayonet.caseR >= 2 && v17.bayonet.caseN >= 2 && v17.bayonet.camoBlade && v17.bayonet.trail && v17.bayonet.newCamos],
     ['speedometer shows m/s and can be turned off; movement slowed', v17.bayonet.speedo && v17.bayonet.speedoOff && v17.run < 6],
     ['Nightshade butterfly: purple aura + glowing trail on the flips', v17.nightshade.bp && v17.nightshade.trail && v17.nightshade.trailSeen && v17.nightshade.base && v17.nightshade.aura >= 2 && v17.nightshade.cleared],

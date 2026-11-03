@@ -1005,6 +1005,22 @@ body.duel #topbar .dp { display: flex; }
 #scope2 .s2-bdc { position: absolute; left: 50%; height: 2px; background: rgba(255,176,46,0.85); transform: translateX(-50%); border-radius: 1px; }
 #scope2 .s2-bdc.b1 { top: calc(50% + 26px); width: 22px; } #scope2 .s2-bdc.b2 { top: calc(50% + 46px); width: 16px; } #scope2 .s2-bdc.b3 { top: calc(50% + 64px); width: 10px; }
 
+/* ACOG-style eyepiece (LMG): round window, thick housing ring, illuminated red chevron on a
+   stadia post with bullet-drop marks, thin crosshair arms, a faint amber lens tint */
+#scope3 { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+#scope3.on { opacity: 1; }
+#scope3 .a3-win { position: absolute; left: 50%; top: 50%; width: min(78vmin, 86vw); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
+  box-shadow: 0 0 0 200vmax #060708, inset 0 0 0 6px #121418, inset 0 0 0 9px #2a2e35, inset 0 0 50px 22px rgba(0,0,0,0.9), inset 0 0 140px rgba(255,170,60,0.18);
+  background: radial-gradient(circle at 50% 46%, rgba(255,230,180,0.04), rgba(60,40,10,0.12) 70%, rgba(0,0,0,0.4)); }
+#scope3 .a3-h { position: absolute; top: 50%; height: 1.5px; margin-top: -0.75px; background: rgba(8,8,8,0.9); }
+#scope3 .a3-h.l { left: 4%; right: calc(50% + 34px); } #scope3 .a3-h.r { right: 4%; left: calc(50% + 34px); }
+#scope3 .a3-v { position: absolute; left: 50%; width: 2px; margin-left: -1px; top: calc(50% + 12px); height: 120px; background: rgba(8,8,8,0.92); }
+#scope3 .a3-chev { position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -1px 0 0 -10px; border-left: 3px solid #ff3326; border-top: 3px solid #ff3326;
+  transform: rotate(45deg); filter: drop-shadow(0 0 5px rgba(255,51,38,0.95)) drop-shadow(0 0 2px rgba(255,120,90,0.8)); }
+#scope3 .a3-dot { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; background: #ff6a5a; box-shadow: 0 0 4px #ff3326; }
+#scope3 .a3-bdc { position: absolute; left: 50%; top: calc(50% + var(--y)); width: var(--w); height: 2px; margin-left: calc(var(--w) / -2); background: rgba(8,8,8,0.92); }
+#scope3 .a3-n { position: absolute; left: calc(50% + 22px); top: calc(50% + var(--y) - 6px); font: 700 9px var(--ui); color: rgba(8,8,8,0.85); font-style: normal; }
+
 /* ---- patch notes ---- */
 .pn-panel { max-height: calc(100% - 24px); display: flex; flex-direction: column; }
 .pn-cur { font: 600 11px var(--ui); letter-spacing: .14em; color: var(--muted); text-transform: uppercase; margin: -4px 0 8px; }
@@ -1055,7 +1071,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.7.8',
+  version: '1.7.9',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1209,7 +1225,8 @@ BR.CONFIG = {
     // Lightweight bolt-action with open iron sights: accurate from the hip (easy no-scopes), moves fast
     hunter:  { name: 'Hunting Rifle', ammo: 'heavy', dmg: 78, pellets: 1, rpm: 75, mag: 5, reload: 2.0, spread: 0.006, ads: 0.05, bloom: 0, bloomMax: 0, range: 250, head: 2.0, recoil: 0.05, kick: 1.5, zoom: 1.45, tier: 2, color: 0x7a4a2a, bolt: true, easyHip: true, speedMult: 1.05, knockback: 2 },
     // Light machine gun: 80-round belt box, long sustained fire, slower to move with and reload
-    lmg:     { name: 'LMG', ammo: 'heavy', dmg: 20, pellets: 1, rpm: 720, mag: 80, reload: 3.6, spread: 0.03, ads: 0.4, bloom: 0.004, bloomMax: 0.045, range: 90, head: 1.5, recoil: 0.012, recoilH: 0.02, kick: 0.6, zoom: 1.35, tier: 2, color: 0x3a3d33, speedMult: 0.9 },
+    // LMG: ACOG-style 4x prism scope -> its own round eyepiece when aimed (2x view zoom)
+    lmg:     { name: 'LMG', ammo: 'heavy', dmg: 20, pellets: 1, rpm: 720, mag: 80, reload: 3.6, spread: 0.03, ads: 0.32, bloom: 0.004, bloomMax: 0.045, range: 90, head: 1.5, recoil: 0.012, recoilH: 0.02, kick: 0.6, zoom: 2.0, optic: 'acog', tier: 2, color: 0x3a3d33, speedMult: 0.9 },
     // Designated marksman rifle: semi-auto, hard-hitting, low-power prism optic
     dmr:     { name: 'DMR', ammo: 'heavy', dmg: 44, pellets: 1, rpm: 240, mag: 12, reload: 2.3, spread: 0.012, ads: 0.15, bloom: 0.012, bloomMax: 0.04, range: 200, head: 2.0, recoil: 0.03, kick: 0.9, zoom: 2.6, tier: 2, color: 0x5a5448, optic: 'prism' },
     sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4 },
@@ -1284,6 +1301,11 @@ BR.CONFIG = {
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.7.9', date: '2026-11-03', title: 'M9 rework, smoother guns, LMG ACOG', notes: [
+    'M9 Bayonet animations rebuilt to match its CS2 look: angled forward-grip idle, a draw that flips the knife over in the palm from blade-down to blade-up, and a long inspect that shows one face, twists to the other face, and twists back.',
+    'Every weapon model is less blocky: rounder bevelled edges with smooth shading, smoother barrels and rounder moulded receivers and stocks.',
+    'The LMG has an ACOG-style scope: a round eyepiece with an illuminated red chevron and range marks, 2x zoom. Replaces the iron sights that were blocked by the carry handle.',
+  ] },
   { v: '1.7.8', date: '2026-11-03', title: 'Stair fix + patch notes', notes: [
     'Fixed: in two-floor buildings the stair opening looked sealed over once you went upstairs. The trim band between floors is now a strip around the outside walls only.',
     'Fixed: the base trim no longer pokes up through the ground floor.',
@@ -4292,14 +4314,20 @@ BR.Models = (function () {
   function roundedBox(w, h, d) {
     const key = w.toFixed(4) + '|' + h.toFixed(4) + '|' + d.toFixed(4);
     if (RB[key]) return RB[key];
-    const r = Math.min(w, h, d) * 0.2, g = new THREE.BoxGeometry(w, h, d, 2, 2, 2), p = g.attributes.position;
+    // corners rounded with a real radius and SMOOTH normals (each vertex's normal points away from
+    // the inner core box), so edges catch the light like machined parts instead of hard box seams
+    const r = Math.min(w, h, d) * 0.3, g = new THREE.BoxGeometry(w, h, d, 3, 3, 3), p = g.attributes.position, nr = g.attributes.normal;
     const hx = w / 2 - r, hy = h / 2 - r, hz = d / 2 - r, v = new THREE.Vector3(), c = new THREE.Vector3();
     for (let i = 0; i < p.count; i++) {
       v.set(p.getX(i), p.getY(i), p.getZ(i));
+      // spread the inner grid lines toward the edges so the bevel gets most of the segments
+      const sq = (a, hh) => { const t = a / (hh + r); return Math.sign(t) * Math.pow(Math.abs(t), 0.55) * (hh + r); };
+      v.set(sq(v.x, hx), sq(v.y, hy), sq(v.z, hz));
       c.set(Math.max(-hx, Math.min(hx, v.x)), Math.max(-hy, Math.min(hy, v.y)), Math.max(-hz, Math.min(hz, v.z)));
-      v.sub(c); if (v.lengthSq() > 1e-12) { v.setLength(r); p.setXYZ(i, c.x + v.x, c.y + v.y, c.z + v.z); }
+      v.sub(c);
+      if (v.lengthSq() > 1e-12) { v.normalize(); p.setXYZ(i, c.x + v.x * r, c.y + v.y * r, c.z + v.z * r); nr.setXYZ(i, v.x, v.y, v.z); }
     }
-    g.computeVertexNormals(); g._shared = true;
+    g._shared = true;
     return (RB[key] = g);
   }
   BR.roundedBox = roundedBox;
@@ -4307,7 +4335,7 @@ BR.Models = (function () {
     return {
       box(w, h, d, x, y, z, mat, rx) { const m = new THREE.Mesh(ROUND ? roundedBox(w, h, d) : new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); if (rx) m.rotation.x = rx; g.add(m); return m; },
       cyl(r, len, x, y, z, mat, axis, seg) {
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, seg || 10), mat);
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, Math.max(16, seg || 0)), mat);
         m.position.set(x, y, z);
         if (axis === 'z') m.rotation.x = Math.PI / 2; else if (axis === 'x') m.rotation.z = Math.PI / 2;
         g.add(m); return m;
@@ -4391,8 +4419,9 @@ BR.Models = (function () {
         if (p.length === 4) sh.quadraticCurveTo(Z(p[0]), Y(p[1]), Z(p[2]), Y(p[3]));
         else if (i === 0) sh.moveTo(Z(p[0]), Y(p[1])); else sh.lineTo(Z(p[0]), Y(p[1]));
       });
-      const d = Math.max(0.002, w - 2 * bevel);
-      const geo = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 2, curveSegments: 10 });
+      // wider, rounder bevels (capped by the part's thickness) so receivers and stocks read as moulded / machined
+      const be = Math.min(bevel * 1.7, w * 0.3), d = Math.max(0.002, w - 2 * be);
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: be > 0, bevelThickness: be, bevelSize: be * 0.75, bevelOffset: -be * 0.35, bevelSegments: 4, curveSegments: 14 });
       geo.translate(0, 0, -d / 2); geo.rotateY(-Math.PI / 2);
       const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 6, uv.getY(i) * 6);
       const m = new THREE.Mesh(geo, mat); m.position.x = x0 || 0; g.add(m); return m;
@@ -4769,8 +4798,25 @@ BR.Models = (function () {
       prof([[-0.18, -0.01], [-0.18, 0.082], [0.12, 0.082], [0.145, 0.06], [0.145, -0.01]], 0.07, S, 0.005);
       k.box(0.074, 0.02, 0.22, 0, 0.094, -0.04, M.dark);                                        // feed cover
       for (let i = 0; i < 5; i++) k.box(0.076, 0.004, 0.006, 0, 0.105, -0.12 + i * 0.04, M.metal);
-      for (const z of [-0.1, 0.02]) k.box(0.012, 0.05, 0.012, 0, 0.125, z, M.dark);              // carry handle
-      k.box(0.016, 0.014, 0.15, 0, 0.152, -0.04, M.grip);
+      // top rail + ACOG-style 4x prism scope (round eyepiece view when aimed: def.optic 'acog')
+      k.box(0.024, 0.008, 0.2, 0, 0.108, -0.04, M.dark);
+      for (let i = 0; i < 9; i++) k.box(0.025, 0.004, 0.006, 0, 0.1135, -0.13 + i * 0.022, M.metal);
+      const AY = 0.146, AZ = -0.03;
+      k.box(0.03, 0.018, 0.06, 0, 0.122, AZ, M.dark);                                             // mount
+      k.box(0.034, 0.008, 0.016, 0.004, 0.118, AZ + 0.012, M.metal);                              // throw lever
+      k.cyl(0.019, 0.1, 0, AY, AZ, M.scopeTube, 'z', 24);                                          // body
+      const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.025, 0.03, 24), M.scopeTube); bell.rotation.x = -Math.PI / 2; bell.position.set(0, AY, AZ - 0.065); g.add(bell);
+      k.cyl(0.0255, 0.018, 0, AY, AZ - 0.088, M.scopeTube, 'z', 24);                               // objective
+      const ep = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.017, 0.03, 24), M.scopeTube); ep.rotation.x = -Math.PI / 2; ep.position.set(0, AY, AZ + 0.064); g.add(ep);
+      const cup = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.003, 8, 24), M.grip); cup.position.set(0, AY, AZ + 0.08); g.add(cup);
+      k.box(0.03, 0.022, 0.034, 0, AY + 0.008, AZ - 0.005, M.scopeTube);                         // turret housing
+      k.cyl(0.0075, 0.012, 0.018, AY + 0.004, AZ - 0.005, M.metal, 'x', 16);                       // windage cap
+      k.cyl(0.0075, 0.012, 0, AY + 0.024, AZ - 0.005, M.metal, 'y', 16);                           // elevation cap
+      const fib = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.004, 0.07), cache.mat.acogFiber || (cache.mat.acogFiber = new THREE.MeshBasicMaterial({ color: 0xff3a2a })));
+      fib.position.set(0, AY + 0.021, AZ + 0.032); g.add(fib);                                      // fibre-optic illumination strip
+      const lensA = new THREE.Mesh(new THREE.CircleGeometry(0.0225, 24), M.lensCoat); lensA.position.set(0, AY, AZ - 0.098); lensA.rotation.y = Math.PI; g.add(lensA);
+      const lensB = new THREE.Mesh(new THREE.CircleGeometry(0.016, 24), M.lensCoat); lensB.position.set(0, AY, AZ + 0.08); g.add(lensB);
+      const chv = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 3), M.reticle); chv.position.set(0, AY, AZ + 0.0805); chv.rotation.z = Math.PI / 2; g.add(chv);
       k.cyl(0.027, 0.34, 0, BY, -0.35, M.dark, 'z', 14);                                        // perforated shroud
       for (let i = 0; i < 7; i++) for (const a of [0.6, 1.57, 2.54]) k.box(0.012, 0.008, 0.02, Math.cos(a) * 0.026, BY + Math.sin(a) * 0.026, -0.22 - i * 0.045, M.grip);
       k.cyl(0.0125, 0.24, 0, BY, -0.62, M.metal, 'z', 12);
@@ -4785,8 +4831,8 @@ BR.Models = (function () {
       prof([[0.06, -0.006], [0.1, -0.006], [0.122, -0.11], [0.112, -0.122], [0.086, -0.122], [0.078, -0.06], [0.066, -0.03]], 0.04, M.grip, 0.005);
       prof([[0.14, 0.07], [0.36, 0.05], [0.372, 0.045], [0.372, -0.1], [0.33, -0.1], [0.17, -0.02], [0.14, -0.01]], 0.052, S, 0.005);
       k.box(0.054, 0.15, 0.014, 0, -0.025, 0.375, M.grip);
-      irons(g, M, 0.124, 0.06, -0.5, true);
-      g.userData.sightDist = 0.36;
+      const sightL = new THREE.Object3D(); sightL.position.set(0, AY, AZ + 0.03); g.add(sightL);
+      g.userData.sight = sightL; g.userData.sightDist = 0.36;
       hands(g, [0, -0.075, 0.09], [0, -0.07, -0.3], [0.05, 0.05, -0.05]);
       anchors(g, -0.8, BY, [-0.045, -0.02, 0.16]);
     },
@@ -6286,9 +6332,17 @@ BR.Models = (function () {
           m.userData.inner = inner; m.userData.pivot = new THREE.Vector3(0, 0.004, 0.001);
           holder.add(m);
         } else if (id === 'bayonet') {
-          // forward hammer grip: blade out front angled up and in, edge down, flat toward you
-          m.rotation.set(-1.05, 0.38, 0.42); m.userData.baseRot = m.rotation.clone();
-          m.userData.pivot = new THREE.Vector3(0, -0.01, 0);       // flips turn about the balance point by the guard
+          // Poses from the reference clip (model +Y = blade, -Z = edge, +Z = saw-tooth spine):
+          // IDLE forward grip at the bottom right, blade angled up and to the left, spine on top;
+          // SHOW1 upright close to the centre, one face to the camera (spine on the left);
+          // SHOW2 the wrist twisted to show the other face, tilted to the left (spine on the right)
+          const basis = (y, z) => { const Y = new THREE.Vector3(...y).normalize(), X = new THREE.Vector3().crossVectors(Y, new THREE.Vector3(...z)).normalize();
+            return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, new THREE.Vector3().crossVectors(X, Y))); };
+          m.userData.qIdle = basis([-0.82, 0.48, -0.42], [0.1, 1, 0.25]);
+          m.userData.qUp = basis([-0.06, 1, -0.12], [-1, 0, -0.1]);
+          m.userData.qUp2 = basis([-0.4, 1, -0.1], [1, 0.1, 0.1]);
+          m.quaternion.copy(m.userData.qIdle); m.scale.setScalar(1.08);
+          m.userData.pivot = new THREE.Vector3(0, -0.065, 0);      // the draw flip turns the knife about the middle of the handle (in the palm)
           holder.add(m);
         } else holder.add(m);
         holder.userData.model = m;
@@ -6384,7 +6438,7 @@ BR.Models = (function () {
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.id === 'bayonet' ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
     hide() { if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
@@ -6439,7 +6493,8 @@ BR.Models = (function () {
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
-      if (w.id === 'bayonet') { hx = 0.16 * s; hy = -0.15; hz = -0.42; }
+      if (w.id === 'bayonet') { hx = 0.17 * s; hy = -0.175; hz = -0.42; }
+      let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
       if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) * 0.78 - sg.z; }
@@ -6490,16 +6545,19 @@ BR.Models = (function () {
           oy += 0.06 * hold; ox -= 0.03 * hold; orz += 0.1 * hold;
           this.bflySwish(t, [0.2, 0.36, 0.5]);
         } else if (w.id === 'bayonet') {
-          // Bayonet deploy: the fist comes up, flicks the knife out of the hand so it spins end over
-          // end once in the air above the fist, and catches it back in the hammer grip (small dip on the catch)
+          // Bayonet deploy (reference clip): the hand comes up near the centre holding the knife
+          // blade-down, flips it end over end in the palm to blade-up, then rolls the wrist down
+          // into the angled idle with a small settle
           const rise = smooth(t / 0.16);
-          oy += -(1 - rise) * 0.2; orx += (1 - rise) * 0.3; ox -= (1 - rise) * 0.02;
-          const a = clamp01((t - 0.14) / 0.5);                                         // airborne 0.14 -> 0.64
-          const flick = win(t, 0.1, 0.16, 0.16, 0.26), catchK = win(t, 0.6, 0.66, 0.66, 0.82);
-          orx -= 0.22 * flick - 0.16 * catchK; oy += 0.02 * flick - 0.025 * catchK;
-          bay = { lift: Math.sin(a * Math.PI) * 0.085, flip: -easeInOut(a) * Math.PI * 2, roll: 0 };
+          oy += -(1 - rise) * 0.26; orx += (1 - rise) * 0.3;
+          const near = 1 - smooth((t - 0.5) / 0.32);
+          ox -= 0.07 * near; oy += 0.07 * near; oz -= 0.03 * near;
+          bUp = near;
+          const a = easeInOut((t - 0.12) / 0.34);
+          bay = { lift: Math.sin(clamp01((t - 0.12) / 0.34) * Math.PI) * 0.035, flip: Math.PI - Math.PI * a, roll: 0 };
+          const settle = win(t, 0.78, 0.84, 0.84, 0.96); orx -= 0.07 * settle; oy -= 0.012 * settle;
           if (t > 0.14 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
-          if (t > 0.64 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.click(); }
+          if (t > 0.46 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.click(); }
         } else if (def.melee) {
           // Karambit deploy: the hand comes up near the centre, turning a little upright, while the
           // knife twirls twice around the index finger in the ring, then drops into the low hold
@@ -6538,16 +6596,17 @@ BR.Models = (function () {
           ory += 0.25 * show + Math.sin(t * Math.PI * 2.4) * 0.03 * show; orz += 0.12 * show; orx -= 0.05 * show;
           this.bflySwish(t, [0.14, 0.34, 0.44, 0.85]);
         } else if (w.id === 'bayonet') {
-          // Bayonet inspect: raise it and turn the flat of the blade to the camera, roll the knife a
-          // full turn in the fingers, show the other side, then toss-flip it and catch
-          const show = win(t, 0.02, 0.14, 0.4, 0.5), other = win(t, 0.5, 0.6, 0.7, 0.78);
-          ory += 0.55 * show - 0.35 * other; orz += 0.35 * show + 0.15 * other; orx -= 0.12 * show; ox -= 0.04 * show; oy += 0.06 * show + 0.03 * other;
-          orz += 0.03 * Math.sin(t * Math.PI * 3) * show;
-          const rl = easeInOut((t - 0.3) / 0.18), a = clamp01((t - 0.78) / 0.17);
-          bay = { lift: Math.sin(a * Math.PI) * 0.07, flip: -easeInOut(a) * Math.PI * 2, roll: Math.PI * 2 * rl };
-          orx -= 0.15 * win(t, 0.74, 0.78, 0.78, 0.84) - 0.1 * win(t, 0.93, 0.96, 0.96, 1);
+          // Bayonet inspect (reference clip): bring it up upright close to the centre showing one face,
+          // a slow look with small wobbles, twist the wrist to show the other face tilted left, twist
+          // back to the first face, then drop back into the angled idle. No tosses.
+          const up = win(t, 0, 0.08, 0.86, 0.95);
+          bUp = up; bUp2 = win(t, 0.3, 0.38, 0.62, 0.7);
+          ox -= 0.1 * up + 0.015 * bUp2; oy += 0.11 * up; oz -= 0.06 * up;
+          const hold = up * (1 - 0.6 * win(t, 0.28, 0.32, 0.36, 0.4) - 0.6 * win(t, 0.6, 0.64, 0.68, 0.72));
+          orz += 0.035 * Math.sin(t * Math.PI * 5) * hold; ory += 0.06 * Math.sin(t * Math.PI * 3.4 + 1) * hold; orx += 0.025 * Math.sin(t * Math.PI * 4.2) * hold;
+          bay = null;
           if (t > 0.3 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
-          if (t > 0.78 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
+          if (t > 0.62 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
         } else if (def.melee) {
           // Karambit inspect: the hand rises to the centre and turns upright while the knife twirls
           // round the ring finger and ends hanging below the fist; hold that show pose with a gentle
@@ -6692,7 +6751,7 @@ BR.Models = (function () {
         // idle: a slow relaxed wrist drift so the hold never looks frozen
         if (!bfly) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.035 * Math.sin(q * 1.1); orx += 0.025 * Math.sin(q * 0.8 + 1); ory += 0.03 * Math.sin(q * 0.6); }
       }
-      if (w.id === 'bayonet' && !bay) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.03 * Math.sin(q * 1.1); orx += 0.02 * Math.sin(q * 0.8 + 1); ory += 0.025 * Math.sin(q * 0.6); }
+      if (w.id === 'bayonet' && !bay && this.inspectT <= 0) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.03 * Math.sin(q * 1.1); orx += 0.02 * Math.sin(q * 0.8 + 1); ory += 0.025 * Math.sin(q * 0.6); }
       // melee blade trail: sample after the pose is applied (see end of update)
       this._trailFrame = this.bfTrail && this.bfTrail.id === w.id ? { model } : null;
       // Reloads
@@ -6798,7 +6857,9 @@ BR.Models = (function () {
         inr.rotation.set(bay ? bay.flip : 0, bay ? bay.roll : 0, 0);
         const r = this._v2.copy(pv).applyEuler(inr.rotation);
         inr.position.set(pv.x - r.x, pv.y - r.y + (bay ? bay.lift : 0), pv.z - r.z);
-        const br = model.userData.baseRot; if (br) model.rotation.copy(br);
+        const Q = this._bq || (this._bq = new THREE.Quaternion());
+        Q.copy(model.userData.qUp).slerp(model.userData.qUp2, bUp2);
+        model.quaternion.copy(model.userData.qIdle).slerp(Q, bUp);
       }
       // Karambit ring twirl
       if (holder.userData.spin) {
@@ -10212,6 +10273,9 @@ BR.HUD = class HUD {
   <div id="shockfx"></div>
   <div id="scope"><div class="scope-ring"></div></div>
   <div id="scope2"><div class="s2-win"><i class="s2-h l"></i><i class="s2-h r"></i><i class="s2-post l"></i><i class="s2-post r"></i><b class="s2-chev"></b><i class="s2-bdc b1"></i><i class="s2-bdc b2"></i><i class="s2-bdc b3"></i></div></div>
+  <div id="scope3"><div class="a3-win"><i class="a3-h l"></i><i class="a3-h r"></i><i class="a3-v"></i><b class="a3-chev"></b><i class="a3-dot"></i>
+    <i class="a3-bdc" style="--y:34px;--w:30px"></i><i class="a3-bdc" style="--y:58px;--w:22px"></i><i class="a3-bdc" style="--y:80px;--w:16px"></i><i class="a3-bdc" style="--y:100px;--w:11px"></i>
+    <i class="a3-n" style="--y:34px">4</i><i class="a3-n" style="--y:58px">6</i><i class="a3-n" style="--y:80px">8</i></div></div>
   <div id="crosshair" class="xh"><i class="c-t"></i><i class="c-b"></i><i class="c-l"></i><i class="c-r"></i><b></b><u></u></div>
   <div id="hitmarker"></div>
   <div id="hitcrit"></div>
@@ -10620,7 +10684,7 @@ BR.HUD = class HUD {
       mag: $('mag'), reserve: $('reserve'), reloadBar: $('reload-bar'), reloadFill: $('reload-bar').firstElementChild,
       shieldFill: $('shield-fill'), healthFill: $('health-fill'), shieldTxt: $('shield-txt'), healthTxt: $('health-txt'),
       slots: Array.from(document.querySelectorAll('#play > .slot')),
-      prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'), scope2: $('scope2'),
+      prompt: $('prompt'), crosshair: $('crosshair'), hitmarker: $('hitmarker'), scope: $('scope'), scope2: $('scope2'), scope3: $('scope3'),
       dmgDirs: $('dmg-dirs'), dmgNums: $('dmg-nums'), vignette: $('vignette'), zoneTint: $('zone-tint'),
       stateTag: $('state-tag'), speedfx: $('speedfx'), speedvig: $('speedvig'), tech: $('tech'), adsBtn: document.querySelector('.btn.ads'),
       grapBtn: document.querySelector('.btn.grapple'), stimBtn: document.querySelector('.btn.stim'), stimfx: $('stimfx'), crouchBtn: document.querySelector('.btn.crouch'), jumpBtn: document.querySelector('.btn.jump'),
@@ -10749,9 +10813,11 @@ BR.HUD = class HUD {
     const scoped = p.ads && w && w.def.scope && p.alive;
     const holo = p.ads && w && !w.def.scope && !w.def.melee && game.vmr.adsW > 0.7; // sights replace the crosshair
     this.set('scope', e.scope, !!scoped, el => el.classList.toggle('on', !!scoped));
-    // DMR prism optic: its own eyepiece once the gun is up
+    // magnified optics: their own eyepiece once the gun is up (DMR prism, LMG ACOG)
     const optic = p.ads && w && w.def.optic && p.alive && game.vmr.adsW > 0.8;
-    this.set('scope2', e.scope2, !!optic, el => el.classList.toggle('on', !!optic));
+    const prism = !!(optic && w.def.optic === 'prism'), acog = !!(optic && w.def.optic === 'acog');
+    this.set('scope2', e.scope2, prism, el => el.classList.toggle('on', prism));
+    this.set('scope3', e.scope3, acog, el => el.classList.toggle('on', acog));
     this.set('xh', e.crosshair, !!(scoped || holo || optic), (el, v) => el.classList.toggle('hide', v));
 
     // Low health vignette + storm tint
@@ -11657,7 +11723,7 @@ BR.Game = class Game {
     this.updateCamera(dt);
     this.hud.update(this, dt);
     this.hud.fps(this.fpsVal, this.settings.showFps);
-    this.hud.speed(p.alive && !p.mover.dropping ? p.mover.speedH : 0, this.settings.showSpeed !== false && p.alive);
+    this.hud.speed(p.alive && !p.mover.dropping ? p.mover.speedH : 0, this.settings.showSpeed !== false && p.alive && !(p.ads && p.weapon && (p.weapon.def.scope || p.weapon.def.optic)));
 
     // Match end
     if (this.duel) this.updateDuel(dt);

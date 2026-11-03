@@ -585,7 +585,7 @@ BR.Game = class Game {
     this.updateCamera(dt);
     this.hud.update(this, dt);
     this.hud.fps(this.fpsVal, this.settings.showFps);
-    this.hud.speed(p.alive && !p.mover.dropping ? p.mover.speedH : 0, this.settings.showSpeed !== false && p.alive);
+    this.hud.speed(p.alive && !p.mover.dropping ? p.mover.speedH : 0, this.settings.showSpeed !== false && p.alive && !(p.ads && p.weapon && (p.weapon.def.scope || p.weapon.def.optic)));
 
     // Match end
     if (this.duel) this.updateDuel(dt);

@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.7.9', date: '2026-11-03', title: 'M9 rework, smoother guns, LMG ACOG', notes: [
+    'M9 Bayonet animations rebuilt to match its CS2 look: angled forward-grip idle, a draw that flips the knife over in the palm from blade-down to blade-up, and a long inspect that shows one face, twists to the other face, and twists back.',
+    'Every weapon model is less blocky: rounder bevelled edges with smooth shading, smoother barrels and rounder moulded receivers and stocks.',
+    'The LMG has an ACOG-style scope: a round eyepiece with an illuminated red chevron and range marks, 2x zoom. Replaces the iron sights that were blocked by the carry handle.',
+  ] },
   { v: '1.7.8', date: '2026-11-03', title: 'Stair fix + patch notes', notes: [
     'Fixed: in two-floor buildings the stair opening looked sealed over once you went upstairs. The trim band between floors is now a strip around the outside walls only.',
     'Fixed: the base trim no longer pokes up through the ground floor.',
