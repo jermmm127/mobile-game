@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.6.4',
+  version: '1.6.5',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -102,7 +102,7 @@ BR.CONFIG = {
       cooldown: 5,          // seconds, starts when the hook releases
       releaseHop: 4,        // jump while hooked: let go with an upward kick
     },
-    padSpeed: 17,           // jump pads launch you up at this speed
+    padSpeed: 23,           // jump pads launch you up at this speed
 
     // Intentional "bugs" — movement tech with a skill ceiling. Set a window to 0 to disable one.
     tech: {

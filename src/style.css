@@ -861,3 +861,19 @@ body.duel #topbar .dp { display: flex; }
 .sens-adv .seg button { font-size: 10px; }
 .sens-hint { margin: 4px 0 2px 8px; font: 500 11px/1.4 var(--ui); color: var(--muted); }
 #set-sensReset { margin-left: auto; }
+
+/* Release Case: model pictures of the items */
+.cs-card .cc-img { width: 100px; height: 46px; object-fit: contain; flex: none; pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)) drop-shadow(0 0 8px var(--rc)); }
+.cs-card.big .cc-img { width: 146px; height: 68px; }
+/* Shotgun crosshair: four corner brackets forming a square that opens with the spread */
+.xh.sq { --sqh: max(var(--gap), calc(var(--len) + 5px)); }
+.xh.sq i { display: block; width: var(--len); height: var(--len); background: transparent; box-shadow: none; border: 0 solid var(--xc); box-sizing: border-box;
+  top: auto; bottom: auto; left: auto; right: auto; border-radius: 1px; }
+.xh.sq .c-t { left: calc(-1 * var(--sqh)); top: calc(-1 * var(--sqh)); border-left-width: var(--thick); border-top-width: var(--thick); }
+.xh.sq .c-r { left: calc(var(--sqh) - var(--len)); top: calc(-1 * var(--sqh)); border-right-width: var(--thick); border-top-width: var(--thick); }
+.xh.sq .c-l { left: calc(-1 * var(--sqh)); top: calc(var(--sqh) - var(--len)); border-left-width: var(--thick); border-bottom-width: var(--thick); }
+.xh.sq .c-b { left: calc(var(--sqh) - var(--len)); top: calc(var(--sqh) - var(--len)); border-right-width: var(--thick); border-bottom-width: var(--thick); }
+.xh.sq.ol { filter: drop-shadow(0 0 1px rgba(0,0,0,0.85)); }
+.xh.sq u { display: none; }
+.xh.sq b { display: block; }

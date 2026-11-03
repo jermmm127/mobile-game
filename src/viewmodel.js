@@ -260,8 +260,8 @@
           oy += -(1 - rise) * 0.16; orx += (1 - rise) * 0.5;
           const p1 = smooth((t - 0.14) / 0.18), p2 = easeInOut((t - 0.38) / 0.22), fl = win(t, 0.66, 0.75, 0.77, 0.88);
           bfly = { a: Math.PI + Math.PI * p1 + Math.PI * fl, flip: Math.PI + Math.PI * p2 };
-          orz += 0.22 * win(t, 0.12, 0.2, 0.26, 0.34) - 0.18 * win(t, 0.36, 0.44, 0.52, 0.62);      // wrist flicks
-          orx -= 0.22 * win(t, 0.36, 0.45, 0.5, 0.62) + 0.1 * fl; ox += 0.02 * win(t, 0.3, 0.45, 0.55, 0.7);
+          orz += 0.12 * win(t, 0.12, 0.2, 0.26, 0.36) - 0.1 * win(t, 0.36, 0.45, 0.52, 0.64);      // gentle wrist flicks (the spring adds follow-through)
+          orx -= 0.14 * win(t, 0.36, 0.45, 0.5, 0.64) + 0.06 * fl; ox += 0.02 * win(t, 0.3, 0.45, 0.55, 0.7);
           this.bflySwish(t, [0.18, 0.44, 0.72]);
         } else if (def.melee) {
           // CS-style karambit deploy: snap into view, twirl twice around the ring, settle
@@ -288,13 +288,17 @@
           // chaplin, then a show-off tilt toward the camera
           const c1 = win(t, 0.05, 0.16, 0.18, 0.28), roll = easeInOut((t - 0.32) / 0.28), c2 = win(t, 0.64, 0.7, 0.71, 0.78);
           bfly = { a: Math.PI * c1 + Math.PI * c2, flip: -Math.PI * 2 * roll };
-          orz += 0.15 * win(t, 0.3, 0.38, 0.52, 0.62); orx -= 0.12 * win(t, 0.3, 0.4, 0.5, 0.6);
+          orz += 0.1 * win(t, 0.3, 0.38, 0.52, 0.64); orx -= 0.08 * win(t, 0.3, 0.4, 0.5, 0.62);
           const sh = win(t, 0.78, 0.86, 0.95, 1);
           ory += sh * 0.9; orz += sh * 0.5; ox -= sh * 0.1; oy += sh * 0.05;
           this.bflySwish(t, [0.12, 0.36, 0.5, 0.7]);
         } else if (def.melee) {
-          spinAng = easeInOut(t / 0.42) * Math.PI * 4;
-          ringW = win(t, 0, 0.06, 0.36, 0.48);
+          // one clean flip over the index finger: a small counter-cock, a smooth eased roll
+          // around the ring with the wrist following through, then the show-off ending
+          const fk = Math.min(1, Math.max(0, (t - 0.07) / 0.3));
+          spinAng = -0.32 * win(t, 0, 0.05, 0.06, 0.13) + easeInOut(fk) * Math.PI * 2;
+          ringW = win(t, 0.01, 0.07, 0.34, 0.44);
+          orz += 0.12 * Math.sin(Math.PI * fk); oy += 0.012 * Math.sin(Math.PI * fk); orx -= 0.05 * win(t, 0, 0.05, 0.08, 0.16);
           const sh = win(t, 0.42, 0.55, 0.85, 1);
           ory += sh * 1.15; orz += sh * 0.65; ox -= sh * 0.12; oy += sh * 0.06; orx += Math.sin(t * Math.PI * 3) * 0.05 * sh;
         } else {
@@ -394,6 +398,18 @@
         this.lastSigK = kk;
       } else { this.lastSigK = 0; model.visible = true; }
 
+      // Butterfly: fluid wrist follow-through. A spring per axis is driven by how fast the blade and
+      // bite handle are swinging, so every flip rolls / lifts / turns the wrist and it settles smoothly.
+      if (w.id === 'butterfly') {
+        const bw = this.bfW || (this.bfW = { r: 0, rv: 0, p: 0, pv: 0, y: 0, yv: 0, pf: 0, pa: 0, on: false });
+        const fl = bfly ? bfly.flip : 0, aa = bfly ? bfly.a : 0, idt = 1 / Math.max(dt, 1e-3);
+        const vf = bw.on && bfly ? (fl - bw.pf) * idt : 0, va = bw.on && bfly ? (aa - bw.pa) * idt : 0;
+        bw.pf = fl; bw.pa = aa; bw.on = !!bfly;
+        const tr = U.clamp(-0.022 * vf + 0.012 * va, -0.42, 0.42), tp = U.clamp(0.016 * Math.abs(vf) + 0.007 * Math.abs(va), 0, 0.36), ty = U.clamp(0.011 * vf, -0.28, 0.28);
+        const step = (x, v, tg) => { v += (-(x - tg) * 95 - v * 14) * Math.min(dt, 0.05); return [x + v * Math.min(dt, 0.05), v]; };
+        [bw.r, bw.rv] = step(bw.r, bw.rv, tr); [bw.p, bw.pv] = step(bw.p, bw.pv, tp); [bw.y, bw.yv] = step(bw.y, bw.yv, ty);
+        orz += bw.r; orx -= bw.p; ory += bw.y; oy += bw.p * 0.03;
+      }
       // Reloads
       const port = ud.port, fore = ud.fore;
       if (reloading && !def.melee) {

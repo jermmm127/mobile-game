@@ -878,6 +878,22 @@ body.duel #topbar .dp { display: flex; }
 .sens-hint { margin: 4px 0 2px 8px; font: 500 11px/1.4 var(--ui); color: var(--muted); }
 #set-sensReset { margin-left: auto; }
 
+/* Release Case: model pictures of the items */
+.cs-card .cc-img { width: 100px; height: 46px; object-fit: contain; flex: none; pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)) drop-shadow(0 0 8px var(--rc)); }
+.cs-card.big .cc-img { width: 146px; height: 68px; }
+/* Shotgun crosshair: four corner brackets forming a square that opens with the spread */
+.xh.sq { --sqh: max(var(--gap), calc(var(--len) + 5px)); }
+.xh.sq i { display: block; width: var(--len); height: var(--len); background: transparent; box-shadow: none; border: 0 solid var(--xc); box-sizing: border-box;
+  top: auto; bottom: auto; left: auto; right: auto; border-radius: 1px; }
+.xh.sq .c-t { left: calc(-1 * var(--sqh)); top: calc(-1 * var(--sqh)); border-left-width: var(--thick); border-top-width: var(--thick); }
+.xh.sq .c-r { left: calc(var(--sqh) - var(--len)); top: calc(-1 * var(--sqh)); border-right-width: var(--thick); border-top-width: var(--thick); }
+.xh.sq .c-l { left: calc(-1 * var(--sqh)); top: calc(var(--sqh) - var(--len)); border-left-width: var(--thick); border-bottom-width: var(--thick); }
+.xh.sq .c-b { left: calc(var(--sqh) - var(--len)); top: calc(var(--sqh) - var(--len)); border-right-width: var(--thick); border-bottom-width: var(--thick); }
+.xh.sq.ol { filter: drop-shadow(0 0 1px rgba(0,0,0,0.85)); }
+.xh.sq u { display: none; }
+.xh.sq b { display: block; }
+
 </style>
 </head>
 <body>
@@ -901,7 +917,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.6.4',
+  version: '1.6.5',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -996,7 +1012,7 @@ BR.CONFIG = {
       cooldown: 5,          // seconds, starts when the hook releases
       releaseHop: 4,        // jump while hooked: let go with an upward kick
     },
-    padSpeed: 17,           // jump pads launch you up at this speed
+    padSpeed: 23,           // jump pads launch you up at this speed
 
     // Intentional "bugs" — movement tech with a skill ceiling. Set a window to 0 to disable one.
     tech: {
@@ -1329,7 +1345,7 @@ BR.World = class World {
   constructor(seed, opts) {
     const M = BR.CONFIG.map;
     this.arena = !!(opts && opts.arena);
-    this.size = this.arena ? 72 : M.size;
+    this.size = this.arena ? 92 : M.size;
     this.half = M.size / 2;
     this.gridHalf = this.size / 2;     // collision grid spans this world's own size (the duel arena is 72 m)
     this.cell = M.cell;
@@ -1354,19 +1370,20 @@ BR.World = class World {
   }
 
   // ------------------------------------------------------------------ duel arena
-  // "The Yard": a compact walled 1v1 arena (52 x 34 m), mirrored end to end so both
+  // "The Yard": a compact walled 1v1 arena (about 63 x 41 m), mirrored end to end so both
   // spawns are fair. Blue end at -X, red end at +X. Central two-level platform with
   // stairs, raised side catwalks reached by jump pads, wall-run walls, wall-chain
   // pillars, low cover, and floodlights. Everything is grappleable.
   generateArena() {
     const W = 26, D = 17, WH = 9;
     const CON = 0x7a808a, CON2 = 0x666c75, BLUE = 0x2f6fd8, RED = 0xd8443a, STEEL = 0x4a5160, Y = 0xf2b234;
-    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
-    const Dc = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    const K = 1.22;                                     // layout scale: the whole yard is 22% bigger across (heights unchanged)
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0 * K, y0, z0 * K, x1 * K, y1, z1 * K, c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0 * K, y0, z0 * K, x1 * K, y1, z1 * K, c, { decor: true });
     const mirror = fn => { fn(1); fn(-1); };            // build once for each half (x -> -x)
     this.pois = [{ x: 0, z: 0, name: 'The Yard', type: 'arena' }];
     this.towns = [];
-    this.spawns = [{ x: -22, z: 0, yaw: -Math.PI / 2 }, { x: 22, z: 0, yaw: Math.PI / 2 }];
+    this.spawns = [{ x: -22 * K, z: 0, yaw: -Math.PI / 2 }, { x: 22 * K, z: 0, yaw: Math.PI / 2 }];
     // perimeter walls (tall, grappleable) + coping + barbed wire
     B(-W - 3, 0, -D - 3, W + 3, WH, -D, CON, { tag: 'edge' }); B(-W - 3, 0, D, W + 3, WH, D + 3, CON, { tag: 'edge' });
     B(-W - 3, 0, -D, -W, WH, D, CON, { tag: 'edge' }); B(W, 0, -D, W + 3, WH, D, CON, { tag: 'edge' });
@@ -1399,7 +1416,7 @@ BR.World = class World {
         if (h > 2) B(sx * x - 0.65 - sx * 1.3, 0, z - 0.65, sx * x + 0.65 - sx * 1.3, 1.2, z + 0.65, 0xa77b4f);
       }
       // jump pads up to the catwalks
-      for (const zz of [-12.2, 12.2]) this.jumpPad(sx * 19, zz);
+      for (const zz of [-12.2, 12.2]) this.jumpPad(sx * 19 * K, zz * K);
       // floodlight towers in the corners
       for (const zz of [-D + 1, D - 1]) {
         const fx = sx * (W - 1);
@@ -5765,8 +5782,8 @@ BR.Models = (function () {
           oy += -(1 - rise) * 0.16; orx += (1 - rise) * 0.5;
           const p1 = smooth((t - 0.14) / 0.18), p2 = easeInOut((t - 0.38) / 0.22), fl = win(t, 0.66, 0.75, 0.77, 0.88);
           bfly = { a: Math.PI + Math.PI * p1 + Math.PI * fl, flip: Math.PI + Math.PI * p2 };
-          orz += 0.22 * win(t, 0.12, 0.2, 0.26, 0.34) - 0.18 * win(t, 0.36, 0.44, 0.52, 0.62);      // wrist flicks
-          orx -= 0.22 * win(t, 0.36, 0.45, 0.5, 0.62) + 0.1 * fl; ox += 0.02 * win(t, 0.3, 0.45, 0.55, 0.7);
+          orz += 0.12 * win(t, 0.12, 0.2, 0.26, 0.36) - 0.1 * win(t, 0.36, 0.45, 0.52, 0.64);      // gentle wrist flicks (the spring adds follow-through)
+          orx -= 0.14 * win(t, 0.36, 0.45, 0.5, 0.64) + 0.06 * fl; ox += 0.02 * win(t, 0.3, 0.45, 0.55, 0.7);
           this.bflySwish(t, [0.18, 0.44, 0.72]);
         } else if (def.melee) {
           // CS-style karambit deploy: snap into view, twirl twice around the ring, settle
@@ -5793,13 +5810,17 @@ BR.Models = (function () {
           // chaplin, then a show-off tilt toward the camera
           const c1 = win(t, 0.05, 0.16, 0.18, 0.28), roll = easeInOut((t - 0.32) / 0.28), c2 = win(t, 0.64, 0.7, 0.71, 0.78);
           bfly = { a: Math.PI * c1 + Math.PI * c2, flip: -Math.PI * 2 * roll };
-          orz += 0.15 * win(t, 0.3, 0.38, 0.52, 0.62); orx -= 0.12 * win(t, 0.3, 0.4, 0.5, 0.6);
+          orz += 0.1 * win(t, 0.3, 0.38, 0.52, 0.64); orx -= 0.08 * win(t, 0.3, 0.4, 0.5, 0.62);
           const sh = win(t, 0.78, 0.86, 0.95, 1);
           ory += sh * 0.9; orz += sh * 0.5; ox -= sh * 0.1; oy += sh * 0.05;
           this.bflySwish(t, [0.12, 0.36, 0.5, 0.7]);
         } else if (def.melee) {
-          spinAng = easeInOut(t / 0.42) * Math.PI * 4;
-          ringW = win(t, 0, 0.06, 0.36, 0.48);
+          // one clean flip over the index finger: a small counter-cock, a smooth eased roll
+          // around the ring with the wrist following through, then the show-off ending
+          const fk = Math.min(1, Math.max(0, (t - 0.07) / 0.3));
+          spinAng = -0.32 * win(t, 0, 0.05, 0.06, 0.13) + easeInOut(fk) * Math.PI * 2;
+          ringW = win(t, 0.01, 0.07, 0.34, 0.44);
+          orz += 0.12 * Math.sin(Math.PI * fk); oy += 0.012 * Math.sin(Math.PI * fk); orx -= 0.05 * win(t, 0, 0.05, 0.08, 0.16);
           const sh = win(t, 0.42, 0.55, 0.85, 1);
           ory += sh * 1.15; orz += sh * 0.65; ox -= sh * 0.12; oy += sh * 0.06; orx += Math.sin(t * Math.PI * 3) * 0.05 * sh;
         } else {
@@ -5899,6 +5920,18 @@ BR.Models = (function () {
         this.lastSigK = kk;
       } else { this.lastSigK = 0; model.visible = true; }
 
+      // Butterfly: fluid wrist follow-through. A spring per axis is driven by how fast the blade and
+      // bite handle are swinging, so every flip rolls / lifts / turns the wrist and it settles smoothly.
+      if (w.id === 'butterfly') {
+        const bw = this.bfW || (this.bfW = { r: 0, rv: 0, p: 0, pv: 0, y: 0, yv: 0, pf: 0, pa: 0, on: false });
+        const fl = bfly ? bfly.flip : 0, aa = bfly ? bfly.a : 0, idt = 1 / Math.max(dt, 1e-3);
+        const vf = bw.on && bfly ? (fl - bw.pf) * idt : 0, va = bw.on && bfly ? (aa - bw.pa) * idt : 0;
+        bw.pf = fl; bw.pa = aa; bw.on = !!bfly;
+        const tr = U.clamp(-0.022 * vf + 0.012 * va, -0.42, 0.42), tp = U.clamp(0.016 * Math.abs(vf) + 0.007 * Math.abs(va), 0, 0.36), ty = U.clamp(0.011 * vf, -0.28, 0.28);
+        const step = (x, v, tg) => { v += (-(x - tg) * 95 - v * 14) * Math.min(dt, 0.05); return [x + v * Math.min(dt, 0.05), v]; };
+        [bw.r, bw.rv] = step(bw.r, bw.rv, tr); [bw.p, bw.pv] = step(bw.p, bw.pv, tp); [bw.y, bw.yv] = step(bw.y, bw.yv, ty);
+        orz += bw.r; orx -= bw.p; ory += bw.y; oy += bw.p * 0.03;
+      }
       // Reloads
       const port = ud.port, fore = ud.fore;
       if (reloading && !def.melee) {
@@ -8965,7 +8998,7 @@ const WICON_PATHS = {
 // context): a white silhouette per weapon for the HUD slots (used as a CSS mask so it takes the
 // slot colour / glow) and a lit picture for the spawn + duel loadout menus.
 BR.WeaponIcons = {
-  sil: {}, pic: {},
+  sil: {}, pic: {}, cpic: {},
   build() {
     if (this.done) return; this.done = true;
     let r;
@@ -8982,22 +9015,36 @@ BR.WeaponIcons = {
       const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 10);
       const css = [];
-      for (const id in BR.CONFIG.weapons) {
-        const m = BR.Models.weapon(id, 'default', 'none');
+      // frame a model side-on (muzzle to the left) and grab a lit picture (+ optional silhouette)
+      const shoot = (m, sil) => {
         if (m.userData.flash) m.userData.flash.visible = false;
-        if (id === 'butterfly') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
         const g = new THREE.Group(); g.add(m); sc.add(g);
+        if (BR.Models.animate) BR.Models.animate(m, 1.2);
         g.updateMatrixWorld(true);
         const box = new THREE.Box3();
         m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash) box.expandByObject(o); });
         const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
         const pad = 1.08, w = Math.max(sz.z, sz.y * W / H) * pad / 2, h = w * H / W;
         cam.left = -w; cam.right = w; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
-        cam.position.set(c.x - 3, c.y, c.z); cam.up.set(0, 1, 0); cam.lookAt(c);   // side view, muzzle to the left
-        sc.overrideMaterial = null; r.render(sc, cam); this.pic[id] = cv.toDataURL('image/png');
-        sc.overrideMaterial = white; r.render(sc, cam); this.sil[id] = cv.toDataURL('image/png');
+        cam.position.set(c.x - 3, c.y, c.z); cam.up.set(0, 1, 0); cam.lookAt(c);
+        sc.overrideMaterial = null; r.render(sc, cam); const pic = cv.toDataURL('image/png');
+        let s2 = null; if (sil) { sc.overrideMaterial = white; r.render(sc, cam); s2 = cv.toDataURL('image/png'); sc.overrideMaterial = null; }
         sc.remove(g);
+        return [pic, s2];
+      };
+      for (const id in BR.CONFIG.weapons) {
+        const m = BR.Models.weapon(id, 'default', 'none');
+        if (id === 'butterfly') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
+        [this.pic[id], this.sil[id]] = shoot(m, true);
         css.push(`.wsil-${id}{-webkit-mask-image:url(${this.sil[id]});mask-image:url(${this.sil[id]})}`);
+      }
+      // Release Case contents: blueprints as their own model, camos on a rifle, gloves on a hand
+      for (const e of (BR.CaseItems ? BR.CaseItems.all() : [])) {
+        let m = null;
+        if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly') m.rotation.x = -Math.PI / 2; }
+        else if (e.cat === 'skins') m = BR.Models.weapon('rifle', e.id, 'none');
+        else if (e.cat === 'gloves') { m = BR.Models.hand(e.id, false); m.rotation.set(0, 0, -0.35); }
+        if (m) this.cpic[e.cat + ':' + e.id] = shoot(m, false)[0];
       }
       const st = document.createElement('style'); st.textContent = css.join('\n'); document.head.appendChild(st);
     } catch (e) { this.sil = {}; this.pic = {}; }
@@ -9195,7 +9242,7 @@ BR.HUD = class HUD {
         <p class="sens-hint">Each value multiplies LOOK SPEED. Response curve: 0 = linear, higher = slow drags are finer and fast flicks turn further. Gyro: tilt / turn your phone to aim (iPhone asks for motion access the first time).</p>
       </details>
       <div class="row"><label for="set-smooth">AIM SMOOTHING</label><input id="set-smooth" type="range" min="0" max="1" step="0.05"><output id="out-smooth"></output></div>
-      <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="1" step="0.05"><output id="out-stretch"></output></div>
+      <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="2" step="0.05"><output id="out-stretch"></output></div>
       <div class="row"><label for="set-sat">SATURATION</label><input id="set-sat" type="range" min="0" max="2" step="0.05"><output id="out-sat"></output></div>
       <div class="row"><label for="set-fov">FOV</label><input id="set-fov" type="range" min="60" max="110" step="1"><output id="out-fov"></output></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
@@ -9561,7 +9608,7 @@ BR.HUD = class HUD {
       const X = BR.xh || {};
       const px = X.dyn === false ? 0 : Math.round(spread * (window.innerHeight / 2) / Math.tan(game.camera.fov * Math.PI / 360));
       this.set('cx', e.crosshair, Math.min((X.gap ?? 6) + px, 90), (el, v) => el.style.setProperty('--gap', v + 'px'));
-      this.set('cxl', e.crosshair, w.def.pattern === 'line', (el, v) => el.classList.toggle('line', v));
+      this.set('cxl', e.crosshair, w.def.pellets > 1, (el, v) => el.classList.toggle('sq', v));          // shotguns: square bracket reticle
     }
     const scoped = p.ads && w && w.def.scope && p.alive;
     const holo = p.ads && w && !w.def.scope && !w.def.melee && game.vmr.adsW > 0.7; // sights replace the crosshair
@@ -11270,7 +11317,8 @@ BR.Game = class Game {
   const caseCard = (e, extra) => {
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
     const hex = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
-    const sw = e.cat === 'blueprints'
+    const cp = BR.WeaponIcons && BR.WeaponIcons.cpic[e.cat + ':' + e.id];
+    const sw = cp ? `<img class="cc-img" src="${cp}" alt="">` : e.cat === 'blueprints'
       ? `<i class="sw cbp" style="background:linear-gradient(135deg,${hex(e.item.body)} 0 45%,${hex(e.item.accent)} 45% 70%,${hex(e.item.glow)} 70%);box-shadow:0 0 12px ${hex(e.item.glow)}"></i>`
       : shop.swatch(e.cat, e.id, e.item);
     return `<div class="cs-card r-${e.item.rarity}${extra || ''}" style="--rc:${RCOL[e.item.rarity]}">${sw}<span class="cc-cat">${CAT_LABEL[e.cat]}</span><span class="cc-name">${nm}</span></div>`;

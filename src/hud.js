@@ -21,7 +21,7 @@ const WICON_PATHS = {
 // context): a white silhouette per weapon for the HUD slots (used as a CSS mask so it takes the
 // slot colour / glow) and a lit picture for the spawn + duel loadout menus.
 BR.WeaponIcons = {
-  sil: {}, pic: {},
+  sil: {}, pic: {}, cpic: {},
   build() {
     if (this.done) return; this.done = true;
     let r;
@@ -38,22 +38,36 @@ BR.WeaponIcons = {
       const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 10);
       const css = [];
-      for (const id in BR.CONFIG.weapons) {
-        const m = BR.Models.weapon(id, 'default', 'none');
+      // frame a model side-on (muzzle to the left) and grab a lit picture (+ optional silhouette)
+      const shoot = (m, sil) => {
         if (m.userData.flash) m.userData.flash.visible = false;
-        if (id === 'butterfly') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
         const g = new THREE.Group(); g.add(m); sc.add(g);
+        if (BR.Models.animate) BR.Models.animate(m, 1.2);
         g.updateMatrixWorld(true);
         const box = new THREE.Box3();
         m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash) box.expandByObject(o); });
         const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
         const pad = 1.08, w = Math.max(sz.z, sz.y * W / H) * pad / 2, h = w * H / W;
         cam.left = -w; cam.right = w; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
-        cam.position.set(c.x - 3, c.y, c.z); cam.up.set(0, 1, 0); cam.lookAt(c);   // side view, muzzle to the left
-        sc.overrideMaterial = null; r.render(sc, cam); this.pic[id] = cv.toDataURL('image/png');
-        sc.overrideMaterial = white; r.render(sc, cam); this.sil[id] = cv.toDataURL('image/png');
+        cam.position.set(c.x - 3, c.y, c.z); cam.up.set(0, 1, 0); cam.lookAt(c);
+        sc.overrideMaterial = null; r.render(sc, cam); const pic = cv.toDataURL('image/png');
+        let s2 = null; if (sil) { sc.overrideMaterial = white; r.render(sc, cam); s2 = cv.toDataURL('image/png'); sc.overrideMaterial = null; }
         sc.remove(g);
+        return [pic, s2];
+      };
+      for (const id in BR.CONFIG.weapons) {
+        const m = BR.Models.weapon(id, 'default', 'none');
+        if (id === 'butterfly') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
+        [this.pic[id], this.sil[id]] = shoot(m, true);
         css.push(`.wsil-${id}{-webkit-mask-image:url(${this.sil[id]});mask-image:url(${this.sil[id]})}`);
+      }
+      // Release Case contents: blueprints as their own model, camos on a rifle, gloves on a hand
+      for (const e of (BR.CaseItems ? BR.CaseItems.all() : [])) {
+        let m = null;
+        if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly') m.rotation.x = -Math.PI / 2; }
+        else if (e.cat === 'skins') m = BR.Models.weapon('rifle', e.id, 'none');
+        else if (e.cat === 'gloves') { m = BR.Models.hand(e.id, false); m.rotation.set(0, 0, -0.35); }
+        if (m) this.cpic[e.cat + ':' + e.id] = shoot(m, false)[0];
       }
       const st = document.createElement('style'); st.textContent = css.join('\n'); document.head.appendChild(st);
     } catch (e) { this.sil = {}; this.pic = {}; }
@@ -251,7 +265,7 @@ BR.HUD = class HUD {
         <p class="sens-hint">Each value multiplies LOOK SPEED. Response curve: 0 = linear, higher = slow drags are finer and fast flicks turn further. Gyro: tilt / turn your phone to aim (iPhone asks for motion access the first time).</p>
       </details>
       <div class="row"><label for="set-smooth">AIM SMOOTHING</label><input id="set-smooth" type="range" min="0" max="1" step="0.05"><output id="out-smooth"></output></div>
-      <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="1" step="0.05"><output id="out-stretch"></output></div>
+      <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="2" step="0.05"><output id="out-stretch"></output></div>
       <div class="row"><label for="set-sat">SATURATION</label><input id="set-sat" type="range" min="0" max="2" step="0.05"><output id="out-sat"></output></div>
       <div class="row"><label for="set-fov">FOV</label><input id="set-fov" type="range" min="60" max="110" step="1"><output id="out-fov"></output></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
@@ -617,7 +631,7 @@ BR.HUD = class HUD {
       const X = BR.xh || {};
       const px = X.dyn === false ? 0 : Math.round(spread * (window.innerHeight / 2) / Math.tan(game.camera.fov * Math.PI / 360));
       this.set('cx', e.crosshair, Math.min((X.gap ?? 6) + px, 90), (el, v) => el.style.setProperty('--gap', v + 'px'));
-      this.set('cxl', e.crosshair, w.def.pattern === 'line', (el, v) => el.classList.toggle('line', v));
+      this.set('cxl', e.crosshair, w.def.pellets > 1, (el, v) => el.classList.toggle('sq', v));          // shotguns: square bracket reticle
     }
     const scoped = p.ads && w && w.def.scope && p.alive;
     const holo = p.ads && w && !w.def.scope && !w.def.melee && game.vmr.adsW > 0.7; // sights replace the crosshair

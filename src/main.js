@@ -329,7 +329,8 @@
   const caseCard = (e, extra) => {
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
     const hex = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
-    const sw = e.cat === 'blueprints'
+    const cp = BR.WeaponIcons && BR.WeaponIcons.cpic[e.cat + ':' + e.id];
+    const sw = cp ? `<img class="cc-img" src="${cp}" alt="">` : e.cat === 'blueprints'
       ? `<i class="sw cbp" style="background:linear-gradient(135deg,${hex(e.item.body)} 0 45%,${hex(e.item.accent)} 45% 70%,${hex(e.item.glow)} 70%);box-shadow:0 0 12px ${hex(e.item.glow)}"></i>`
       : shop.swatch(e.cat, e.id, e.item);
     return `<div class="cs-card r-${e.item.rarity}${extra || ''}" style="--rc:${RCOL[e.item.rarity]}">${sw}<span class="cc-cat">${CAT_LABEL[e.cat]}</span><span class="cc-name">${nm}</span></div>`;

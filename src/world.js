@@ -20,7 +20,7 @@ BR.World = class World {
   constructor(seed, opts) {
     const M = BR.CONFIG.map;
     this.arena = !!(opts && opts.arena);
-    this.size = this.arena ? 72 : M.size;
+    this.size = this.arena ? 92 : M.size;
     this.half = M.size / 2;
     this.gridHalf = this.size / 2;     // collision grid spans this world's own size (the duel arena is 72 m)
     this.cell = M.cell;
@@ -45,19 +45,20 @@ BR.World = class World {
   }
 
   // ------------------------------------------------------------------ duel arena
-  // "The Yard": a compact walled 1v1 arena (52 x 34 m), mirrored end to end so both
+  // "The Yard": a compact walled 1v1 arena (about 63 x 41 m), mirrored end to end so both
   // spawns are fair. Blue end at -X, red end at +X. Central two-level platform with
   // stairs, raised side catwalks reached by jump pads, wall-run walls, wall-chain
   // pillars, low cover, and floodlights. Everything is grappleable.
   generateArena() {
     const W = 26, D = 17, WH = 9;
     const CON = 0x7a808a, CON2 = 0x666c75, BLUE = 0x2f6fd8, RED = 0xd8443a, STEEL = 0x4a5160, Y = 0xf2b234;
-    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
-    const Dc = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    const K = 1.22;                                     // layout scale: the whole yard is 22% bigger across (heights unchanged)
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0 * K, y0, z0 * K, x1 * K, y1, z1 * K, c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0 * K, y0, z0 * K, x1 * K, y1, z1 * K, c, { decor: true });
     const mirror = fn => { fn(1); fn(-1); };            // build once for each half (x -> -x)
     this.pois = [{ x: 0, z: 0, name: 'The Yard', type: 'arena' }];
     this.towns = [];
-    this.spawns = [{ x: -22, z: 0, yaw: -Math.PI / 2 }, { x: 22, z: 0, yaw: Math.PI / 2 }];
+    this.spawns = [{ x: -22 * K, z: 0, yaw: -Math.PI / 2 }, { x: 22 * K, z: 0, yaw: Math.PI / 2 }];
     // perimeter walls (tall, grappleable) + coping + barbed wire
     B(-W - 3, 0, -D - 3, W + 3, WH, -D, CON, { tag: 'edge' }); B(-W - 3, 0, D, W + 3, WH, D + 3, CON, { tag: 'edge' });
     B(-W - 3, 0, -D, -W, WH, D, CON, { tag: 'edge' }); B(W, 0, -D, W + 3, WH, D, CON, { tag: 'edge' });
@@ -90,7 +91,7 @@ BR.World = class World {
         if (h > 2) B(sx * x - 0.65 - sx * 1.3, 0, z - 0.65, sx * x + 0.65 - sx * 1.3, 1.2, z + 0.65, 0xa77b4f);
       }
       // jump pads up to the catwalks
-      for (const zz of [-12.2, 12.2]) this.jumpPad(sx * 19, zz);
+      for (const zz of [-12.2, 12.2]) this.jumpPad(sx * 19 * K, zz * K);
       // floodlight towers in the corners
       for (const zz of [-D + 1, D - 1]) {
         const fx = sx * (W - 1);
