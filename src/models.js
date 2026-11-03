@@ -416,8 +416,11 @@ BR.Models = (function () {
         for (let i = 0; i < 7; i++) prof([[334 + i * 5, 96], [336 + i * 5, 96], [334 + i * 5, 132], [332 + i * 5, 132]], 0.0006, M.grip, 0, sx * 0.0223);   // serrations
         k.box(0.0006, 0.002, Z(318) - Z(184), sx * 0.0223, Y(128), (Z(184) + Z(318)) / 2, M.grip);                                        // lower slide groove
       }
-      k.cyl(0.0085, 0.004, 0, BY, Z(172) - 0.001, M.dark, 'z', 14);              // barrel crown
-      k.cyl(0.0045, 0.005, 0, BY, Z(172) - 0.002, M.grip, 'z', 10);
+      // long barrel running out past the slide, with a crown
+      const BL = 0.034;
+      k.cyl(0.0088, BL + 0.01, 0, BY, Z(172) - BL / 2 + 0.005, M.dark, 'z', 16);
+      k.cyl(0.0094, 0.004, 0, BY, Z(172) - BL, M.metal, 'z', 16);
+      k.cyl(0.0046, 0.005, 0, BY, Z(172) - BL - 0.001, M.grip, 'z', 10);
       // frame + grip (finger grooves, beavertail), rail slots, stippled panels
       prof([[176, 140], [372, 140], [380, 128], [390, 136], [386, 152], [394, 238], [390, 252], [334, 254], [328, 238], [322, 226],
         [326, 212], [318, 198], [322, 184], [312, 168], [300, 160], [252, 158], [176, 154]], 0.04, M.grip, 0.005);
@@ -428,12 +431,15 @@ BR.Models = (function () {
       // squared trigger guard + trigger
       prof([[252, 156], [258, 156], [258, 180], [296, 180], [300, 166], [306, 166], [302, 188], [252, 186]], 0.012, M.grip, 0.0015);
       prof([[282, 150], [288, 150], [290, 162], [285, 172], [281, 170], [283, 162]], 0.006, M.dark, 0.001);
-      // mag: body inside the grip + flared base pad
-      magGroup(g, [prof([[338, 200], [384, 196], [388, 250], [336, 252]], 0.03, M.dark, 0.002),
-        prof([[332, 252], [390, 248], [392, 262], [334, 264]], 0.042, M.grip, 0.003)]);
+      // extended mag: body inside the grip, a long sleeve below it with grip ribs, big base pad
+      const xm = [prof([[338, 200], [384, 196], [392, 300], [340, 302]], 0.03, M.dark, 0.002),
+        prof([[334, 252], [390, 248], [395, 298], [338, 300]], 0.037, M.grip, 0.003),
+        prof([[333, 298], [397, 294], [400, 310], [335, 313]], 0.044, M.dark, 0.003)];
+      for (let i = 0; i < 3; i++) xm.push(k.box(0.0375, 0.002, Z(392) - Z(338), 0, Y(262 + i * 11), (Z(338) + Z(392)) / 2 + 0.002, M.dark));
+      magGroup(g, xm);
       irons(g, M, Y(80), Z(352), Z(184), false);
       hands(g, [0, -0.06, Z(345)], [-0.012, -0.095, Z(350) - 0.03], [0, Y(110), Z(360)]);
-      anchors(g, Z(172) - 0.004, BY, [-0.03, -0.02, Z(392)]);
+      anchors(g, Z(172) - BL - 0.004, BY, [-0.03, -0.02, Z(392)]);
     },
     smg(g, S, M) {
       const k = kit(g);
@@ -724,34 +730,34 @@ BR.Models = (function () {
       const wood = S === cache.mat['default|' + def.color] ? woodMaterial() : S;
       const BY = 0.045;
       // stock
-      prof([[-0.33, 0.03], [-0.318, 0.042], [0.12, 0.042], [0.19, 0.044], [0.26, 0.05], [0.418, 0.046], [0.42, -0.082], [0.27, -0.058],
-        [0.222, -0.05], [0.208, -0.094], [0.18, -0.098], [0.16, -0.064], [0.126, -0.034], [-0.02, -0.028], [-0.12, -0.014], [-0.3, 0.016]], 0.042, wood, 0.008);
-      prof([[0.418, 0.048], [0.434, 0.048], [0.436, -0.086], [0.42, -0.084]], 0.044, M.grip, 0.004);           // butt pad
+      prof([[-0.33, 0.032], [-0.318, 0.042], [0.12, 0.042], [0.19, 0.044], [0.26, 0.048], [0.418, 0.044], [0.42, -0.07], [0.27, -0.05],
+        [0.222, -0.044], [0.208, -0.086], [0.184, -0.09], [0.164, -0.058], [0.128, -0.03], [-0.02, -0.022], [-0.12, -0.008], [-0.3, 0.022]], 0.033, wood, 0.007);
+      prof([[0.418, 0.046], [0.432, 0.046], [0.434, -0.074], [0.42, -0.072]], 0.035, M.grip, 0.004);           // butt pad
       const chk = wood === S ? M.dark : (cache.mat.huChk || (cache.mat.huChk = new THREE.MeshLambertMaterial({ color: 0x4a2812 })));
       for (const sx of [-1, 1]) {                                                                                // checkering
-        prof([[0.152, -0.036], [0.186, -0.036], [0.2, -0.082], [0.174, -0.086]], 0.0006, chk, 0, sx * 0.0212);
-        prof([[-0.23, 0.026], [-0.1, 0.026], [-0.1, -0.004], [-0.21, 0.008]], 0.0006, chk, 0, sx * 0.0212);
+        prof([[0.156, -0.032], [0.188, -0.032], [0.2, -0.074], [0.178, -0.078]], 0.0006, chk, 0, sx * 0.0167);
+        prof([[-0.23, 0.03], [-0.1, 0.03], [-0.1, 0.004], [-0.21, 0.016]], 0.0006, chk, 0, sx * 0.0167);
       }
       // receiver, bolt shroud, ejection port, bolt
-      k.cyl(0.0175, 0.17, 0, 0.05, 0.05, M.dark, 'z', 18);
-      k.cyl(0.012, 0.04, 0, 0.052, 0.152, M.dark, 'z', 14);
-      k.box(0.002, 0.014, 0.05, 0.0175, 0.056, 0.06, M.grip);
-      k.box(0.026, 0.01, 0.05, 0, 0.06, 0.13, M.metal);
+      k.cyl(0.0145, 0.17, 0, 0.05, 0.05, M.dark, 'z', 18);
+      k.cyl(0.0105, 0.04, 0, 0.052, 0.152, M.dark, 'z', 14);
+      k.box(0.002, 0.012, 0.05, 0.0145, 0.055, 0.06, M.grip);
+      k.box(0.02, 0.008, 0.05, 0, 0.058, 0.13, M.metal);
       boltGroup(g, M, 0.052, 0.1, 0.12);
       // tapered barrel, crown, barrel band
-      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0125, 0.6, 16), M.dark); bar.rotation.x = -Math.PI / 2; bar.position.set(0, BY, -0.32); g.add(bar);
-      k.cyl(0.0095, 0.008, 0, BY, -0.618, M.metal, 'z', 14);
-      k.box(0.046, 0.032, 0.012, 0, 0.034, -0.3, M.dark);
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.0072, 0.0105, 0.6, 16), M.dark); bar.rotation.x = -Math.PI / 2; bar.position.set(0, BY, -0.32); g.add(bar);
+      k.cyl(0.0082, 0.008, 0, BY, -0.618, M.metal, 'z', 14);
+      k.box(0.036, 0.028, 0.01, 0, 0.036, -0.3, M.dark);
       // open sights: rear notch on a base ahead of the receiver, ramped front post
       k.box(0.022, 0.016, 0.016, 0, 0.07, -0.03, M.dark);
       const ramp = prof([[-0.6, 0.054], [-0.585, 0.08], [-0.572, 0.08], [-0.56, 0.054]], 0.01, M.dark, 0.001); void ramp;
       irons(g, M, 0.088, -0.03, -0.578, false);
       g.userData.sightDist = 0.4;
       // trigger guard, trigger, floorplate (mag), sling swivels
-      prof([[0.1, -0.03], [0.106, -0.03], [0.108, -0.052], [0.146, -0.054], [0.148, -0.03], [0.154, -0.03], [0.152, -0.06], [0.102, -0.058]], 0.012, M.dark, 0.0015);
-      prof([[0.122, -0.03], [0.128, -0.03], [0.13, -0.04], [0.125, -0.05], [0.121, -0.048], [0.123, -0.04]], 0.006, M.metal, 0.001);
-      magGroup(g, [k.box(0.028, 0.03, 0.08, 0, -0.018, 0.045, M.dark), k.box(0.032, 0.004, 0.11, 0, -0.034, 0.045, M.dark)]);
-      for (const z of [-0.26, 0.36]) { const sw = new THREE.Mesh(new THREE.TorusGeometry(0.008, 0.0018, 6, 12), M.metal); sw.position.set(0, z < 0 ? -0.004 : -0.078, z); sw.rotation.y = Math.PI / 2; g.add(sw); }
+      prof([[0.1, -0.024], [0.106, -0.024], [0.108, -0.046], [0.146, -0.048], [0.148, -0.026], [0.154, -0.026], [0.152, -0.054], [0.102, -0.052]], 0.01, M.dark, 0.0015);
+      prof([[0.122, -0.024], [0.128, -0.024], [0.13, -0.034], [0.125, -0.044], [0.121, -0.042], [0.123, -0.034]], 0.005, M.metal, 0.001);
+      magGroup(g, [k.box(0.022, 0.026, 0.08, 0, -0.012, 0.045, M.dark), k.box(0.026, 0.004, 0.11, 0, -0.026, 0.045, M.dark)]);
+      for (const z of [-0.26, 0.36]) { const sw = new THREE.Mesh(new THREE.TorusGeometry(0.008, 0.0018, 6, 12), M.metal); sw.position.set(0, z < 0 ? 0.01 : -0.066, z); sw.rotation.y = Math.PI / 2; g.add(sw); }
       hands(g, [0, -0.06, 0.17], [0, -0.03, -0.12], [0.06, 0.05, 0.11]);
       anchors(g, -0.626, BY, [-0.035, -0.02, 0.24]);
     },
@@ -835,47 +841,63 @@ BR.Models = (function () {
         geo.translate(0, 0, -depth / 2);
         return geo;
       };
-      // Blade: concave inner edge, sweeping spine, needle tip
+      // Blade: hooked claw with a thumb ramp, convex spine, needle tip, concave edge
       const bl = new THREE.Shape();
-      bl.moveTo(0, 0.013);
-      bl.bezierCurveTo(0.045, 0.034, 0.105, 0.026, 0.138, -0.022);   // spine
-      bl.bezierCurveTo(0.150, -0.042, 0.150, -0.062, 0.141, -0.078); // hook to the tip
-      bl.bezierCurveTo(0.128, -0.040, 0.090, -0.006, 0.040, -0.006); // sharpened inner edge
-      bl.quadraticCurveTo(0.012, -0.007, 0.0, -0.013);
+      bl.moveTo(0, 0.014);
+      bl.quadraticCurveTo(0.018, 0.027, 0.034, 0.026);               // thumb ramp
+      bl.bezierCurveTo(0.075, 0.026, 0.118, 0.012, 0.14, -0.026);    // spine
+      bl.bezierCurveTo(0.152, -0.048, 0.15, -0.066, 0.142, -0.08);   // hook to the tip
+      bl.bezierCurveTo(0.13, -0.044, 0.094, -0.012, 0.046, -0.008);  // edge
+      bl.quadraticCurveTo(0.018, -0.008, 0.0, -0.014);
       bl.closePath();
       const bladeMat = (opts && opts.blade) || M.blade;
       const bladeG = new THREE.Group(); bladeG.scale.setScalar(1.25); k.add(bladeG);   // 25% bigger blade
-      bladeG.add(new THREE.Mesh(ext(bl, 0.003, 0.0012), bladeMat));
-      // Bevel line along the edge (slightly darker steel)
+      const extS = (shape, depth, bevel, size) => {
+        const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: size === undefined ? bevel : size, bevelSegments: 2, curveSegments: 24 });
+        geo.translate(0, 0, -depth / 2); return geo;
+      };
+      bladeG.add(new THREE.Mesh(extS(bl, 0.003, 0.0012), bladeMat));
+      // Bright edge grind following the cutting edge
       const bev = new THREE.Shape();
-      bev.moveTo(0.02, -0.002);
-      bev.bezierCurveTo(0.07, 0.002, 0.115, -0.02, 0.136, -0.06);
-      bev.bezierCurveTo(0.122, -0.032, 0.086, -0.005, 0.04, -0.004);
+      bev.moveTo(0.02, -0.0085);
+      bev.quadraticCurveTo(0.03, -0.0082, 0.046, -0.0085);
+      bev.bezierCurveTo(0.094, -0.0125, 0.13, -0.0445, 0.1415, -0.0795);
+      bev.bezierCurveTo(0.133, -0.04, 0.098, -0.0015, 0.046, 0.0005);
+      bev.lineTo(0.02, -0.0002);
       bev.closePath();
-      const bm = new THREE.Mesh(ext(bev, 0.0045, 0.0005), (opts && opts.blade) ? bladeMat : M.metal); bladeG.add(bm);
-      // Jimping notches on the spine
-      for (let i = 0; i < 6; i++) {
-        const t = 0.008 + i * 0.008, j = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.004, 0.006), M.dark);
-        j.position.set(t, 0.016 + t * 0.35, 0); j.rotation.z = 0.35; bladeG.add(j);
+      const edgeMat = (opts && opts.blade) ? bladeMat : (cache.mat.kEdge || (cache.mat.kEdge = new THREE.MeshPhongMaterial({ color: 0xf2f6fa, specular: 0xffffff, shininess: 180, side: THREE.DoubleSide })));
+      bladeG.add(new THREE.Mesh(extS(bev, 0.0046, 0.0005), edgeMat));
+      // Jimping cut into the thumb ramp
+      for (let i = 0; i < 5; i++) {
+        const x = 0.011 + i * 0.0055, t = x / 0.034, y = (1 - t) * (1 - t) * 0.014 + 2 * (1 - t) * t * 0.027 + t * t * 0.026;
+        const j = new THREE.Mesh(new THREE.BoxGeometry(0.0016, 0.0034, 0.0062), M.dark); j.position.set(x, y - 0.0006, 0); j.rotation.z = 0.5 - i * 0.12; bladeG.add(j);
       }
-      // Curved handle (skin material) with a guard bump
+      // Curved handle with finger grooves and a guard hook (skin material = scales)
       const hd = new THREE.Shape();
-      hd.moveTo(0.004, 0.016);
-      hd.quadraticCurveTo(-0.045, 0.034, -0.098, 0.064);              // shorter handle, sweeping up hard toward the ring
-      hd.lineTo(-0.108, 0.042);
-      hd.quadraticCurveTo(-0.052, 0.006, -0.02, -0.012);              // curved belly
-      hd.quadraticCurveTo(-0.008, -0.03, 0.006, -0.026);              // finger guard
-      hd.lineTo(0.004, -0.014);
+      hd.moveTo(0.006, 0.016);
+      hd.bezierCurveTo(-0.03, 0.022, -0.07, 0.036, -0.1, 0.058);      // top line sweeping up to the ring
+      hd.quadraticCurveTo(-0.113, 0.05, -0.108, 0.036);               // rounded butt
+      hd.bezierCurveTo(-0.088, 0.026, -0.076, 0.014, -0.064, 0.012);  // belly
+      hd.quadraticCurveTo(-0.055, 0.003, -0.046, 0.007);              // finger groove
+      hd.quadraticCurveTo(-0.037, -0.002, -0.027, 0.0);               // finger groove
+      hd.quadraticCurveTo(-0.012, -0.004, -0.008, -0.022);            // into the guard
+      hd.quadraticCurveTo(-0.002, -0.035, 0.009, -0.031);             // guard hook
+      hd.lineTo(0.006, -0.016);
       hd.closePath();
-      k.add(new THREE.Mesh(ext(hd, 0.014, 0.003), S));
-      // Steel liner peeking out between the scales
-      const liner = new THREE.Mesh(ext(hd, 0.007, 0.0005), M.metal); liner.scale.set(1.03, 1.08, 1); liner.position.set(0.002, -0.001, 0); k.add(liner);
-      // Pins
-      for (const [x, y] of [[-0.025, 0.013], [-0.055, 0.027], [-0.083, 0.043]]) {
-        const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 0.02, 8), M.blade); pin.rotation.x = Math.PI / 2; pin.position.set(x, y, 0); k.add(pin);
+      k.add(new THREE.Mesh(extS(hd, 0.014, 0.003), S));
+      // Steel liner showing as an even line all round the scales
+      k.add(new THREE.Mesh(extS(hd, 0.004, 0.0002, 0.0016), M.metal));
+      // Steel bolster + guard at the blade end
+      const bo = new THREE.Shape();
+      bo.moveTo(0.008, 0.0165); bo.lineTo(-0.007, 0.0185); bo.lineTo(-0.011, -0.012);
+      bo.quadraticCurveTo(-0.004, -0.036, 0.0095, -0.0315); bo.closePath();
+      k.add(new THREE.Mesh(extS(bo, 0.017, 0.002), M.metal));
+      // Flush pins
+      for (const [x, y] of [[-0.03, 0.012], [-0.058, 0.026], [-0.085, 0.042]]) {
+        const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.0205, 12), M.blade); pin.rotation.x = Math.PI / 2; pin.position.set(x, y, 0); k.add(pin);
       }
-      // Finger ring at the butt
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.0062, 10, 22), M.metal);
+      // Finger ring at the butt (the deploy flip pivots on its centre)
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.0066, 16, 40), M.metal);
       ring.position.set(-0.12, 0.066, 0); k.add(ring);
       k.rotation.y = Math.PI / 2;      // +x -> -z
       g.add(k);
@@ -1088,7 +1110,7 @@ BR.Models = (function () {
           k.box(0.056, 0.052, 0.05, 0, 0.05, -0.195, P.A);                       // compensator
           for (const x of [-0.026, 0.026]) glowStrip(k, P.G, 0.16, x, 0.062, -0.06);
           k.box(0.004, 0.012, 0.004, 0, 0.074, -0.205, P.G);                      // port glow
-          if (g.userData.mag) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.03, 0.054), P.A); b.position.set(0, -0.128, 0.038); b.rotation.x = 0.06; g.userData.mag.add(b); }
+          if (g.userData.mag) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.03, 0.054), P.A); b.position.set(0, -0.178, 0.042); b.rotation.x = 0.06; g.userData.mag.add(b); }
         } },
       gilded: { name: 'Gilded Monarch', rarity: 'Legendary', price: 800, body: 0xe6b422, bodyGloss: 2, accent: 0xf3efe6, glow: 0xffe9a0,
         mod(g, k, P) {
@@ -1195,10 +1217,10 @@ BR.Models = (function () {
     hunter: {
       timberwolf: { name: 'Timberwolf', rarity: 'Legendary', price: 950, body: 0x5a3418, bodyGloss: 1, accent: 0xc89b3c, accentGloss: 1, glow: 0xffb347,
         mod(g, k, P) {
-          for (const z of [-0.08, 0.06, 0.38]) k.box(0.054, 0.012, 0.012, 0, z > 0.3 ? -0.03 : 0.0, z, P.A);   // brass bands
-          for (const x of [-0.026, 0.026]) k.box(0.002, 0.03, 0.12, x, -0.03, 0.31, P.A);                    // inlay
-          k.box(0.004, 0.006, 0.42, -0.03, -0.06, 0.13, new THREE.MeshLambertMaterial({ color: 0x3a2a1c }));  // leather sling
-          k.box(0.002, 0.006, 0.12, 0.019, 0.04, 0.04, P.G);           // glowing receiver inlay
+          for (const z of [-0.08, 0.06, 0.38]) k.box(0.042, 0.012, 0.012, 0, z > 0.3 ? -0.012 : 0.012, z, P.A);   // brass bands
+          for (const x of [-0.0185, 0.0185]) k.box(0.002, 0.03, 0.12, x, -0.012, 0.31, P.A);                  // inlay
+          k.box(0.004, 0.006, 0.42, -0.022, -0.045, 0.13, new THREE.MeshLambertMaterial({ color: 0x3a2a1c }));  // leather sling
+          k.box(0.002, 0.006, 0.12, 0.0155, 0.05, 0.04, P.G);           // glowing receiver inlay
           k.box(0.007, 0.007, 0.007, 0, 0.088, -0.578, P.G);           // glowing front bead
         } },
     },
@@ -1281,7 +1303,7 @@ BR.Models = (function () {
           anim(g, t => { veil.color.copy(G.color); veil.opacity = 0.25 + 0.15 * Math.sin(t * 2.3); });
           for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.05), veil); f.position.set(0, 0.1, -0.28 + i * 0.11); f.rotation.y = Math.PI / 2; g.add(f);
             anim(g, t => { f.position.y = 0.1 + Math.sin(t * 2 + i) * 0.01; f.rotation.z = Math.sin(t * 1.5 + i) * 0.2; }); }
-          for (const x of [-0.027, 0.027]) { k.box(0.002, 0.012, 0.36, x, 0.0, -0.05, G); k.box(0.002, 0.03, 0.18, x, -0.03, 0.3, G); }
+          for (const x of [-0.019, 0.019]) { k.box(0.002, 0.012, 0.36, x, 0.012, -0.05, G); k.box(0.002, 0.03, 0.18, x, -0.012, 0.3, G); }
           k.box(0.008, 0.008, 0.008, 0, 0.088, -0.578, G);
         } },
     },
@@ -1381,11 +1403,11 @@ BR.Models = (function () {
       phantom: { name: 'Phantom', rarity: 'Mythic', price: 2200, body: 0x9fd8ff, bodyGloss: 2, accent: 0xe8f6ff, accentGloss: 2, glow: 0xbfeaff,
         mod(g, k, P) {
           const ghost = new THREE.MeshPhongMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.5, specular: 0xffffff, shininess: 140, emissive: 0x204a6a, depthWrite: false });
-          k.box(0.06, 0.11, 0.24, 0, -0.03, 0.31, ghost); k.box(0.056, 0.066, 0.32, 0, 0.0, 0.0, ghost);                     // ethereal stock + fore-stock shells
+          k.box(0.044, 0.1, 0.24, 0, -0.012, 0.31, ghost); k.box(0.04, 0.056, 0.32, 0, 0.012, 0.0, ghost);                     // ethereal stock + fore-stock shells
           const wisp = new THREE.MeshBasicMaterial({ color: 0xdff6ff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
           orbiters(g, 4, new THREE.SphereGeometry(0.01, 8, 6), wisp, 0, 0.04, -0.2, 0.07, 1.6, 'z');
           anim(g, t => { ghost.opacity = 0.4 + 0.15 * Math.sin(t * 2.2); wisp.opacity = 0.5 + 0.3 * Math.sin(t * 4); });
-          const G = liveGlow(0xbfeaff); for (const x of [-0.03, 0.03]) k.box(0.002, 0.008, 0.4, x, 0.045, -0.1, G);
+          const G = liveGlow(0xbfeaff); for (const x of [-0.021, 0.021]) k.box(0.002, 0.008, 0.4, x, 0.036, -0.1, G);
         } },
     },
     pistol: {
@@ -1503,7 +1525,7 @@ BR.Models = (function () {
         mod(g, k, P) {
           const bone = chrome(0xe8dcc0), G = liveGlow(0x39ff88);
           for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) { const a = new THREE.Mesh(new THREE.ConeGeometry(0.005, 0.05 - i * 0.01, 5), bone); a.position.set(sx * 0.02, 0.09 + i * 0.012, 0.22 - i * 0.03); a.rotation.set(-0.6, 0, sx * (0.5 + i * 0.2)); g.add(a); }
-          for (const x of [-0.027, 0.027]) k.box(0.002, 0.03, 0.16, x, -0.03, 0.31, G);
+          for (const x of [-0.0185, 0.0185]) k.box(0.002, 0.03, 0.16, x, -0.012, 0.31, G);
           orbiters(g, 3, new THREE.SphereGeometry(0.007, 8, 6), G, 0, 0.04, 0.0, 0.06, 1.8, 'z');
         } },
     },

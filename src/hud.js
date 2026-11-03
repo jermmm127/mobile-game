@@ -262,6 +262,7 @@ BR.HUD = class HUD {
     <div id="inv-tabs" class="seg">
       <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button>
     </div>
+    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
     <div id="inv-weps" class="chips"></div>
     <div id="inv-grid"></div>
     <div class="shop-foot">

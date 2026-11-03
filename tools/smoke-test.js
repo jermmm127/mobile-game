@@ -440,6 +440,19 @@ const server = http.createServer((req, res) => {
     vm.onFire(sg); for (let i = 0; i < 50; i++) { vm.update(1 / 60, 0, 0); pumpMax = Math.max(pumpMax, vm.models.shotgun.userData.model.userData.pump.position.z); }
     pumpEnd = vm.models.shotgun.userData.model.userData.pump.position.z; out.pump = [pumpMax, pumpEnd];
     P.setEquip('blueprints', 'butterfly:default'); P.data.equip.melee = 'knife';
+    // every gun (old + new models) builds with every blueprint and every camo, and has a tracer slot
+    { const MD = BR.Models, W = BR.CONFIG.weapons; let built = 0, bad = [];
+      for (const w in W) {
+        for (const b in (MD.BLUEPRINTS[w] || {})) { try { const m = MD.weapon(w, 'default', 'none', b); if (!m.children.length) bad.push(w + ':' + b); built++; } catch (e) { bad.push(w + ':' + b + ' ' + e.message); } }
+        for (const sk in MD.SKINS) { try { MD.weapon(w, sk, 'none'); built++; } catch (e) { bad.push(w + ' camo ' + sk); } }
+      }
+      const tr = ['revolver', 'butterfly', 'smg', 'holoar', 'rifle', 'shotgun', 'sniper', 'hunter', 'pistol'].every(w => { P.data.equip.tracerByGun[w] = 'red'; return P.data.equip.tracerByGun[w] === 'red'; });
+      out.cosmetics = { built, bad, tracers: tr }; }
+    // inventory melee picker: karambit OR butterfly
+    { const inv = document.querySelector('#inv-melee'); const btn = m => inv.querySelector('button[data-m="' + m + '"]');
+      btn('butterfly').click(); const a = [P.data.equip.melee, g.player.slots[2] && g.player.slots[2].id];
+      btn('knife').click(); const b2 = [P.data.equip.melee, g.player.slots[2] && g.player.slots[2].id, inv.querySelectorAll('button.sel').length];
+      out.meleePick = { a, b: b2 }; }
     // weapon-slot opacity in the HUD editor
     const sa = document.getElementById('ed-slot-alpha'); sa.value = 0.3; sa.dispatchEvent(new Event('input'));
     out.slotAlpha = parseFloat(getComputedStyle(document.querySelector('#play > .slot:not(.empty)')).opacity);
@@ -527,6 +540,8 @@ const server = http.createServer((req, res) => {
     ['butterfly equips as your melee and flips open on draw', v15.melee === 'butterfly' && v15.bflyFlip > 1],
     ['revolver reload swings the cylinder out and spins it', v15.rv === 'revolver' && v15.crane > 0.8 && v15.cyl > 0.5],
     ['pump shotgun racks its forend after a shot', v15.pump[0] > 0.05 && v15.pump[1] < 0.005],
+    ['every gun builds with every blueprint + camo; per-gun tracers', v15.cosmetics.bad.length === 0 && v15.cosmetics.built > 200 && v15.cosmetics.tracers],
+    ['inventory melee picker swaps karambit / butterfly (one at a time)', v15.meleePick.a.join() === 'butterfly,butterfly' && v15.meleePick.b.join() === 'knife,knife,1'],
     ['weapon buttons opacity can be lowered (saved)', Math.abs(v15.slotAlpha - 0.3) < 0.02 && v15.saved === 0.3],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],

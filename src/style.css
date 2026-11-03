@@ -813,3 +813,9 @@ body.duel #topbar .dp { display: flex; }
 .inv-empty { grid-column: 1 / -1; color: var(--muted); font-size: 13px; padding: 20px 4px; }
 .dk.inv { color: #b9f2c9; border-color: rgba(79, 220, 138, 0.35); }
 @media (orientation: portrait) { .inv-stage { right: 0; bottom: 56%; } .inv-hint { bottom: 10px; } }
+
+/* Inventory: melee picker (karambit OR butterfly) */
+.melee-pick { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; }
+.melee-pick span { font: 700 10px var(--ui); letter-spacing: 0.12em; color: var(--muted); margin-right: 2px; }
+.melee-pick button { flex: 1; padding: 7px 4px; font: 700 11px var(--ui); letter-spacing: 0.08em; color: #e8ecf2; background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.melee-pick button.sel { color: #111; background: var(--accent, #ffb02e); border-color: transparent; box-shadow: 0 0 12px rgba(255,176,46,0.35); }

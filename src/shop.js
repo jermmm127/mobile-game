@@ -399,6 +399,14 @@ BR.Inventory = class Inventory {
     $('inv-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-cat]'); if (!b) return; this.cat = b.dataset.cat; this.sel = null; this.render(); });
     this.el.weps.addEventListener('click', e => { const b = e.target.closest('button[data-w]'); if (!b) return; this.weapon = b.dataset.w; this.sel = null; this.render(); });
     this.el.grid.addEventListener('click', e => { const c = e.target.closest('[data-id]'); if (!c) return; this.sel = c.dataset.id; this.game.inspectReset(); this.render(); });
+    // Melee: carry either the karambit or the butterfly knife (one at a time)
+    $('inv-melee').addEventListener('click', e => {
+      const b = e.target.closest('button[data-m]'); if (!b) return;
+      const P = BR.Profile; P.data.equip.melee = b.dataset.m; P.save(); BR.Audio.pickup();
+      this.cat = 'blueprints'; this.weapon = b.dataset.m; this.sel = null;
+      this.flash((b.dataset.m === 'butterfly' ? 'Butterfly knife' : 'Karambit') + ' equipped');
+      this.game.refreshCosmetics(); this.render();
+    });
     this.el.action.addEventListener('click', () => this.act());
     $('inv-back').addEventListener('click', () => this.close());
     this.bindDrag();
@@ -474,6 +482,8 @@ BR.Inventory = class Inventory {
     this.el.weps.classList.toggle('hidden', !showWeps);
     this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
     this.el.count.textContent = this.total();
+    const mel = P.data.equip.melee || 'knife';
+    document.querySelectorAll('#inv-melee button').forEach(b => b.classList.toggle('sel', b.dataset.m === mel));
     if (!this.sel || !items[this.sel]) this.sel = items[this.equippedId()] ? this.equippedId() : Object.keys(items)[0] || null;
     const html = [];
     for (const id in items) {
