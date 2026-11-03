@@ -1074,10 +1074,17 @@ BR.Models = (function () {
       };
       const bladeMat = (opts && opts.blade) || M.blade;
       // blade: shape x = model z (front is negative), shape y = up
-      const blade = ext([[0.009, 0.004], [0.009, 0.082], [0.009, 0.106, -0.001, 0.127], [-0.004, 0.131], [-0.012, 0.098, -0.011, 0.034], [-0.012, 0.012], [-0.006, 0.004]], 0.0026, 0.0009);
+      // slim blade with a gentle recurve belly, a clipped point and a long swedge
+      const blade = ext([[0.0085, 0.004], [0.0085, 0.09], [0.0085, 0.118, -0.002, 0.138], [-0.0045, 0.142], [-0.0115, 0.11, -0.0095, 0.07], [-0.0118, 0.04, -0.0108, 0.014], [-0.0062, 0.004]], 0.0024, 0.0008);
       blade.material = bladeMat; g.add(blade);
-      const swedge = ext([[0.0075, 0.084], [0.0075, 0.104, 0.0, 0.122], [-0.002, 0.12], [0.0045, 0.1]], 0.0034, 0);
+      const swedge = ext([[0.0072, 0.09], [0.0072, 0.114, 0.0, 0.132], [-0.002, 0.13], [0.004, 0.106]], 0.0032, 0);
       swedge.material = M.metal; g.add(swedge);
+      // bright edge grind along the cutting edge + a dark fuller groove down the middle
+      const edgeM = (opts && opts.blade) ? bladeMat : (cache.mat.bfEdge || (cache.mat.bfEdge = new THREE.MeshPhongMaterial({ color: 0xf4f7fa, specular: 0xffffff, shininess: 190 })));
+      const grind = ext([[-0.0118, 0.016], [-0.0108, 0.05, -0.0098, 0.09], [-0.0065, 0.128], [-0.0048, 0.134], [-0.0068, 0.1], [-0.0078, 0.05, -0.0082, 0.018]], 0.0034, 0);
+      grind.material = edgeM; g.add(grind);
+      const fuller = ext([[0.0025, 0.022], [0.0042, 0.022], [0.0042, 0.078], [0.0025, 0.082]], 0.0031, 0);
+      fuller.material = M.dark; g.add(fuller);
       const kick = ext([[-0.006, 0.0], [-0.013, 0.004], [-0.012, 0.014], [-0.006, 0.012]], 0.003, 0.0005); kick.material = M.metal; g.add(kick);
       // handles: pivot groups at the blade tang (pins along X)
       const handle = (side) => {
@@ -1085,6 +1092,8 @@ BR.Models = (function () {
         const h = ext([[-0.0115, 0.004], [0.0115, 0.004], [0.0115, -0.118], [0.0115, -0.13, 0.0, -0.13], [-0.0115, -0.13, -0.0115, -0.118]], 0.0046, 0.0008,
           [[0, -0.026, 0.004, 0.009], [0, -0.05, 0.004, 0.008], [0, -0.073, 0.004, 0.008], [0, -0.097, 0.0035, 0.007]]);
         h.material = S; pv.add(h);
+        // chrome rails along both long edges of the handle
+        for (const z of [-0.0112, 0.0112]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(0.0052, 0.118, 0.0016), M.blade); rail.position.set(0, -0.061, z); pv.add(rail); }
         for (const y of [0, -0.12]) { const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0028, 0.0028, 0.012, 10), M.metal); pin.rotation.z = Math.PI / 2; pin.position.set(0, y, 0); pv.add(pin); }
         return pv;
       };
@@ -1838,7 +1847,28 @@ BR.Models = (function () {
   BLADES.acidblade = animBlade('acid', 0.9);
   S2BP.knife = { abyss: { name: 'Abyss', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0x07020f, bodyGloss: 2, accent: 0xb04bff, glow: 0xb04bff, blade: 'riftblade', season: 2 },
     lightspeed: { name: 'Lightspeed', rarity: 'Mythic', price: 2600, body: 0x05050f, bodyGloss: 2, accent: 0x1de9ff, glow: 0x1de9ff, blade: 'hyperblade', season: 2 } };
-  S2BP.butterfly = { biohazard: { name: 'Biohazard', rarity: 'Mythic', caseOnly: true, case: 'nova', body: 0x041a06, bodyGloss: 2, accent: 0x7dff3a, glow: 0x7dff3a, blade: 'acidblade', season: 2 },
+  BLADES.nightshade = () => new THREE.MeshPhongMaterial({ shininess: 170, specular: 0xd8b8ff, side: THREE.DoubleSide, emissive: 0x2a0a5a, emissiveIntensity: 1,
+    map: bladeTex('nightshade', (c, s) => {
+      const gr = c.createLinearGradient(0, 0, s, s); gr.addColorStop(0, '#0b0414'); gr.addColorStop(0.45, '#3a1080'); gr.addColorStop(0.7, '#7b2cff'); gr.addColorStop(1, '#14062a');
+      c.fillStyle = gr; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 9; i++) { let x = Math.random() * s, y = Math.random() * s; c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 5; k++) { x += (Math.random() - 0.5) * 30; y += (Math.random() - 0.5) * 30; c.lineTo(x, y); }
+        c.strokeStyle = '#d08bff'; c.lineWidth = 1.2; c.shadowColor = '#b04bff'; c.shadowBlur = 6; c.stroke(); }
+    }) });
+  // aura: additive shells hugging the blade that breathe, plus motes drifting off it
+  const nightshadeAura = (g, k, P) => {
+    const blade = g.userData.blade, par = blade.parent;
+    const shells = [[1.16, 0.55, 0xb04bff], [1.38, 0.22, 0x7b2cff]].map(([sc, op, c]) => {
+      const m = new THREE.Mesh(blade.geometry, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide }));
+      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.set(sc * 1.8, sc, sc);      // thicker sideways so it reads as a glow
+      m.position.y -= 0.07 * (sc - 1); par.add(m); return m; });
+    anim(g, t => shells.forEach((m, i) => { const b = 0.5 + 0.5 * Math.sin(t * 3.2 + i); m.material.opacity = (i ? 0.14 : 0.4) + b * (i ? 0.12 : 0.25); m.material.color.setHSL(0.76 + 0.03 * Math.sin(t * 1.3 + i), 1, 0.55); }));
+    const motes = [], mm = new THREE.MeshBasicMaterial({ color: 0xd8a8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+    for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.0028, 0), mm); par.add(m); motes.push({ m, o: Math.random(), x: (Math.random() - 0.5) * 0.02 }); }
+    anim(g, t => motes.forEach(({ m, o, x }) => { const f = (t * 0.6 + o) % 1; m.position.set(x + Math.sin(t * 3 + o * 9) * 0.004, 0.02 + f * 0.13, Math.cos(t * 2 + o * 7) * 0.01); m.scale.setScalar(1 - f * 0.7); }));
+  };
+  S2BP.butterfly = { nightshade: { name: 'Nightshade', rarity: 'Mythic', price: 2800, body: 0x120a1e, bodyGloss: 2, accent: 0xb04bff, glow: 0xb04bff, blade: 'nightshade', trail: 0xb04bff, mod: nightshadeAura, season: 2 },
+    biohazard: { name: 'Biohazard', rarity: 'Mythic', caseOnly: true, case: 'nova', body: 0x041a06, bodyGloss: 2, accent: 0x7dff3a, glow: 0x7dff3a, blade: 'acidblade', season: 2 },
     riftwing: { name: 'Riftwing', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0x07020f, bodyGloss: 2, accent: 0xff3df2, glow: 0xff3df2, blade: 'riftblade', season: 2 } };
   for (const w in S2BP) MYTHIC[w] = Object.assign(MYTHIC[w] || {}, S2BP[w]);
   for (const w in MYTHIC) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, MYTHIC[w]);

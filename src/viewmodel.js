@@ -137,6 +137,18 @@
       const kh = left => { const h = BR.Models.hand(eq.gloves || 'default', left, true); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; };
       this.knifeHands = { R: kh(true), L: kh(false), RB: kh(false), RP: (() => { const h = BR.Models.hand(eq.gloves || 'default', true, 'point'); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; })() };
       this.curGlove = null;          // forces the per-weapon glove pass on the next frame
+      // Glowing blade trail (butterfly blueprints with a .trail colour): a ribbon between the blade
+      // tip and mid-blade over the last frames, drawn additively and fading toward the tail
+      if (this.bfTrail) { this.scene.remove(this.bfTrail.mesh); this.bfTrail.mesh.geometry.dispose(); this.bfTrail = null; }
+      { const bpId = (eq.blueprints || {}).butterfly, B = bpId && BR.Models.BLUEPRINTS.butterfly && BR.Models.BLUEPRINTS.butterfly[bpId];
+        if (B && B.trail) {
+          const N = 11, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), idx = [];
+          for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+          geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
+          const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+          mesh.frustumCulled = false; mesh.visible = false; this.scene.add(mesh);
+          this.bfTrail = { mesh, N, tips: [], mids: [], color: new THREE.Color(B.trail), on: 0 };
+        } }
       // Wrist grapple launcher (child of the left hand: aims where the fingers point)
       const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
       const orange = new THREE.MeshLambertMaterial({ color: 0xffa31a, emissive: 0x552200 });
@@ -186,7 +198,7 @@
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 3.4 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
-    hide() { if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -459,6 +471,8 @@
         // idle: a slow relaxed wrist drift so the hold never looks frozen
         if (!bfly) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.035 * Math.sin(q * 1.1); orx += 0.025 * Math.sin(q * 0.8 + 1); ory += 0.03 * Math.sin(q * 0.6); }
       }
+      // butterfly blade trail: sample after the pose is applied (see end of update)
+      this._trailFrame = w.id === 'butterfly' && this.bfTrail ? { model } : null;
       // Reloads
       const port = ud.port, fore = ud.fore;
       if (reloading && !def.melee) {
@@ -586,6 +600,7 @@
       }
 
       this.placeArms(holder, model, ud, leftTarget, leftHidden, rightTarget);
+      if (this.bfTrail) this.stepTrail(dt);
       this.updateVfx(dt);
       BR.Models.animate(model, performance.now() / 1000);     // Mythic blueprints: rings, orbiters, hue cycling
     }
@@ -826,6 +841,23 @@
     }
 
     // a swish each time a flip phase passes
+    stepTrail(dt) {
+      const T = this.bfTrail, f = this._trailFrame, m = T.mesh;
+      if (!f) { m.visible = false; T.tips.length = T.mids.length = 0; return; }
+      const inner = f.model.userData.inner || f.model; inner.updateMatrixWorld(true);
+      const tip = inner.localToWorld(new THREE.Vector3(0, 0.138, -0.003)), mid = inner.localToWorld(new THREE.Vector3(0, 0.085, -0.003));
+      const last = T.tips[0], speed = last ? tip.distanceTo(last) / Math.max(dt, 1e-3) : 0;
+      T.tips.unshift(tip); T.mids.unshift(mid); if (T.tips.length > T.N) { T.tips.length = T.N; T.mids.length = T.N; }
+      T.on += ((speed > 0.6 ? 1 : 0) - T.on) * Math.min(1, dt * 10);      // shows while the blade is whipping round
+      const pos = m.geometry.attributes.position.array, col = m.geometry.attributes.color.array, n = T.tips.length;
+      for (let i = 0; i < T.N; i++) {
+        const a = T.tips[Math.min(i, n - 1)], b = T.mids[Math.min(i, n - 1)], f1 = Math.max(0, 1 - i / (T.N - 1)), k = f1 * f1 * T.on;
+        pos.set([a.x, a.y, a.z, b.x, b.y, b.z], i * 6);
+        col.set([T.color.r * k * 0.75, T.color.g * k * 0.75, T.color.b * k * 0.75, 0, 0, 0], i * 6);
+      }
+      m.geometry.attributes.position.needsUpdate = true; m.geometry.attributes.color.needsUpdate = true;
+      m.visible = T.on > 0.02 && n > 2;
+    }
     bflySwish(t, marks) {
       for (const m of marks) if (this.lastBflyT < m && t >= m) BR.Audio.swish(false);
       this.lastBflyT = t;

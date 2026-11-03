@@ -593,6 +593,13 @@ const server = http.createServer((req, res) => {
     { P.data.equip.melee = 'knife'; g.refreshCosmetics(); p.cur = 2; vm.lastWeapon = null; let pointSeen = false;
       for (let i = 0; i < 40; i++) { vm.update(1 / 60, 0, 0); if (vm.knifeHands.RP.visible) pointSeen = true; }
       out.ringFinger = pointSeen; }
+    // Nightshade butterfly: aura + glowing trail that shows while the blade flips
+    { const B = BR.Models.BLUEPRINTS.butterfly.nightshade; P.data.equip.melee = 'butterfly'; P.data.equip.blueprints = Object.assign({}, P.data.equip.blueprints, { butterfly: 'nightshade' });
+      g.refreshCosmetics(); p.cur = 2; vm.lastWeapon = null; let trailSeen = false;
+      for (let i = 0; i < 60; i++) { vm.update(1 / 60, 0, 0); if (vm.bfTrail && vm.bfTrail.mesh.visible) trailSeen = true; }
+      const base = BR.Models.weapon('butterfly', 'default', 'none'), ns = BR.Models.weapon('butterfly', 'default', 'none', 'nightshade'); let aura = 0; ns.traverse(o => { if (o.material && o.material.blending === THREE.AdditiveBlending) aura++; });
+      out.nightshade = { bp: !!(B && B.trail && B.rarity === 'Mythic'), trail: !!vm.bfTrail, trailSeen, base: !!base, aura };
+      P.data.equip.blueprints.butterfly = null; P.data.equip.melee = 'knife'; g.refreshCosmetics(); out.nightshade.cleared = !vm.bfTrail; }
     // mastery + daily
     const before = P.owns('skins', 'm_copper'); let got = []; for (let i = 0; i < 10; i++) got = got.concat(P.addKill('smg'));
     out.mastery = { before, after: P.owns('skins', 'm_copper'), got: got.join() };
@@ -711,6 +718,7 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['Nightshade butterfly: purple aura + glowing trail on the flips', v17.nightshade.bp && v17.nightshade.trail && v17.nightshade.trailSeen && v17.nightshade.base && v17.nightshade.aura >= 2 && v17.nightshade.cleared],
     ['enemy highlight tints other players', v17.highlight],
     ['spinning case previews render', v17.spins >= 2],
     ['bots finish a match', match.alive === 1],
