@@ -368,6 +368,20 @@ BR.Models = (function () {
     g.userData.muzzle = muzzle; g.userData.charm = charm; g.userData.flash = flash;
   }
 
+  // Walnut: procedural wood-grain texture (grain runs along the gun) on a satin finish.
+  function woodMaterial() {
+    return (cache.mat.sgWood || (cache.mat.sgWood = new THREE.MeshPhongMaterial({ specular: 0x3a2414, shininess: 26, map: canvasTex('wood', (c, sz) => {
+            c.fillStyle = '#6b3a1c'; c.fillRect(0, 0, sz, sz);
+            for (let i = 0; i < 70; i++) {
+              const y = Math.random() * sz, h = 1 + Math.random() * 3, l = 40 + Math.random() * 30;
+              c.fillStyle = `hsla(${22 + Math.random() * 8},${45 + Math.random() * 20}%,${l * 0.45}%,${0.25 + Math.random() * 0.35})`;
+              c.beginPath(); c.moveTo(0, y);
+              for (let x = 0; x <= sz; x += 8) c.lineTo(x, y + Math.sin(x * 0.05 + i) * 2.5);
+              c.lineTo(sz, y + h); c.lineTo(0, y + h); c.closePath(); c.fill();
+            }
+          }, 256) })));
+  }
+
   // Side-profile extruder: points authored on a 2D grid (x = back, y = down, mapped by Z / Y),
   // [x, y] = line to, [cx, cy, x, y] = curve to; extruded to width w (centred on x0).
   function profiler(g, Z, Y) {
@@ -478,18 +492,7 @@ BR.Models = (function () {
     shotgun(g, S, M) {
       const k = kit(g), I = v => v, prof = profiler(g, I, I);
       const def = BR.CONFIG.weapons.shotgun;
-      const wood = S === cache.mat['default|' + def.color]
-        ? (cache.mat.sgWood || (cache.mat.sgWood = new THREE.MeshPhongMaterial({ specular: 0x3a2414, shininess: 26, map: canvasTex('wood', (c, sz) => {
-            c.fillStyle = '#6b3a1c'; c.fillRect(0, 0, sz, sz);
-            for (let i = 0; i < 70; i++) {
-              const y = Math.random() * sz, h = 1 + Math.random() * 3, l = 40 + Math.random() * 30;
-              c.fillStyle = `hsla(${22 + Math.random() * 8},${45 + Math.random() * 20}%,${l * 0.45}%,${0.25 + Math.random() * 0.35})`;
-              c.beginPath(); c.moveTo(0, y);
-              for (let x = 0; x <= sz; x += 8) c.lineTo(x, y + Math.sin(x * 0.05 + i) * 2.5);
-              c.lineTo(sz, y + h); c.lineTo(0, y + h); c.closePath(); c.fill();
-            }
-          }, 256) })))
-        : S;
+      const wood = S === cache.mat['default|' + def.color] ? woodMaterial() : S;
       const BY = 0.05;
       // receiver: rounded top, slopes into the wrist; ejection + loading ports, pins
       prof([[-0.2, -0.006], [-0.2, 0.068], [-0.19, 0.08], [0.02, 0.08], [0.05, 0.068], [0.064, 0.04], [0.064, -0.006]], 0.05, S, 0.006);
@@ -693,28 +696,47 @@ BR.Models = (function () {
       }
       anchors(g, -0.74, 0.035, [-0.04, -0.01, 0.1]);
     },
+    // Hunting rifle: a classic wooden bolt-action sporter. One-piece walnut stock with a
+    // long fore-end that runs under most of the barrel, a pistol-grip wrist with
+    // checkering, raised comb and black butt pad; round blued receiver with a bolt and
+    // shroud, tapered barrel with a band, open sights (rear notch + ramped front post),
+    // steel trigger guard and floorplate, sling swivels.
     hunter(g, S, M) {
-      // Lightweight bolt-action: walnut stock (S), slim blued barrel, compact low-power scope
-      const k = kit(g);
-      k.box(0.05, 0.06, 0.3, 0, 0.0, 0.0, S);                     // fore-stock
-      const wrist = k.box(0.042, 0.075, 0.12, 0, -0.025, 0.17, S); wrist.rotation.x = 0.25;   // grip wrist
-      k.box(0.05, 0.1, 0.22, 0, -0.03, 0.31, S);                  // buttstock
-      k.box(0.044, 0.03, 0.14, 0, 0.035, 0.3, S);                 // cheek comb
-      k.box(0.052, 0.11, 0.02, 0, -0.03, 0.425, M.grip);          // butt pad
-      k.box(0.034, 0.04, 0.2, 0, 0.045, 0.04, M.metal);           // receiver
-      k.cyl(0.011, 0.5, 0, 0.045, -0.36, M.metal, 'z', 10);       // slim barrel
-      k.cyl(0.014, 0.02, 0, 0.045, -0.6, M.dark, 'z', 10);        // crown
-      // Open iron sights: buckhorn rear on the receiver, ramp + bead front at the muzzle
-      k.box(0.012, 0.022, 0.03, 0, 0.065, -0.555, M.metal);       // front ramp
-      k.box(0.022, 0.016, 0.016, 0, 0.07, -0.03, M.metal);        // rear sight base
-      irons(g, M, 0.088, -0.03, -0.555, false);
-      g.userData.sightDist = 0.4;
-      k.box(0.026, 0.01, 0.05, 0, 0.06, 0.13, M.metal);           // bolt shroud
+      const k = kit(g), I = v => v, prof = profiler(g, I, I);
+      const def = BR.CONFIG.weapons.hunter;
+      const wood = S === cache.mat['default|' + def.color] ? woodMaterial() : S;
+      const BY = 0.045;
+      // stock
+      prof([[-0.33, 0.03], [-0.318, 0.042], [0.12, 0.042], [0.19, 0.044], [0.26, 0.05], [0.418, 0.046], [0.42, -0.082], [0.27, -0.058],
+        [0.222, -0.05], [0.208, -0.094], [0.18, -0.098], [0.16, -0.064], [0.126, -0.034], [-0.02, -0.028], [-0.12, -0.014], [-0.3, 0.016]], 0.042, wood, 0.008);
+      prof([[0.418, 0.048], [0.434, 0.048], [0.436, -0.086], [0.42, -0.084]], 0.044, M.grip, 0.004);           // butt pad
+      const chk = wood === S ? M.dark : (cache.mat.huChk || (cache.mat.huChk = new THREE.MeshLambertMaterial({ color: 0x4a2812 })));
+      for (const sx of [-1, 1]) {                                                                                // checkering
+        prof([[0.152, -0.036], [0.186, -0.036], [0.2, -0.082], [0.174, -0.086]], 0.0006, chk, 0, sx * 0.0212);
+        prof([[-0.23, 0.026], [-0.1, 0.026], [-0.1, -0.004], [-0.21, 0.008]], 0.0006, chk, 0, sx * 0.0212);
+      }
+      // receiver, bolt shroud, ejection port, bolt
+      k.cyl(0.0175, 0.17, 0, 0.05, 0.05, M.dark, 'z', 18);
+      k.cyl(0.012, 0.04, 0, 0.052, 0.152, M.dark, 'z', 14);
+      k.box(0.002, 0.014, 0.05, 0.0175, 0.056, 0.06, M.grip);
+      k.box(0.026, 0.01, 0.05, 0, 0.06, 0.13, M.metal);
       boltGroup(g, M, 0.052, 0.1, 0.12);
-      k.box(0.006, 0.02, 0.006, 0, -0.04, -0.1, M.metal); k.box(0.006, 0.02, 0.006, 0, -0.085, 0.36, M.metal);  // sling swivels
-      magGroup(g, [k.box(0.03, 0.035, 0.06, 0, -0.04, 0.03, M.dark)]);
-      hands(g, [0, -0.06, 0.17], [0, -0.035, -0.12], [0.06, 0.05, 0.11]);
-      anchors(g, -0.62, 0.045, [-0.035, -0.02, 0.24]);
+      // tapered barrel, crown, barrel band
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0125, 0.6, 16), M.dark); bar.rotation.x = -Math.PI / 2; bar.position.set(0, BY, -0.32); g.add(bar);
+      k.cyl(0.0095, 0.008, 0, BY, -0.618, M.metal, 'z', 14);
+      k.box(0.046, 0.032, 0.012, 0, 0.034, -0.3, M.dark);
+      // open sights: rear notch on a base ahead of the receiver, ramped front post
+      k.box(0.022, 0.016, 0.016, 0, 0.07, -0.03, M.dark);
+      const ramp = prof([[-0.6, 0.054], [-0.585, 0.08], [-0.572, 0.08], [-0.56, 0.054]], 0.01, M.dark, 0.001); void ramp;
+      irons(g, M, 0.088, -0.03, -0.578, false);
+      g.userData.sightDist = 0.4;
+      // trigger guard, trigger, floorplate (mag), sling swivels
+      prof([[0.1, -0.03], [0.106, -0.03], [0.108, -0.052], [0.146, -0.054], [0.148, -0.03], [0.154, -0.03], [0.152, -0.06], [0.102, -0.058]], 0.012, M.dark, 0.0015);
+      prof([[0.122, -0.03], [0.128, -0.03], [0.13, -0.04], [0.125, -0.05], [0.121, -0.048], [0.123, -0.04]], 0.006, M.metal, 0.001);
+      magGroup(g, [k.box(0.028, 0.03, 0.08, 0, -0.018, 0.045, M.dark), k.box(0.032, 0.004, 0.11, 0, -0.034, 0.045, M.dark)]);
+      for (const z of [-0.26, 0.36]) { const sw = new THREE.Mesh(new THREE.TorusGeometry(0.008, 0.0018, 6, 12), M.metal); sw.position.set(0, z < 0 ? -0.004 : -0.078, z); sw.rotation.y = Math.PI / 2; g.add(sw); }
+      hands(g, [0, -0.06, 0.17], [0, -0.03, -0.12], [0.06, 0.05, 0.11]);
+      anchors(g, -0.626, BY, [-0.035, -0.02, 0.24]);
     },
     // Sniper: a heavy long-range bolt-action in desert tan. Ported muzzle brake, fluted
     // heavy barrel, skeletonised handguard with a top rail and a folding bipod, flat-top
@@ -1160,7 +1182,7 @@ BR.Models = (function () {
           for (const x of [-0.026, 0.026]) k.box(0.002, 0.03, 0.12, x, -0.03, 0.31, P.A);                    // inlay
           k.box(0.004, 0.006, 0.42, -0.03, -0.06, 0.13, new THREE.MeshLambertMaterial({ color: 0x3a2a1c }));  // leather sling
           k.box(0.002, 0.006, 0.12, 0.019, 0.04, 0.04, P.G);           // glowing receiver inlay
-          k.box(0.007, 0.007, 0.007, 0, 0.08, -0.555, P.G);            // glowing front bead
+          k.box(0.007, 0.007, 0.007, 0, 0.088, -0.578, P.G);           // glowing front bead
         } },
     },
     knife: {
@@ -1243,7 +1265,7 @@ BR.Models = (function () {
           for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.05), veil); f.position.set(0, 0.1, -0.28 + i * 0.11); f.rotation.y = Math.PI / 2; g.add(f);
             anim(g, t => { f.position.y = 0.1 + Math.sin(t * 2 + i) * 0.01; f.rotation.z = Math.sin(t * 1.5 + i) * 0.2; }); }
           for (const x of [-0.027, 0.027]) { k.box(0.002, 0.012, 0.36, x, 0.0, -0.05, G); k.box(0.002, 0.03, 0.18, x, -0.03, 0.3, G); }
-          k.box(0.008, 0.008, 0.008, 0, 0.09, -0.555, G);
+          k.box(0.008, 0.008, 0.008, 0, 0.088, -0.578, G);
         } },
     },
     pistol: {
