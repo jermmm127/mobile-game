@@ -254,13 +254,15 @@ BR.HUD = class HUD {
 </div>
 
 <div id="menu" class="overlay menu">
+  <div class="m-aurora"><i></i><i></i><i></i></div>
+  <div class="m-motes">${Array.from({ length: 22 }, (_, i) => `<i style="--x:${(i * 41) % 100};--d:${(i * 7) % 11};--s:${0.6 + (i % 5) * 0.25}"></i>`).join('')}</div>
   <div class="film"><i class="lb top"></i><i class="lb bot"></i><i class="scan"></i><i class="grain"></i><i class="cutflash"></i></div>
   <div class="menu-coins glass"><i class="coin"></i><span id="menu-coins" class="num">0</span></div>
   <button id="acct-chip" class="acct-chip glass"><span id="acct-avatar" class="avatar">G</span><span class="acct-text"><b id="acct-name">Guest</b><small id="acct-sub">Sign in</small></span></button>
   <div class="menu-main">
     <div class="logo">
       <div class="logo-small"><i class="dot"></i>Season 1 · v${V}</div>
-      <h1 class="logo-title"><span>Velocity</span><span class="accent">Royale</span></h1>
+      <h1 class="logo-title" aria-label="surge"><span class="lt">${'surge'.split('').map((c, i) => `<i style="--i:${i}">${c}</i>`).join('')}</span><b class="lt-glow" aria-hidden="true">surge</b><u class="lt-line" aria-hidden="true"></u></h1>
       <div class="tagline">Slide. Wall-run. Grapple. Be the last one standing.</div>
     </div>
     <nav class="menu-nav">

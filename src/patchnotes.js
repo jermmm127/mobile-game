@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.8.1', date: '2026-11-03', title: 'velocity royale is now surge', notes: [
+    'The game is now called surge, with a modern lowercase wordmark that animates in, shimmers and breathes, over a charging energy line.',
+    'New purple colour theme across the menus and HUD.',
+    'A livelier main menu: a drifting violet aurora and rising sparkles over the live trailer, mode cards that float in and gently bob, a pulsing play button, and dock buttons that slide in.',
+    'Bigger, easier-to-see Supernova, Prism Burst, Sakura Storm and Dragon Soul finishers.',
+  ] },
   { v: '1.8.0', date: '2026-11-03', title: 'Vibrant knives + new finishers', notes: [
     '9 new knife blueprints with glowing colour auras, orbiting sparkles and two-colour or rainbow blade trails: Hyperwave, Solar Flare, Spectrum (butterfly); Supernova Claw, Abyssal Bloom, Frost Reaper (karambit); Plasma Edge, Toxic Rush, Prism Storm (bayonet).',
     '5 new kill finishers: Supernova, Prism Burst, Sakura Storm (shop) and Thunderstrike, Dragon Soul (Nova Case).',

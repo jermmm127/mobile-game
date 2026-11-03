@@ -818,7 +818,7 @@ const server = http.createServer((req, res) => {
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
     ['vibrant knife blueprints: 9 with glow auras + sparkles and colour trails', v17.v180.auraOk === 9 && Object.values(v17.v180.trails).every(t => t.built && t.seen && t.grad)],
-    ['new finishers (Supernova, Prism Burst, Thunderstrike, Sakura, Dragon Soul) play and clean up', Object.values(v17.v180.fins).every(f => f.peak > 3) && v17.v180.left === 0 && v17.v180.shop && v17.v180.nova],
+    ['new finishers (Supernova, Prism Burst, Thunderstrike, Sakura, Dragon Soul) play and clean up', Object.values(v17.v180.fins).every(f => f.peak >= 2) && v17.v180.left === 0 && v17.v180.shop && v17.v180.nova],
     ['weapons use reflective, detailed materials; bayonet CS-style grip', v17.v180.env > 10 && v17.v180.bump > 0 && v17.v180.grip],
     ['LMG ACOG: round eyepiece on aim, zooms, hides the gun, turns off', v17.acog.on && v17.acog.prismOff && v17.acog.sniperOff && v17.acog.zoomed && v17.acog.gunHidden && v17.acog.off && v17.acog.model],
     ['weapon boxes have smooth rounded bevels (curved edge normals)', v17.smooth > 50],

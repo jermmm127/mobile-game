@@ -347,7 +347,7 @@ BR.Effects = class Effects {
       fins.push({ mesh: null, life: 0.5, t: 0, upd: (t) => { if (victim && victim.mesh) victim.mesh.scale.y = Math.max(0.05, 1 - t * 1.8); } });
       for (let i = 0; i < 24; i++) { const o = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: new THREE.Color().setHSL(i / 24, 1, 0.6), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
         o.position.copy(c); add(o, 0.9, (t, m) => { const a = i / 24 * Math.PI * 2 + t * 9, r = 0.9 * (1 - Math.max(0, t - 0.55) / 0.35), h = 0.2 + (i / 24) * 1.4 + t * 2.4;
-          m.position.set(c.x + Math.cos(a) * r, c.y + Math.min(h, 3.2), c.z + Math.sin(a) * r); m.scale.setScalar(0.35 + 0.15 * Math.sin(t * 20 + i)); m.material.color.setHSL((i / 24 + t * 0.8) % 1, 1, 0.6); }); orbs.push(o); }
+          m.position.set(c.x + Math.cos(a) * r, c.y + Math.min(h, 3.2), c.z + Math.sin(a) * r); m.scale.setScalar(0.6 + 0.2 * Math.sin(t * 20 + i)); m.material.color.setHSL((i / 24 + t * 0.8) % 1, 1, 0.6); }); orbs.push(o); }
       setTimeout(() => { const at = c.clone().setY(c.y + 3.2);
         this.burst(at, [0xff3df2, 0x1de9ff, 0xffe14d, 0x39ff88, 0xff5a3a, 0xb48cff], 90, 13, 0.1, 1.3, 2);
         for (let i = 0; i < 4; i++) { const rg = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.ring, color: new THREE.Color().setHSL(i / 4, 1, 0.6), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -369,9 +369,9 @@ BR.Effects = class Effects {
     } else if (style === 'sakura') {
       // a rising vortex of pink petals, the body dissolving into it, then a petal burst
       const pm = c2 => new THREE.MeshBasicMaterial({ color: c2, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false });
-      const pg = new THREE.CircleGeometry(0.09, 5); pg.scale(1, 0.55, 1);
+      const pg = new THREE.CircleGeometry(0.16, 6); pg.scale(1, 0.6, 1);
       fins.push({ mesh: null, life: 0.9, t: 0, upd: (t, m, d) => { if (victim && victim.mesh) { victim.mesh.scale.setScalar(Math.max(0.05, 1 - t * 1.05)); victim.mesh.position.y += 0.01; if (d) victim.mesh.visible = false; } } });
-      for (let i = 0; i < 46; i++) { const col = [0xff8ac8, 0xffb3dd, 0xffe6f2, 0xff5fae][i % 4], p0 = Math.random() * 6.28, h0 = Math.random() * 0.6, sp = 4 + Math.random() * 3;
+      for (let i = 0; i < 64; i++) { const col = [0xff8ac8, 0xffb3dd, 0xffe6f2, 0xff5fae][i % 4], p0 = Math.random() * 6.28, h0 = Math.random() * 0.6, sp = 4 + Math.random() * 3;
         const pt = add(new THREE.Mesh(pg.clone(), pm(col)), 1.8, (t, m) => { const a = p0 + t * sp, r = 0.5 + t * 1.3, h = h0 + t * 2.2; m.position.set(c.x + Math.cos(a) * r, c.y + h, c.z + Math.sin(a) * r); m.rotation.set(t * 7 + i, t * 5, t * 3); m.material.opacity = 0.95 * Math.min(1, (1.8 - t) * 2); }); pt.position.copy(c); }
       setTimeout(() => this.burst(c.clone().setY(c.y + 1.2), [0xff8ac8, 0xffe6f2, 0xffffff], 40, 6, 0.08, 1.2, 1), 650);
     } else if (style === 'dragonsoul') {
@@ -381,7 +381,7 @@ BR.Effects = class Effects {
       fins.push({ mesh: null, life: 1.0, t: 0, upd: (t, m, d) => { if (victim && victim.mesh) { victim.mesh.scale.y = Math.max(0.05, 1 - t * 0.9); if (d) victim.mesh.visible = false; } if (Math.random() < 0.5) this.burst(c.clone().setY(c.y + Math.random() * 1.6), [0xff7a00, 0xffd24a], 1, 1.4, 0.06, 0.6, -2); } });
       const path = (u, out) => { const a = u * Math.PI * 5, r = 1.0 - u * 0.4; return out.set(c.x + Math.cos(a) * r, c.y + u * 3.6, c.z + Math.sin(a) * r); };
       for (let i = 0; i < N; i++) { const head = i === 0, s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: head ? 0xfff0b0 : new THREE.Color().setHSL(0.02 + 0.1 * (1 - i / N), 1, 0.55), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-        s.position.copy(c); add(s, 1.25, (t, m) => { const u = Math.max(0, Math.min(1, t / 1.0 - i * 0.022)); path(u, m.position); m.scale.setScalar((head ? 0.9 : 0.62 * (1 - i / N * 0.7)) * (0.9 + 0.2 * Math.sin(t * 40 + i))); m.material.opacity = u > 0 ? (t > 1.05 ? Math.max(0, 1 - (t - 1.05) / 0.2) : 1) : 0;
+        s.position.copy(c); add(s, 1.25, (t, m) => { const u = Math.max(0, Math.min(1, t / 1.0 - i * 0.022)); path(u, m.position); m.scale.setScalar((head ? 1.3 : 0.9 * (1 - i / N * 0.6)) * (0.9 + 0.2 * Math.sin(t * 40 + i))); m.material.opacity = u > 0 ? (t > 1.05 ? Math.max(0, 1 - (t - 1.05) / 0.2) : 1) : 0;
           if (head && Math.random() < 0.7) this.burst(m.position, [0xff7a00, 0xffd24a, 0xff3a00], 2, 1.6, 0.07, 0.5, -1); }); }
       setTimeout(() => { const at = c.clone().setY(c.y + 3.6);
         this.burst(at, [0xff7a00, 0xffd24a, 0xff3a00, 0xffffff], 90, 14, 0.12, 1.2, 4);
