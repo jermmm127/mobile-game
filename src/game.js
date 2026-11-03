@@ -578,7 +578,11 @@ BR.Game = class Game {
     if (inp.consume('grenade')) { if (this.shock.throw(p)) { BR.Audio.throwNade(); this.vmr.onThrow(); } else BR.Audio.click(); }
     if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.vmr.onStim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
     if (inp.consume('grapple')) { if (p.tryGrapple()) { BR.Audio.grapple(); this.vmr.onGrapple(); this.ropeT = 0; } else BR.Audio.click(); }
-    if (inp.consume('reload') && BR.Weapons.startReload(w, p)) BR.Audio.reload();
+    // Reload button: knives and full mags inspect instead
+    if (inp.consume('reload') && w) {
+      if (w.def.melee || (w.mag >= w.def.mag && !(w.reloadT > 0))) this.startInspect();
+      else if (BR.Weapons.startReload(w, p)) BR.Audio.reload();
+    }
     const sw = i => { if (i === p.cur) this.startInspect(); else if (p.switchTo(i)) inp.ads = false; };
     if (inp.consume('swap')) {
       // cycle: gun -> other gun -> karambit -> ...

@@ -453,6 +453,14 @@ const server = http.createServer((req, res) => {
       btn('butterfly').click(); const a = [P.data.equip.melee, g.player.slots[2] && g.player.slots[2].id];
       btn('knife').click(); const b2 = [P.data.equip.melee, g.player.slots[2] && g.player.slots[2].id, inv.querySelectorAll('button.sel').length];
       out.meleePick = { a, b: b2 }; }
+    // reload button: inspects with a knife or a full mag, reloads otherwise
+    { const inp = g.input, run = () => { vm.inspectT = 0; inp.press('reload'); g.state = 'playing'; g.update(1 / 60); return vm.inspectT > 0; };
+      p.cur = 2; vm.lastWeapon = null; for (let i = 0; i < 80; i++) vm.update(1 / 60, 0, 0);
+      const knife = run();
+      g.practiceSpawn('weapon', 'rifle'); const rw = p.weapon; rw.mag = rw.def.mag; rw.reloadT = 0; for (let i = 0; i < 40; i++) vm.update(1 / 60, 0, 0);
+      const full = run(), fullNoReload = !(rw.reloadT > 0);
+      rw.mag = 3; vm.inspectT = 0; inp.press('reload'); g.update(1 / 60); const reloads = rw.reloadT > 0 && !(vm.inspectT > 0);
+      out.reloadInspect = { knife, full, fullNoReload, reloads }; }
     // weapon-slot opacity in the HUD editor
     const sa = document.getElementById('ed-slot-alpha'); sa.value = 0.3; sa.dispatchEvent(new Event('input'));
     out.slotAlpha = parseFloat(getComputedStyle(document.querySelector('#play > .slot:not(.empty)')).opacity);
@@ -542,6 +550,7 @@ const server = http.createServer((req, res) => {
     ['pump shotgun racks its forend after a shot', v15.pump[0] > 0.05 && v15.pump[1] < 0.005],
     ['every gun builds with every blueprint + camo; per-gun tracers', v15.cosmetics.bad.length === 0 && v15.cosmetics.built > 200 && v15.cosmetics.tracers],
     ['inventory melee picker swaps karambit / butterfly (one at a time)', v15.meleePick.a.join() === 'butterfly,butterfly' && v15.meleePick.b.join() === 'knife,knife,1'],
+    ['reload button inspects with a knife or a full mag, reloads otherwise', v15.reloadInspect.knife && v15.reloadInspect.full && v15.reloadInspect.fullNoReload && v15.reloadInspect.reloads],
     ['weapon buttons opacity can be lowered (saved)', Math.abs(v15.slotAlpha - 0.3) < 0.02 && v15.saved === 0.3],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],

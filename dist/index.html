@@ -859,7 +859,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.5.10',
+  version: '1.5.11',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -5524,6 +5524,10 @@ BR.Models = (function () {
           // held like a hammer grip: handles in the fist, blade angled forward and in
           m.rotation.set(-0.5, 0.4, 0.12); m.scale.setScalar(1.25);
           m.userData.baseRot = m.rotation.clone();
+          // everything pivots inside the fist about the handle pin, so the held (safe) handle can
+          // stay put while the blade and bite handle flip round it
+          const inner = new THREE.Group(); while (m.children.length) inner.add(m.children[0]); m.add(inner);
+          m.userData.inner = inner; m.userData.pivot = new THREE.Vector3(0, 0.004, 0.001);
           holder.add(m);
         } else holder.add(m);
         holder.userData.model = m;
@@ -5556,9 +5560,9 @@ BR.Models = (function () {
         for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })); m.visible = false; this.scene.add(m); this.rings.push({ m, life: 0, max: 1 }); }
       }
       // Backhand fists for the karambit idle (mirrored gloves so the thumbs sit toward the centre)
-      if (this.knifeHands) this.scene.remove(this.knifeHands.R, this.knifeHands.L);
+      if (this.knifeHands) this.scene.remove(this.knifeHands.R, this.knifeHands.L, this.knifeHands.RB);
       const kh = left => { const h = BR.Models.hand(eq.gloves || 'default', left, true); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; };
-      this.knifeHands = { R: kh(true), L: kh(false) };
+      this.knifeHands = { R: kh(true), L: kh(false), RB: kh(false) };
       // Wrist grapple launcher (child of the left hand: aims where the fingers point)
       const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
       const orange = new THREE.MeshLambertMaterial({ color: 0xffa31a, emissive: 0x552200 });
@@ -5608,7 +5612,7 @@ BR.Models = (function () {
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.def.melee ? 2.4 : 2.1; this.lastBflyT = 0; }
 
-    hide() { if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -5680,12 +5684,16 @@ BR.Models = (function () {
       if (this.drawT > 0) {
         const t = 1 - this.drawT / this.drawDur;
         if (w.id === 'butterfly') {
-          // Butterfly deploy: comes up closed, the bite handle swings open, the knife rolls over in the
-          // hand while the safe handle swings round, then an extra aerial flip and the handles slap shut
-          const rise = smooth(t / 0.1);
-          oy += -(1 - rise) * 0.18; orz += Math.sin(t * Math.PI) * 0.35; ox += 0.04 * win(t, 0, 0.1, 0.6, 0.9);
-          bfly = { a: Math.PI * (1 - smooth((t - 0.08) / 0.3)), b: -Math.PI * (1 - smooth((t - 0.02) / 0.22)) + Math.PI * 2 * smooth((t - 0.48) / 0.2), roll: easeInOut(t / 0.75) * Math.PI * 2 };
-          this.bflySwish(t, [0.12, 0.3, 0.55, 0.68]);
+          // Balisong deploy (held by the safe handle the whole time): comes up closed, the bite
+          // handle flicks open forward, the blade rolls up out of the safe handle while the bite
+          // handle swings down into the palm, then a quick bite-handle flick out and back
+          const rise = smooth(t / 0.12);
+          oy += -(1 - rise) * 0.16; orx += (1 - rise) * 0.5;
+          const p1 = smooth((t - 0.14) / 0.18), p2 = easeInOut((t - 0.38) / 0.22), fl = win(t, 0.66, 0.75, 0.77, 0.88);
+          bfly = { a: Math.PI + Math.PI * p1 + Math.PI * fl, flip: Math.PI + Math.PI * p2 };
+          orz += 0.22 * win(t, 0.12, 0.2, 0.26, 0.34) - 0.18 * win(t, 0.36, 0.44, 0.52, 0.62);      // wrist flicks
+          orx -= 0.22 * win(t, 0.36, 0.45, 0.5, 0.62) + 0.1 * fl; ox += 0.02 * win(t, 0.3, 0.45, 0.55, 0.7);
+          this.bflySwish(t, [0.18, 0.44, 0.72]);
         } else if (def.melee) {
           // CS-style karambit deploy: snap into view, twirl twice around the ring, settle
           const rise = smooth(t / 0.08), out = 1 - smooth((t - 0.6) / 0.4);
@@ -5706,13 +5714,15 @@ BR.Models = (function () {
       if (this.inspectT > 0) {
         const t = 1 - this.inspectT / this.inspectDur;
         if (w.id === 'butterfly') {
-          // Butterfly inspect: chaplin flips (each handle swings closed and back open), a full roll, then a
-          // fast aerial and a show-off tilt toward the camera
-          const c1 = win(t, 0.04, 0.16, 0.16, 0.3), c2 = win(t, 0.22, 0.34, 0.34, 0.48);
-          bfly = { a: Math.PI * c1, b: -Math.PI * c2 + Math.PI * 2 * smooth((t - 0.62) / 0.14), roll: easeInOut((t - 0.4) / 0.25) * Math.PI * 2 };
-          const sh = win(t, 0.75, 0.85, 0.95, 1);
-          ory += sh * 0.9; orz += sh * 0.5 + Math.sin(t * Math.PI) * 0.2; ox -= sh * 0.1; oy += sh * 0.05;
-          this.bflySwish(t, [0.12, 0.3, 0.5, 0.68]);
+          // Balisong inspect: a chaplin (bite handle swings up to the blade and back), a full
+          // rollover (blade sweeps forward, down into the safe handle and back up), a fast second
+          // chaplin, then a show-off tilt toward the camera
+          const c1 = win(t, 0.05, 0.16, 0.18, 0.28), roll = easeInOut((t - 0.32) / 0.28), c2 = win(t, 0.64, 0.7, 0.71, 0.78);
+          bfly = { a: Math.PI * c1 + Math.PI * c2, flip: -Math.PI * 2 * roll };
+          orz += 0.15 * win(t, 0.3, 0.38, 0.52, 0.62); orx -= 0.12 * win(t, 0.3, 0.4, 0.5, 0.6);
+          const sh = win(t, 0.78, 0.86, 0.95, 1);
+          ory += sh * 0.9; orz += sh * 0.5; ox -= sh * 0.1; oy += sh * 0.05;
+          this.bflySwish(t, [0.12, 0.36, 0.5, 0.7]);
         } else if (def.melee) {
           spinAng = easeInOut(t / 0.42) * Math.PI * 4;
           ringW = win(t, 0, 0.06, 0.36, 0.48);
@@ -5906,8 +5916,10 @@ BR.Models = (function () {
       }
       // Butterfly handles + roll (open and still when idle)
       if (ud.handleA) {
-        ud.handleA.rotation.x = bfly ? bfly.a : 0; ud.handleB.rotation.x = bfly ? bfly.b : 0;
-        const br = model.userData.baseRot; if (br) model.rotation.set(br.x, br.y + (bfly ? bfly.roll : 0), br.z);
+        const fl = bfly ? bfly.flip : 0, inner = model.userData.inner, pv = model.userData.pivot;
+        ud.handleA.rotation.x = bfly ? bfly.a : 0; ud.handleB.rotation.x = -fl;
+        if (inner) { inner.rotation.x = fl; const c = Math.cos(fl), sn = Math.sin(fl); inner.position.set(0, pv.y - (pv.y * c - pv.z * sn), pv.z - (pv.y * sn + pv.z * c)); }
+        const br = model.userData.baseRot; if (br) model.rotation.copy(br);
       }
       // Karambit ring twirl
       if (holder.userData.spin) {
@@ -5953,9 +5965,16 @@ BR.Models = (function () {
       // right hand on the grip (palm against the grip's right side, fingers wrapping the front)
       let gp = model.localToWorld(this._v.copy(ud.grip));
       const spin = holder.userData.spin;
-      const KH = this.knifeHands, H = spin ? KH.R : R.hand;     // karambit uses the backhand-fist gloves
-      R.hand.visible = KH.R.visible = KH.L.visible = false;
-      if (spin) {
+      const bf = !!ud.handleA;
+      const KH = this.knifeHands, H = spin ? KH.R : bf ? KH.RB : R.hand;     // karambit: backhand fist; butterfly: hammer-grip fist
+      R.hand.visible = KH.R.visible = KH.L.visible = KH.RB.visible = false;
+      if (bf) {
+        // Butterfly: closed fist round the safe handle (the handle stays put in the hand while
+        // the blade and bite handle flip around the pin)
+        H.position.copy(gp);
+        H.quaternion.copy(wq).multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
+        H.translateY(0.014 * 1.3); H.translateZ(0.029 * 1.3);
+      } else if (spin) {
         // Karambit: a backhand fist round the handle, index finger by the ring. The hand
         // stays put during twirls and the knife spins round the ring at the index finger.
         const sq = this._ksq || (this._ksq = new THREE.Quaternion());
@@ -10222,7 +10241,11 @@ BR.Game = class Game {
     if (inp.consume('grenade')) { if (this.shock.throw(p)) { BR.Audio.throwNade(); this.vmr.onThrow(); } else BR.Audio.click(); }
     if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.vmr.onStim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
     if (inp.consume('grapple')) { if (p.tryGrapple()) { BR.Audio.grapple(); this.vmr.onGrapple(); this.ropeT = 0; } else BR.Audio.click(); }
-    if (inp.consume('reload') && BR.Weapons.startReload(w, p)) BR.Audio.reload();
+    // Reload button: knives and full mags inspect instead
+    if (inp.consume('reload') && w) {
+      if (w.def.melee || (w.mag >= w.def.mag && !(w.reloadT > 0))) this.startInspect();
+      else if (BR.Weapons.startReload(w, p)) BR.Audio.reload();
+    }
     const sw = i => { if (i === p.cur) this.startInspect(); else if (p.switchTo(i)) inp.ads = false; };
     if (inp.consume('swap')) {
       // cycle: gun -> other gun -> karambit -> ...
