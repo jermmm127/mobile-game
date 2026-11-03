@@ -73,7 +73,7 @@ BR.Loot = class Loot {
     const def = BR.CONFIG.weapons[wid], col = '#' + TIER_COLORS[def.tier].toString(16).padStart(6, '0');
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const c = cv.getContext('2d');
     // rarity-coloured name, no background: dark outline + soft glow so it reads anywhere
-    c.font = '800 34px "Saira Semi Condensed", "Arial Narrow", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '700 30px "Outfit", "Arial Narrow", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
     const text = def.name.toUpperCase();
     c.lineJoin = 'round'; c.lineWidth = 7; c.strokeStyle = 'rgba(6,8,12,0.85)'; c.strokeText(text, 128, 33);
     c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = col; c.fillText(text, 128, 33);

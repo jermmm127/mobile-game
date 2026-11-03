@@ -12,12 +12,12 @@ BR.Models = (function () {
   // ---------------------------------------------------------------- textures
   function canvasTex(key, draw, size) {
     if (cache.tex[key]) return cache.tex[key];
-    const s = size || 128, cv = document.createElement('canvas');
+    const s = size || 256, cv = document.createElement('canvas');
     cv.width = cv.height = s;
     draw(cv.getContext('2d'), s);
     const t = new THREE.CanvasTexture(cv);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.anisotropy = 4;
+    t.anisotropy = 8;
     return (cache.tex[key] = t);
   }
   const rnd = BR.util.rng(77);
@@ -62,7 +62,7 @@ BR.Models = (function () {
       for (let y = 0; y < s; y += 2) for (let x = 0; x < s; x += 2) {
         const v = Math.sin(x * 0.05 + Math.sin(y * 0.04) * 2) * Math.cos(y * 0.05 + Math.sin(x * 0.03) * 2) * 0.5 + 0.5;
         c.fillStyle = `rgb(${200 + v * 55},${150 + v * 80},${30 + v * 70})`; c.fillRect(x, y, 2, 2); }
-    }, 128), (tx, t) => { tx.offset.set(t * 0.05, Math.sin(t * 0.7) * 0.06); }),
+    }, 256), (tx, t) => { tx.offset.set(t * 0.05, Math.sin(t * 0.7) * 0.06); }),
     molten: () => animTex(canvasTex('molten', (c, s) => {
       c.fillStyle = '#120806'; c.fillRect(0, 0, s, s);
       for (let i = 0; i < 26; i++) {                         // glowing cracks
@@ -89,7 +89,7 @@ BR.Models = (function () {
       for (let y = 0; y < s; y += 2) for (let x = 0; x < s; x += 2) {
         const v = Math.sin(x * 0.045 + Math.sin(y * 0.03) * 3) + Math.cos(y * 0.04 + Math.sin(x * 0.02) * 2);
         c.fillStyle = `hsl(${(v * 60 + 200) % 360},70%,${78 + v * 6}%)`; c.fillRect(x, y, 2, 2); }
-    }, 128), (tx, t) => { tx.offset.set(t * 0.03, Math.sin(t * 0.4) * 0.05); }),
+    }, 256), (tx, t) => { tx.offset.set(t * 0.03, Math.sin(t * 0.4) * 0.05); }),
     voidrift: () => animTex(canvasTex('voidrift', (c, s) => {
       c.fillStyle = '#07020f'; c.fillRect(0, 0, s, s);
       for (let i = 0; i < 22; i++) { let x = Math.random() * s, y = Math.random() * s; c.beginPath(); c.moveTo(x, y);
@@ -134,27 +134,27 @@ BR.Models = (function () {
         for (let x = 0; x <= s; x += 8) c.lineTo(x, y + Math.sin(x * 0.09 + i * 1.7) * 5 + (x % 16 ? 3 : -3));
         for (let x = s; x >= 0; x -= 8) c.lineTo(x, y + 4 + Math.sin(x * 0.07 + i) * 2);
         c.closePath(); c.fill(); }
-    }, 128),
+    }, 256),
     ultraviolet: () => canvasTex('ultraviolet', (c, s) => {
       const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#1a0630'); g.addColorStop(0.5, '#4a1a7a'); g.addColorStop(1, '#12041f'); c.fillStyle = g; c.fillRect(0, 0, s, s);
       for (let y = 0; y < s; y += 2) { c.fillStyle = `rgba(190,140,255,${0.04 + 0.05 * Math.sin(y * 0.3)})`; c.fillRect(0, y, s, 1); }
-    }, 128),
+    }, 256),
     emerald: () => animTex(canvasTex('emerald', (c, s) => {
       for (let y = 0; y < s; y += 2) for (let x = 0; x < s; x += 2) {
         const v = Math.sin(x * 0.08 + Math.sin(y * 0.06) * 2.5) * 0.5 + Math.cos(y * 0.05 + x * 0.02) * 0.5;
         c.fillStyle = `hsl(${148 + v * 18},${85 + v * 10}%,${22 + (v + 1) * 18}%)`; c.fillRect(x, y, 2, 2); }
       for (let i = 0; i < 70; i++) { c.fillStyle = `rgba(200,255,225,${Math.random() * 0.9})`; c.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); }
-    }, 128), (tx, t) => { tx.offset.set(Math.sin(t * 0.35) * 0.06, t * 0.04); }),
+    }, 256), (tx, t) => { tx.offset.set(Math.sin(t * 0.35) * 0.06, t * 0.04); }),
     tidewater: () => animTex(canvasTex('tidewater', (c, s) => {
       c.fillStyle = '#04122a'; c.fillRect(0, 0, s, s);
       for (let i = 0; i < 14; i++) { c.beginPath(); for (let x = 0; x <= s; x += 4) { const y = i * s / 14 + Math.sin(x * 0.07 + i) * 6; x ? c.lineTo(x, y) : c.moveTo(x, y); }
         c.strokeStyle = i % 3 ? 'rgba(80,190,255,0.75)' : 'rgba(220,250,255,0.95)'; c.lineWidth = i % 3 ? 2.5 : 1.2; c.stroke(); }
-    }, 128), (tx, t) => { tx.offset.set(t * 0.08, Math.sin(t * 0.6) * 0.03); }),
+    }, 256), (tx, t) => { tx.offset.set(t * 0.08, Math.sin(t * 0.6) * 0.03); }),
     damascus: () => canvasTex('damascus', (c, s) => {
       for (let y = 0; y < s; y++) for (let x = 0; x < s; x += 2) {
         const v = Math.sin((x * 0.09) + Math.sin(y * 0.05) * 3 + Math.sin(x * 0.03 + y * 0.02) * 2) * 0.5 + 0.5;
         const l = 70 + v * 120; c.fillStyle = `rgb(${l},${l + 4},${l + 10})`; c.fillRect(x, y, 2, 1); }
-    }, 128),
+    }, 256),
     circuit: () => animTex(canvasTex('circuit', (c, s) => {
       c.fillStyle = '#05140f'; c.fillRect(0, 0, s, s);
       c.strokeStyle = '#2bffb0'; c.lineWidth = 2; c.shadowColor = '#2bffb0'; c.shadowBlur = 6;
@@ -302,6 +302,14 @@ BR.Models = (function () {
     cube:    { name: 'Puzzle Cube', price: 400 },
   };
 
+  // [reflectivity, shininess] per camo: metals mirror-like, glossy finishes clear-coated, matte camos satin
+  const SKIN_FINISH = {
+    gold: [0.5, 110], chrome: [0.7, 160], m_chrome: [0.7, 170], m_copper: [0.45, 100], liquidgold: [0.45, 160], diamond: [0.55, 200], damascus: [0.4, 130],
+    holo: [0.3, 150], candy: [0.22, 110], opal: [0.3, 170], prism: [0.28, 150], scales: [0.25, 120], hyper: [0.15, 90], galaxy: [0.18, 100], nebula: [0.18, 100],
+    sabertooth: [0.25, 120], ultraviolet: [0.2, 110], emerald: [0.3, 160], tidewater: [0.25, 140], hyperspace: [0.2, 90], voidrift: [0.2, 100], acid: [0.15, 80],
+    bloodmoon: [0.12, 70], circuit: [0.12, 70], electric: [0.12, 70], molten: [0.1, 60], inferno: [0.1, 60], aurora: [0.15, 80], m_volt: [0.15, 80], m_singularity: [0.25, 120],
+    carbon: [0.12, 70], arctic: [0.05, 30], tiger: [0.06, 34], crimson: [0.08, 40], pixel: [0.06, 34], jungle: [0.04, 26], neon: [0.1, 60],
+  };
   function skinMaterial(skin, base) {
     const key = skin + '|' + base;
     if (cache.mat[key]) return cache.mat[key];
@@ -338,6 +346,14 @@ BR.Models = (function () {
       case 'liquidgold': m = new THREE.MeshPhongMaterial({ map: TEX.liquidgold(), specular: 0xfff4c0, shininess: 180, emissive: 0x4a3000, emissiveMap: TEX.liquidgold(), emissiveIntensity: 0.4 }); break;
       case 'prism': m = new THREE.MeshPhongMaterial({ map: TEX.prism(), emissive: 0xffffff, emissiveMap: TEX.prism(), emissiveIntensity: 0.35, specular: 0xffffff, shininess: 150 }); break;
       default: m = new THREE.MeshPhongMaterial({ color: base, specular: 0x30353c, shininess: 22, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.04 });
+    }
+    // ---- finish pass (v1.8.3): every camo gets a real surface. Matte camos become satin Phong (soft
+    // highlights), glossy ones a clear-coat sheen, metals a mirror-like reflection of the studio env.
+    if (skin !== 'default') {
+      const F = SKIN_FINISH[skin] || [0.1, 50];
+      if (m.isMeshLambertMaterial) m = new THREE.MeshPhongMaterial({ color: m.color, map: m.map, emissive: m.emissive, emissiveMap: m.emissiveMap, emissiveIntensity: m.emissiveIntensity, transparent: m.transparent, opacity: m.opacity, specular: 0x3a3f48, shininess: F[1] });
+      m.envMap = envCube(); m.reflectivity = F[0]; m.shininess = Math.max(m.shininess || 0, F[1]);
+      if (m.specular && F[0] >= 0.3) m.specular.setHex(0xffffff);
     }
     return (cache.mat[key] = m);
   }
@@ -1332,11 +1348,12 @@ BR.Models = (function () {
   // Weapon blueprints: original designs per gun, each with its own palette and
   // extra geometry (shrouds, fins, glow vents, muzzle devices...). A camo, if
   // equipped, replaces the body material; blueprint accents and glow stay.
-  const glowMat = c => cache.mat['glow' + c] || (cache.mat['glow' + c] = new THREE.MeshBasicMaterial({ color: c }));
+  const GLOWS = [];
+  const glowMat = c => cache.mat['glow' + c] || (cache.mat['glow' + c] = (() => { const m = new THREE.MeshBasicMaterial({ color: c }); m.userData.base = new THREE.Color(c); GLOWS.push(m); return m; })());
   const bpMat = (c, gloss) => cache.mat['bp' + c + gloss] || (cache.mat['bp' + c + gloss] = gloss
     ? new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: gloss === 2 ? 120 : 60, envMap: BR.weaponEnv(), reflectivity: gloss === 2 ? 0.22 : 0.1 })
     : new THREE.MeshLambertMaterial({ color: c }));
-  const bladeTex = (key, draw) => canvasTex('blade-' + key, draw, 128);
+  const bladeTex = (key, draw) => canvasTex('blade-' + key, draw, 256);
   const BLADES = {
     fade: () => new THREE.MeshPhongMaterial({ shininess: 120, specular: 0xffffff, side: THREE.DoubleSide, map: bladeTex('fade', (c, s) => {
       const g = c.createLinearGradient(0, 0, s, 0); g.addColorStop(0, '#ffe066'); g.addColorStop(0.35, '#ff5ec4'); g.addColorStop(0.75, '#8a4dff'); g.addColorStop(1, '#4a2bff');
@@ -2303,7 +2320,7 @@ BR.Models = (function () {
       else S = skinMaterial('default', def.color);
       const opts = {};
       if (skin && skin !== 'default') opts.camo = S;
-      if (bp && bp.blade) opts.blade = cache.mat['blade' + bp.blade] || (cache.mat['blade' + bp.blade] = BLADES[bp.blade]());
+      if (bp && bp.blade) { if (!cache.mat['blade' + bp.blade]) { const bm = BLADES[bp.blade](); if (bm.isMeshPhongMaterial && !bm.envMap) { bm.envMap = envCube(); bm.reflectivity = bm.transparent ? 0.3 : 0.22; } cache.mat['blade' + bp.blade] = bm; } opts.blade = cache.mat['blade' + bp.blade]; }
       ROUND = true;
       try {
         (BUILD[id] || BUILD.pistol)(g, S, MAT(), opts);
@@ -2319,7 +2336,12 @@ BR.Models = (function () {
     charm,
     // Run a model's animated parts (Mythic blueprints). Cheap no-op for everything else.
     animTex(tex, fn) { return animTex(tex, fn); },
-    tick(t) { for (let i = 0; i < ANIM_TEX.length; i++) ANIM_TEX[i]._anim(ANIM_TEX[i], t); },
+    tick(t) {
+      for (let i = 0; i < ANIM_TEX.length; i++) ANIM_TEX[i]._anim(ANIM_TEX[i], t);
+      // blueprint glow strips breathe (brighter / softer) instead of sitting at a flat colour
+      const k = 0.82 + 0.18 * Math.sin(t * 2.6);
+      for (let i = 0; i < GLOWS.length; i++) GLOWS[i].color.copy(GLOWS[i].userData.base).multiplyScalar(k);
+    },
     animate(model, t) { const a = model && model.userData.anim; if (a) for (let i = 0; i < a.length; i++) a[i](t); },
     // Which tracer a gun fires: its own per-gun pick, or (Signature) its blueprint's tracer
     resolveTracer(wid, equip) {

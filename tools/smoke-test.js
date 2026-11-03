@@ -707,6 +707,28 @@ const server = http.createServer((req, res) => {
       document.getElementById('kb-reset').click(); const reset = KB.get().jump[0] === 'Space' && KB.get().stim[1] === null;
       document.getElementById('settings-back').click();
       out.kb = { n: KB.ACTIONS.length, all, hJump, released, spaceDead, steal, mFire, mOff, wheel, fwd, stop, saved: saved.forward && saved.forward[0] === 'KeyI', ui, esc, reset }; }
+    // v1.8.3: pause -> settings, shop/inventory layout, font, tuning, freeze frame, skin finishes
+    { g.startMatch({ practice: true }); g.state = 'playing'; g.pause();
+      document.getElementById('btn-settings2').click();
+      const pauseHid = document.getElementById('pause').classList.contains('hidden') && !document.getElementById('settings').classList.contains('hidden');
+      document.getElementById('settings-back').click();
+      const pauseBack = !document.getElementById('pause').classList.contains('hidden') && document.getElementById('settings').classList.contains('hidden');
+      g.resume ? g.resume() : (g.state = 'playing', g.hud.show('pause', false));
+      const font = getComputedStyle(document.body).fontFamily.includes('Outfit') && getComputedStyle(document.querySelector('.logo-title .lt i')).fontFamily.includes('Outfit');
+      // freeze frame on the last kill
+      g.settings.bots = 1; g.startMatch(); const pf = g.player; pf.mover.dropping = false; pf.mover.onGround = true;
+      for (const a of g.actors) if (!a.isPlayer && a.alive) g.kill(a, pf, 'rifle', true);
+      g.state = 'playing'; g.update(1 / 60);
+      const t0 = g.time, frz = g.freezeT > 0 && document.getElementById('play').classList.contains('freeze') && !g.victory;
+      for (let i = 0; i < 30; i++) g.update(1 / 60);
+      const held = g.time === t0 && !g.victory;
+      for (let i = 0; i < 40; i++) g.update(1 / 60);
+      const after = !!g.victory && !document.getElementById('play').classList.contains('freeze');
+      g.startMatch({ practice: true });
+      const tiger = BR.Models.weapon('rifle', 'tiger', 'none'), gold = BR.Models.weapon('rifle', 'gold', 'none'); let envT = 0, envG = 0;
+      tiger.traverse(o => { if (o.material && o.material.map && o.material.envMap) envT++; }); gold.traverse(o => { if (o.material && o.material.reflectivity >= 0.4) envG++; });
+      out.v183 = { pauseHid, pauseBack, font, frz, held, after, shotgunRpm: C.weapons.shotgun.rpm, lift: C.shockwave.lift, envT, envG,
+        meleeHidden: (() => { document.getElementById('btn-inv').click(); document.querySelector('#inv-tabs button[data-cat="skins"]').click(); const h = document.getElementById('inv-melee').classList.contains('hidden'); document.querySelector('#inv-tabs button[data-cat="blueprints"]').click(); const v = !document.getElementById('inv-melee').classList.contains('hidden'); document.getElementById('inv-back').click(); return h && v; })() }; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -783,7 +805,7 @@ const server = http.createServer((req, res) => {
     ['karambit gives a movement speed boost', extra.newstuff.knifeSpeed > BR_RUN * 1.15],
     ['sniper + hunting rifle are bolt actions (bolt lifts, pulls back, returns)', extra.newstuff.bolts && extra.newstuff.sniperBolt && extra.newstuff.lift > 0.8 && extra.newstuff.back > 0.05 && extra.newstuff.settled],
     ['stim + grapple have first-person arm animations', extra.fpAnims.injSeen && extra.fpAnims.injGone && extra.fpAnims.launchSeen && extra.fpAnims.launchGone],
-    ['shockwave grenade launches you; pickups refill; purple model', extra.shock.used && extra.shock.rise > 3 && extra.shock.picked && extra.shock.model],
+    ['shockwave grenade launches you; pickups refill; purple model', extra.shock.used && extra.shock.rise > 12 && extra.shock.picked && extra.shock.model],
     ['styled tracers (helix/spark/lightning/dual) render extra beads', extra.styledTracer],
     ['damage numbers stack per target and mark headshots', extra.dmgStack],
     ['more camos, gloves and Mythic blueprints (animated camos scroll)', extra.cosmetics.camos >= 19 && extra.cosmetics.gloves >= 16 && extra.cosmetics.mythicBp >= 18 && extra.animCamo],
@@ -836,6 +858,9 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['pause -> settings hides the pause menu and BACK restores it', v17.v183.pauseHid && v17.v183.pauseBack],
+    ['last-kill freeze frame holds the world, then the victory show', v17.v183.frz && v17.v183.held && v17.v183.after],
+    ['one font everywhere, slower shotgun, higher shockwave, camo finishes, melee picker only on blueprints', v17.v183.font && v17.v183.shotgunRpm < 80 && v17.v183.lift >= 28 && v17.v183.envT > 0 && v17.v183.envG > 0 && v17.v183.meleeHidden],
     ['PC keybinds: every action rebindable (keys, mouse, wheel), conflicts move, saved, settings UI, reset', v17.kb.n >= 22 && v17.kb.all && v17.kb.hJump && v17.kb.released && v17.kb.spaceDead && v17.kb.steal && v17.kb.mFire && v17.kb.mOff && v17.kb.wheel && v17.kb.fwd && v17.kb.stop && v17.kb.saved && v17.kb.ui && v17.kb.esc && v17.kb.reset],
     ['vibrant knife blueprints: 9 with glow auras + sparkles and colour trails', v17.v180.auraOk === 9 && Object.values(v17.v180.trails).every(t => t.built && t.seen && t.grad)],
     ['new finishers (Supernova, Prism Burst, Thunderstrike, Sakura, Dragon Soul) play and clean up', Object.values(v17.v180.fins).every(f => f.peak >= 2) && v17.v180.left === 0 && v17.v180.shop && v17.v180.nova],

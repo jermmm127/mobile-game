@@ -231,7 +231,7 @@ BR.Game = class Game {
   // ------------------------------------------------------------------ match
   // opts.practice: no bots, no storm, spawn menu, respawn on death
   startMatch(opts) {
-    this.endVictory();
+    this.endVictory(); this.freezeT = 0; this.hud.freeze(false);
     const S = this.settings, C = BR.CONFIG;
     this.duel = null; document.body.classList.remove('duel');
     const practiceMode = !!(opts && opts.practice);
@@ -551,6 +551,12 @@ BR.Game = class Game {
 
   update(dt) {
     const p = this.player;
+    // last-kill freeze frame: the whole world holds still (desaturated, zoomed, flash) before the victory show
+    if (this.freezeT > 0) {
+      this.freezeT -= dt;
+      if (this.freezeT <= 0) { this.freezeT = 0; this.hud.freeze(false); this.startVictory(); }
+      return;
+    }
     if (p.alive && this.state === 'playing') this.controlPlayer(dt);
     else p.fireHeld = false;
     this.simulate(dt);
@@ -603,7 +609,8 @@ BR.Game = class Game {
       else if (!this.practice && this.aliveCount() === 1) {
         this.state = 'won'; this.endT = 5.4;
         this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time };
-        this.startVictory();
+        // freeze frame first (like the big shooters), then the victory show
+        this.freezeT = 1.0; p.fireHeld = false; this.hud.freeze(true); BR.Audio.freeze && BR.Audio.freeze();
       }
     } else if (this.state === 'dead' || this.state === 'won') {
       this.endT -= dt;
@@ -1047,11 +1054,11 @@ BR.Game = class Game {
     const s = new THREE.Scene();
     s.background = new THREE.Color(0x0c0e12);
     s.add(new THREE.HemisphereLight(0xdde6ff, 0x30281c, 0.7));
-    const k = new THREE.DirectionalLight(0xffe2b0, 0.95); k.position.set(2, 3, 2); s.add(k);
+    const k = new THREE.DirectionalLight(0xfff2ff, 0.95); k.position.set(2, 3, 2); s.add(k);
     const r = new THREE.DirectionalLight(0x6fb8ff, 0.7); r.position.set(-3, 1, -2); s.add(r);
     const floor = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.08, 40), new THREE.MeshPhongMaterial({ color: 0x1c2027, specular: 0x444444 }));
     floor.position.y = -0.55; this.shopFloor = floor; s.add(floor);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.015, 6, 60), new THREE.MeshBasicMaterial({ color: 0xffa31a }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.015, 6, 60), new THREE.MeshBasicMaterial({ color: 0xb26bff }));
     ring.rotation.x = Math.PI / 2; floor.add(ring); ring.position.y = 0.05;
     this.shopScene = s;
     this.shopCam = new THREE.PerspectiveCamera(40, 1, 0.01, 20);

@@ -568,6 +568,7 @@ BR.Inventory = class Inventory {
     this.el.count.textContent = this.total() + ' / ' + this.collectible();
     const mel = P.data.equip.melee || 'bayonet';
     document.querySelectorAll('#inv-melee button').forEach(b => b.classList.toggle('sel', b.dataset.m === mel));
+    document.getElementById('inv-melee').classList.toggle('hidden', cat !== 'blueprints');
     if (!this.sel || !items[this.sel]) this.sel = items[this.equippedId()] ? this.equippedId() : Object.keys(items)[0] || null;
     const html = [];
     for (const id in items) {

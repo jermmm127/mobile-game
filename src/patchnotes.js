@@ -5,6 +5,16 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.8.3', date: '2026-11-03', title: 'Freeze frame, polish and tuning', notes: [
+    'Winning now hits a freeze frame on the final kill: the world stops, the view drains of colour and pushes in with a flash and speed lines, then the victory show plays.',
+    'Every camo and blueprint got a graphics pass: sharper (double-resolution) patterns, real reflective finishes (mirror chrome and gold, clear-coat glossy camos, satin matte camos), reflective knife blades, and blueprint glow strips that gently breathe.',
+    'One typeface everywhere: all text now uses the same font as the surge logo.',
+    'Fixed: opening Settings from the pause menu in a match left the pause menu on top. Back now returns you to it.',
+    'Shop and inventory: far more room for items on phones (compact header, tabs and cards); the melee picker only shows on the Blueprints tab.',
+    'The M9 Bayonet sits farther from the camera, so it looks smaller.',
+    'The Breacher shotgun fires a little slower (80 -> 64 rpm).',
+    'The Shockwave grenade launches you way higher (about 19 m instead of 6 m).',
+  ] },
   { v: '1.8.2', date: '2026-11-03', title: 'PC keybinds', notes: [
     'New Settings → PC CONTROLS: rebind every action (movement, jump, crouch/slide, grapple, fire, aim, reload, inspect, grenade, stim, weapon slots, next weapon, knife, interact, map, spawn menu, pause).',
     'Each action has a primary and an alternate key. Bind keyboard keys, any mouse button (left, right, middle, side buttons) or the scroll wheel.',

@@ -197,6 +197,7 @@ BR.HUD = class HUD {
   <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
   <div id="killflash"></div>
+  <div id="freezefx"><i class="fz-flash"></i><i class="fz-lines"></i><i class="fz-frame"></i></div>
   <div id="victory" class="hidden"><div class="v-flash"></div><div class="v-rays"></div><div class="v-glow"></div>
     <div class="v-rank"><span>#</span>1</div>
     <div class="v-title">${'VICTORY'.split('').map((c, i) => `<i style="--i:${i}">${c}</i>`).join('')}</div>
@@ -825,6 +826,13 @@ BR.HUD = class HUD {
     const b = this.$('btn-notes'); if (b) b.classList.toggle('fresh', !!(BR.PATCH_NOTES && BR.PATCH_NOTES[0] && seen !== BR.PATCH_NOTES[0].v));
   }
 
+  // Last-kill freeze frame: desaturate + zoom the frozen view, white flash, speed-line frame
+  freeze(on) {
+    const play = this.$('play'), f = this.$('freezefx'); if (!play || !f) return;
+    play.classList.toggle('freeze', !!on);
+    f.classList.remove('on'); if (on) { void f.offsetWidth; f.classList.add('on'); }
+  }
+
   // Victory overlay (null hides it): rays, #1 badge, letter-by-letter VICTORY with a shine sweep,
   // stats counting up, falling confetti. The HUD controls fade out underneath.
   victory(r) {
@@ -968,7 +976,7 @@ BR.HUD = class HUD {
     }
     if (labels) {
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.font = `600 ${Math.round(S / 34)}px "Saira Semi Condensed", sans-serif`;
+      c.font = `600 ${Math.round(S / 34)}px "Outfit", sans-serif`;
       for (const p of w.pois || []) {
         c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,0.7)'; c.strokeText(p.name.toUpperCase(), X(p.x), Z(p.z));
         c.fillStyle = '#fff'; c.fillText(p.name.toUpperCase(), X(p.x), Z(p.z));

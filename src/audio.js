@@ -108,6 +108,8 @@ BR.Audio = {
       this.tone(2093, 2100, 1.2, 0.05, 'sine'); this.tone(130.8, 65.4, 0.6, 0.35, 'sine'); this.burst(6000, 1.5, 0.8, 0.06, 0, 'bandpass'); }, 470);
     setTimeout(() => { this.tone(1568, 1568, 0.3, 0.08, 'sine'); this.tone(2093, 2093, 0.5, 0.07, 'sine'); }, 1150);
   },
+  // freeze frame: a deep impact boom + a high suspended ring
+  freeze() { this.tone(90, 30, 0.9, 0.5, 'sine'); this.burst(600, 0.7, 0.5, 0.3); this.tone(2637, 2637, 1.0, 0.07, 'sine'); this.tone(3951, 3950, 0.8, 0.04, 'sine'); },
   // firework pop (louder close up)
   pop(v) { this.burst(1400 + Math.random() * 1200, 0.9, 0.25, (v || 0.3) * 0.6); this.tone(220 + Math.random() * 80, 60, 0.3, (v || 0.3) * 0.5, 'sine'); setTimeout(() => this.burst(7000, 1.5, 0.4, (v || 0.3) * 0.18, 0, 'bandpass'), 90); },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },

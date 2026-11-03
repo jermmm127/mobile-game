@@ -164,10 +164,11 @@
   });
   $('kb-reset').addEventListener('click', () => { endCapture(); KB.reset(); renderKeybinds(); kbMsg('Keybinds reset to defaults'); });
   renderKeybinds();
-  const openSettings = () => { $('settings').classList.remove('hidden'); renderKeybinds(); };
+  // opened from the in-game pause menu: hide the pause panel while settings are up, bring it back after
+  const openSettings = () => { const fromPause = !$('pause').classList.contains('hidden'); $('settings').dataset.fromPause = fromPause ? '1' : ''; if (fromPause) $('pause').classList.add('hidden'); $('settings').classList.remove('hidden'); renderKeybinds(); };
   $('btn-settings').addEventListener('click', openSettings);
   $('btn-settings2').addEventListener('click', openSettings);
-  $('settings-back').addEventListener('click', () => { endCapture(); $('settings').classList.add('hidden'); });
+  $('settings-back').addEventListener('click', () => { endCapture(); $('settings').classList.add('hidden'); if ($('settings').dataset.fromPause && game.state === 'paused') $('pause').classList.remove('hidden'); $('settings').dataset.fromPause = ''; });
 
   // ---- fullscreen ------------------------------------------------------------
   const fsTip = () => $('fs-tip').classList.remove('hidden');
