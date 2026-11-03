@@ -142,7 +142,7 @@ const ICON = {
 
 const HELP = `
   <p><b>PHONE:</b> left thumb drags to move. Right side drags to look. Hold FIRE and drag it to aim while shooting. The second fire button only shoots. Tap a weapon slot to switch; tap the slot you're holding to inspect.</p>
-  <p><b>KEYBOARD:</b> F stim · WASD move · Mouse look · Click fire · Right-click aim · Space jump · Shift/C crouch/slide · G or middle-click grapple · R reload · 1/2/3 or Q switch · V inspect · E open/swap · Esc pause</p>
+  <p id="kb-help"><b>KEYBOARD & MOUSE:</b> mouse to look; every other key can be changed in Settings → PC CONTROLS.</p>
   <p><b>CROUCH / SLIDE:</b> one button. Tap it while running to slide in the direction you're moving (forward, sideways or backward). You can look around but not steer mid-slide. Tap it while walking or standing to crouch.</p>
   <p><b>GRAPPLE:</b> fires where you aim. Reels you in fast; let go by jumping or reaching a ledge. 5 second cooldown.</p>
   <p><b>CHESTS & PADS:</b> gold chests give a better gun plus gear. Cyan pads launch you into the air.</p>`;
@@ -363,6 +363,11 @@ BR.HUD = class HUD {
             </div>
           </div>
         </div>
+      </details>
+      <details class="help kb-set" id="kb-set"><summary>PC CONTROLS (KEYBINDS)</summary>
+        <div class="kb-note">Click a key slot, then press any key, mouse button or scroll the wheel. <b>Esc</b> cancels, <b>Backspace</b> clears the slot. Each key does one action: binding it here unbinds it elsewhere.</div>
+        <div id="kb-list" class="kb-list"></div>
+        <div class="kb-foot"><span id="kb-msg" class="kb-msg"></span><button id="kb-reset" class="mbtn">RESET TO DEFAULTS</button></div>
       </details>
       <details class="help"><summary>CONTROLS</summary>${HELP}</details>
       <details class="help"><summary>MOVEMENT TECH</summary>${TECH_HELP}</details>

@@ -77,8 +77,8 @@ button { font: inherit; color: inherit; }
 .mbtn:active { transform: scale(0.98); }
 .mbtn.hot {
   color: var(--accent-ink); border-color: transparent;
-  background: linear-gradient(135deg, #ffcb52, var(--accent) 45%, var(--accent-2));
-  box-shadow: 0 10px 28px rgba(255, 150, 30, 0.28);
+  background: linear-gradient(135deg, #e9d5ff, var(--accent) 45%, var(--accent-2));
+  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.35);
 }
 .mbtn.hot:hover { filter: brightness(1.06); }
 .mbtn.big { font-size: 17px; padding: 15px 20px; }
@@ -290,7 +290,7 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 #tech {
   position: absolute; top: calc(50% + 54px); left: 50%; transform: translateX(-50%);
   font: 800 italic 20px var(--display); letter-spacing: 0.04em; color: #fff; opacity: 0; white-space: nowrap;
-  text-shadow: 0 0 18px rgba(255, 150, 30, 0.85), 0 2px 4px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 0 18px rgba(124, 58, 237, 0.85), 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 #tech.on { animation: tech 1.1s ease-out forwards; }
 @keyframes tech {
@@ -341,10 +341,10 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 .btn.prompt {
   position: absolute; right: calc(190px + var(--sr)); bottom: calc(232px + var(--sb)); padding: 10px 18px;
   font: 700 13px var(--ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-ink);
-  background: linear-gradient(135deg, #ffcb52, var(--accent) 45%, var(--accent-2)); border-radius: 999px;
-  box-shadow: 0 8px 22px rgba(255, 150, 30, 0.35); animation: pulse 1.4s ease-in-out infinite;
+  background: linear-gradient(135deg, #e9d5ff, var(--accent) 45%, var(--accent-2)); border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(124, 58, 237, 0.35); animation: pulse 1.4s ease-in-out infinite;
 }
-@keyframes pulse { 50% { box-shadow: 0 8px 30px rgba(255, 150, 30, 0.6); } }
+@keyframes pulse { 50% { box-shadow: 0 8px 30px rgba(124, 58, 237, 0.6); } }
 body:not(.touch) .btn.prompt::after { content: '  · E'; }
 .btn.act {
   position: absolute; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
@@ -478,7 +478,7 @@ body.cut .film .cutflash { animation: cut 0.45s ease-out; }
 .logo-small { font: 600 11px var(--ui); letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); }
 .logo-title { margin: 8px 0 0; display: flex; flex-direction: column; font: 800 italic clamp(42px, 7vw, 74px)/0.86 var(--display); letter-spacing: -0.03em; text-transform: uppercase; }
 .logo-title span { color: #fff; }
-.logo-title .accent { background: linear-gradient(100deg, #ffd776 0%, var(--accent) 40%, var(--accent-2) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.logo-title .accent { background: linear-gradient(100deg, #e9d5ff 0%, var(--accent) 40%, var(--accent-2) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .tagline { margin-top: 12px; font-size: 15px; color: #b9c1cc; }
 .menu-nav { display: flex; flex-direction: column; gap: 7px; width: min(300px, 100%); }
 .menu-nav .mbtn:not(.hot) { background: rgba(255, 255, 255, 0.05); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
@@ -522,7 +522,7 @@ body.practice.touch .practice-only, body.practice .btn.spawnbtn { display: flex 
   position: absolute; z-index: 2; top: calc(16px + var(--st)); right: calc(max(16px, calc(var(--sr) + 12px)) + 130px);
   display: flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: 999px; cursor: pointer; color: var(--text); text-align: left;
 }
-.acct-chip .avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 14px var(--ui); color: var(--accent-ink); background: linear-gradient(135deg, #ffcb52, var(--accent-2)); }
+.acct-chip .avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 14px var(--ui); color: var(--accent-ink); background: linear-gradient(135deg, #e9d5ff, var(--accent-2)); }
 .acct-text { display: flex; flex-direction: column; line-height: 1.1; }
 .acct-text b { font: 600 14px var(--ui); }
 .acct-text small { font: 500 11px var(--ui); color: var(--muted); }
@@ -841,7 +841,7 @@ body.duel #topbar .dp { display: flex; }
 .slot .sbar { position: absolute; left: 9px; right: 9px; bottom: 4px; height: 2px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
 .slot .sbar i { display: block; height: 100%; background: rgba(255,255,255,0.55); transform-origin: left; transition: transform .1s; }
 .slot.active { transform: translateY(-3px); border-color: rgba(178, 107, 255, 0.85); background: linear-gradient(180deg, rgba(60,40,10,0.7), rgba(24,16,4,0.78)); box-shadow: 0 6px 18px rgba(255,160,20,0.25), inset 0 0 0 1px rgba(196, 150, 255, 0.2); }
-.slot.active .sicon { color: #ffd27a; filter: drop-shadow(0 0 6px rgba(178, 107, 255, 0.6)); }
+.slot.active .sicon { color: #e2c6ff; filter: drop-shadow(0 0 6px rgba(178, 107, 255, 0.6)); }
 .slot.active .sbar i { background: var(--accent); }
 .slot.active .sammo { color: var(--accent); }
 .slot.low .sammo { color: var(--danger); } .slot.low .sbar i { background: var(--danger); }
@@ -1106,6 +1106,21 @@ body.duel #topbar .dp { display: flex; }
 #menu .logo-title { font-size: clamp(50px, 8.5vw, 96px); }
 @media (max-height: 430px) { #menu .logo-title { font-size: clamp(46px, 7.6vw, 72px); } }
 
+/* ---- PC keybinds editor ---- */
+.kb-note { font: 500 12px/1.4 var(--ui); color: var(--muted); margin: 8px 0; }
+.kb-list { display: grid; gap: 4px; }
+.kb-grp { font: 700 10px var(--ui); letter-spacing: .2em; color: var(--accent); text-transform: uppercase; margin: 8px 0 2px; }
+.kb-row { display: grid; grid-template-columns: 1fr 104px 104px; gap: 6px; align-items: center; font: 600 13px var(--ui); color: var(--text); }
+.kb-key { height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: rgba(255,255,255,.06); color: #fff; font: 700 12px var(--ui); letter-spacing: .04em; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; }
+.kb-key:hover { border-color: var(--accent); }
+.kb-key.empty { color: var(--muted); }
+.kb-key.wait { border-color: var(--accent); background: rgba(178, 107, 255, .22); color: #fff; animation: kbWait 1s ease-in-out infinite; }
+@keyframes kbWait { 50% { box-shadow: 0 0 0 3px rgba(178, 107, 255, .35); } }
+.kb-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.kb-msg { font: 600 12px var(--ui); color: var(--accent); min-height: 1em; }
+.kb-foot .mbtn { width: auto; padding: 8px 14px; font-size: 12px; }
+@media (hover: none) and (pointer: coarse) { .kb-set { display: none; } }
+
 </style>
 </head>
 <body>
@@ -1129,7 +1144,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.8.1',
+  version: '1.8.2',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1359,6 +1374,12 @@ BR.CONFIG = {
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.8.2', date: '2026-11-03', title: 'PC keybinds', notes: [
+    'New Settings → PC CONTROLS: rebind every action (movement, jump, crouch/slide, grapple, fire, aim, reload, inspect, grenade, stim, weapon slots, next weapon, knife, interact, map, spawn menu, pause).',
+    'Each action has a primary and an alternate key. Bind keyboard keys, any mouse button (left, right, middle, side buttons) or the scroll wheel.',
+    'A key can only do one thing: binding it moves it off its old action and tells you which. Esc cancels, Backspace clears, Reset restores the defaults. Saved on this device.',
+    'The keyboard help in Settings → CONTROLS now shows your current keys.',
+  ] },
   { v: '1.8.1', date: '2026-11-03', title: 'velocity royale is now surge', notes: [
     'The game is now called surge, with a modern lowercase wordmark that animates in, shimmers and breathes, over a charging energy line.',
     'New purple colour theme across the menus and HUD.',
@@ -9304,7 +9325,9 @@ BR.Input = class Input {
 
   // ---------------------------------------------------------------- desktop
   bindDesktop() {
-    const map = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
+    // Every action goes through the rebindable map (BR.Keybinds): keyboard codes, mouse buttons
+    // (Mouse0..4) and the wheel (WheelUp / WheelDown) can drive any action.
+    const MOVE = { forward: 'f', back: 'b', left: 'l', right: 'r' };
     const upd = () => {
       if (this.usingTouch) return;
       this.moveY = (this.keys.f ? 1 : 0) - (this.keys.b ? 1 : 0);
@@ -9312,46 +9335,41 @@ BR.Input = class Input {
       const l = Math.hypot(this.moveX, this.moveY);
       if (l > 1) { this.moveX /= l; this.moveY /= l; }
     };
+    this.held = {};
+    const down = act => {
+      if (MOVE[act]) { this.keys[MOVE[act]] = true; upd(); return; }
+      if (act === 'fire') { this.mouseFire = true; this.fire = true; return; }
+      if (act === 'ads') { this.ads = true; return; }
+      if (act === 'jump') { this.jumpHeld = true; this.press('jump'); return; }
+      this.press(act);
+    };
+    const up = act => {
+      if (MOVE[act]) { this.keys[MOVE[act]] = false; upd(); return; }
+      if (act === 'fire') { this.mouseFire = false; this.fire = this.fireTouches > 0; return; }
+      if (act === 'ads') { this.ads = false; return; }
+      if (act === 'jump') this.jumpHeld = false;
+    };
+    this.bindDown = (code, e) => { const acts = BR.Keybinds.actionsFor(code); for (const a of acts) { this.held[code] = true; down(a); } if (acts.length && e && (code === 'Space' || code === 'Tab' || code.startsWith('Arrow'))) e.preventDefault(); return acts.length > 0; };
+    this.bindUp = code => { if (!this.held[code]) return; this.held[code] = false; for (const a of BR.Keybinds.actionsFor(code)) up(a); };
     window.addEventListener('keydown', e => {
-      if (e.repeat) return;
+      if (e.repeat || BR.Keybinds.capturing) return;
+      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
       this.usingTouch = false;
       BR.Audio.init();
-      if (map[e.code]) { this.keys[map[e.code]] = true; upd(); }
-      if (e.code === 'Space') { this.press('jump'); this.jumpHeld = true; e.preventDefault(); }
-      if (e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'ControlLeft') this.press('crouch');
-      if (e.code === 'KeyG') this.press('grapple');
-      if (e.code === 'KeyV') this.press('inspect');
-      if (e.code === 'KeyX') this.press('knife');
-      if (e.code === 'KeyB') this.press('spawnmenu');
-      if (e.code === 'Digit3') this.press('slot2');
-      if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
-      if (e.code === 'KeyR') this.press('reload');
-      if (e.code === 'KeyE') this.press('interact');
-      if (e.code === 'KeyF') this.press('stim');
-      if (e.code === 'KeyT') this.press('grenade');
-      if (e.code === 'KeyQ') this.press('swap');
-      if (e.code === 'Digit1') this.press('slot0');
-      if (e.code === 'Digit2') this.press('slot1');
-      if (e.code === 'Escape' || e.code === 'KeyP') this.press('pause');
+      this.bindDown(e.code, e);
     });
-    window.addEventListener('keyup', e => {
-      if (map[e.code]) { this.keys[map[e.code]] = false; upd(); }
-      if (e.code === 'Space') this.jumpHeld = false;
-    });
+    window.addEventListener('keyup', e => this.bindUp(e.code));
     this.root.addEventListener('mousedown', e => {
-      if (this.usingTouch || this.editing || e.target.closest('[data-act]')) return;
+      if (this.usingTouch || this.editing || e.target.closest('[data-act]') || BR.Keybinds.capturing) return;
       BR.Audio.init();
       if (!this.locked && this.root.requestPointerLock) {
         try { const p = this.root.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed here */ }
       }
-      if (e.button === 0) { this.mouseFire = true; this.fire = true; }
-      if (e.button === 2) this.ads = true;
-      if (e.button === 1) { this.press('grapple'); e.preventDefault(); }
+      if (this.bindDown('Mouse' + e.button, e) && e.button === 1) e.preventDefault();
       this.dragging = true;
     });
     window.addEventListener('mouseup', e => {
-      if (e.button === 0) { this.mouseFire = false; this.fire = this.fireTouches > 0; }
-      if (e.button === 2) this.ads = false;
+      this.bindUp('Mouse' + e.button);
       this.dragging = false;
     });
     window.addEventListener('mousemove', e => {
@@ -9370,13 +9388,66 @@ BR.Input = class Input {
       this.press(act);
     });
     document.addEventListener('pointerlockchange', () => { this.locked = document.pointerLockElement === this.root; });
-    window.addEventListener('wheel', e => { if (this.locked) this.press('swap'); }, { passive: true });
+    // wheel: one-shot actions only (a held action on the wheel is pressed and released at once)
+    window.addEventListener('wheel', e => { if (!this.locked || BR.Keybinds.capturing) return; const c = e.deltaY < 0 ? 'WheelUp' : 'WheelDown'; if (this.bindDown(c, e)) this.bindUp(c); }, { passive: true });
     window.addEventListener('blur', () => this.reset());
   }
 
   unlock() {
     try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* ignore */ }
   }
+};
+
+// ---- Rebindable PC controls. Each action has two slots (primary / alternate). Codes are
+// KeyboardEvent.code values, Mouse0..Mouse4, WheelUp / WheelDown. Saved per device.
+BR.Keybinds = {
+  KEY: 'surge.keybinds',
+  ACTIONS: [
+    ['forward', 'Move forward', 'Movement'], ['back', 'Move back', 'Movement'], ['left', 'Move left', 'Movement'], ['right', 'Move right', 'Movement'],
+    ['jump', 'Jump', 'Movement'], ['crouch', 'Crouch / slide', 'Movement'], ['grapple', 'Grapple', 'Movement'],
+    ['fire', 'Fire', 'Combat'], ['ads', 'Aim down sights', 'Combat'], ['reload', 'Reload', 'Combat'], ['inspect', 'Inspect', 'Combat'],
+    ['grenade', 'Shockwave grenade', 'Combat'], ['stim', 'Stim', 'Combat'],
+    ['slot0', 'Weapon 1', 'Weapons'], ['slot1', 'Weapon 2', 'Weapons'], ['slot2', 'Knife slot', 'Weapons'], ['swap', 'Next weapon', 'Weapons'], ['knife', 'Knife toggle', 'Weapons'],
+    ['interact', 'Open chest / swap gun', 'Other'], ['map', 'Map', 'Other'], ['spawnmenu', 'Spawn menu (practice)', 'Other'], ['pause', 'Pause', 'Other'],
+  ],
+  DEFAULTS: {
+    forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
+    jump: ['Space', null], crouch: ['ShiftLeft', 'KeyC'], grapple: ['KeyG', 'Mouse1'],
+    fire: ['Mouse0', null], ads: ['Mouse2', null], reload: ['KeyR', null], inspect: ['KeyV', null], grenade: ['KeyT', null], stim: ['KeyF', null],
+    slot0: ['Digit1', null], slot1: ['Digit2', null], slot2: ['Digit3', null], swap: ['KeyQ', 'WheelDown'], knife: ['KeyX', null],
+    interact: ['KeyE', null], map: ['KeyM', 'Tab'], spawnmenu: ['KeyB', null], pause: ['Escape', 'KeyP'],
+  },
+  capturing: null,
+  load() {
+    const saved = BR.util.load(this.KEY, null) || {};
+    this.map = {};
+    for (const [a] of this.ACTIONS) this.map[a] = Array.isArray(saved[a]) ? [saved[a][0] || null, saved[a][1] || null] : this.DEFAULTS[a].slice();
+    this.index();
+    return this.map;
+  },
+  index() { this.rev = {}; for (const a in this.map) for (const c of this.map[a]) if (c) (this.rev[c] = this.rev[c] || []).push(a); },
+  get() { return this.map || this.load(); },
+  actionsFor(code) { this.get(); return this.rev[code] || []; },
+  save() { BR.util.save(this.KEY, this.map); this.index(); },
+  // set one slot; a code can only drive one action, so it is removed from wherever else it was.
+  // Returns the action it was taken from (or null).
+  set(action, slot, code) {
+    this.get(); let stolen = null;
+    if (code) for (const a in this.map) for (let i = 0; i < 2; i++) if (this.map[a][i] === code && !(a === action && i === slot)) { this.map[a][i] = null; stolen = a; }
+    this.map[action][slot] = code; this.save(); return stolen;
+  },
+  reset() { this.map = {}; for (const [a] of this.ACTIONS) this.map[a] = this.DEFAULTS[a].slice(); this.save(); },
+  label(code) {
+    if (!code) return '—';
+    const M = { Mouse0: 'Left click', Mouse1: 'Middle click', Mouse2: 'Right click', Mouse3: 'Mouse 4', Mouse4: 'Mouse 5', WheelUp: 'Wheel up', WheelDown: 'Wheel down', Space: 'Space', Escape: 'Esc',
+      ShiftLeft: 'L Shift', ShiftRight: 'R Shift', ControlLeft: 'L Ctrl', ControlRight: 'R Ctrl', AltLeft: 'L Alt', AltRight: 'R Alt', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+      Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', CapsLock: 'Caps', Enter: 'Enter', Backspace: 'Backspace' };
+    if (M[code]) return M[code];
+    if (code.startsWith('Key')) return code.slice(3);
+    if (code.startsWith('Digit')) return code.slice(5);
+    if (code.startsWith('Numpad')) return 'Num ' + code.slice(6);
+    return code;
+  },
 };
 
 </script>
@@ -10458,7 +10529,7 @@ const ICON = {
 
 const HELP = `
   <p><b>PHONE:</b> left thumb drags to move. Right side drags to look. Hold FIRE and drag it to aim while shooting. The second fire button only shoots. Tap a weapon slot to switch; tap the slot you're holding to inspect.</p>
-  <p><b>KEYBOARD:</b> F stim · WASD move · Mouse look · Click fire · Right-click aim · Space jump · Shift/C crouch/slide · G or middle-click grapple · R reload · 1/2/3 or Q switch · V inspect · E open/swap · Esc pause</p>
+  <p id="kb-help"><b>KEYBOARD & MOUSE:</b> mouse to look; every other key can be changed in Settings → PC CONTROLS.</p>
   <p><b>CROUCH / SLIDE:</b> one button. Tap it while running to slide in the direction you're moving (forward, sideways or backward). You can look around but not steer mid-slide. Tap it while walking or standing to crouch.</p>
   <p><b>GRAPPLE:</b> fires where you aim. Reels you in fast; let go by jumping or reaching a ledge. 5 second cooldown.</p>
   <p><b>CHESTS & PADS:</b> gold chests give a better gun plus gear. Cyan pads launch you into the air.</p>`;
@@ -10679,6 +10750,11 @@ BR.HUD = class HUD {
             </div>
           </div>
         </div>
+      </details>
+      <details class="help kb-set" id="kb-set"><summary>PC CONTROLS (KEYBINDS)</summary>
+        <div class="kb-note">Click a key slot, then press any key, mouse button or scroll the wheel. <b>Esc</b> cancels, <b>Backspace</b> clears the slot. Each key does one action: binding it here unbinds it elsewhere.</div>
+        <div id="kb-list" class="kb-list"></div>
+        <div class="kb-foot"><span id="kb-msg" class="kb-msg"></span><button id="kb-reset" class="mbtn">RESET TO DEFAULTS</button></div>
       </details>
       <details class="help"><summary>CONTROLS</summary>${HELP}</details>
       <details class="help"><summary>MOVEMENT TECH</summary>${TECH_HELP}</details>
@@ -12700,10 +12776,49 @@ BR.Game = class Game {
   }
   applyXh();
 
-  const openSettings = () => $('settings').classList.remove('hidden');
+  // ---- PC keybinds editor
+  const KB = BR.Keybinds;
+  const renderKeybinds = () => {
+    const map = KB.get(); let html = '', grp = '';
+    for (const [a, name, g] of KB.ACTIONS) {
+      if (g !== grp) { grp = g; html += `<div class="kb-grp">${g}</div>`; }
+      html += `<div class="kb-row"><span>${name}</span>` + [0, 1].map(i => `<button class="kb-key${map[a][i] ? '' : ' empty'}" data-a="${a}" data-i="${i}">${KB.label(map[a][i])}</button>`).join('') + `</div>`;
+    }
+    $('kb-list').innerHTML = html;
+    const lab = a => KB.label(map[a][0]);
+    $('kb-help').innerHTML = `<b>KEYBOARD & MOUSE:</b> ${lab('forward')}${lab('left')}${lab('back')}${lab('right')} move · mouse look · ${lab('fire')} fire · ${lab('ads')} aim · ${lab('jump')} jump · ${lab('crouch')} crouch/slide · ${lab('grapple')} grapple · ${lab('reload')} reload · ${lab('slot0')}/${lab('slot1')}/${lab('slot2')} or ${lab('swap')} switch · ${lab('inspect')} inspect · ${lab('interact')} open/swap · ${lab('stim')} stim · ${lab('grenade')} grenade · ${lab('pause')} pause. Change them in PC CONTROLS.`;
+  };
+  const kbMsg = t => { $('kb-msg').textContent = t || ''; };
+  const endCapture = () => {
+    const c = KB.capturing; if (!c) return;
+    KB.capturing = null;
+    window.removeEventListener('keydown', c.onKey, true); window.removeEventListener('mousedown', c.onMouse, true); window.removeEventListener('wheel', c.onWheel, true);
+    renderKeybinds();
+  };
+  const commit = (code) => {
+    const c = KB.capturing; if (!c) return;
+    const stolen = KB.set(c.a, c.i, code);
+    const nm = a => (KB.ACTIONS.find(x => x[0] === a) || [])[1];
+    kbMsg(code ? (stolen && stolen !== c.a ? `${KB.label(code)} moved from "${nm(stolen)}" to "${nm(c.a)}"` : `${nm(c.a)}: ${KB.label(code)}`) : `${nm(c.a)}: slot cleared`);
+    endCapture();
+  };
+  $('kb-list').addEventListener('click', e => {
+    const b = e.target.closest('.kb-key'); if (!b) return;
+    endCapture(); kbMsg('');
+    b.textContent = 'press a key…'; b.classList.add('wait');
+    const c = KB.capturing = { a: b.dataset.a, i: +b.dataset.i };
+    c.onKey = ev => { ev.preventDefault(); ev.stopPropagation(); if (ev.code === 'Escape') { kbMsg('cancelled'); endCapture(); } else if (ev.code === 'Backspace' || ev.code === 'Delete') commit(null); else commit(ev.code); };
+    c.onMouse = ev => { if (ev.target.closest && ev.target.closest('.kb-key') && ev.button === 0 && ev.target.closest('.kb-key') !== b) return; ev.preventDefault(); ev.stopPropagation(); commit('Mouse' + ev.button); };
+    c.onWheel = ev => { ev.preventDefault(); ev.stopPropagation(); commit(ev.deltaY < 0 ? 'WheelUp' : 'WheelDown'); };
+    window.addEventListener('keydown', c.onKey, true);
+    setTimeout(() => { if (KB.capturing === c) { window.addEventListener('mousedown', c.onMouse, true); window.addEventListener('wheel', c.onWheel, { capture: true, passive: false }); } }, 0);
+  });
+  $('kb-reset').addEventListener('click', () => { endCapture(); KB.reset(); renderKeybinds(); kbMsg('Keybinds reset to defaults'); });
+  renderKeybinds();
+  const openSettings = () => { $('settings').classList.remove('hidden'); renderKeybinds(); };
   $('btn-settings').addEventListener('click', openSettings);
   $('btn-settings2').addEventListener('click', openSettings);
-  $('settings-back').addEventListener('click', () => $('settings').classList.add('hidden'));
+  $('settings-back').addEventListener('click', () => { endCapture(); $('settings').classList.add('hidden'); });
 
   // ---- fullscreen ------------------------------------------------------------
   const fsTip = () => $('fs-tip').classList.remove('hidden');

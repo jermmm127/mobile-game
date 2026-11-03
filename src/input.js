@@ -166,7 +166,9 @@ BR.Input = class Input {
 
   // ---------------------------------------------------------------- desktop
   bindDesktop() {
-    const map = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
+    // Every action goes through the rebindable map (BR.Keybinds): keyboard codes, mouse buttons
+    // (Mouse0..4) and the wheel (WheelUp / WheelDown) can drive any action.
+    const MOVE = { forward: 'f', back: 'b', left: 'l', right: 'r' };
     const upd = () => {
       if (this.usingTouch) return;
       this.moveY = (this.keys.f ? 1 : 0) - (this.keys.b ? 1 : 0);
@@ -174,46 +176,41 @@ BR.Input = class Input {
       const l = Math.hypot(this.moveX, this.moveY);
       if (l > 1) { this.moveX /= l; this.moveY /= l; }
     };
+    this.held = {};
+    const down = act => {
+      if (MOVE[act]) { this.keys[MOVE[act]] = true; upd(); return; }
+      if (act === 'fire') { this.mouseFire = true; this.fire = true; return; }
+      if (act === 'ads') { this.ads = true; return; }
+      if (act === 'jump') { this.jumpHeld = true; this.press('jump'); return; }
+      this.press(act);
+    };
+    const up = act => {
+      if (MOVE[act]) { this.keys[MOVE[act]] = false; upd(); return; }
+      if (act === 'fire') { this.mouseFire = false; this.fire = this.fireTouches > 0; return; }
+      if (act === 'ads') { this.ads = false; return; }
+      if (act === 'jump') this.jumpHeld = false;
+    };
+    this.bindDown = (code, e) => { const acts = BR.Keybinds.actionsFor(code); for (const a of acts) { this.held[code] = true; down(a); } if (acts.length && e && (code === 'Space' || code === 'Tab' || code.startsWith('Arrow'))) e.preventDefault(); return acts.length > 0; };
+    this.bindUp = code => { if (!this.held[code]) return; this.held[code] = false; for (const a of BR.Keybinds.actionsFor(code)) up(a); };
     window.addEventListener('keydown', e => {
-      if (e.repeat) return;
+      if (e.repeat || BR.Keybinds.capturing) return;
+      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
       this.usingTouch = false;
       BR.Audio.init();
-      if (map[e.code]) { this.keys[map[e.code]] = true; upd(); }
-      if (e.code === 'Space') { this.press('jump'); this.jumpHeld = true; e.preventDefault(); }
-      if (e.code === 'ShiftLeft' || e.code === 'KeyC' || e.code === 'ControlLeft') this.press('crouch');
-      if (e.code === 'KeyG') this.press('grapple');
-      if (e.code === 'KeyV') this.press('inspect');
-      if (e.code === 'KeyX') this.press('knife');
-      if (e.code === 'KeyB') this.press('spawnmenu');
-      if (e.code === 'Digit3') this.press('slot2');
-      if (e.code === 'KeyM' || e.code === 'Tab') { this.press('map'); e.preventDefault(); }
-      if (e.code === 'KeyR') this.press('reload');
-      if (e.code === 'KeyE') this.press('interact');
-      if (e.code === 'KeyF') this.press('stim');
-      if (e.code === 'KeyT') this.press('grenade');
-      if (e.code === 'KeyQ') this.press('swap');
-      if (e.code === 'Digit1') this.press('slot0');
-      if (e.code === 'Digit2') this.press('slot1');
-      if (e.code === 'Escape' || e.code === 'KeyP') this.press('pause');
+      this.bindDown(e.code, e);
     });
-    window.addEventListener('keyup', e => {
-      if (map[e.code]) { this.keys[map[e.code]] = false; upd(); }
-      if (e.code === 'Space') this.jumpHeld = false;
-    });
+    window.addEventListener('keyup', e => this.bindUp(e.code));
     this.root.addEventListener('mousedown', e => {
-      if (this.usingTouch || this.editing || e.target.closest('[data-act]')) return;
+      if (this.usingTouch || this.editing || e.target.closest('[data-act]') || BR.Keybinds.capturing) return;
       BR.Audio.init();
       if (!this.locked && this.root.requestPointerLock) {
         try { const p = this.root.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed here */ }
       }
-      if (e.button === 0) { this.mouseFire = true; this.fire = true; }
-      if (e.button === 2) this.ads = true;
-      if (e.button === 1) { this.press('grapple'); e.preventDefault(); }
+      if (this.bindDown('Mouse' + e.button, e) && e.button === 1) e.preventDefault();
       this.dragging = true;
     });
     window.addEventListener('mouseup', e => {
-      if (e.button === 0) { this.mouseFire = false; this.fire = this.fireTouches > 0; }
-      if (e.button === 2) this.ads = false;
+      this.bindUp('Mouse' + e.button);
       this.dragging = false;
     });
     window.addEventListener('mousemove', e => {
@@ -232,11 +229,64 @@ BR.Input = class Input {
       this.press(act);
     });
     document.addEventListener('pointerlockchange', () => { this.locked = document.pointerLockElement === this.root; });
-    window.addEventListener('wheel', e => { if (this.locked) this.press('swap'); }, { passive: true });
+    // wheel: one-shot actions only (a held action on the wheel is pressed and released at once)
+    window.addEventListener('wheel', e => { if (!this.locked || BR.Keybinds.capturing) return; const c = e.deltaY < 0 ? 'WheelUp' : 'WheelDown'; if (this.bindDown(c, e)) this.bindUp(c); }, { passive: true });
     window.addEventListener('blur', () => this.reset());
   }
 
   unlock() {
     try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* ignore */ }
   }
+};
+
+// ---- Rebindable PC controls. Each action has two slots (primary / alternate). Codes are
+// KeyboardEvent.code values, Mouse0..Mouse4, WheelUp / WheelDown. Saved per device.
+BR.Keybinds = {
+  KEY: 'surge.keybinds',
+  ACTIONS: [
+    ['forward', 'Move forward', 'Movement'], ['back', 'Move back', 'Movement'], ['left', 'Move left', 'Movement'], ['right', 'Move right', 'Movement'],
+    ['jump', 'Jump', 'Movement'], ['crouch', 'Crouch / slide', 'Movement'], ['grapple', 'Grapple', 'Movement'],
+    ['fire', 'Fire', 'Combat'], ['ads', 'Aim down sights', 'Combat'], ['reload', 'Reload', 'Combat'], ['inspect', 'Inspect', 'Combat'],
+    ['grenade', 'Shockwave grenade', 'Combat'], ['stim', 'Stim', 'Combat'],
+    ['slot0', 'Weapon 1', 'Weapons'], ['slot1', 'Weapon 2', 'Weapons'], ['slot2', 'Knife slot', 'Weapons'], ['swap', 'Next weapon', 'Weapons'], ['knife', 'Knife toggle', 'Weapons'],
+    ['interact', 'Open chest / swap gun', 'Other'], ['map', 'Map', 'Other'], ['spawnmenu', 'Spawn menu (practice)', 'Other'], ['pause', 'Pause', 'Other'],
+  ],
+  DEFAULTS: {
+    forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
+    jump: ['Space', null], crouch: ['ShiftLeft', 'KeyC'], grapple: ['KeyG', 'Mouse1'],
+    fire: ['Mouse0', null], ads: ['Mouse2', null], reload: ['KeyR', null], inspect: ['KeyV', null], grenade: ['KeyT', null], stim: ['KeyF', null],
+    slot0: ['Digit1', null], slot1: ['Digit2', null], slot2: ['Digit3', null], swap: ['KeyQ', 'WheelDown'], knife: ['KeyX', null],
+    interact: ['KeyE', null], map: ['KeyM', 'Tab'], spawnmenu: ['KeyB', null], pause: ['Escape', 'KeyP'],
+  },
+  capturing: null,
+  load() {
+    const saved = BR.util.load(this.KEY, null) || {};
+    this.map = {};
+    for (const [a] of this.ACTIONS) this.map[a] = Array.isArray(saved[a]) ? [saved[a][0] || null, saved[a][1] || null] : this.DEFAULTS[a].slice();
+    this.index();
+    return this.map;
+  },
+  index() { this.rev = {}; for (const a in this.map) for (const c of this.map[a]) if (c) (this.rev[c] = this.rev[c] || []).push(a); },
+  get() { return this.map || this.load(); },
+  actionsFor(code) { this.get(); return this.rev[code] || []; },
+  save() { BR.util.save(this.KEY, this.map); this.index(); },
+  // set one slot; a code can only drive one action, so it is removed from wherever else it was.
+  // Returns the action it was taken from (or null).
+  set(action, slot, code) {
+    this.get(); let stolen = null;
+    if (code) for (const a in this.map) for (let i = 0; i < 2; i++) if (this.map[a][i] === code && !(a === action && i === slot)) { this.map[a][i] = null; stolen = a; }
+    this.map[action][slot] = code; this.save(); return stolen;
+  },
+  reset() { this.map = {}; for (const [a] of this.ACTIONS) this.map[a] = this.DEFAULTS[a].slice(); this.save(); },
+  label(code) {
+    if (!code) return '—';
+    const M = { Mouse0: 'Left click', Mouse1: 'Middle click', Mouse2: 'Right click', Mouse3: 'Mouse 4', Mouse4: 'Mouse 5', WheelUp: 'Wheel up', WheelDown: 'Wheel down', Space: 'Space', Escape: 'Esc',
+      ShiftLeft: 'L Shift', ShiftRight: 'R Shift', ControlLeft: 'L Ctrl', ControlRight: 'R Ctrl', AltLeft: 'L Alt', AltRight: 'R Alt', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+      Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', CapsLock: 'Caps', Enter: 'Enter', Backspace: 'Backspace' };
+    if (M[code]) return M[code];
+    if (code.startsWith('Key')) return code.slice(3);
+    if (code.startsWith('Digit')) return code.slice(5);
+    if (code.startsWith('Numpad')) return 'Num ' + code.slice(6);
+    return code;
+  },
 };

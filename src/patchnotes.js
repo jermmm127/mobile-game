@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.8.2', date: '2026-11-03', title: 'PC keybinds', notes: [
+    'New Settings → PC CONTROLS: rebind every action (movement, jump, crouch/slide, grapple, fire, aim, reload, inspect, grenade, stim, weapon slots, next weapon, knife, interact, map, spawn menu, pause).',
+    'Each action has a primary and an alternate key. Bind keyboard keys, any mouse button (left, right, middle, side buttons) or the scroll wheel.',
+    'A key can only do one thing: binding it moves it off its old action and tells you which. Esc cancels, Backspace clears, Reset restores the defaults. Saved on this device.',
+    'The keyboard help in Settings → CONTROLS now shows your current keys.',
+  ] },
   { v: '1.8.1', date: '2026-11-03', title: 'velocity royale is now surge', notes: [
     'The game is now called surge, with a modern lowercase wordmark that animates in, shimmers and breathes, over a charging energy line.',
     'New purple colour theme across the menus and HUD.',

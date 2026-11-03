@@ -688,6 +688,25 @@ const server = http.createServer((req, res) => {
       const M = BR.Models.weapon('rifle', 'default', 'none'); let env = 0, bump = 0; M.traverse(o => { if (o.material && o.material.envMap) env++; if (o.material && o.material.bumpMap) bump++; });
       const bm = g.vmr.models.bayonet.userData.model.userData;
       out.v180 = { auraOk, trails, fins, left, env, bump, grip: !!(bm.armVec && bm.armVecUp && bm.wristRoll && bm.gripY), shop: ['sakura', 'prismburst', 'supernova'].every(k => BR.FINISHERS[k] && BR.FINISHERS[k].price), nova: ['thunderstrike', 'dragonsoul'].every(k => BR.FINISHERS[k].caseOnly && BR.FINISHERS[k].case === 'nova') }; }
+    // v1.8.2: PC keybinds for every action
+    { const KB = BR.Keybinds, inp = g.input; KB.reset();
+      const all = KB.ACTIONS.every(([a]) => KB.DEFAULTS[a] && KB.DEFAULTS[a][0]);
+      const kd = c => window.dispatchEvent(new KeyboardEvent('keydown', { code: c })), ku = c => window.dispatchEvent(new KeyboardEvent('keyup', { code: c }));
+      KB.set('jump', 0, 'KeyH'); inp.pressed = {}; kd('KeyH'); const hJump = !!inp.pressed.jump && inp.jumpHeld; ku('KeyH'); const released = !inp.jumpHeld;
+      inp.pressed = {}; kd('Space'); const spaceDead = !inp.pressed.jump; ku('Space');
+      const stolen = KB.set('reload', 1, 'KeyH'); const steal = stolen === 'jump' && KB.get().jump[0] === null && KB.actionsFor('KeyH').join() === 'reload';
+      KB.set('fire', 1, 'Mouse3'); inp.bindDown('Mouse3'); const mFire = inp.fire; inp.bindUp('Mouse3'); const mOff = !inp.fire;
+      KB.set('slot0', 1, 'WheelUp'); inp.pressed = {}; inp.bindDown('WheelUp'); inp.bindUp('WheelUp'); const wheel = !!inp.pressed.slot0;
+      KB.set('forward', 0, 'KeyI'); kd('KeyI'); const fwd = inp.moveY > 0.9; ku('KeyI'); const stop = inp.moveY === 0;
+      const saved = JSON.parse(localStorage.getItem('surge.keybinds') || '{}');
+      // settings UI: click a slot, press a key
+      document.getElementById('btn-settings').click();
+      document.querySelector('.kb-key[data-a="stim"][data-i="1"]').click(); kd('KeyZ');
+      const ui = KB.get().stim[1] === 'KeyZ' && !KB.capturing && document.querySelector('.kb-key[data-a="stim"][data-i="1"]').textContent === 'Z';
+      document.querySelector('.kb-key[data-a="map"][data-i="0"]').click(); kd('Escape'); const esc = KB.get().map[0] === 'KeyM';
+      document.getElementById('kb-reset').click(); const reset = KB.get().jump[0] === 'Space' && KB.get().stim[1] === null;
+      document.getElementById('settings-back').click();
+      out.kb = { n: KB.ACTIONS.length, all, hJump, released, spaceDead, steal, mFire, mOff, wheel, fwd, stop, saved: saved.forward && saved.forward[0] === 'KeyI', ui, esc, reset }; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -817,6 +836,7 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['PC keybinds: every action rebindable (keys, mouse, wheel), conflicts move, saved, settings UI, reset', v17.kb.n >= 22 && v17.kb.all && v17.kb.hJump && v17.kb.released && v17.kb.spaceDead && v17.kb.steal && v17.kb.mFire && v17.kb.mOff && v17.kb.wheel && v17.kb.fwd && v17.kb.stop && v17.kb.saved && v17.kb.ui && v17.kb.esc && v17.kb.reset],
     ['vibrant knife blueprints: 9 with glow auras + sparkles and colour trails', v17.v180.auraOk === 9 && Object.values(v17.v180.trails).every(t => t.built && t.seen && t.grad)],
     ['new finishers (Supernova, Prism Burst, Thunderstrike, Sakura, Dragon Soul) play and clean up', Object.values(v17.v180.fins).every(f => f.peak >= 2) && v17.v180.left === 0 && v17.v180.shop && v17.v180.nova],
     ['weapons use reflective, detailed materials; bayonet CS-style grip', v17.v180.env > 10 && v17.v180.bump > 0 && v17.v180.grip],

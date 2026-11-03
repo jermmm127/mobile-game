@@ -125,10 +125,49 @@
   }
   applyXh();
 
-  const openSettings = () => $('settings').classList.remove('hidden');
+  // ---- PC keybinds editor
+  const KB = BR.Keybinds;
+  const renderKeybinds = () => {
+    const map = KB.get(); let html = '', grp = '';
+    for (const [a, name, g] of KB.ACTIONS) {
+      if (g !== grp) { grp = g; html += `<div class="kb-grp">${g}</div>`; }
+      html += `<div class="kb-row"><span>${name}</span>` + [0, 1].map(i => `<button class="kb-key${map[a][i] ? '' : ' empty'}" data-a="${a}" data-i="${i}">${KB.label(map[a][i])}</button>`).join('') + `</div>`;
+    }
+    $('kb-list').innerHTML = html;
+    const lab = a => KB.label(map[a][0]);
+    $('kb-help').innerHTML = `<b>KEYBOARD & MOUSE:</b> ${lab('forward')}${lab('left')}${lab('back')}${lab('right')} move · mouse look · ${lab('fire')} fire · ${lab('ads')} aim · ${lab('jump')} jump · ${lab('crouch')} crouch/slide · ${lab('grapple')} grapple · ${lab('reload')} reload · ${lab('slot0')}/${lab('slot1')}/${lab('slot2')} or ${lab('swap')} switch · ${lab('inspect')} inspect · ${lab('interact')} open/swap · ${lab('stim')} stim · ${lab('grenade')} grenade · ${lab('pause')} pause. Change them in PC CONTROLS.`;
+  };
+  const kbMsg = t => { $('kb-msg').textContent = t || ''; };
+  const endCapture = () => {
+    const c = KB.capturing; if (!c) return;
+    KB.capturing = null;
+    window.removeEventListener('keydown', c.onKey, true); window.removeEventListener('mousedown', c.onMouse, true); window.removeEventListener('wheel', c.onWheel, true);
+    renderKeybinds();
+  };
+  const commit = (code) => {
+    const c = KB.capturing; if (!c) return;
+    const stolen = KB.set(c.a, c.i, code);
+    const nm = a => (KB.ACTIONS.find(x => x[0] === a) || [])[1];
+    kbMsg(code ? (stolen && stolen !== c.a ? `${KB.label(code)} moved from "${nm(stolen)}" to "${nm(c.a)}"` : `${nm(c.a)}: ${KB.label(code)}`) : `${nm(c.a)}: slot cleared`);
+    endCapture();
+  };
+  $('kb-list').addEventListener('click', e => {
+    const b = e.target.closest('.kb-key'); if (!b) return;
+    endCapture(); kbMsg('');
+    b.textContent = 'press a key…'; b.classList.add('wait');
+    const c = KB.capturing = { a: b.dataset.a, i: +b.dataset.i };
+    c.onKey = ev => { ev.preventDefault(); ev.stopPropagation(); if (ev.code === 'Escape') { kbMsg('cancelled'); endCapture(); } else if (ev.code === 'Backspace' || ev.code === 'Delete') commit(null); else commit(ev.code); };
+    c.onMouse = ev => { if (ev.target.closest && ev.target.closest('.kb-key') && ev.button === 0 && ev.target.closest('.kb-key') !== b) return; ev.preventDefault(); ev.stopPropagation(); commit('Mouse' + ev.button); };
+    c.onWheel = ev => { ev.preventDefault(); ev.stopPropagation(); commit(ev.deltaY < 0 ? 'WheelUp' : 'WheelDown'); };
+    window.addEventListener('keydown', c.onKey, true);
+    setTimeout(() => { if (KB.capturing === c) { window.addEventListener('mousedown', c.onMouse, true); window.addEventListener('wheel', c.onWheel, { capture: true, passive: false }); } }, 0);
+  });
+  $('kb-reset').addEventListener('click', () => { endCapture(); KB.reset(); renderKeybinds(); kbMsg('Keybinds reset to defaults'); });
+  renderKeybinds();
+  const openSettings = () => { $('settings').classList.remove('hidden'); renderKeybinds(); };
   $('btn-settings').addEventListener('click', openSettings);
   $('btn-settings2').addEventListener('click', openSettings);
-  $('settings-back').addEventListener('click', () => $('settings').classList.add('hidden'));
+  $('settings-back').addEventListener('click', () => { endCapture(); $('settings').classList.add('hidden'); });
 
   // ---- fullscreen ------------------------------------------------------------
   const fsTip = () => $('fs-tip').classList.remove('hidden');
