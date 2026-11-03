@@ -400,24 +400,41 @@ BR.Models = (function () {
   }
 
   const BUILD = {
+    // Pistol: a polymer-frame striker pistol. Squared slide with rear serrations, a
+    // lower slide groove and an ejection port; frame with a short accessory rail,
+    // squared trigger guard, finger-groove grip with a beavertail and stippled panels,
+    // flared mag base. Fixed sights. Side profiles on a 2D grid, extruded.
     pistol(g, S, M) {
       const k = kit(g);
-      k.box(0.05, 0.05, 0.22, 0, 0.05, -0.06, S);                 // slide
-      for (let i = 0; i < 4; i++) k.box(0.052, 0.035, 0.006, 0, 0.055, 0.02 + i * 0.012, M.dark); // serrations
-      k.box(0.044, 0.035, 0.2, 0, 0.012, -0.05, M.dark);          // frame
-      k.box(0.042, 0.13, 0.055, 0, -0.06, 0.02, M.grip, 0.22);    // grip
-      k.box(0.008, 0.012, 0.06, 0, -0.012, -0.03, M.dark);        // trigger guard bottom
-      k.box(0.006, 0.03, 0.006, 0, -0.005, -0.03, M.metal);       // trigger
-      k.cyl(0.011, 0.03, 0, 0.045, -0.18, M.metal, 'z');          // barrel tip
-      magGroup(g, [k.box(0.034, 0.11, 0.04, 0, -0.065, 0.025, M.dark, 0.22), k.box(0.044, 0.014, 0.052, 0, -0.127, 0.039, M.grip, 0.22)]);
-      irons(g, M, 0.088, 0.035, -0.16, false);
-      hands(g, [0, -0.07, 0.03], [-0.012, -0.095, 0.0], [0, 0.05, 0.02]);
-      anchors(g, -0.2, 0.045, [-0.03, 0.0, 0.04]);
+      const Z = x => -0.17 + (x - 172) * 0.0011, Y = y => 0.075 - (y - 88) * 0.0011;
+      const prof = profiler(g, Z, Y), BY = Y(105);
+      // slide
+      prof([[172, 93], [177, 88], [367, 88], [372, 94], [372, 140], [172, 140]], 0.044, S, 0.004);
+      k.box(0.002, Y(92) - Y(104), Z(302) - Z(246), 0.0225, (Y(92) + Y(104)) / 2, (Z(246) + Z(302)) / 2, M.grip);   // ejection port
+      k.box(0.008, 0.002, Z(302) - Z(246), 0.019, Y(89), (Z(246) + Z(302)) / 2, M.grip);
+      for (const sx of [-1, 1]) {
+        for (let i = 0; i < 7; i++) prof([[334 + i * 5, 96], [336 + i * 5, 96], [334 + i * 5, 132], [332 + i * 5, 132]], 0.0006, M.grip, 0, sx * 0.0223);   // serrations
+        k.box(0.0006, 0.002, Z(318) - Z(184), sx * 0.0223, Y(128), (Z(184) + Z(318)) / 2, M.grip);                                        // lower slide groove
+      }
+      k.cyl(0.0085, 0.004, 0, BY, Z(172) - 0.001, M.dark, 'z', 14);              // barrel crown
+      k.cyl(0.0045, 0.005, 0, BY, Z(172) - 0.002, M.grip, 'z', 10);
+      // frame + grip (finger grooves, beavertail), rail slots, stippled panels
+      prof([[176, 140], [372, 140], [380, 128], [390, 136], [386, 152], [394, 238], [390, 252], [334, 254], [328, 238], [322, 226],
+        [326, 212], [318, 198], [322, 184], [312, 168], [300, 160], [252, 158], [176, 154]], 0.04, M.grip, 0.005);
+      for (const x of [196, 216, 236]) k.box(0.041, 0.004, 0.006, 0, Y(152), Z(x), M.dark);
+      for (const sx of [-1, 1]) prof([[344, 172], [382, 166], [388, 232], [348, 240]], 0.0008, M.dark, 0, sx * 0.0202);
+      k.box(0.004, 0.006, 0.02, -0.021, Y(142), Z(318), M.dark);                // slide stop
+      k.box(0.0035, 0.004, 0.012, 0.021, Y(146), Z(276), M.dark);               // takedown
+      // squared trigger guard + trigger
+      prof([[252, 156], [258, 156], [258, 180], [296, 180], [300, 166], [306, 166], [302, 188], [252, 186]], 0.012, M.grip, 0.0015);
+      prof([[282, 150], [288, 150], [290, 162], [285, 172], [281, 170], [283, 162]], 0.006, M.dark, 0.001);
+      // mag: body inside the grip + flared base pad
+      magGroup(g, [prof([[338, 200], [384, 196], [388, 250], [336, 252]], 0.03, M.dark, 0.002),
+        prof([[332, 252], [390, 248], [392, 262], [334, 264]], 0.042, M.grip, 0.003)]);
+      irons(g, M, Y(80), Z(352), Z(184), false);
+      hands(g, [0, -0.06, Z(345)], [-0.012, -0.095, Z(350) - 0.03], [0, Y(110), Z(360)]);
+      anchors(g, Z(172) - 0.004, BY, [-0.03, -0.02, Z(392)]);
     },
-    // SMG: a compact open-bolt machine pistol. Boxy receiver under a ribbed top cover
-    // with a short rail and sight ears front and rear, side channels and a row of
-    // slanted grooves, a knurled barrel nut, the mag inside the grip, a front lip,
-    // and an extended folding skeleton stock with a ribbed butt pad. Micro red dot on top.
     smg(g, S, M) {
       const k = kit(g);
       const Z = x => 0.03 + (x - 330) * 0.00078, Y = y => -0.07 - (y - 230) * 0.00078;
@@ -1071,12 +1088,12 @@ BR.Models = (function () {
           k.box(0.056, 0.052, 0.05, 0, 0.05, -0.195, P.A);                       // compensator
           for (const x of [-0.026, 0.026]) glowStrip(k, P.G, 0.16, x, 0.062, -0.06);
           k.box(0.004, 0.012, 0.004, 0, 0.074, -0.205, P.G);                      // port glow
-          if (g.userData.mag) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.03, 0.054), P.A); b.position.set(0, -0.14, 0.042); b.rotation.x = 0.22; g.userData.mag.add(b); }
+          if (g.userData.mag) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.03, 0.054), P.A); b.position.set(0, -0.128, 0.038); b.rotation.x = 0.06; g.userData.mag.add(b); }
         } },
       gilded: { name: 'Gilded Monarch', rarity: 'Legendary', price: 800, body: 0xe6b422, bodyGloss: 2, accent: 0xf3efe6, glow: 0xffe9a0,
         mod(g, k, P) {
           for (let i = 0; i < 5; i++) k.box(0.052, 0.002, 0.012, 0, 0.076, -0.15 + i * 0.03, P.G);  // engraving lines
-          for (const x of [-0.023, 0.023]) { const p = k.box(0.004, 0.09, 0.04, x, -0.055, 0.022, P.A); p.rotation.x = 0.22; } // ivory grips
+          for (const x of [-0.023, 0.023]) { const p = k.box(0.004, 0.07, 0.04, x * 0.9, -0.05, 0.036, P.A); p.rotation.x = 0.1; } // ivory grips
           k.cyl(0.014, 0.008, 0, 0.045, -0.196, P.G, 'z', 12);
         } },
     },
