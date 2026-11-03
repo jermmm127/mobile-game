@@ -224,6 +224,68 @@ BR.Models = (function () {
     }),
   };
 
+  // ---- v1.10 GRIND camos: unlocked only by challenges, every one animated
+  Object.assign(TEX, {
+    // cracked black glass with molten seams that pulse and flow
+    g_ember: () => animTex(canvasTex('g_ember', (c, s) => {
+      c.fillStyle = '#0a0503'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 26; i++) { let x = Math.random() * s, y = Math.random() * s; c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 6; k++) { x += (Math.random() - 0.5) * 70; y += (Math.random() - 0.5) * 70; c.lineTo(x, y); }
+        c.strokeStyle = i % 3 ? '#ff6a00' : '#ffd24a'; c.lineWidth = 1 + Math.random() * 2.5; c.shadowColor = '#ff3a00'; c.shadowBlur = 12; c.stroke(); }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.set(Math.sin(t * 0.4) * 0.05, t * 0.04); }),
+    // storm clouds with forks of lightning, rolling sideways
+    g_tempest: () => animTex(canvasTex('g_tempest', (c, s) => {
+      const g = c.createLinearGradient(0, 0, 0, s); g.addColorStop(0, '#0a1030'); g.addColorStop(0.5, '#1a2a5a'); g.addColorStop(1, '#070a1a'); c.fillStyle = g; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 40; i++) { const gr = c.createRadialGradient(0, 0, 0, 0, 0, 30); gr.addColorStop(0, 'rgba(120,150,220,0.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.save(); c.translate(Math.random() * s, Math.random() * s); c.fillStyle = gr; c.fillRect(-30, -30, 60, 60); c.restore(); }
+      for (let i = 0; i < 6; i++) { let x = Math.random() * s, y = 0; c.beginPath(); c.moveTo(x, y); while (y < s) { x += (Math.random() - 0.5) * 30; y += 10 + Math.random() * 18; c.lineTo(x, y); }
+        c.strokeStyle = '#dff4ff'; c.lineWidth = 1.6; c.shadowColor = '#6fc8ff'; c.shadowBlur = 14; c.stroke(); }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.set(t * 0.07, 0); }),
+    // deep-sea bioluminescence: dark water, glowing jellies and drifting particles
+    g_abyss: () => animTex(canvasTex('g_abyss', (c, s) => {
+      const g = c.createRadialGradient(s / 2, s / 2, 10, s / 2, s / 2, s * 0.75); g.addColorStop(0, '#04304a'); g.addColorStop(1, '#010810'); c.fillStyle = g; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 18; i++) { const x = Math.random() * s, y = Math.random() * s, r = 4 + Math.random() * 10; c.fillStyle = i % 2 ? 'rgba(80,240,220,0.7)' : 'rgba(160,107,255,0.7)'; c.shadowColor = c.fillStyle; c.shadowBlur = 16; c.beginPath(); c.arc(x, y, r, Math.PI, 0); c.fill();
+        c.strokeStyle = c.fillStyle; c.lineWidth = 1; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(x + k * r * 0.35, y); c.quadraticCurveTo(x + k * r * 0.5 + 4, y + r * 1.5, x + k * r * 0.3, y + r * 2.6); c.stroke(); } }
+      c.shadowBlur = 0; for (let i = 0; i < 160; i++) { c.fillStyle = `rgba(160,255,240,${Math.random() * 0.8})`; c.fillRect(Math.random() * s, Math.random() * s, 1.2, 1.2); }
+    }, 256), (tx, t) => { tx.offset.set(Math.sin(t * 0.5) * 0.04, -t * 0.05); }),
+    // a forge of stars: swirling galaxy arms in gold and violet with bright points
+    g_starforge: () => animTex(canvasTex('g_starforge', (c, s) => {
+      c.fillStyle = '#05020c'; c.fillRect(0, 0, s, s);
+      for (let arm = 0; arm < 3; arm++) for (let i = 0; i < 260; i++) { const k = i / 260, a = arm * 2.09 + k * 5.5, r = k * s * 0.55, x = s / 2 + Math.cos(a) * r + (Math.random() - 0.5) * 14, y = s / 2 + Math.sin(a) * r + (Math.random() - 0.5) * 14;
+        c.fillStyle = Math.random() < 0.5 ? `rgba(255,210,74,${0.3 + Math.random() * 0.6})` : `rgba(176,107,255,${0.3 + Math.random() * 0.6})`; c.fillRect(x, y, 1.6, 1.6); }
+      for (let i = 0; i < 40; i++) { const x = Math.random() * s, y = Math.random() * s; c.fillStyle = '#fff'; c.shadowColor = '#ffd24a'; c.shadowBlur = 8; c.fillRect(x, y, 2, 2); }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.center.set(0.5, 0.5); tx.rotation = t * 0.12; }),
+    // afterburner: hot-pink and cyan exhaust streaks racing along the gun
+    g_afterburn: () => animTex(canvasTex('g_afterburn', (c, s) => {
+      c.fillStyle = '#0a0414'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 70; i++) { const y = Math.random() * s, l = 30 + Math.random() * 120, x = Math.random() * s, g = c.createLinearGradient(x, 0, x + l, 0);
+        const col = i % 3 === 0 ? '69,224,255' : i % 3 === 1 ? '255,94,196' : '255,210,74'; g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},0.9)`); c.fillStyle = g; c.fillRect(x, y, l, 1 + Math.random() * 2.5); }
+    }, 256), (tx, t) => { tx.offset.set(-t * 0.45, 0); }),
+    // lumen: a crisp neon reticle grid that scans with a sweeping light bar
+    g_lumen: () => animTex(canvasTex('g_lumen', (c, s) => {
+      c.fillStyle = '#03080c'; c.fillRect(0, 0, s, s);
+      c.strokeStyle = 'rgba(69,224,255,0.55)'; c.lineWidth = 1; for (let i = 0; i <= s; i += 16) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, s); c.stroke(); c.beginPath(); c.moveTo(0, i); c.lineTo(s, i); c.stroke(); }
+      for (let i = 0; i < 10; i++) { const x = Math.random() * s, y = Math.random() * s; c.strokeStyle = '#ff5ec4'; c.lineWidth = 1.5; c.shadowColor = '#ff5ec4'; c.shadowBlur = 8; c.beginPath(); c.arc(x, y, 7, 0, 7); c.stroke(); c.beginPath(); c.moveTo(x - 11, y); c.lineTo(x + 11, y); c.moveTo(x, y - 11); c.lineTo(x, y + 11); c.stroke(); }
+      c.shadowBlur = 0; const g = c.createLinearGradient(0, 0, s, 0); g.addColorStop(0.42, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(200,250,255,0.85)'); g.addColorStop(0.58, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, s, s);
+    }, 256), (tx, t) => { tx.offset.set(t * 0.18, 0); }),
+    // ascendant: liquid prism chrome; the colours flow and the whole thing shimmers
+    g_ascendant: () => animTex(canvasTex('g_ascendant', (c, s) => {
+      for (let y = 0; y < s; y++) { const h = (y / s * 360 + Math.sin(y * 0.06) * 40) % 360; c.fillStyle = `hsl(${h},95%,${55 + 15 * Math.sin(y * 0.11)}%)`; c.fillRect(0, y, s, 1); }
+      for (let i = 0; i < 60; i++) { c.fillStyle = 'rgba(255,255,255,0.7)'; const x = Math.random() * s, y = Math.random() * s; c.fillRect(x, y, 1.5, 1.5); }
+      c.globalCompositeOperation = 'overlay'; for (let i = 0; i < 14; i++) { c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 3; c.beginPath(); const y = Math.random() * s; c.moveTo(0, y); c.bezierCurveTo(s * 0.3, y - 40, s * 0.7, y + 40, s, y); c.stroke(); } c.globalCompositeOperation = 'source-over';
+    }, 256), (tx, t) => { tx.offset.set(Math.sin(t * 0.3) * 0.2, t * 0.2); }),
+    // soul fire for the Reaper's Edge blade
+    g_soul: () => animTex(canvasTex('g_soul', (c, s) => {
+      c.fillStyle = '#020a06'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 50; i++) { let x = Math.random() * s, y = s; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 8; k++) { x += Math.sin(k + i) * 10; y -= 20 + Math.random() * 14; c.lineTo(x, y); }
+        c.strokeStyle = i % 2 ? 'rgba(57,255,136,0.75)' : 'rgba(176,75,255,0.6)'; c.lineWidth = 2 + Math.random() * 3; c.shadowColor = c.strokeStyle; c.shadowBlur = 12; c.stroke(); }
+      c.shadowBlur = 0;
+    }, 256), (tx, t) => { tx.offset.set(0, -t * 0.3); }),
+  });
+  const GRIND_GLOW = { g_ember: 0.95, g_tempest: 0.8, g_abyss: 0.9, g_starforge: 1, g_afterburn: 1, g_lumen: 1, g_ascendant: 0.55, g_soul: 1 };
+
   // ------------------------------------------------------------------ skins
   const SKINS = {
     default: { name: 'Factory', price: 0, swatch: '#7c838c' },
@@ -268,6 +330,14 @@ BR.Models = (function () {
     m_chrome:      { name: 'Mastery: Chrome', mastery: 25, rarity: 'Epic', swatch: 'linear-gradient(135deg,#8a96a2,#ffffff,#8a96a2)' },
     m_volt:        { name: 'Mastery: Volt', mastery: 50, rarity: 'Legendary', swatch: 'linear-gradient(135deg,#060a1a,#6fc8ff 45%,#060a1a 55%,#dff4ff)' },
     m_singularity: { name: 'Mastery: Singularity', mastery: 100, rarity: 'Mythic', swatch: 'radial-gradient(circle,#ff3df2,#b04bff 30%,#07020f 70%)' },
+    // ---- v1.10 GRIND camos (challenges only, all animated). grind: { stat, n, label } (see Profile.addGrind)
+    g_ember:     { name: 'Emberglass', rarity: 'Epic', grind: { stat: 'heads', n: 150, label: '150 headshot kills' }, swatch: 'linear-gradient(135deg,#0a0503 0 30%,#ff6a00 31% 34%,#0a0503 35% 62%,#ffd24a 63% 65%,#0a0503 66%)' },
+    g_tempest:   { name: 'Tempest', rarity: 'Legendary', grind: { stat: 'kills', n: 400, label: '400 kills in any mode' }, swatch: 'linear-gradient(160deg,#0a1030,#1a2a5a 45%,#dff4ff 50%,#1a2a5a 55%,#070a1a)' },
+    g_abyss:     { name: 'Abyssal', rarity: 'Legendary', grind: { stat: 'zround', n: 20, label: 'Reach round 20 in Zombies' }, swatch: 'radial-gradient(circle at 40% 40%,#50f0dc,#04304a 40%,#a06bff 70%,#010810)' },
+    g_starforge: { name: 'Starforge', rarity: 'Mythic', grind: { stat: 'wins', n: 10, label: 'Win 10 Battle Royale / Resurgence matches' }, swatch: 'conic-gradient(from 30deg,#05020c,#ffd24a,#05020c,#b06bff,#05020c)' },
+    g_afterburn: { name: 'Afterburn', rarity: 'Mythic', grind: { stat: 'odwin', n: 1, label: 'Defeat the Overlord in Overdrive' }, swatch: 'linear-gradient(90deg,#0a0414,#45e0ff 30%,#0a0414 40%,#ff5ec4 70%,#ffd24a)' },
+    g_lumen:     { name: 'Lumen', rarity: 'Legendary', grind: { stat: 'aimtotal', n: 50000, label: 'Score 50,000 total in the Aim Trainer' }, swatch: 'repeating-linear-gradient(90deg,#03080c 0 7px,#45e0ff 7px 8px),#03080c' },
+    g_ascendant: { name: 'Ascendant', rarity: 'Exotic', grind: { stat: 'meta', n: 6, label: 'Unlock all 6 other grind camos' }, swatch: 'linear-gradient(135deg,#ff3df2,#ffd84a,#39ff88,#1de9ff,#7b2cff,#ff3df2)' },
   };
   const TRACERS = {
     signature: { name: 'Blueprint Signature', price: 0, color: 0xffe9a8, signature: true },
@@ -315,6 +385,7 @@ BR.Models = (function () {
     gold: [0.5, 110], chrome: [0.7, 160], m_chrome: [0.7, 170], m_copper: [0.45, 100], liquidgold: [0.45, 160], diamond: [0.55, 200], damascus: [0.4, 130],
     holo: [0.3, 150], candy: [0.22, 110], opal: [0.3, 170], prism: [0.28, 150], scales: [0.25, 120], hyper: [0.15, 90], galaxy: [0.18, 100], nebula: [0.18, 100],
     pap: [0.3, 150], sabertooth: [0.25, 120], ultraviolet: [0.2, 110], emerald: [0.3, 160], tidewater: [0.25, 140], hyperspace: [0.2, 90], voidrift: [0.2, 100], acid: [0.15, 80],
+    g_ember: [0.2, 120], g_tempest: [0.18, 100], g_abyss: [0.22, 130], g_starforge: [0.25, 140], g_afterburn: [0.15, 90], g_lumen: [0.15, 90], g_ascendant: [0.55, 200],
     bloodmoon: [0.12, 70], circuit: [0.12, 70], electric: [0.12, 70], molten: [0.1, 60], inferno: [0.1, 60], aurora: [0.15, 80], m_volt: [0.15, 80], m_singularity: [0.25, 120],
     carbon: [0.12, 70], arctic: [0.05, 30], tiger: [0.06, 34], crimson: [0.08, 40], pixel: [0.06, 34], jungle: [0.04, 26], neon: [0.1, 60],
   };
@@ -322,7 +393,8 @@ BR.Models = (function () {
     const key = skin + '|' + base;
     if (cache.mat[key]) return cache.mat[key];
     let m;
-    switch (skin) {
+    if (GRIND_GLOW[skin] !== undefined && TEX[skin]) m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: GRIND_GLOW[skin], specular: 0xffffff, shininess: skin === 'g_ascendant' ? 180 : 90 });
+    else switch (skin) {
       case 'carbon': case 'arctic': case 'tiger': case 'crimson': case 'pixel':
         m = new THREE.MeshLambertMaterial({ map: TEX[skin]() }); break;
       case 'galaxy': m = new THREE.MeshLambertMaterial({ map: TEX.galaxy(), emissive: 0x24104a, emissiveIntensity: 0.6 }); break;
@@ -2115,6 +2187,65 @@ BR.Models = (function () {
   for (const w in KNIFE_VIBRANT) S2BP[w] = Object.assign(S2BP[w] || {}, KNIFE_VIBRANT[w]);
   for (const w in S2BP) MYTHIC[w] = Object.assign(MYTHIC[w] || {}, S2BP[w]);
   for (const w in MYTHIC) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, MYTHIC[w]);
+  // ---- v1.10 GRIND blueprints: never sold, never in cases — earned through challenges
+  BLADES.soulblade = animBlade('g_soul', 0.95);
+  const GRIND_BP = {
+    rifle: { stormcaller: { name: 'Stormcaller', rarity: 'Mythic', grind: { stat: 'w:rifle', n: 150, label: '150 kills with the Rifle' }, body: 0x0a1030, bodyGloss: 2, accent: 0x9fd8ff, accentGloss: 2, glow: 0x9fd8ff,
+      mod(g, k, P) {
+        const G = liveGlow(0x9fd8ff); hueCycle(g, G, 0.55, 0.65, 3, 0.7);
+        k.box(0.08, 0.085, 0.3, 0, 0.035, -0.35, chrome(0x1a2a5a));
+        for (const x of [-0.043, 0.043]) k.box(0.004, 0.012, 0.3, x, 0.035, -0.35, G);
+        // a crackling storm cell round the muzzle: three spinning arcs + a cloud of sparks
+        const cell = new THREE.Group(); cell.position.set(0, 0.035, -0.62); g.add(cell);
+        const arcs = [0, 1, 2].map(i => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.05 + i * 0.012, 0.003, 6, 20, Math.PI * 1.2), G); cell.add(r); return r; });
+        const sparks = []; for (let i = 0; i < 10; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.004, 0.004), liveGlow(0xffffff)); cell.add(s); sparks.push(s); }
+        anim(g, t => { arcs.forEach((r, i) => { r.rotation.set(t * (3 + i), t * (2 - i), t * 4 * (i % 2 ? 1 : -1)); }); const f = Math.floor(t * 14);
+          sparks.forEach((s, i) => { const a = (f * 7 + i * 13) % 31 / 31 * 6.28, r = 0.03 + ((f + i) % 5) * 0.01; s.position.set(Math.cos(a) * r, Math.sin(a) * r, ((f + i * 3) % 7 - 3) * 0.01); s.visible = (f + i) % 3 !== 0; }); });
+        // lightning bolts running down the handguard, flickering
+        const bolts = []; for (let i = 0; i < 4; i++) { const b = k.box(0.003, 0.003, 0.05, (i % 2 ? 0.044 : -0.044), 0.01 + (i % 3) * 0.01, -0.2 - i * 0.07, G); b.rotation.x = (i % 2 ? 0.6 : -0.6); bolts.push(b); }
+        anim(g, t => bolts.forEach((b, i) => { b.visible = Math.floor(t * 9 + i * 2) % 3 !== 0; }));
+      } } },
+    smg: { hollowfang: { name: 'Hollowfang', rarity: 'Mythic', grind: { stat: 'zkills', n: 1000, label: '1,000 zombie kills' }, body: 0x140a06, bodyGloss: 1, accent: 0xff7a1a, glow: 0xff7a1a,
+      mod(g, k, P) {
+        const G = liveGlow(0xff7a1a); hueCycle(g, G, 0.03, 0.09, 5, 0.55);
+        // a carved jack-o'-lantern drum mag with a flickering candle inside
+        const drum = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), new THREE.MeshPhongMaterial({ color: 0xff7a1a, emissive: 0x5a2200, shininess: 40 })); drum.scale.set(1, 0.8, 1); drum.position.set(0, -0.09, -0.02); g.add(drum);
+        const face = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.04), G); face.position.set(0.051, -0.09, -0.02); face.rotation.y = Math.PI / 2; g.add(face);
+        const face2 = face.clone(); face2.position.x = -0.051; face2.rotation.y = -Math.PI / 2; g.add(face2);
+        anim(g, t => { const f = 0.6 + 0.4 * Math.abs(Math.sin(t * 13) * Math.sin(t * 5.3)); face.scale.setScalar(f); face2.scale.setScalar(f); });
+        // bone teeth along the barrel shroud + green soul wisps rising
+        for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.025, 4), bpMat(0xe8dcc0, 1)); c.position.set(0, -0.005, -0.12 - i * 0.025); c.rotation.x = Math.PI; g.add(c); }
+        const W = liveGlow(0x7dff3a), wisps = []; for (let i = 0; i < 5; i++) { const w = new THREE.Mesh(new THREE.SphereGeometry(0.006, 6, 4), W); g.add(w); wisps.push(w); }
+        anim(g, t => wisps.forEach((w, i) => { const k2 = (t * 0.4 + i / 5) % 1; w.position.set(Math.sin(t * 3 + i) * 0.02, 0.06 + k2 * 0.1, -0.1 - i * 0.03); w.scale.setScalar(1 - k2); }));
+      } } },
+    sniper: { zenith: { name: 'Zenith', rarity: 'Mythic', grind: { stat: 'wh:sniper', n: 50, label: '50 headshot kills with the Sniper' }, body: 0xf4f0ff, bodyGloss: 2, accent: 0xb48cff, accentGloss: 2, glow: 0xffffff,
+      mod(g, k, P) {
+        const G = liveGlow(0xffffff); hueCycle(g, G, 0.7, 0.85, 1.4, 0.82);
+        const gold = chrome(0xffd36a);
+        // a sun disc + two counter-rotating halos round the scope, a comet of stars down the barrel
+        const halo = new THREE.Group(); halo.position.set(0, 0.13, -0.08); g.add(halo);
+        const h1 = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.004, 8, 40), gold), h2 = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.003, 8, 40), G); halo.add(h1, h2);
+        for (let i = 0; i < 8; i++) { const r = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.03, 4), gold); const a = i / 8 * 6.28; r.position.set(Math.cos(a) * 0.105, Math.sin(a) * 0.105, 0); r.rotation.z = a - Math.PI / 2; h2.add(r); }
+        anim(g, t => { h1.rotation.set(t * 0.8, t * 1.3, 0); h2.rotation.z = -t * 0.9; halo.scale.setScalar(1 + 0.04 * Math.sin(t * 3)); });
+        orbiters(g, 6, new THREE.OctahedronGeometry(0.008, 0), G, 0, 0.04, -0.78, 0.055, 2.2, 'z');
+        glowStrip(k, G, 0.6, 0, 0.058, -0.55);
+        for (const x of [-0.033, 0.033]) k.box(0.003, 0.01, 0.34, x, 0.03, 0.0, G);
+      } } },
+    bayonet: { reapersedge: { name: "Reaper's Edge", rarity: 'Exotic', grind: { stat: 'knife', n: 75, label: '75 knife kills' }, body: 0x07020f, bodyGloss: 2, accent: 0x39ff88, glow: 0x39ff88, blade: 'soulblade', trail: 0x39ff88, trail2: 0xb04bff, mod: vibrantAura(0x39ff88, 0xb04bff) } },
+    pistol: { sovereign: { name: 'Sovereign', rarity: 'Mythic', grind: { stat: 'odtime', n: 300, label: 'Survive 5:00 in Overdrive' }, body: 0x1a0a2a, bodyGloss: 2, accent: 0xffd24a, accentGloss: 2, glow: 0xff5ec4,
+      mod(g, k, P) {
+        const G = liveGlow(0xff5ec4); hueCycle(g, G, 0.85, 0.98, 2.6, 0.62); const gold = chrome(0xffd24a);
+        // a floating crown above the slide and gem orbiters round the muzzle
+        const crown = new THREE.Group(); crown.position.set(0, 0.12, -0.08); g.add(crown);
+        crown.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.014, 16, 1, true), gold));
+        for (let i = 0; i < 6; i++) { const sp = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.022, 4), gold); const a = i / 6 * 6.28; sp.position.set(Math.cos(a) * 0.03, 0.017, Math.sin(a) * 0.03); crown.add(sp); }
+        const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.008, 0), G); gem.position.y = 0.012; crown.add(gem);
+        anim(g, t => { crown.rotation.y = t * 1.2; crown.position.y = 0.12 + Math.sin(t * 2.4) * 0.006; });
+        orbiters(g, 4, new THREE.OctahedronGeometry(0.006, 0), G, 0, 0.056, -0.27, 0.035, 3, 'z');
+        for (const x of [-0.0225, 0.0225]) glowStrip(k, G, 0.2, x, 0.062, -0.08);
+      } } },
+  };
+  for (const w in GRIND_BP) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, GRIND_BP[w]);
   // Signature tracers: every Legendary / Mythic blueprint fires its own tracer (used when that
   // gun's tracer is set to "Blueprint Signature"). Hand-picked styles, the rest derived from the glow.
   const SIG = {

@@ -446,8 +446,8 @@
         }
       }
       // chase between moves (and swipe when close)
-      const dx = p.pos.x - this.pos.x, dz = p.pos.z - this.pos.z, d = Math.hypot(dx, dz);
-      this.yaw = dampAngle(this.yaw, Math.atan2(-dx, -dz), 5, dt);
+      const d = Math.hypot(p.pos.x - this.pos.x, p.pos.z - this.pos.z), tg = Z.navTarget ? Z.navTarget(this, p) : p.pos;   // walk round walls (zmnav.js)
+      this.yaw = dampAngle(this.yaw, Math.atan2(-(tg.x - this.pos.x), -(tg.z - this.pos.z)), 5, dt);
       this.input.mz = !this.move && this.riseT <= 0 && d > 2.2 ? 1 : 0; this.input.mx = 0;
       this.input.speedMult = this.zSpeed;
       if (!this.move || this.move.id !== 'slam') { if (this.riseT <= 0 && !(this.move && this.move.id === 'charge' && this.moveT > 0.8)) this.mover.update(dt, this.input, this.yaw); }
@@ -934,6 +934,7 @@
   const zoneAt = (x, z) => x > 42.6 ? 'patch' : x < -42.6 ? 'wood' : z < -42.6 ? 'manor' : 'graveyard';
   BR.zombieZoneAt = zoneAt;
   const baseBrainUpdate = BR.ZombieBrain.prototype.update;
+  BR.ZombieBrain.baseUpdate = baseBrainUpdate;             // zmnav.js steers with a flow field instead of door waypoints
   BR.ZombieBrain.prototype.update = function (dt) {
     // across zones: walk to the door between this zone and the graveyard hub, then on to you
     const z = this.z, p = this.g.player, zm = this.g.zm;

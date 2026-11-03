@@ -152,6 +152,8 @@ BR.Game = class Game {
   // ------------------------------------------------------------ scene setup
   buildScene(seed, demo, opts) {
     if (this.zm) { this.zm.dispose(); this.zm = null; document.body.classList.remove('zombies'); }
+    this.endMode();
+    this.resurgence = null; document.body.classList.remove('resurgence');
     if (this.scene) this.disposeScene();
     const fogCol = 0xbfcfda;                                    // matches the sky dome's horizon band
     this.scene = new THREE.Scene();
@@ -235,8 +237,10 @@ BR.Game = class Game {
     this.endVictory(); this.freezeT = 0; this.hud.freeze(false);
     const S = this.settings, C = BR.CONFIG;
     this.duel = null; document.body.classList.remove('duel');
-    const practiceMode = !!(opts && opts.practice);
+    const practiceMode = !!(opts && opts.practice), resMode = !!(opts && opts.resurgence);
+    this.zonePhases = resMode ? BR.RESURGENCE_PHASES : null;
     this.buildScene(Math.floor(Math.random() * 1e9), false);
+    if (resMode) { this.resurgence = { lastPhase: 3, queue: [], credit: 0, kills: 0, redeploys: 0 }; document.body.classList.add('resurgence'); }
     this.diff = C.difficulty[S.difficulty] || C.difficulty.normal;
     this.result = null;
     this.player = new BR.Actor(this, { id: 0, name: 'You', isPlayer: true });
@@ -244,7 +248,7 @@ BR.Game = class Game {
     this.player.yaw = Math.atan2(this.player.pos.x, this.player.pos.z); // face map center
     this.player.pitch = -0.75;                                           // look down at the landing area
     this.actors.push(this.player);
-    const bots = practiceMode ? 0 : Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
+    const bots = practiceMode ? 0 : resMode ? 23 : Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
     this.practice = bots === 0;
     document.body.classList.toggle('practice', this.practice);
     if (practiceMode) {
@@ -270,9 +274,55 @@ BR.Game = class Game {
     this.hud.show('end', false);
     this.hud.show('pause', false);
     this.hud.show('play', true);
-    this.hud.toast(this.practice ? 'Practice mode: tap SPAWN for guns, items and bots' : 'Freefall! Tap JUMP to open your parachute', 2800);
+    this.hud.toast(this.practice ? 'Practice mode: tap SPAWN for guns, items and bots' : resMode ? 'RESURGENCE · you redeploy until the 4th circle closes' : 'Freefall! Tap JUMP to open your parachute', 2800);
     this.applyShadows();
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
+  }
+
+  // ---- Resurgence: a faster battle royale where everyone redeploys (you after a countdown that
+  // your kills shorten, bots after 10-14 s) until the 4th circle starts closing. Then it's one life,
+  // last one standing wins. Returns true while it's handling the match (no normal win/loss yet).
+  updateResurgence(dt) {
+    const R = this.resurgence, p = this.player, on = this.zone.phase < R.lastPhase;
+    if (p.kills > R.kills) { R.credit = Math.min(8, R.credit + (p.kills - R.kills) * 2); R.kills = p.kills; }
+    // bots
+    for (const a of this.actors) if (a !== p && !a.alive && !a._rq) { a._rq = true; if (on) R.queue.push({ a, t: 10 + Math.random() * 4 }); }
+    for (let i = R.queue.length - 1; i >= 0; i--) { const q = R.queue[i]; q.t -= dt; if (q.t <= 0) { R.queue.splice(i, 1); if (on) this.redeployBot(q.a); } }
+    if (!on && R.queue.length) R.queue.length = 0;
+    // you
+    if (!p.alive) {
+      if (R.pT === undefined) { if (!on) { this.hud.resurgence(on, null); return false; } R.pT = Math.max(4, 14 - R.credit); R.credit = 0; BR.Audio.zRound && BR.Audio.zRound(false); }
+      R.pT -= dt;
+      this.hud.resurgence(on, Math.max(0, R.pT));
+      if (R.pT <= 0) { R.pT = undefined; this.redeployPlayer(); }
+      return true;
+    }
+    this.hud.resurgence(on, null);
+    return on;                                                     // respawns on: nobody has won yet
+  }
+  dropPoint() {
+    const Z = this.zone, a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * Math.max(10, Math.min(Z.nextR || Z.r, Z.r) * 0.75);
+    const H = this.world.half - 10;
+    return { x: BR.util.clamp(Z.x + Math.cos(a) * r, -H, H), z: BR.util.clamp(Z.z + Math.sin(a) * r, -H, H) };
+  }
+  redeployPlayer() {
+    const p = this.player, C = BR.CONFIG, q = this.dropPoint();
+    p.alive = true; p.health = C.actor.maxHealth; p.shield = 0; p.fireHeld = false;
+    p.slots[0] = BR.Weapons.create('pistol'); p.slots[1] = null; p.cur = 0;
+    p.ammo.light = 60;
+    p.mover.pos.set(q.x, C.match.dropHeight * 0.55, q.z); p.mover.vel.set(0, 0, 0); p.mover.dropping = true; p.mover.chute = false;
+    p.pitch = -0.6;
+    this.result = null; this.resurgence.redeploys++;
+    this.hud.toast('REDEPLOYED · grab loot fast', 1800); BR.Audio.chute && BR.Audio.chute();
+  }
+  redeployBot(old) {
+    const C = BR.CONFIG, q = this.dropPoint();
+    const b = new BR.Actor(this, { id: old.id, name: old.name, color: old.color || 0x8899aa });
+    b.mover.pos.set(q.x, C.match.dropHeight * 0.55, q.z); b.mover.dropping = true;
+    b.brain = new BR.BotBrain(b, this, this.diff); b.brain.dropTarget = { x: q.x, z: q.z };
+    this.scene.add(b.mesh);
+    const i = this.actors.indexOf(old); if (i >= 0) this.actors.splice(i, 1, b); else this.actors.push(b);
+    if (old.mesh && old.mesh.parent) this.scene.remove(old.mesh);
   }
 
   // ---- 1v1 duel -------------------------------------------------------------
@@ -280,7 +330,7 @@ BR.Game = class Game {
   // Rounds: 3 s countdown -> fight until one dies or time runs out (more HP + shield wins,
   // equal is a draw) -> 2.6 s banner -> pick a new loadout -> next round. First to `target`.
   startDuel(cfg) {
-    const C = BR.CONFIG;
+    const C = BR.CONFIG; this.zonePhases = null;
     this.buildScene(Math.floor(Math.random() * 1e9), false, { arena: true });
     this.duel = { diff: cfg.diff, target: cfg.target, roundTime: cfg.roundTime, loadout: cfg.loadout.slice(),
       score: [0, 0], round: 0, phase: 'countdown', t: 0, damage: 0, kills: 0, time: 0, draws: 0 };
@@ -299,7 +349,7 @@ BR.Game = class Game {
 
   // ---- Zombies: endless rounds on the Halloween graveyard (see zombies.js)
   startZombies() {
-    const C = BR.CONFIG;
+    const C = BR.CONFIG; this.zonePhases = null;
     this.endVictory(); this.freezeT = 0; this.hud.freeze(false);
     this.duel = null; document.body.classList.remove('duel', 'practice');
     this.buildScene(Math.floor(Math.random() * 1e9), false, { halloween: true });
@@ -318,6 +368,34 @@ BR.Game = class Game {
     this.applyShadows();
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
   }
+
+  // ---- custom modes (aim trainer, Overdrive): a mode object owns the rules; the game runs the world.
+  // Mode API: start(), update(dt), dispose(), optional rayTargets(o, d, maxT) -> {t, target, head},
+  // hitTarget(target, dmg, head, at, w), onKill(victim, killer, weaponId, head), cls (body class)
+  startMode(ModeClass, worldOpts) {
+    const C = BR.CONFIG; this.zonePhases = null;
+    this.endVictory(); this.freezeT = 0; this.hud.freeze(false);
+    this.duel = null; document.body.classList.remove('duel', 'practice', 'zombies');
+    this.buildScene(Math.floor(Math.random() * 1e9), false, worldOpts);
+    this.diff = C.difficulty.normal; this.practice = false; this.result = null;
+    this.zone.mesh.visible = false;
+    this.player = new BR.Actor(this, { id: 0, name: 'You', isPlayer: true });
+    this.player.mover.dropping = false;
+    this.actors.push(this.player);
+    this.mode = new ModeClass(this);
+    if (this.mode.cls) document.body.classList.add(this.mode.cls);
+    this.mode.start();
+    this.total = 1; this.swapItem = null; this.lastPoi = this.world.pois[0];
+    this.hud.toggleMap(false);
+    this.hud.show('menu', false); this.hud.show('end', false); this.hud.show('pause', false); this.hud.show('duelmenu', false);
+    this.hud.show('play', true);
+    this.input.reset();
+    this.cam.off = C.actor.standHeight - C.actor.eyeFromTop; this.cam.fov = this.baseFov();
+    this.state = 'playing'; this.last = performance.now();
+    this.applyShadows();
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
+  }
+  endMode() { if (this.mode) { const m = this.mode; this.mode = null; if (m.cls) document.body.classList.remove(m.cls); m.dispose(); } }
 
   // Fresh actors every round: full health + 50 shield, the chosen guns, full ammo, no cooldowns.
   startRound() {
@@ -474,6 +552,7 @@ BR.Game = class Game {
   }
 
   openSpawnMenu() {
+    if (this.state === 'playing' && this.mode && this.mode.menu) { this.mode.menu(); return; }     // aim trainer / Overdrive menus
     if (this.state !== 'playing' || !this.practice) return;
     this.state = 'paused';
     this.input.reset();
@@ -505,6 +584,7 @@ BR.Game = class Game {
   toMenu() {
     this.state = 'menu';
     if (this.zm) { this.zm.dispose(); this.zm = null; document.body.classList.remove('zombies'); }
+    this.endMode(); this.resurgence = null; document.body.classList.remove('resurgence', 'practice');
     if (this.duel) { this.duel = null; document.body.classList.remove('duel'); this.hud.show('duelmenu', false); }
     this.input.unlock();
     this.hud.show('pause', false);
@@ -550,7 +630,7 @@ BR.Game = class Game {
         if (a === this.player) this.swapItem = s;
       }
     }
-    if (!this.practice && !this.duel && !this.zm) {
+    if (!this.practice && !this.duel && !this.zm && !this.mode) {
       this.zone.update(dt);
       const dps = this.zone.dps;
       for (const a of this.actors) {
@@ -590,7 +670,7 @@ BR.Game = class Game {
     this.chest = p.alive && !p.mover.dropping ? this.loot.nearestChest(p, 2.2) : null;
     if (this.chest) this.hud.prompt('Open chest');
     else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.CONFIG.weapons[this.swapItem.wid].name);
-    else if (!this.zm) this.hud.prompt(null);
+    else if (!this.zm && !(this.mode && this.mode.prompts)) this.hud.prompt(null);
 
     // Player parachute (look up to see it)
     const pc = this.playerChute;
@@ -621,6 +701,8 @@ BR.Game = class Game {
     // Match end
     if (this.duel) this.updateDuel(dt);
     else if (this.zm && this.state === 'playing') this.zm.update(dt);
+    else if (this.mode && this.state === 'playing') this.mode.update(dt);
+    else if (this.resurgence && this.state === 'playing' && this.updateResurgence(dt)) { /* respawning */ }
     else if (this.state === 'playing') {
       if (!p.alive && this.practice) {
         // Practice: respawn where you fell after a moment
@@ -778,6 +860,7 @@ BR.Game = class Game {
       if (this.chest && !this.chest.taken) { this.loot.openChest(p, this.chest); this.chest = null; }
       else if (this.swapItem && !this.swapItem.taken) { this.loot.swap(p, this.swapItem); this.swapItem = null; }
       else if (this.zm) this.zm.interact();
+      else if (this.mode && this.mode.interact) this.mode.interact();
     }
     if (inp.consume('journal') && this.zm) this.hud.zmJournalToggle();
     if (inp.consume('pause')) this.pause();
@@ -803,7 +886,7 @@ BR.Game = class Game {
     if (S.autoFire && touch && w && !w.def.melee && !fire) {
       const e = p.eye(this._v1), d = p.aimDir(this._v2);
       const h = this.hitscan(p, e, d, w.def.range * 1.6);
-      if (h.actor) fire = true;
+      if (h.actor || h.target) fire = true;
     }
     p.fireHeld = fire && !p.mover.dropping;
     if (fire && w && !w.def.melee) this.vmr.inspectT = 0;
@@ -873,6 +956,12 @@ BR.Game = class Game {
       if (tb < best) { best = tb; actor = a; head = false; }
     }
     const r = this._hit || (this._hit = {});
+    r.target = null;
+    // custom-mode targets (aim trainer targets, Overdrive swarm): not actors, just shapes to hit
+    if (this.mode && this.mode.rayTargets && (!shooter || shooter.isPlayer)) {
+      const m = this.mode.rayTargets(o, d, best);
+      if (m && m.t < best) { best = m.t; actor = null; head = m.head; r.target = m.target; }
+    }
     r.t = best; r.actor = actor; r.head = head;
     return r;
   }
@@ -941,10 +1030,16 @@ BR.Game = class Game {
     victim.fireHeld = false;
     if (victim.mover.grapple) victim.mover.releaseGrapple();
     if (killer) killer.kills++;
+    // grind challenges (camos / blueprints): your kills in real matches, zombies included
+    if (killer && killer.isPlayer && victim !== killer && !this.practice && !this.demo && !this.mode && BR.Profile.addGrind) {
+      const wd = BR.CONFIG.weapons[weaponId];
+      BR.Profile.addGrind('kill', 1, { w: weaponId, head: !!head, melee: !!(wd && wd.melee), zombie: !!victim.zombie });
+    }
     if (!this.zm) this.loot.dropAll(victim);
     victim.dieVisual();
     if (this.demo) return;
     if (this.zm) { this.zm.onKill(victim, killer, weaponId, head); return; }
+    if (this.mode && this.mode.onKill) { this.mode.onKill(victim, killer, weaponId, head); return; }
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const nm = a => `<b class="${a.isPlayer ? 'me' : ''}">${esc(a.name)}</b>`;
     const how = weaponId === 'storm' ? 'storm' : weaponId === 'shockwave' ? 'Shockwave' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');

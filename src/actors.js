@@ -186,6 +186,7 @@ BR.Actor = class Actor {
     const SC = BR.CONFIG.stim;
     if (this.stimCd > 0) this.stimCd = Math.max(0, this.stimCd - dt);
     if (this.stimT > 0) { this.stimT = Math.max(0, this.stimT - dt); this.input.speedMult *= SC.speedMult; }
+    if (this.speedBoost) this.input.speedMult *= this.speedBoost;      // Overdrive: Haste upgrades
     if (this.stimHealT > 0) {
       const t = Math.min(dt, this.stimHealT);
       this.stimHealT -= dt;

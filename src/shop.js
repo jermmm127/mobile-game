@@ -233,6 +233,46 @@ BR.Profile = {
     this.save();
     return got;
   },
+  // ---- v1.10 GRIND: challenge stats that unlock the grind camos + blueprints (item.grind = { stat, n, label })
+  //   kills / heads / knife / zkills / w:<gun> / wh:<gun> (headshot kills) / wins / zround (best) /
+  //   odtime (best s) / odwin / odkill / aimtotal / meta (grind camos owned)
+  grind() { return this.data.grind || (this.data.grind = {}); },
+  grindItems() {
+    const M = BR.Models, out = [];
+    for (const id in M.SKINS) if (M.SKINS[id].grind) out.push({ cat: 'skins', id, item: M.SKINS[id] });
+    for (const w in M.BLUEPRINTS) for (const b in M.BLUEPRINTS[w]) if (M.BLUEPRINTS[w][b].grind) out.push({ cat: 'blueprints', id: w + ':' + b, item: M.BLUEPRINTS[w][b] });
+    return out;
+  },
+  grindProgress(item) { const G = this.grind(), g = item.grind; return [Math.min(g.n, Math.floor(G[g.stat] || 0)), g.n]; },
+  addGrind(kind, v, x) {
+    const G = this.grind(); v = v || 1;
+    const inc = k => { G[k] = (G[k] || 0) + v; };
+    if (kind === 'kill') {
+      inc('kills');
+      if (x && x.head) inc('heads');
+      if (x && x.melee) inc('knife');
+      if (x && x.zombie) inc('zkills');
+      if (x && x.w) { inc('w:' + x.w); if (x.head) inc('wh:' + x.w); }
+    } else if (kind === 'zround' || kind === 'odtime') G[kind] = Math.max(G[kind] || 0, v);
+    else if (kind === 'win' || kind === 'odwin' || kind === 'odkill') inc(kind === 'win' ? 'wins' : kind);
+    else if (kind === 'aim') G.aimtotal = (G.aimtotal || 0) + v;
+    const got = this.checkGrind();
+    if (kind !== 'odkill' || got.length) this.save();
+    if (got.length && BR.game && BR.game.hud) {
+      setTimeout(() => { BR.game.hud.toast('UNLOCKED · ' + got.join(', ') + ' · equip it in the inventory', 3200); BR.Audio.coin(); }, 600);
+    }
+    return got;
+  },
+  checkGrind() {
+    const G = this.grind(), got = [], o = this.data.owned;
+    G.meta = this.grindItems().filter(e => e.cat === 'skins' && e.item.grind.stat !== 'meta' && this.owns('skins', e.id)).length;
+    for (let pass = 0; pass < 2; pass++) for (const e of this.grindItems()) {
+      if (this.owns(e.cat, e.id) || (G[e.item.grind.stat] || 0) < e.item.grind.n) continue;
+      o[e.cat].push(e.id); got.push(e.item.name);
+      G.meta = this.grindItems().filter(q => q.cat === 'skins' && q.item.grind.stat !== 'meta' && this.owns('skins', q.id)).length;
+    }
+    return got;
+  },
   // ---- Daily reward: log in on consecutive days to grow the streak; every 3rd day adds a Nova Case key
   claimDaily(today) {
     const d = this.data; today = today || new Date().toISOString().slice(0, 10);
@@ -274,6 +314,17 @@ BR.Profile = {
   // Coins for a finished match. Returns the breakdown so the end screen can show it.
   award(r) {
     const C = BR.CONFIG.coins;
+    if (r.overdrive) {      // Overdrive: coins for time survived, kills, bosses and the win (no Ranked RP)
+      const parts = [['Survived ' + BR.fmtTime(r.time), Math.floor(r.time / 10) * 5], ['Kills ×' + r.kills, Math.floor(r.kills * 0.5)]];
+      if (r.bosses) parts.push(['Bosses ×' + r.bosses, r.bosses * 150]);
+      if (r.win) parts.push(['Overlord destroyed', 600]);
+      const total = parts.reduce((s, p) => s + p[1], 0);
+      this.data.coins += total; this.data.stats.odBest = Math.max(this.data.stats.odBest || 0, r.time);
+      this.save();
+      return { total, parts, unlocked: [] };
+    }
+    if (r.zombies) this.addGrind('zround', r.round);
+    else if (r.win && !r.duel) this.addGrind('win', 1);
     if (r.zombies) {        // zombies: coins for rounds survived, kills and bosses (no Ranked RP)
       const parts = [['Rounds ×' + Math.max(0, r.round - 1), Math.max(0, r.round - 1) * 20], ['Zombies ×' + r.kills, Math.floor(r.kills * 2)]];
       if (r.bosses) parts.push(['Bosses ×' + r.bosses, r.bosses * 250]);
@@ -438,14 +489,14 @@ BR.Shop = class Shop {
     for (const id in items) {
       const it = items[id], own = P.owns(cat, id), eq = P.isEquipped(cat, id, this.weapon);
       const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
-      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : it.mastery ? 'Mastery · ' + it.mastery + ' kills' : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : '<i class="coin"></i>' + it.price}</span></button>`);
+      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : it.mastery ? 'Mastery · ' + it.mastery + ' kills' : it.grind ? '🔒 ' + P.grindProgress(it).map(n => n.toLocaleString()).join(' / ') : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : '<i class="coin"></i>' + it.price}</span></button>`);
     }
     this.el.grid.innerHTML = html.join('');
     const it = items[this.sel];
     this.el.name.textContent = it ? it.name : '';
     const own = it && P.owns(cat, this.sel), eq = it && P.isEquipped(cat, this.sel, this.weapon);
-    const locked = it && !own && (it.rank !== undefined || it.caseOnly || it.mastery);
-    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : it.mastery ? it.mastery + ' kills with one gun' : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : 'Buy · ' + it.price;
+    const locked = it && !own && (it.rank !== undefined || it.caseOnly || it.mastery || it.grind);
+    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : it.mastery ? it.mastery + ' kills with one gun' : it.grind ? 'GRIND · ' + it.grind.label + ' (' + P.grindProgress(it).map(n => n.toLocaleString()).join(' / ') + ')' : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : 'Buy · ' + it.price;
     this.el.action.disabled = !it || eq || locked;
     this.el.action.classList.toggle('poor', !!it && !own && !P.canAfford(it.price));
     // Preview: the equipped look, with the selected item swapped in
@@ -548,6 +599,7 @@ BR.Inventory = class Inventory {
     this.game.inspect.on = false;
     this.game.closeShop();
     BR.updateCoins();
+    if (this.onClose) { const f = this.onClose; this.onClose = null; f(); }      // opened mid-match from the locker
   }
   equippedId() {
     const eq = BR.Profile.data.equip;

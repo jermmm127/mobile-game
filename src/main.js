@@ -242,10 +242,12 @@
   let qTimer = null;
   const TIPS = ['One life. If you go down, you\'re out.', 'Hold jump in the drop to pop your chute early.', 'Slide-jump timing keeps your speed.', 'The Hunting Rifle is deadly from the hip.', 'Grapple anything: walls, rocks, trees.'];
   const cancelQueue = () => { clearInterval(qTimer); qTimer = null; game.hud.show('queue', false); };
-  const play = () => {
+  let playOpts = null;
+  const play = opts => {
     BR.Audio.init(); tryFullscreen();
+    playOpts = opts && opts.resurgence ? { resurgence: true } : null;
     if (qTimer) return;
-    const total = Math.max(1, (settings.bots | 0) + 1);
+    const total = playOpts ? 24 : Math.max(1, (settings.bots | 0) + 1);
     game.hud.show('end', false); game.hud.show('pause', false);
     const q = $('queue');
     q.classList.remove('found');
@@ -266,7 +268,7 @@
           qTimer = null;
           q.querySelector('.q-title').textContent = 'FINDING MATCH';
           game.hud.show('queue', false);
-          game.startMatch();
+          game.startMatch(playOpts);
         }, 550);
       }
     };
@@ -278,6 +280,35 @@
   const practice = () => { BR.Audio.init(); tryFullscreen(); game.startMatch({ practice: true }); };
   $('btn-practice').addEventListener('click', practice);
   $('btn-zombies').addEventListener('click', () => { BR.Audio.init(); game.startZombies(); });
+  // v1.10 modes
+  const overdrive = () => { BR.Audio.init(); tryFullscreen(); game.startMode(BR.Overdrive, { overdrive: true }); };
+  const aimTrainer = () => { BR.Audio.init(); tryFullscreen(); game.startMode(BR.AimTrainer, { range: true }); };
+  $('btn-resurgence').addEventListener('click', () => play({ resurgence: true }));
+  $('btn-overdrive').addEventListener('click', overdrive);
+  $('btn-aim').addEventListener('click', aimTrainer);
+  // the locker mid-match (practice, aim trainer): your inventory over the paused game; skins apply on close
+  BR.openLocker = () => {
+    const was = ['pause', 'spawnmenu', 'aimmenu'].filter(id => $(id) && !$(id).classList.contains('hidden'));
+    was.forEach(id => game.hud.show(id, false));
+    if (game.state === 'playing') { game.state = 'paused'; game.input.reset(); game.input.unlock(); }
+    BR.Audio.init(); BR.Audio.click();
+    inv.onClose = () => { game.refreshCosmetics(); was.forEach(id => game.hud.show(id, true)); if (!was.length) { game.state = 'playing'; game.input.reset(); game.last = performance.now(); } };
+    inv.open();
+  };
+  $('btn-locker').addEventListener('click', () => BR.openLocker());
+  $('sp-locker').addEventListener('click', () => BR.openLocker());
+  // challenges: every grind camo + blueprint with its progress
+  const renderGrind = () => {
+    const P = BR.Profile;
+    $('grind-list').innerHTML = P.grindItems().map(e => {
+      const [cur, n] = P.grindProgress(e.item), own = P.owns(e.cat, e.id), k = Math.min(1, cur / n);
+      const what = e.cat === 'skins' ? 'CAMO · any gun' : 'BLUEPRINT · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name;
+      return `<div class="gr-row${own ? ' own' : ''}"><div class="gr-sw">${shop.swatch(e.cat, e.id, e.item)}</div><div class="gr-main"><div class="gr-top"><b>${e.item.name}</b><span class="rar" style="--r:${({ Epic: '#b06bff', Legendary: '#ffb020', Mythic: '#ff3df2', Exotic: '#39ffd0' })[e.item.rarity] || '#8d97a5'}">${e.item.rarity}</span><i>${what}</i></div>
+        <div class="gr-lbl">${e.item.grind.label}</div><div class="gr-bar"><u style="width:${(k * 100).toFixed(1)}%"></u></div></div><div class="gr-n">${own ? 'UNLOCKED' : cur.toLocaleString() + ' / ' + n.toLocaleString()}</div></div>`;
+    }).join('');
+  };
+  $('btn-grind').addEventListener('click', () => { BR.Audio.init(); BR.Profile.checkGrind(); renderGrind(); $('grind').classList.remove('hidden'); });
+  $('grind-x').addEventListener('click', () => $('grind').classList.add('hidden'));
   // spawn menu
   // weapon cards with pictures of the real models
   BR.WeaponIcons.build();
@@ -324,11 +355,12 @@
   });
   $('sp-close').addEventListener('click', () => game.closeSpawnMenu());
   $('sp-x').addEventListener('click', () => game.closeSpawnMenu());
-  $('btn-play').addEventListener('click', play);
+  $('btn-play').addEventListener('click', () => play());
   $('btn-again').addEventListener('click', () => {
     if (game.result && game.result.duel && game.lastDuel) { BR.Audio.init(); game.startDuel(game.lastDuel); }   // rematch, same settings
     else if (game.result && game.result.zombies) { BR.Audio.init(); game.startZombies(); }
-    else play();
+    else if (game.result && game.result.overdrive) overdrive();
+    else play(game.resurgence ? { resurgence: true } : null);
   });
 
   // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts

@@ -102,7 +102,11 @@ BR.Weapons = {
       const hit = game.hitscan(actor, eye, pd, maxRange);
       if (actor.isPlayer && game.zm) game.zm.shotAt(eye, pd, hit.t);
       end.copy(eye).addScaledVector(pd, hit.t);
-      if (hit.actor) {
+      if (hit.target) {                                              // a custom-mode target (aim trainer / Overdrive)
+        const falloff = hit.t <= d.range ? 1 : Math.max(0.55, 1 - 0.45 * (hit.t - d.range) / d.range);
+        const dmg = d.dmg * falloff * (hit.head ? d.head : 1), tm = this._thits || (this._thits = new Map()), prev = tm.get(hit.target);
+        if (prev) { prev.dmg += dmg; prev.head = prev.head || hit.head; } else tm.set(hit.target, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z });
+      } else if (hit.actor) {
         const falloff = hit.t <= d.range ? 1 : Math.max(0.55, 1 - 0.45 * (hit.t - d.range) / d.range);
         const dmg = d.dmg * falloff * (hit.head ? d.head : 1);
         const prev = hits.get(hit.actor);
@@ -126,6 +130,8 @@ BR.Weapons = {
       if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
     }
     hits.forEach((h, victim) => game.applyDamage(victim, actor, h.dmg, h.head, h, w.id));
+    if (this._thits && this._thits.size) { if (game.mode && game.mode.hitTarget) this._thits.forEach((h, t) => game.mode.hitTarget(t, h.dmg, h.head, h, w)); this._thits.clear(); }
+    if (actor.isPlayer && game.mode && game.mode.onShot) game.mode.onShot(w);
 
     // TECH shotgun jump: big guns blast you away from where you aim when airborne,
     // and launch you upward when aimed at your feet.

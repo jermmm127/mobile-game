@@ -197,10 +197,13 @@ BR.HUD = class HUD {
   <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
   <div id="killflash"></div>
+  <div id="rs-chip" class="rs-chip"><i></i><b>RESPAWNS ON</b><span>until circle 4</span></div>
+  <div id="rs-count" class="rs-count hidden"><b>REDEPLOYING IN</b><span>9</span><i>Kills shorten your next timer</i></div>
   <div id="zm-hud" class="hidden">
     <div class="zm-round"><b id="zm-round">0</b></div>
     <div class="zm-points"><span id="zm-points">0</span><i id="zm-pop"></i></div>
     <div id="zm-left" class="zm-left hidden">ZOMBIES <b>0</b></div>
+    <div id="zm-marks"></div>
     <div id="zm-quest" class="zm-quest hidden"><small>QUEST</small><b class="zq-t"></b><span class="zq-d"></span><i class="zq-bar"><u></u></i><em class="zq-n"></em></div>
     <button class="zm-jbtn" data-act="journal" aria-label="Journal"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg><span>JOURNAL</span></button>
     <div id="zm-lore" class="zm-lore"><small>STORY UNLOCKED</small><b></b><p></p></div>
@@ -305,11 +308,30 @@ BR.HUD = class HUD {
           <span class="m-sub">Hollow Graves · endless rounds</span>
           <span class="m-skull"><svg viewBox="0 0 64 64"><path d="M32 4C18 4 8 14 8 27c0 8 4 14 9 17v8c0 2 2 4 4 4h3v-6h4v6h8v-6h4v6h3c2 0 4-2 4-4v-8c5-3 9-9 9-17C56 14 46 4 32 4zm-11 32a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm22 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-11 9-4-6h8z"/></svg></span>
         </button>
+        <button id="btn-resurgence" class="mode resurgence">
+          <span class="m-tag">NEW · BATTLE ROYALE</span>
+          <span class="m-title">RESURGENCE</span>
+          <span class="m-sub">24 players · redeploy until circle 4</span>
+          <span class="m-ico"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-2.2A6.8 6.8 0 1 1 12 5.2V8l4-4-4-4z"/></svg></span>
+        </button>
+        <button id="btn-overdrive" class="mode overdrive">
+          <span class="m-tag">NEW · ROGUELIKE</span>
+          <span class="m-title">OVERDRIVE</span>
+          <span class="m-sub">Survive the swarm · level up · beat the Overlord</span>
+          <span class="m-ico"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></span>
+        </button>
+        <button id="btn-aim" class="mode aim">
+          <span class="m-tag">NEW · TRAINING</span>
+          <span class="m-title">AIM TRAINER</span>
+          <span class="m-sub">Gridshot · Flick · Tracking · Strafe</span>
+          <span class="m-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke-width="2"/></svg></span>
+        </button>
       </div>
       <div class="dock">
         <button id="btn-cases" class="dk cases"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M8 8l1-3h6l1 3"/></svg><span>CASES</span><em>NEW</em></button>
         <button id="btn-inv" class="dk inv"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>INVENTORY</span></button>
         <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span></button>
+        <button id="btn-grind" class="dk grind"><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z"/></svg><span>CHALLENGES</span><em>NEW</em></button>
         <button id="btn-ranks" class="dk ranks"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg><span>RANKED</span></button>
         <button id="btn-notes" class="dk notes"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/></svg><span>NOTES</span><em>NEW</em></button>
         <button id="btn-settings" class="dk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>SETTINGS</span></button>
@@ -471,6 +493,7 @@ BR.HUD = class HUD {
   <div class="panel metal wide spawn">
     <button id="sp-x" class="xbtn" aria-label="Close spawn menu">✕</button>
     <div class="ptitle">SPAWN</div>
+    <button class="mbtn sm hot sp-locker" id="sp-locker">LOCKER · SWAP SKINS, BLUEPRINTS + KNIFE</button>
     <div class="sp-sec">WEAPONS</div>
     <div class="sp-slots" id="sp-slots"><span>PUT IN</span><button data-slot="0"><b>SLOT 1</b><i>EMPTY</i></button><button data-slot="1"><b>SLOT 2</b><i>EMPTY</i></button></div>
     <div class="sp-grid" id="sp-weapons"></div>
@@ -505,9 +528,19 @@ BR.HUD = class HUD {
   <div class="panel metal">
     <div class="ptitle">PAUSED</div>
     <button id="btn-resume" class="mbtn hot">RESUME</button>
+    <button id="btn-locker" class="mbtn locker-btn">LOCKER · SWAP SKINS</button>
     <button id="btn-settings2" class="mbtn">SETTINGS</button>
     <button id="btn-hud2" class="mbtn">CUSTOMIZE HUD</button>
     <button id="btn-quit" class="mbtn">LEAVE MATCH</button>
+  </div>
+</div>
+
+<div id="grind" class="overlay hidden">
+  <div class="panel metal wide grindpanel">
+    <button id="grind-x" class="xbtn" aria-label="Close challenges">✕</button>
+    <div class="ptitle">CHALLENGES</div>
+    <p class="tip">Grind camos and blueprints are never sold and never drop from cases. Earn them. Every one is animated.</p>
+    <div id="grind-list" class="grind-list"></div>
   </div>
 </div>
 
@@ -869,6 +902,35 @@ BR.HUD = class HUD {
     const b = this.$('zm-banner'); b.querySelector('b').textContent = t; b.querySelector('span').textContent = sub || '';
     b.className = ''; void b.offsetWidth; b.className = 'on ' + (kind || ''); b.style.setProperty('--zc', col || '');
   }
+  // markers over the last zombies of a round: visible through walls, pinned to the screen edge when off-screen
+  zmMarkers(list, cam) {
+    const box = this.$('zm-marks'); if (!box) return;
+    const pool = this._zmk || (this._zmk = []);
+    while (pool.length < list.length) { const d = document.createElement('div'); d.className = 'zmk'; d.innerHTML = '<i></i><b></b>'; box.appendChild(d); pool.push(d); }
+    const W = window.innerWidth, H = window.innerHeight, v = this._zmv || (this._zmv = new THREE.Vector3());
+    for (let i = 0; i < pool.length; i++) {
+      const el = pool[i], z = list[i];
+      if (!z || !cam) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
+      v.set(z.pos.x, z.pos.y + (z.hitbox ? z.hitbox.h : 1.9) + 0.55, z.pos.z).project(cam);
+      let x = (v.x * 0.5 + 0.5) * W, y = (-v.y * 0.5 + 0.5) * H, off = false;
+      if (v.z > 1) { x = W - x; y = H - y; off = true; }                         // behind you: mirror, then clamp
+      const m = 34;
+      if (x < m || x > W - m || y < m || y > H - m) off = true;
+      x = Math.max(m, Math.min(W - m, x)); y = Math.max(m, Math.min(H - m, y));
+      el.style.display = '';
+      el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+      el.classList.toggle('off', off);
+      const d = Math.round(Math.hypot(z.pos.x - cam.position.x, z.pos.z - cam.position.z));
+      if (el._d !== d) { el._d = d; el.querySelector('b').textContent = d + 'm'; }
+    }
+  }
+  // Resurgence: respawn status chip + the redeploy countdown while you're down
+  resurgence(on, t) {
+    const c = this.$('rs-chip'), k = this.$('rs-count');
+    this.set('rsOn', c, on, (el, v) => { el.classList.toggle('off', !v); el.querySelector('b').textContent = v ? 'RESPAWNS ON' : 'NO RESPAWNS'; el.querySelector('span').textContent = v ? 'until circle 4' : 'last one standing'; });
+    k.classList.toggle('hidden', t === null);
+    if (t !== null) this.set('rsT', k, Math.ceil(t), (el, v) => { el.querySelector('span').textContent = v; });
+  }
   zmLeft(n, on) { const e = this.$('zm-left'); if (!e) return; e.classList.toggle('hidden', !on); this.set('zmLeftN', e, n, (el, v) => { el.querySelector('b').textContent = v; }); }
   zmQuest(q) {
     const e = this.$('zm-quest'); if (!e) return;
@@ -1082,10 +1144,17 @@ BR.HUD = class HUD {
 
   showEnd(r) {
     const $ = this.$;
-    $('end-eyebrow').textContent = r.zombies ? 'YOU DIED · ZOMBIES' : r.duel ? (r.win ? 'DUEL WON' : 'DUEL LOST') : r.win ? 'VICTORY' : 'ELIMINATED';
-    $('end-place').textContent = r.zombies ? `ROUND ${r.round}` : r.duel ? `${r.score[0]} – ${r.score[1]}` : r.win ? '#1' : '#' + r.place;
-    $('btn-again').textContent = r.zombies ? 'PLAY AGAIN' : r.duel ? 'REMATCH' : 'QUEUE NEW MATCH';
-    $('end-sub').textContent = r.zombies ? `Survived ${Math.max(0, r.round - 1)} rounds · ${r.kills} zombies · ${r.bosses || 0} bosses · ${(r.points || 0).toLocaleString()} points` : r.duel ? r.by : r.win ? `Last one standing out of ${r.total}.` : `${r.by} · out of ${r.total}`;
+    if (r.overdrive) {
+      $('end-eyebrow').textContent = r.win ? 'OVERDRIVE · VICTORY' : 'OVERDRIVE · OVERRUN';
+      $('end-place').textContent = fmtTime(r.time); $('btn-again').textContent = 'PLAY AGAIN';
+      $('end-sub').textContent = `${r.by} · level ${r.level} · ${r.kills} kills · ${r.bosses || 0} bosses`;
+    } else {
+      $('end-eyebrow').textContent = r.zombies ? 'YOU DIED · ZOMBIES' : r.duel ? (r.win ? 'DUEL WON' : 'DUEL LOST') : r.win ? 'VICTORY' : 'ELIMINATED';
+      $('end-place').textContent = r.zombies ? `ROUND ${r.round}` : r.duel ? `${r.score[0]} – ${r.score[1]}` : r.win ? '#1' : '#' + r.place;
+      $('btn-again').textContent = r.zombies ? 'PLAY AGAIN' : r.duel ? 'REMATCH' : 'QUEUE NEW MATCH';
+      $('end-sub').textContent = r.zombies ? `Survived ${Math.max(0, r.round - 1)} rounds · ${r.kills} zombies · ${r.bosses || 0} bosses · ${(r.points || 0).toLocaleString()} points` : r.duel ? r.by : r.win ? `Last one standing out of ${r.total}.` : `${r.by} · out of ${r.total}`;
+    }
+    if (BR.game && BR.game.resurgence && !r.overdrive) $('end-eyebrow').textContent = 'RESURGENCE · ' + $('end-eyebrow').textContent;
     $('end-kills').textContent = r.kills;
     $('end-dmg').textContent = Math.round(r.damage);
     $('end-time').textContent = fmtTime(r.time);

@@ -19,11 +19,12 @@ BR.Zone = class Zone {
     game.scene.add(this.mesh);
   }
 
-  get def() { return BR.CONFIG.zone.phases[Math.max(0, Math.min(this.phase, BR.CONFIG.zone.phases.length - 1))]; }
+  get phases() { return this.game.zonePhases || BR.CONFIG.zone.phases; }     // Resurgence uses its own, faster circles
+  get def() { const P = this.phases; return P[Math.max(0, Math.min(this.phase, P.length - 1))]; }
   get dps() { return this.phase < 0 ? 0 : this.def.dps; }
 
   pickNext(i) {
-    const P = BR.CONFIG.zone.phases;
+    const P = this.phases;
     this.phase = i;
     if (i >= P.length) { this.state = 'done'; this.nextX = this.x; this.nextZ = this.z; this.nextR = this.r; return; }
     const p = P[i];

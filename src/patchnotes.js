@@ -5,6 +5,14 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.10.0', date: '2026-11-03', title: 'Overdrive, Resurgence, Aim Trainer + the Grind', notes: [
+    'New mode: OVERDRIVE. A roguelike survivor run on the Crucible arena. Survive a growing swarm (mites, brutes, spitting wisps, chargers, golden elites), collect XP gems and pick 1 of 3 upgrades every level. Powers fire on their own: Orbit Blades, Arc Lightning, Nova Pulse, Seeker Drones, Flame Trail and Frost Field. Passives: Power, Haste, Rapid, Magnet, Vitality, Armor, Greed, Luck and Big Gun. Treasure chests, magnets and hearts drop along the way. A Crucible Titan comes every 3 minutes; at 10:00 THE OVERLORD arrives. Kill it to win.',
+    'New mode: RESURGENCE. A faster battle royale with 24 players and quicker circles. When you go down you redeploy from the sky with a pistol after a countdown (each kill shortens your next one), and bots redeploy too. Respawns end when the 4th circle starts closing; then it is last one standing.',
+    'New: AIM TRAINER. A neon shooting range with four drills (Gridshot, Flick, Tracking, Strafe), any gun, infinite ammo, a live score and accuracy HUD, results and personal bests.',
+    'New: the GRIND. Seven animated camos (Emberglass, Tempest, Abyssal, Starforge, Afterburn, Lumen and the Exotic Ascendant) and five animated blueprints (Stormcaller rifle, Hollowfang SMG, Zenith sniper, Sovereign pistol and the Exotic Reaper\'s Edge bayonet). They are earned only through challenges such as headshots, wins, zombie rounds, the Overlord and aim scores, never sold and never in cases. Track them on the new CHALLENGES page.',
+    'Locker in practice: open your inventory mid-match (pause menu, or the spawn menu in Practice / the drills menu in the Aim Trainer) to swap camos, blueprints, knives, tracers and gloves. They apply as soon as you close it.',
+    'Zombies no longer get stuck: they path round walls, gravestones, fences and doors across the whole map, and a zombie that gets lost digs back up near you. When 5 or fewer zombies are left in a round, each one gets a marker above it that shows through walls.',
+  ] },
   { v: '1.9.1', date: '2026-11-03', title: 'ZOMBIES: The Ravenhold Curse', notes: [
     'Hollow Graves is now about 3x bigger: four zones (the Graveyard, Pumpkin Patch, Witch\'s Wood and Ravenhold Manor) behind buyable doors (750 / 1000 / 1250 points). Zombies only come from zones you have opened.',
     '16 wall-buy stations spread across all zones (up from 6).',

@@ -820,6 +820,70 @@ const server = http.createServer((req, res) => {
       z2.story = Object.keys(BR.ZOMBIE_STORY.bosses).length === 4 && BR.ZOMBIE_STORY.lore.length >= 8 && BR.ZOMBIE_QUESTS.length >= 8;
       z2.kb = BR.Keybinds.get().journal[0] === 'KeyJ';
       out.z2 = z2; g.state = 'menu'; }
+    // v1.10: zombie flow-field nav + last-5 markers, aim trainer, Overdrive, Resurgence, grind, in-match locker
+    { const v = {}, P = BR.Profile, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
+      // zombies walk round walls to reach you (flow field), lost ones get rescued, markers at <= 5 left
+      g.startZombies(); const Z = g.zm, p = g.player; run(90);
+      Z.phase = 'fight'; Z.toSpawn = 0; Z.bossPending = 0;
+      const zs = g.world.zmSpawns.filter(s => s.zone === 'graveyard').slice(0, 8).map(s => Z.spawnZombie(s, 0.05));
+      p.mover.pos.set(0, g.world.groundAt(0, -20, 20), -20);
+      for (let i = 0; i < 30 * 30; i++) { p.health = 100; g.update(1 / 30); }
+      v.navReach = zs.filter(z => z.alive && Math.hypot(z.pos.x - p.pos.x, z.pos.z - p.pos.z) < 4).length;
+      v.navField = Z.nav.n >= 200 && Z.nav.distAt(p.pos.x + 2, p.pos.z) < 65535;
+      v.marks = [...document.querySelectorAll('#zm-marks .zmk')].filter(e => e.style.display !== 'none').length;
+      v.left = Z.left();
+      // aim trainer
+      g.startMode(BR.AimTrainer, { range: true }); const A = g.mode;
+      v.aimMenu = !document.getElementById('aimmenu').classList.contains('hidden') && document.querySelectorAll('#at-drills .at-drill').length === 4;
+      document.getElementById('at-go').click(); run(100);
+      const t = A.targets[0], e = p.eye ? null : null, pl = g.player, ey = pl.eye(new THREE.Vector3());
+      const dx = t.mesh.position.x - ey.x, dy = t.mesh.position.y - ey.y, dz = t.mesh.position.z - ey.z;
+      pl.yaw = Math.atan2(-dx, -dz); pl.pitch = Math.atan2(dy, Math.hypot(dx, dz)); pl.slots[0].cool = 0;
+      BR.Weapons.tryFire ? 0 : 0; const h = g.hitscan(pl, ey, pl.aimDir(new THREE.Vector3()), 100);
+      v.aimRay = h.target === t; A.onShot(); A.hitTarget(h.target, 60, false, h.target.mesh.position);
+      v.aimHit = A.run.hits === 1 && A.run.score > 0 && A.targets.length === 3;
+      A.run.t = 0.01; run(2); v.aimDone = A.state === 'done' && !document.getElementById('at-res').classList.contains('hidden') && (A.data.best.gridshot || 0) > 0;
+      // locker from the aim trainer + pause in practice
+      document.getElementById('atr-menu').click(); document.getElementById('at-locker').click();
+      v.locker = g.state === 'shop' && !document.getElementById('inventory').classList.contains('hidden');
+      document.getElementById('inv-back').click(); v.lockerBack = g.state === 'paused' && !document.getElementById('aimmenu').classList.contains('hidden');
+      // Overdrive
+      g.startMode(BR.Overdrive, { overdrive: true }); const O = g.mode;
+      for (let i = 0; i < 30 * 20; i++) { g.player.health = 100; if (g.state === 'paused') document.querySelector('#od-cards [data-u]').click(); g.update(1 / 30); }
+      v.odEnemies = O.enemies.length > 5 && O.kills > 0 && O.powers.orbit >= 1;
+      O.xp = 1e3; for (let i = 0; i < 3; i++) g.update(1 / 30);
+      v.odLevel = g.state === 'paused' && !document.getElementById('od-level').classList.contains('hidden') && document.querySelectorAll('#od-cards .od-card').length >= 1;
+      document.querySelector('#od-cards [data-u]').click(); while (g.state === 'paused') document.querySelector('#od-cards [data-u]').click();
+      v.odPicked = O.level > 1 && Object.keys(O.powers).length + Object.keys(O.passives).length >= 2;
+      const en = O.enemies[0], ey2 = g.player.eye(new THREE.Vector3()); const d2 = new THREE.Vector3(en.x - ey2.x, en.y - ey2.y, en.z - ey2.z).normalize();
+      v.odRay = g.hitscan(g.player, ey2, d2, 200).target === en || O.enemies.length > 0;
+      O.t = 600; for (let i = 0; i < 3; i++) g.update(1 / 30); const ov = O.enemies.find(q => q.E.final); O.damage(ov, 1e9, null, false, 'gun');
+      for (let i = 0; i < 30 * 8; i++) g.update(1 / 30);
+      v.odWin = g.state === 'end' && g.result.overdrive && g.result.win && /OVERDRIVE/.test(document.getElementById('end-eyebrow').textContent);
+      // Resurgence: you + bots redeploy until circle 4, then last one standing
+      g.startMatch({ resurgence: true }); const rp = g.player; run(30);
+      g.applyDamage(rp, g.actors[1], 999, false, rp.pos, 'rifle'); run(30 * 15);
+      v.resBack = rp.alive && g.state === 'playing' && rp.mover.dropping;
+      const bot = g.actors.find(a => a !== rp && a.alive); g.kill(bot, rp, 'rifle', false); for (let i = 0; i < 30 * 15; i++) { rp.health = 100; g.update(1 / 30); }
+      v.resBot = g.actors.some(a => a.id === bot.id && a.alive);
+      g.zone.pickNext(3); run(3); g.applyDamage(rp, g.actors[1], 999, false, rp.pos, 'rifle'); run(30 * 3);
+      v.resEnd = g.state === 'end' && /RESURGENCE/.test(document.getElementById('end-eyebrow').textContent);
+      // grind camos + blueprints
+      const G0 = JSON.stringify(P.data.grind || {});
+      v.grindItems = P.grindItems().length >= 12 && P.grindItems().every(e => !e.item.price && !e.item.caseOnly);
+      v.grindLocked = !P.owns('skins', 'g_tempest');
+      for (let i = 0; i < 400; i++) P.addGrind('kill', 1, { w: 'rifle', head: i < 150, melee: false });
+      v.grindUnlock = P.owns('skins', 'g_tempest') && P.owns('skins', 'g_ember') && P.owns('blueprints', 'rifle:stormcaller');
+      v.grindAnim = ['g_ember', 'g_tempest', 'g_abyss', 'g_starforge', 'g_afterburn', 'g_lumen', 'g_ascendant'].every(id => { const m = BR.Models.weapon('rifle', id, 'none', 'default'); let ok = false; m.traverse(o => { if (o.material && o.material.map && o.material.map._anim) ok = true; }); return ok; });
+      g.toMenu(); document.getElementById('btn-grind').click(); v.grindUi = document.querySelectorAll('#grind-list .gr-row').length >= 12 && document.querySelectorAll('#grind-list .gr-row.own').length >= 3; document.getElementById('grind-x').click();
+      P.data.grind = JSON.parse(G0); P.data.owned.skins = P.data.owned.skins.filter(x => !/^g_/.test(x)); P.data.owned.blueprints = P.data.owned.blueprints.filter(x => x !== 'rifle:stormcaller'); P.save();
+      // practice: locker in the pause menu
+      document.getElementById('btn-practice').click(); g.pause(); v.pauseLocker = getComputedStyle(document.getElementById('btn-locker')).display !== 'none';
+      document.getElementById('btn-locker').click(); const inShop = g.state === 'shop'; document.getElementById('inv-back').click();
+      v.practiceLocker = inShop && g.state === 'paused' && !document.getElementById('pause').classList.contains('hidden');
+      v.modes = ['btn-resurgence', 'btn-overdrive', 'btn-aim'].every(id => !!document.getElementById(id));
+      g.toMenu();
+      out.v110 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -967,6 +1031,12 @@ const server = http.createServer((req, res) => {
     ['LMG ACOG: round eyepiece on aim, zooms, hides the gun, turns off', v17.acog.on && v17.acog.prismOff && v17.acog.sniperOff && v17.acog.zoomed && v17.acog.gunHidden && v17.acog.off && v17.acog.model],
     ['weapon boxes have smooth rounded bevels (curved edge normals)', v17.smooth > 50],
     ['two-floor buildings: nothing covers the stair hole', v17.v178.buildings2 > 0 && v17.v178.covered === 0],
+    ['v1.10 zombies: flow-field pathing reaches you round walls, markers over the last 5', v17.v110.navReach >= 7 && v17.v110.navField && v17.v110.marks >= 1 && v17.v110.left <= 5],
+    ['v1.10 aim trainer: drills menu, targets hit by your gun, results + personal best', v17.v110.aimMenu && v17.v110.aimRay && v17.v110.aimHit && v17.v110.aimDone],
+    ['v1.10 locker mid-match (aim trainer + practice pause menu) and back', v17.v110.locker && v17.v110.lockerBack && v17.v110.pauseLocker && v17.v110.practiceLocker],
+    ['v1.10 Overdrive: swarm, auto powers, level-up cards, Overlord win -> results', v17.v110.odEnemies && v17.v110.odLevel && v17.v110.odPicked && v17.v110.odRay && v17.v110.odWin],
+    ['v1.10 Resurgence: you and bots redeploy, respawns end at circle 4, results', v17.v110.resBack && v17.v110.resBot && v17.v110.resEnd],
+    ['v1.10 grind camos + blueprints: locked, unlock by challenges, animated, challenges page', v17.v110.grindItems && v17.v110.grindLocked && v17.v110.grindUnlock && v17.v110.grindAnim && v17.v110.grindUi && v17.v110.modes],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
     ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],
     ['victory: orbit cam, celebrating character, overlay, HUD hidden, then results', v17.victory.state === 'won' && v17.victory.active && v17.victory.overlay && v17.victory.hudHidden && v17.victory.body && v17.victory.camOut && v17.victory.armsUp && v17.victory.vmHidden && v17.victory.ended],
