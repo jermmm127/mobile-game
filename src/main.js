@@ -128,6 +128,9 @@
   $('btn-hud').addEventListener('click', () => layout.open());
   $('btn-hud2').addEventListener('click', () => layout.open());
   const shop = new BR.Shop(game);
+  const inv = BR.inventory = new BR.Inventory(game, shop);
+  $('btn-inv').addEventListener('click', () => { BR.Audio.init(); inv.open(); });
+  $('shop-inv').addEventListener('click', () => { shop.close(); inv.open(); });
   BR.shop = shop;
   $('btn-shop').addEventListener('click', () => { BR.Audio.init(); shop.open(); });
 
@@ -297,7 +300,7 @@
     if (!r) { BR.Audio.click(); $('cs-result').classList.remove('hidden'); $('cs-result').innerHTML = '<div class="cs-msg">Not enough coins</div>'; return; }
     caseBusy = true; lastDrop = r;
     $('cs-coins').textContent = BR.Profile.coinsLabel();
-    $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden');
+    $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden'); $('cs-inspect').classList.add('hidden');
     $('cs-case').classList.add('hidden'); $('cs-reel').classList.remove('hidden');
     // reel: 56 cards, the drop at index 50
     const N = 56, WIN = 50, cards = [];
@@ -323,7 +326,7 @@
       const col = RCOL[r.item.rarity];
       $('cs-result').classList.remove('hidden');
       $('cs-result').innerHTML = `<div class="cs-reveal r-${r.item.rarity}" style="--rc:${col}"><span class="rv-r">${r.item.rarity.toUpperCase()}</span>${caseCard(r, ' big')}<b>${r.item.name}</b><span>${r.dup ? 'Duplicate · +' + r.refund + ' coins back' : 'NEW · added to your collection'}</span></div>`;
-      if (!r.dup || true) $('cs-equip').classList.remove('hidden');
+      $('cs-equip').classList.remove('hidden'); $('cs-inspect').classList.remove('hidden');
       BR.Audio.kill(r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic');
       if (r.item.rarity === 'Legendary' || r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic') BR.Audio.coin();
       $('cs-coins').textContent = BR.Profile.coinsLabel();
@@ -331,6 +334,7 @@
       BR.updateCoins();
     }, 5800);
   });
+  $('cs-inspect').addEventListener('click', () => { if (!lastDrop) return; game.hud.show('cases', false); inv.open({ cat: lastDrop.cat, id: lastDrop.id }); });
   $('cs-equip').addEventListener('click', () => { if (!lastDrop) return; BR.Profile.equipDrop(lastDrop); game.refreshCosmetics(); BR.Audio.pickup(); $('cs-equip').classList.add('hidden'); });
 
   // ---- Ranked leaderboard

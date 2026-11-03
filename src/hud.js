@@ -164,6 +164,7 @@ BR.HUD = class HUD {
       </div>
       <div class="dock">
         <button id="btn-cases" class="dk cases"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M8 8l1-3h6l1 3"/></svg><span>CASES</span><em>NEW</em></button>
+        <button id="btn-inv" class="dk inv"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>INVENTORY</span></button>
         <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span></button>
         <button id="btn-ranks" class="dk ranks"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg><span>RANKED</span></button>
         <button id="btn-settings" class="dk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>SETTINGS</span></button>
@@ -240,8 +241,30 @@ BR.HUD = class HUD {
     <div id="shop-grid"></div>
     <div class="shop-foot">
       <span id="shop-msg"></span>
+      <button id="shop-inv" class="mbtn sm">INVENTORY</button>
       <button id="shop-back" class="mbtn sm">BACK</button>
       <button id="shop-action" class="mbtn sm hot">EQUIP</button>
+    </div>
+  </div>
+</div>
+
+<div id="inventory" class="overlay hidden">
+  <div class="inv-stage" id="inv-stage">
+    <div class="inv-label"><span class="rar" id="inv-rar"></span><b id="inv-name"></b><small id="inv-sub"></small></div>
+    <div class="inv-feed hidden" id="inv-feed"></div>
+    <div class="inv-hint"><svg viewBox="0 0 24 24"><path d="M9 11V5a2 2 0 0 1 4 0v5M13 10V8a2 2 0 0 1 4 0v4M9 11l-1.5-1.5a2 2 0 0 0-3 2.6L9 17c1.5 2 3 3 6 3a5 5 0 0 0 5-5v-3a2 2 0 0 0-3 0"/></svg>Drag to inspect · pinch / scroll to zoom · double-tap to reset</div>
+  </div>
+  <div class="shop-panel metal">
+    <div class="shop-head"><div class="ptitle">INVENTORY</div><div class="coins-pill"><span id="inv-count" class="num">0</span>&nbsp;items</div></div>
+    <div id="inv-tabs" class="seg">
+      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button>
+    </div>
+    <div id="inv-weps" class="chips"></div>
+    <div id="inv-grid"></div>
+    <div class="shop-foot">
+      <span id="inv-msg"></span>
+      <button id="inv-back" class="mbtn sm">BACK</button>
+      <button id="inv-action" class="mbtn sm hot">EQUIP</button>
     </div>
   </div>
 </div>
@@ -345,7 +368,7 @@ BR.HUD = class HUD {
       <div class="cs-reel hidden" id="cs-reel"><div class="cs-strip" id="cs-strip"></div><i class="cs-mark"></i></div>
     </div>
     <div class="cs-result hidden" id="cs-result"></div>
-    <div class="cs-actions"><button id="cs-open" class="mbtn hot">OPEN · <i class="coin"></i>600</button><button id="cs-equip" class="mbtn hidden">EQUIP</button></div>
+    <div class="cs-actions"><button id="cs-open" class="mbtn hot">OPEN · <i class="coin"></i>600</button><button id="cs-equip" class="mbtn hidden">EQUIP</button><button id="cs-inspect" class="mbtn hidden">INSPECT</button></div>
     <div class="sp-sec">CONTENTS · EXCLUSIVE TO THIS CASE</div>
     <div class="cs-odds" id="cs-odds"></div>
     <div class="cs-grid" id="cs-grid"></div>

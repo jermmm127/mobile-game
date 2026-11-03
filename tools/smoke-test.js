@@ -312,6 +312,21 @@ const server = http.createServer((req, res) => {
       const Wi = g.world;
       r.island = { edgeHidden: Wi.boxes.filter(b => b.tag === 'edge').every(b => b.hidden), sea: !!Wi.sea, rocks: Wi.props.rockFill.length > 50 && Wi.props.rockFill.every(b => b.hidden) };
     }
+    // inventory: lists only owned items, equips, and drag-inspect turns the preview
+    {
+      const P = BR.Profile, inv = BR.inventory;
+      if (!P.owns('blueprints', 'rifle:vandal')) P.data.owned.blueprints.push('rifle:vandal');
+      inv.cat = 'blueprints'; inv.weapon = 'rifle';
+      const keys = Object.keys(inv.items());
+      const onlyOwned = keys.every(k => P.owns('blueprints', k)) && keys.includes('rifle:vandal') && !keys.includes('rifle:genesis') === !P.owns('blueprints', 'rifle:genesis');
+      inv.open({ cat: 'blueprints', id: 'rifle:vandal' }); inv.act();
+      const equipped = P.data.equip.blueprints.rifle === 'vandal';
+      const I = g.inspect; I.dragging = false; I.vy = 4; const y0 = I.yaw; g.updateShop(0.1);
+      const turned = Math.abs(g.shopPivot.rotation.y - I.yaw) < 1e-6 && I.yaw !== y0;
+      inv.close();
+      P.data.equip.blueprints.rifle = 'default'; g.refreshCosmetics();
+      r.inventory = { onlyOwned, equipped, turned, closed: g.state !== 'shop' };
+    }
     const Wd = g.world;
     r.newstuff = { knifeSpeed, bolts: !!(C.sniper.bolt && C.hunter.bolt), hunterIrons: !C.hunter.scope && !!hm.sight, sniperBolt: !!vm.models.sniper.userData.model.userData.bolt,
       lift, back, settled: Math.abs(hm.bolt.rotation.z) < 1e-3 && Math.abs(hm.bolt.position.z - hm.boltZ0) < 1e-3,
@@ -443,6 +458,7 @@ const server = http.createServer((req, res) => {
     ['karambit flips over the finger (ring axis along the finger)', extra.flip > 0.9],
     ['Mythic blueprint signature reload animation', extra.sigReload.style === 'twirl' && extra.sigReload.maxRoll > 1.5],
     ['island map: hidden boundary, ocean, natural rock formations', extra.island.edgeHidden && extra.island.sea && extra.island.rocks],
+    ['inventory: owned items only, equip, drag to inspect', extra.inventory.onlyOwned && extra.inventory.equipped && extra.inventory.turned && extra.inventory.closed],
     ['hunting rifle uses iron sights (no scope)', extra.newstuff.hunterIrons],
     ['map is dressed (frames, props, ponds, barrels, logs)', extra.newstuff.decor > 3000 && extra.newstuff.ponds >= 4 && extra.newstuff.barrels > 10 && extra.newstuff.logs > 20],
     ['dying ends your match (no respawn)', death.state === 'end' && !death.alive && death.endShown],

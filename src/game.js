@@ -875,6 +875,7 @@ BR.Game = class Game {
     this.shopCam = new THREE.PerspectiveCamera(40, 1, 0.01, 20);
     this.shopCam.position.set(0, 0.35, 3.6);
     this.shopCam.lookAt(0, 0, 0);
+    this.inspect = { on: false, yaw: 0, pitch: 0, zoom: 1, vy: 0, vx: 0, idle: 0, dragging: false };
     this.shopPivot = new THREE.Group();
     s.add(this.shopPivot);
     this.shopFx = new BR.Effects(s);   // real in-game tracers, slowed down for the preview
@@ -882,6 +883,8 @@ BR.Game = class Game {
   }
 
   openShop() { this.prevState = this.state; this.state = 'shop'; this.resize(); }
+  // Inventory inspect: free rotation + zoom of the preview, with momentum after a flick
+  inspectReset() { Object.assign(this.inspect, { yaw: 0.6, pitch: 0.12, zoom: 0.72, vy: 0, vx: 0, idle: 0 }); }
   closeShop() { this.state = this.prevState || 'menu'; }
 
   // p: { weapon, bp, skin, charm, tracer, gloves, showTracer, showHands }
@@ -902,6 +905,11 @@ BR.Game = class Game {
     }
     this.shopPivot.add(g);
     this.shopGun = g;
+    g.visible = !p.hideGun;
+    // spin around the model's middle: centre its bounding box on the pivot
+    g.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(g), ctr = bb.getCenter(new THREE.Vector3());
+    this.shopPivot.worldToLocal(ctr); g.position.x -= ctr.x; g.position.z -= ctr.z;
   }
 
   updateShop(dt) {
@@ -912,8 +920,23 @@ BR.Game = class Game {
     const halfW = 3.6 * Math.tan(this.shopCam.fov * Math.PI / 360) * this.shopCam.aspect;
     this.shopPivot.position.x = -panelFrac * halfW;
     this.shopBaseY = land ? 0 : 0.45;
-    this.shopPivot.rotation.y += dt * 0.5;
-    this.shopPivot.position.y = this.shopBaseY + Math.sin(this.time * 1.4) * 0.03;
+    const I = this.inspect;
+    if (I.on) {
+      if (!I.dragging) {                                     // momentum, then a slow idle spin
+        I.yaw += I.vy * dt; I.pitch = BR.util.clamp(I.pitch + I.vx * dt, -1.3, 1.3);
+        I.vy *= Math.exp(-dt * 3); I.vx *= Math.exp(-dt * 3);
+        I.idle += dt; if (I.idle > 3) I.yaw += dt * 0.35 * Math.min(1, I.idle - 3);
+      }
+      this.shopPivot.rotation.set(I.pitch, I.yaw, 0, 'YXZ');
+      const zs = BR.util.lerp(this.shopPivot.scale.x, I.zoom, 1 - Math.exp(-dt * 12)); this.shopPivot.scale.setScalar(zs);
+      this.shopPivot.position.y = this.shopBaseY + 0.1;
+      this.shopFloor.visible = false;
+    } else {
+      this.shopFloor.visible = true;
+      this.shopPivot.rotation.set(0, this.shopPivot.rotation.y + dt * 0.5, 0);
+      this.shopPivot.scale.setScalar(1);
+      this.shopPivot.position.y = this.shopBaseY + Math.sin(this.time * 1.4) * 0.03;
+    }
     this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
     if (this.shopGun) BR.Models.animate(this.shopGun, this.time);
     const ch = this.shopGun && this.shopGun.userData.charmObj;

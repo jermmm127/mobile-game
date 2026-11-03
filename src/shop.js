@@ -374,3 +374,129 @@ BR.Shop = class Shop {
     });
   }
 };
+
+
+// =============================================================================
+// INVENTORY — everything you own (shop buys + case drops). Pick an item to see it
+// on the big 3D preview, drag to turn it any way you like (pinch / scroll zooms,
+// double-tap resets), and equip it. Tracers equip on the gun chip you picked.
+// =============================================================================
+BR.Inventory = class Inventory {
+  constructor(game, shop) {
+    this.game = game; this.shop = shop;
+    this.cat = 'blueprints'; this.weapon = 'rifle'; this.sel = null;
+    const $ = id => document.getElementById(id);
+    this.el = { root: $('inventory'), grid: $('inv-grid'), weps: $('inv-weps'), action: $('inv-action'), msg: $('inv-msg'), count: $('inv-count'),
+      name: $('inv-name'), rar: $('inv-rar'), sub: $('inv-sub'), feed: $('inv-feed'), stage: $('inv-stage') };
+    this.el.weps.innerHTML = SHOP_WEAPONS.map(([id, n]) => `<button data-w="${id}">${n}</button>`).join('');
+    $('inv-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-cat]'); if (!b) return; this.cat = b.dataset.cat; this.sel = null; this.render(); });
+    this.el.weps.addEventListener('click', e => { const b = e.target.closest('button[data-w]'); if (!b) return; this.weapon = b.dataset.w; this.sel = null; this.render(); });
+    this.el.grid.addEventListener('click', e => { const c = e.target.closest('[data-id]'); if (!c) return; this.sel = c.dataset.id; this.game.inspectReset(); this.render(); });
+    this.el.action.addEventListener('click', () => this.act());
+    $('inv-back').addEventListener('click', () => this.close());
+    this.bindDrag();
+  }
+
+  // Drag / pinch / wheel on the preview area turns and zooms the item
+  bindDrag() {
+    const st = this.el.stage, I = () => this.game.inspect, pts = new Map();
+    let lastTap = 0, pinch0 = 0, zoom0 = 1;
+    st.addEventListener('pointerdown', e => {
+      st.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const i = I(); i.dragging = true; i.vy = i.vx = 0; i.idle = 0;
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); zoom0 = i.zoom; }
+      const now = performance.now(); if (pts.size === 1 && now - lastTap < 300) this.game.inspectReset(); lastTap = now;
+    });
+    st.addEventListener('pointermove', e => {
+      const p = pts.get(e.pointerId); if (!p) return;
+      const i = I(), dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+      if (pts.size >= 2) { const [a, b] = [...pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0 > 0) i.zoom = BR.util.clamp(zoom0 * d / pinch0, 0.6, 2.6); return; }
+      i.yaw += dx * 0.012; i.pitch = BR.util.clamp(i.pitch + dy * 0.01, -1.3, 1.3);
+      i.vy = dx * 0.012 / 0.016; i.vx = dy * 0.01 / 0.016;
+    });
+    const up = e => { pts.delete(e.pointerId); if (!pts.size) I().dragging = false; pinch0 = 0; };
+    st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up);
+    st.addEventListener('wheel', e => { e.preventDefault(); const i = I(); i.zoom = BR.util.clamp(i.zoom * (e.deltaY > 0 ? 0.92 : 1.08), 0.6, 2.6); }, { passive: false });
+  }
+
+  items() {
+    const P = BR.Profile, all = BR.Shop.catalog(this.cat, this.weapon), out = {};
+    for (const id in all) if (P.owns(this.cat, id)) out[id] = all[id];
+    return out;
+  }
+  total() {
+    const o = BR.Profile.data.owned; let n = 0;
+    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
+    return n + (o.blueprints || []).length;
+  }
+  open(focus) {
+    if (focus) { this.cat = focus.cat; if (focus.cat === 'blueprints') this.weapon = focus.id.split(':')[0]; this.sel = focus.id; }
+    this.el.root.classList.remove('hidden');
+    document.body.classList.add('shopping');
+    this.game.openShop();
+    this.game.inspect.on = true; this.game.inspectReset();
+    this.render();
+  }
+  close() {
+    this.el.root.classList.add('hidden');
+    document.body.classList.remove('shopping');
+    this.game.inspect.on = false;
+    this.game.closeShop();
+    BR.updateCoins();
+  }
+  equippedId() {
+    const eq = BR.Profile.data.equip;
+    if (this.cat === 'blueprints') return this.weapon + ':' + (eq.blueprints[this.weapon] || 'default');
+    if (this.cat === 'tracers') return eq.tracerByGun[this.weapon] || 'signature';
+    return eq[this.cat];
+  }
+  act() {
+    const P = BR.Profile, id = this.sel;
+    if (!id || !P.owns(this.cat, id)) return;
+    P.equip(this.cat, id, this.weapon); BR.Audio.pickup();
+    this.flash(this.cat === 'tracers' ? 'Equipped on ' + BR.CONFIG.weapons[this.weapon].name : 'Equipped');
+    this.game.refreshCosmetics();
+    this.render();
+  }
+  flash(t) { const m = this.el.msg; m.textContent = t; m.classList.remove('on'); void m.offsetWidth; m.classList.add('on'); }
+
+  render() {
+    const P = BR.Profile, cat = this.cat, items = this.items();
+    document.querySelectorAll('#inv-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
+    const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers';
+    this.el.weps.classList.toggle('hidden', !showWeps);
+    this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
+    this.el.count.textContent = this.total();
+    if (!this.sel || !items[this.sel]) this.sel = items[this.equippedId()] ? this.equippedId() : Object.keys(items)[0] || null;
+    const html = [];
+    for (const id in items) {
+      const it = items[id], eq = P.isEquipped(cat, id, this.weapon);
+      const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
+      const cls = it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : '';
+      this.shop.weapon = this.weapon;
+      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${cls}" data-id="${id}">${this.shop.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? '✓ Equipped' : it.caseOnly ? 'Case drop' : 'Owned'}</span></button>`);
+    }
+    this.el.grid.innerHTML = html.length ? html.join('') : '<div class="inv-empty">Nothing here yet. Buy items in the Shop or open a Release Case.</div>';
+    const it = items[this.sel];
+    this.el.name.textContent = it ? it.name : '';
+    this.el.rar.textContent = it && it.rarity ? it.rarity.toUpperCase() : '';
+    this.el.rar.style.color = it && it.rarity ? RARITY[it.rarity] : '';
+    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + BR.CONFIG.weapons[this.weapon].name : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : 'Kill feed banner';
+    const eq = it && P.isEquipped(cat, this.sel, this.weapon);
+    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : 'Equip';
+    this.el.action.disabled = !it || eq;
+    // kill feed banners show as a big banner instead of a gun
+    this.el.feed.classList.toggle('hidden', cat !== 'feeds');
+    if (cat === 'feeds' && it) this.el.feed.innerHTML = `<div class="kf feed-${this.sel}">${BR.Ranks.badge(P.data.rp || 0)}<b class="me">${BR.Accounts ? BR.Accounts.displayName() : 'You'}</b> <i>Rifle ✕</i> <b>Rival</b></div>`;
+    const eqd = P.data.equip, wpn = showWeps ? this.weapon : cat === 'gloves' ? 'pistol' : 'holoar';
+    this.game.setShopPreview({
+      weapon: wpn,
+      bp: cat === 'blueprints' && this.sel ? this.sel.split(':')[1] : (eqd.blueprints[wpn] || 'default'),
+      skin: cat === 'skins' && this.sel ? this.sel : eqd.skins,
+      charm: cat === 'charms' && this.sel ? this.sel : eqd.charms,
+      tracer: cat === 'tracers' && this.sel ? (this.sel === 'signature' ? BR.Models.resolveTracer(wpn, eqd) : this.sel) : BR.Models.resolveTracer(wpn, eqd),
+      gloves: cat === 'gloves' && this.sel ? this.sel : eqd.gloves,
+      showTracer: cat === 'tracers', showHands: cat === 'gloves', hideGun: cat === 'feeds',
+    });
+  }
+};

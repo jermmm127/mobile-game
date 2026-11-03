@@ -809,6 +809,26 @@ body.duel #topbar .dp { display: flex; }
 .cs-stage { flex: none; } .cs-result, .cs-actions, .cs-odds { flex: none; }
 .sw.cbp { border-radius: 6px; clip-path: polygon(0 30%, 70% 30%, 70% 10%, 100% 10%, 100% 60%, 30% 60%, 22% 100%, 8% 100%, 14% 60%, 0 60%); }
 
+/* ---- inventory ---- */
+#inventory { display: block; background: none; padding: 0; }
+.inv-stage { position: absolute; inset: 0; right: min(472px, 57vw); touch-action: none; cursor: grab; }
+.inv-stage:active { cursor: grabbing; }
+.inv-label { position: absolute; left: max(24px, calc(var(--sl) + 18px)); top: calc(18px + var(--st)); display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.inv-label .rar { font: 800 11px var(--ui); letter-spacing: 0.3em; text-shadow: 0 0 10px currentColor; }
+.inv-label b { font: 800 italic clamp(22px, 3.4vw, 38px) var(--display); color: #fff; text-transform: uppercase; text-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+.inv-label small { font-size: 13px; color: #c6ced8; }
+.inv-hint { position: absolute; left: 50%; bottom: calc(18px + var(--sb)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 7px 14px; border-radius: 999px; background: rgba(10,12,18,0.6); border: 1px solid rgba(255,255,255,0.12); font: 600 11px var(--ui); letter-spacing: 0.06em; color: #dfe5ee; pointer-events: none; }
+.inv-hint svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.inv-feed { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1.8); pointer-events: none; }
+.inv-feed .kf { font-size: 14px; }
+#inv-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; align-content: start; padding: 2px; }
+#inv-tabs button { font-size: 9px; letter-spacing: 0.04em; padding: 7px 1px; }
+#inv-msg { flex: 1; font: 600 12px var(--ui); color: var(--health); opacity: 0; } #inv-msg.on { animation: msg 1.6s ease-out; }
+.inv-empty { grid-column: 1 / -1; color: var(--muted); font-size: 13px; padding: 20px 4px; }
+.dk.inv { color: #b9f2c9; border-color: rgba(79, 220, 138, 0.35); }
+@media (orientation: portrait) { .inv-stage { right: 0; bottom: 56%; } .inv-hint { bottom: 10px; } }
+
 </style>
 </head>
 <body>
@@ -832,7 +852,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.3.0',
+  version: '1.3.1',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -7946,6 +7966,132 @@ BR.Shop = class Shop {
   }
 };
 
+
+// =============================================================================
+// INVENTORY — everything you own (shop buys + case drops). Pick an item to see it
+// on the big 3D preview, drag to turn it any way you like (pinch / scroll zooms,
+// double-tap resets), and equip it. Tracers equip on the gun chip you picked.
+// =============================================================================
+BR.Inventory = class Inventory {
+  constructor(game, shop) {
+    this.game = game; this.shop = shop;
+    this.cat = 'blueprints'; this.weapon = 'rifle'; this.sel = null;
+    const $ = id => document.getElementById(id);
+    this.el = { root: $('inventory'), grid: $('inv-grid'), weps: $('inv-weps'), action: $('inv-action'), msg: $('inv-msg'), count: $('inv-count'),
+      name: $('inv-name'), rar: $('inv-rar'), sub: $('inv-sub'), feed: $('inv-feed'), stage: $('inv-stage') };
+    this.el.weps.innerHTML = SHOP_WEAPONS.map(([id, n]) => `<button data-w="${id}">${n}</button>`).join('');
+    $('inv-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-cat]'); if (!b) return; this.cat = b.dataset.cat; this.sel = null; this.render(); });
+    this.el.weps.addEventListener('click', e => { const b = e.target.closest('button[data-w]'); if (!b) return; this.weapon = b.dataset.w; this.sel = null; this.render(); });
+    this.el.grid.addEventListener('click', e => { const c = e.target.closest('[data-id]'); if (!c) return; this.sel = c.dataset.id; this.game.inspectReset(); this.render(); });
+    this.el.action.addEventListener('click', () => this.act());
+    $('inv-back').addEventListener('click', () => this.close());
+    this.bindDrag();
+  }
+
+  // Drag / pinch / wheel on the preview area turns and zooms the item
+  bindDrag() {
+    const st = this.el.stage, I = () => this.game.inspect, pts = new Map();
+    let lastTap = 0, pinch0 = 0, zoom0 = 1;
+    st.addEventListener('pointerdown', e => {
+      st.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const i = I(); i.dragging = true; i.vy = i.vx = 0; i.idle = 0;
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); zoom0 = i.zoom; }
+      const now = performance.now(); if (pts.size === 1 && now - lastTap < 300) this.game.inspectReset(); lastTap = now;
+    });
+    st.addEventListener('pointermove', e => {
+      const p = pts.get(e.pointerId); if (!p) return;
+      const i = I(), dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+      if (pts.size >= 2) { const [a, b] = [...pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0 > 0) i.zoom = BR.util.clamp(zoom0 * d / pinch0, 0.6, 2.6); return; }
+      i.yaw += dx * 0.012; i.pitch = BR.util.clamp(i.pitch + dy * 0.01, -1.3, 1.3);
+      i.vy = dx * 0.012 / 0.016; i.vx = dy * 0.01 / 0.016;
+    });
+    const up = e => { pts.delete(e.pointerId); if (!pts.size) I().dragging = false; pinch0 = 0; };
+    st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up);
+    st.addEventListener('wheel', e => { e.preventDefault(); const i = I(); i.zoom = BR.util.clamp(i.zoom * (e.deltaY > 0 ? 0.92 : 1.08), 0.6, 2.6); }, { passive: false });
+  }
+
+  items() {
+    const P = BR.Profile, all = BR.Shop.catalog(this.cat, this.weapon), out = {};
+    for (const id in all) if (P.owns(this.cat, id)) out[id] = all[id];
+    return out;
+  }
+  total() {
+    const o = BR.Profile.data.owned; let n = 0;
+    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
+    return n + (o.blueprints || []).length;
+  }
+  open(focus) {
+    if (focus) { this.cat = focus.cat; if (focus.cat === 'blueprints') this.weapon = focus.id.split(':')[0]; this.sel = focus.id; }
+    this.el.root.classList.remove('hidden');
+    document.body.classList.add('shopping');
+    this.game.openShop();
+    this.game.inspect.on = true; this.game.inspectReset();
+    this.render();
+  }
+  close() {
+    this.el.root.classList.add('hidden');
+    document.body.classList.remove('shopping');
+    this.game.inspect.on = false;
+    this.game.closeShop();
+    BR.updateCoins();
+  }
+  equippedId() {
+    const eq = BR.Profile.data.equip;
+    if (this.cat === 'blueprints') return this.weapon + ':' + (eq.blueprints[this.weapon] || 'default');
+    if (this.cat === 'tracers') return eq.tracerByGun[this.weapon] || 'signature';
+    return eq[this.cat];
+  }
+  act() {
+    const P = BR.Profile, id = this.sel;
+    if (!id || !P.owns(this.cat, id)) return;
+    P.equip(this.cat, id, this.weapon); BR.Audio.pickup();
+    this.flash(this.cat === 'tracers' ? 'Equipped on ' + BR.CONFIG.weapons[this.weapon].name : 'Equipped');
+    this.game.refreshCosmetics();
+    this.render();
+  }
+  flash(t) { const m = this.el.msg; m.textContent = t; m.classList.remove('on'); void m.offsetWidth; m.classList.add('on'); }
+
+  render() {
+    const P = BR.Profile, cat = this.cat, items = this.items();
+    document.querySelectorAll('#inv-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
+    const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers';
+    this.el.weps.classList.toggle('hidden', !showWeps);
+    this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
+    this.el.count.textContent = this.total();
+    if (!this.sel || !items[this.sel]) this.sel = items[this.equippedId()] ? this.equippedId() : Object.keys(items)[0] || null;
+    const html = [];
+    for (const id in items) {
+      const it = items[id], eq = P.isEquipped(cat, id, this.weapon);
+      const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
+      const cls = it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : '';
+      this.shop.weapon = this.weapon;
+      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${cls}" data-id="${id}">${this.shop.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? '✓ Equipped' : it.caseOnly ? 'Case drop' : 'Owned'}</span></button>`);
+    }
+    this.el.grid.innerHTML = html.length ? html.join('') : '<div class="inv-empty">Nothing here yet. Buy items in the Shop or open a Release Case.</div>';
+    const it = items[this.sel];
+    this.el.name.textContent = it ? it.name : '';
+    this.el.rar.textContent = it && it.rarity ? it.rarity.toUpperCase() : '';
+    this.el.rar.style.color = it && it.rarity ? RARITY[it.rarity] : '';
+    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + BR.CONFIG.weapons[this.weapon].name : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : 'Kill feed banner';
+    const eq = it && P.isEquipped(cat, this.sel, this.weapon);
+    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : 'Equip';
+    this.el.action.disabled = !it || eq;
+    // kill feed banners show as a big banner instead of a gun
+    this.el.feed.classList.toggle('hidden', cat !== 'feeds');
+    if (cat === 'feeds' && it) this.el.feed.innerHTML = `<div class="kf feed-${this.sel}">${BR.Ranks.badge(P.data.rp || 0)}<b class="me">${BR.Accounts ? BR.Accounts.displayName() : 'You'}</b> <i>Rifle ✕</i> <b>Rival</b></div>`;
+    const eqd = P.data.equip, wpn = showWeps ? this.weapon : cat === 'gloves' ? 'pistol' : 'holoar';
+    this.game.setShopPreview({
+      weapon: wpn,
+      bp: cat === 'blueprints' && this.sel ? this.sel.split(':')[1] : (eqd.blueprints[wpn] || 'default'),
+      skin: cat === 'skins' && this.sel ? this.sel : eqd.skins,
+      charm: cat === 'charms' && this.sel ? this.sel : eqd.charms,
+      tracer: cat === 'tracers' && this.sel ? (this.sel === 'signature' ? BR.Models.resolveTracer(wpn, eqd) : this.sel) : BR.Models.resolveTracer(wpn, eqd),
+      gloves: cat === 'gloves' && this.sel ? this.sel : eqd.gloves,
+      showTracer: cat === 'tracers', showHands: cat === 'gloves', hideGun: cat === 'feeds',
+    });
+  }
+};
+
 </script>
 <script>
 'use strict';
@@ -8114,6 +8260,7 @@ BR.HUD = class HUD {
       </div>
       <div class="dock">
         <button id="btn-cases" class="dk cases"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M8 8l1-3h6l1 3"/></svg><span>CASES</span><em>NEW</em></button>
+        <button id="btn-inv" class="dk inv"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>INVENTORY</span></button>
         <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span></button>
         <button id="btn-ranks" class="dk ranks"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg><span>RANKED</span></button>
         <button id="btn-settings" class="dk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>SETTINGS</span></button>
@@ -8190,8 +8337,30 @@ BR.HUD = class HUD {
     <div id="shop-grid"></div>
     <div class="shop-foot">
       <span id="shop-msg"></span>
+      <button id="shop-inv" class="mbtn sm">INVENTORY</button>
       <button id="shop-back" class="mbtn sm">BACK</button>
       <button id="shop-action" class="mbtn sm hot">EQUIP</button>
+    </div>
+  </div>
+</div>
+
+<div id="inventory" class="overlay hidden">
+  <div class="inv-stage" id="inv-stage">
+    <div class="inv-label"><span class="rar" id="inv-rar"></span><b id="inv-name"></b><small id="inv-sub"></small></div>
+    <div class="inv-feed hidden" id="inv-feed"></div>
+    <div class="inv-hint"><svg viewBox="0 0 24 24"><path d="M9 11V5a2 2 0 0 1 4 0v5M13 10V8a2 2 0 0 1 4 0v4M9 11l-1.5-1.5a2 2 0 0 0-3 2.6L9 17c1.5 2 3 3 6 3a5 5 0 0 0 5-5v-3a2 2 0 0 0-3 0"/></svg>Drag to inspect · pinch / scroll to zoom · double-tap to reset</div>
+  </div>
+  <div class="shop-panel metal">
+    <div class="shop-head"><div class="ptitle">INVENTORY</div><div class="coins-pill"><span id="inv-count" class="num">0</span>&nbsp;items</div></div>
+    <div id="inv-tabs" class="seg">
+      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button>
+    </div>
+    <div id="inv-weps" class="chips"></div>
+    <div id="inv-grid"></div>
+    <div class="shop-foot">
+      <span id="inv-msg"></span>
+      <button id="inv-back" class="mbtn sm">BACK</button>
+      <button id="inv-action" class="mbtn sm hot">EQUIP</button>
     </div>
   </div>
 </div>
@@ -8295,7 +8464,7 @@ BR.HUD = class HUD {
       <div class="cs-reel hidden" id="cs-reel"><div class="cs-strip" id="cs-strip"></div><i class="cs-mark"></i></div>
     </div>
     <div class="cs-result hidden" id="cs-result"></div>
-    <div class="cs-actions"><button id="cs-open" class="mbtn hot">OPEN · <i class="coin"></i>600</button><button id="cs-equip" class="mbtn hidden">EQUIP</button></div>
+    <div class="cs-actions"><button id="cs-open" class="mbtn hot">OPEN · <i class="coin"></i>600</button><button id="cs-equip" class="mbtn hidden">EQUIP</button><button id="cs-inspect" class="mbtn hidden">INSPECT</button></div>
     <div class="sp-sec">CONTENTS · EXCLUSIVE TO THIS CASE</div>
     <div class="cs-odds" id="cs-odds"></div>
     <div class="cs-grid" id="cs-grid"></div>
@@ -9618,6 +9787,7 @@ BR.Game = class Game {
     this.shopCam = new THREE.PerspectiveCamera(40, 1, 0.01, 20);
     this.shopCam.position.set(0, 0.35, 3.6);
     this.shopCam.lookAt(0, 0, 0);
+    this.inspect = { on: false, yaw: 0, pitch: 0, zoom: 1, vy: 0, vx: 0, idle: 0, dragging: false };
     this.shopPivot = new THREE.Group();
     s.add(this.shopPivot);
     this.shopFx = new BR.Effects(s);   // real in-game tracers, slowed down for the preview
@@ -9625,6 +9795,8 @@ BR.Game = class Game {
   }
 
   openShop() { this.prevState = this.state; this.state = 'shop'; this.resize(); }
+  // Inventory inspect: free rotation + zoom of the preview, with momentum after a flick
+  inspectReset() { Object.assign(this.inspect, { yaw: 0.6, pitch: 0.12, zoom: 0.72, vy: 0, vx: 0, idle: 0 }); }
   closeShop() { this.state = this.prevState || 'menu'; }
 
   // p: { weapon, bp, skin, charm, tracer, gloves, showTracer, showHands }
@@ -9645,6 +9817,11 @@ BR.Game = class Game {
     }
     this.shopPivot.add(g);
     this.shopGun = g;
+    g.visible = !p.hideGun;
+    // spin around the model's middle: centre its bounding box on the pivot
+    g.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(g), ctr = bb.getCenter(new THREE.Vector3());
+    this.shopPivot.worldToLocal(ctr); g.position.x -= ctr.x; g.position.z -= ctr.z;
   }
 
   updateShop(dt) {
@@ -9655,8 +9832,23 @@ BR.Game = class Game {
     const halfW = 3.6 * Math.tan(this.shopCam.fov * Math.PI / 360) * this.shopCam.aspect;
     this.shopPivot.position.x = -panelFrac * halfW;
     this.shopBaseY = land ? 0 : 0.45;
-    this.shopPivot.rotation.y += dt * 0.5;
-    this.shopPivot.position.y = this.shopBaseY + Math.sin(this.time * 1.4) * 0.03;
+    const I = this.inspect;
+    if (I.on) {
+      if (!I.dragging) {                                     // momentum, then a slow idle spin
+        I.yaw += I.vy * dt; I.pitch = BR.util.clamp(I.pitch + I.vx * dt, -1.3, 1.3);
+        I.vy *= Math.exp(-dt * 3); I.vx *= Math.exp(-dt * 3);
+        I.idle += dt; if (I.idle > 3) I.yaw += dt * 0.35 * Math.min(1, I.idle - 3);
+      }
+      this.shopPivot.rotation.set(I.pitch, I.yaw, 0, 'YXZ');
+      const zs = BR.util.lerp(this.shopPivot.scale.x, I.zoom, 1 - Math.exp(-dt * 12)); this.shopPivot.scale.setScalar(zs);
+      this.shopPivot.position.y = this.shopBaseY + 0.1;
+      this.shopFloor.visible = false;
+    } else {
+      this.shopFloor.visible = true;
+      this.shopPivot.rotation.set(0, this.shopPivot.rotation.y + dt * 0.5, 0);
+      this.shopPivot.scale.setScalar(1);
+      this.shopPivot.position.y = this.shopBaseY + Math.sin(this.time * 1.4) * 0.03;
+    }
     this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
     if (this.shopGun) BR.Models.animate(this.shopGun, this.time);
     const ch = this.shopGun && this.shopGun.userData.charmObj;
@@ -9870,6 +10062,9 @@ BR.Game = class Game {
   $('btn-hud').addEventListener('click', () => layout.open());
   $('btn-hud2').addEventListener('click', () => layout.open());
   const shop = new BR.Shop(game);
+  const inv = BR.inventory = new BR.Inventory(game, shop);
+  $('btn-inv').addEventListener('click', () => { BR.Audio.init(); inv.open(); });
+  $('shop-inv').addEventListener('click', () => { shop.close(); inv.open(); });
   BR.shop = shop;
   $('btn-shop').addEventListener('click', () => { BR.Audio.init(); shop.open(); });
 
@@ -10039,7 +10234,7 @@ BR.Game = class Game {
     if (!r) { BR.Audio.click(); $('cs-result').classList.remove('hidden'); $('cs-result').innerHTML = '<div class="cs-msg">Not enough coins</div>'; return; }
     caseBusy = true; lastDrop = r;
     $('cs-coins').textContent = BR.Profile.coinsLabel();
-    $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden');
+    $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden'); $('cs-inspect').classList.add('hidden');
     $('cs-case').classList.add('hidden'); $('cs-reel').classList.remove('hidden');
     // reel: 56 cards, the drop at index 50
     const N = 56, WIN = 50, cards = [];
@@ -10065,7 +10260,7 @@ BR.Game = class Game {
       const col = RCOL[r.item.rarity];
       $('cs-result').classList.remove('hidden');
       $('cs-result').innerHTML = `<div class="cs-reveal r-${r.item.rarity}" style="--rc:${col}"><span class="rv-r">${r.item.rarity.toUpperCase()}</span>${caseCard(r, ' big')}<b>${r.item.name}</b><span>${r.dup ? 'Duplicate · +' + r.refund + ' coins back' : 'NEW · added to your collection'}</span></div>`;
-      if (!r.dup || true) $('cs-equip').classList.remove('hidden');
+      $('cs-equip').classList.remove('hidden'); $('cs-inspect').classList.remove('hidden');
       BR.Audio.kill(r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic');
       if (r.item.rarity === 'Legendary' || r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic') BR.Audio.coin();
       $('cs-coins').textContent = BR.Profile.coinsLabel();
@@ -10073,6 +10268,7 @@ BR.Game = class Game {
       BR.updateCoins();
     }, 5800);
   });
+  $('cs-inspect').addEventListener('click', () => { if (!lastDrop) return; game.hud.show('cases', false); inv.open({ cat: lastDrop.cat, id: lastDrop.id }); });
   $('cs-equip').addEventListener('click', () => { if (!lastDrop) return; BR.Profile.equipDrop(lastDrop); game.refreshCosmetics(); BR.Audio.pickup(); $('cs-equip').classList.add('hidden'); });
 
   // ---- Ranked leaderboard

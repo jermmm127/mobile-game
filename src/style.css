@@ -792,3 +792,23 @@ body.duel #topbar .dp { display: flex; }
 
 .cs-stage { flex: none; } .cs-result, .cs-actions, .cs-odds { flex: none; }
 .sw.cbp { border-radius: 6px; clip-path: polygon(0 30%, 70% 30%, 70% 10%, 100% 10%, 100% 60%, 30% 60%, 22% 100%, 8% 100%, 14% 60%, 0 60%); }
+
+/* ---- inventory ---- */
+#inventory { display: block; background: none; padding: 0; }
+.inv-stage { position: absolute; inset: 0; right: min(472px, 57vw); touch-action: none; cursor: grab; }
+.inv-stage:active { cursor: grabbing; }
+.inv-label { position: absolute; left: max(24px, calc(var(--sl) + 18px)); top: calc(18px + var(--st)); display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.inv-label .rar { font: 800 11px var(--ui); letter-spacing: 0.3em; text-shadow: 0 0 10px currentColor; }
+.inv-label b { font: 800 italic clamp(22px, 3.4vw, 38px) var(--display); color: #fff; text-transform: uppercase; text-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+.inv-label small { font-size: 13px; color: #c6ced8; }
+.inv-hint { position: absolute; left: 50%; bottom: calc(18px + var(--sb)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 7px 14px; border-radius: 999px; background: rgba(10,12,18,0.6); border: 1px solid rgba(255,255,255,0.12); font: 600 11px var(--ui); letter-spacing: 0.06em; color: #dfe5ee; pointer-events: none; }
+.inv-hint svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.inv-feed { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1.8); pointer-events: none; }
+.inv-feed .kf { font-size: 14px; }
+#inv-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; align-content: start; padding: 2px; }
+#inv-tabs button { font-size: 9px; letter-spacing: 0.04em; padding: 7px 1px; }
+#inv-msg { flex: 1; font: 600 12px var(--ui); color: var(--health); opacity: 0; } #inv-msg.on { animation: msg 1.6s ease-out; }
+.inv-empty { grid-column: 1 / -1; color: var(--muted); font-size: 13px; padding: 20px 4px; }
+.dk.inv { color: #b9f2c9; border-color: rgba(79, 220, 138, 0.35); }
+@media (orientation: portrait) { .inv-stage { right: 0; bottom: 56%; } .inv-hint { bottom: 10px; } }
