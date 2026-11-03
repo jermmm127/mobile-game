@@ -36,7 +36,7 @@ BR.World = class World {
     this.decor = [];       // visual-only boxes (trims, frames): rendered, never collided
     this.buildings = [];   // {x0,x1,z0,z1,H,floors,walls:[{si,cols,door}]} for dressing
     this.containers = [];  // {x0,x1,z0,z1,y0,y1,along}
-    this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [] };
+    this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [], rockFill: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
     if (this.arena) this.generateArena(); else this.generate();
@@ -251,10 +251,12 @@ BR.World = class World {
 
     // Boundary walls
     const bw = 6, bh = 26;
-    this.addBox(-H - bw, 0, -H - bw, H + bw, bh, -H, PAL.cliff, { tag: 'edge' });
-    this.addBox(-H - bw, 0, H, H + bw, bh, H + bw, PAL.cliff, { tag: 'edge' });
-    this.addBox(-H - bw, 0, -H, -H, bh, H, PAL.cliff, { tag: 'edge' });
-    this.addBox(H, 0, -H, H + bw, bh, H, PAL.cliff, { tag: 'edge' });
+    // invisible boundary (the island's shore + the storm keep you in; no box walls)
+    const eh = 80;
+    this.addBox(-H - bw, 0, -H - bw, H + bw, eh, -H, PAL.cliff, { tag: 'edge', hidden: true });
+    this.addBox(-H - bw, 0, H, H + bw, eh, H + bw, PAL.cliff, { tag: 'edge', hidden: true });
+    this.addBox(-H - bw, 0, -H, -H, eh, H, PAL.cliff, { tag: 'edge', hidden: true });
+    this.addBox(H, 0, -H, H + bw, eh, H, PAL.cliff, { tag: 'edge', hidden: true });
 
     // Named points of interest, spread across the map. Each has a type that
     // decides what gets built there.
@@ -494,7 +496,7 @@ BR.World = class World {
     for (const b of this.boxes) {
       if (b.color !== PAL.rock && b.color !== PAL.cliff) continue;
       if (b.tag === 'edge' || b.x1 - b.x0 > 40 || b.z1 - b.z0 > 40) continue;
-      if (R() < 0.55) D(b.x0 + 0.1, b.y1, b.z0 + 0.1, b.x1 - 0.1, b.y1 + 0.05, b.z1 - 0.1, R() < 0.5 ? 0x5f7f45 : 0x6d8a4c);
+      if (!b.hidden && R() < 0.55) D(b.x0 + 0.1, b.y1, b.z0 + 0.1, b.x1 - 0.1, b.y1 + 0.05, b.z1 - 0.1, R() < 0.5 ? 0x5f7f45 : 0x6d8a4c);
       const nb = 1 + Math.floor(R() * 3);
       for (let i = 0; i < nb; i++) {
         const side = Math.floor(R() * 4), sz = 0.25 + R() * 0.55;
@@ -620,7 +622,8 @@ BR.World = class World {
     const W = 44, Hh = 7;
     if (!this.free(cx - W / 2 - 10, cz - W / 2 - 10, cx + W / 2 + 10, cz + W / 2 + 10, 4)) return;
     this.claim(cx - W / 2 - 10, cz - W / 2 - 10, cx + W / 2 + 10, cz + W / 2 + 10);
-    this.addBox(cx - W / 2, 0, cz - W / 2, cx + W / 2, Hh, cz + W / 2, PAL.cliff);
+    this.props.rockSkirt = this.props.rockSkirt || [];
+    this.props.rockSkirt.push(this.addBox(cx - W / 2, 0, cz - W / 2, cx + W / 2, Hh, cz + W / 2, PAL.cliff));
     // Two stairways (0.5 m steps) on opposite sides
     for (let i = 0; i < 14; i++) {
       const y = (i + 1) * 0.5, off = W / 2 + 14 - i;
@@ -668,11 +671,10 @@ BR.World = class World {
       const segs = [[0, 0.3], [0.38, 0.7], [0.78, 1]];
       for (const [a, b] of segs) {
         const p0 = -L / 2 + a * L, p1 = -L / 2 + b * L, hh = h * U.rand(R, 0.8, 1.1);
-        if (alongX) this.addBox(x + p0, 0, z - T / 2, x + p1, hh, z + T / 2, PAL.cliff);
-        else this.addBox(x - T / 2, 0, z + p0, x + T / 2, hh, z + p1, PAL.cliff);
+        const rk = { hidden: true };        // drawn as natural rock (see buildScenery: rock masses)
+        this.props.rockFill.push(alongX ? this.addBox(x + p0, 0, z - T / 2, x + p1, hh, z + T / 2, PAL.cliff, rk) : this.addBox(x - T / 2, 0, z + p0, x + T / 2, hh, z + p1, PAL.cliff, rk));
         // ledge halfway up to mantle onto
-        if (alongX) this.addBox(x + p0 + 2, 0, z + T / 2, x + p0 + 6, hh * 0.45, z + T / 2 + 2.5, PAL.rock);
-        else this.addBox(x + T / 2, 0, z + p0 + 2, x + T / 2 + 2.5, hh * 0.45, z + p0 + 6, PAL.rock);
+        this.props.rockFill.push(alongX ? this.addBox(x + p0 + 2, 0, z + T / 2, x + p0 + 6, hh * 0.45, z + T / 2 + 2.5, PAL.rock, rk) : this.addBox(x + T / 2, 0, z + p0 + 2, x + T / 2 + 2.5, hh * 0.45, z + p0 + 6, PAL.rock, rk));
         this.lootSpots.push({ x: alongX ? x + (p0 + p1) / 2 : x, y: hh, z: alongX ? z : z + (p0 + p1) / 2, tier: 2, force: R() < 0.4 ? 'weapon' : undefined });
       }
       return;
@@ -861,11 +863,11 @@ BR.World = class World {
   rock(x, z) {
     const R = this.rand, U = BR.util;
     const w = U.rand(R, 2, 6), d = U.rand(R, 2, 6), h = U.rand(R, 0.9, 3.2);
-    this.addBox(x - w / 2, 0, z - d / 2, x + w / 2, h, z + d / 2, PAL.rock);
+    this.props.rockFill.push(this.addBox(x - w / 2, 0, z - d / 2, x + w / 2, h, z + d / 2, PAL.rock, { hidden: true }));
     if (h > 2 && R() < 0.35) this.lootSpots.push({ x, y: h, z, tier: 1, force: 'weapon' }); // gun on a rock top
     if (R() < 0.5) {
       const w2 = w * 0.6, d2 = d * 0.6;
-      this.addBox(x - w2 / 2 + 0.4, h, z - d2 / 2, x + w2 / 2 + 0.4, h + U.rand(R, 0.5, 1.2), z + d2 / 2, PAL.rock);
+      this.props.rockFill.push(this.addBox(x - w2 / 2 + 0.4, h, z - d2 / 2, x + w2 / 2 + 0.4, h + U.rand(R, 0.5, 1.2), z + d2 / 2, PAL.rock, { hidden: true }));
     }
   }
 
@@ -919,7 +921,8 @@ BR.World = class World {
   mesa(x, z) {
     const R = this.rand;
     const W = 26, Hh = 4;
-    this.addBox(x - W / 2, 0, z - W / 2, x + W / 2, Hh, z + W / 2, PAL.cliff);
+    this.props.rockSkirt = this.props.rockSkirt || [];
+    this.props.rockSkirt.push(this.addBox(x - W / 2, 0, z - W / 2, x + W / 2, Hh, z + W / 2, PAL.cliff));
     const dir = Math.floor(R() * 4);
     for (let i = 0; i < 8; i++) {
       const y = (i + 1) * 0.5, off = W / 2 + 8 - i;
@@ -1072,7 +1075,9 @@ BR.World = class World {
   // Ground with painted grass/dirt variation (vertex colors) under a tiled detail texture.
   buildGround(scene) {
     const gt = makeTileTexture(true);
-    const S = this.arena ? 420 : this.size + 12, segs = this.arena ? 60 : 160;
+    const S = this.arena ? 420 : this.size + 300, segs = this.arena ? 60 : 180;
+    const H0 = this.half, island = !this.arena;
+    const sand = new THREE.Color(0xd9c58e), wetSand = new THREE.Color(0xb9a46e), seabed = new THREE.Color(0x6f8a7a);
     gt.repeat.set(S / 5, S / 5);
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
@@ -1095,12 +1100,36 @@ BR.World = class World {
         const rd = Math.hypot(x - (T.x + ex * k), z - (T.z + ez * k));
         if (rd < 4) c.lerp(dirt, (4 - rd) / 4 * 0.75);
       }
+      if (island) {
+        // irregular coastline: beach inside the last ~24 m, then the land slopes under the sea
+        const wob = Math.sin(x * 0.031) * 7 + Math.sin(z * 0.027 + 1.3) * 7 + Math.sin((x + z) * 0.013) * 5;
+        const ex = Math.max(0, Math.abs(x) - H0 - wob), ez = Math.max(0, Math.abs(z) - H0 - wob), e = Math.hypot(ex, ez);
+        const inner = Math.min(Math.abs(Math.abs(x) - H0 - wob), Math.abs(Math.abs(z) - H0 - wob));
+        if (e > 0) {
+          pos.setZ(i, -Math.min(9, e * 0.2 + e * e * 0.004));
+          c.copy(e < 6 ? wetSand : seabed).lerp(seabed, BR.util.clamp((e - 6) / 20, 0, 1));
+        } else if (inner < 26 && (Math.abs(x) > H0 - 40 || Math.abs(z) > H0 - 40)) c.lerp(sand, BR.util.clamp((26 - inner) / 14, 0, 0.92));
+      }
       col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
     }
+    if (island) geo.computeVertexNormals();
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     const ground = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, map: gt }));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
+    if (island) {
+      // ocean around the island: animated wave texture, shiny, slightly see-through
+      const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+      x.fillStyle = '#2a86b8'; x.fillRect(0, 0, 256, 256);
+      for (let i = 0; i < 90; i++) { x.strokeStyle = `rgba(220,245,255,${0.08 + Math.random() * 0.18})`; x.lineWidth = 1 + Math.random() * 2; x.beginPath();
+        const yy = Math.random() * 256, xx = Math.random() * 256; x.moveTo(xx, yy); x.quadraticCurveTo(xx + 12, yy - 4, xx + 26, yy); x.stroke(); }
+      const wt = new THREE.CanvasTexture(cv); wt.wrapS = wt.wrapT = THREE.RepeatWrapping; wt.repeat.set(140, 140);
+      BR.Models.animTex(wt, (tx, t) => { tx.offset.set(t * 0.012, t * 0.008); });
+      const sea = new THREE.Mesh(new THREE.PlaneGeometry(3600, 3600), new THREE.MeshPhongMaterial({ map: wt, color: 0xffffff, specular: 0xbfe8ff, shininess: 90, transparent: true, opacity: 0.93 }));
+      sea.rotation.x = -Math.PI / 2; sea.position.y = -0.7; sea.renderOrder = 1;
+      scene.add(sea);
+      this.sea = sea;
+    }
   }
 
   // Sky dome, far mountains, clouds, tree canopies, bushes and grass tufts. All visual.
@@ -1163,14 +1192,15 @@ BR.World = class World {
     };
     const far = new THREE.InstancedMesh(mountainGeo(true, 0x6f86a8, 0x9db0cc), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), 26);
     for (let i = 0; i < 26; i++) {
-      const a = i / 26 * Math.PI * 2 + R() * 0.2, r = H + 240 + R() * 140, hgt = 130 + R() * 150, wid = 110 + R() * 80;
+      const a = i / 26 * Math.PI * 2 + R() * 0.2, r = (this.arena ? H + 240 : H + 430) + R() * 120, hgt = 140 + R() * 160, wid = 120 + R() * 90;
       o.position.set(Math.cos(a) * r, hgt / 2 - 4, Math.sin(a) * r); o.scale.set(wid, hgt, wid); o.rotation.set(0, R() * 6, 0);
       o.updateMatrix(); far.setMatrixAt(i, o.matrix);
     }
     scene.add(far);
-    const near = new THREE.InstancedMesh(mountainGeo(false, 0x4a7048, 0x86a37a), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), 22);
-    for (let i = 0; i < 22; i++) {
-      const a = i / 22 * Math.PI * 2 + R() * 0.25, r = H + 120 + R() * 70, hgt = 50 + R() * 60, wid = 90 + R() * 60;
+    const nHill = this.arena ? 22 : 9;      // a few distant islands out at sea (the arena keeps its ring of hills)
+    const near = new THREE.InstancedMesh(mountainGeo(false, 0x4a7048, 0x86a37a), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), nHill);
+    for (let i = 0; i < nHill; i++) {
+      const a = i / nHill * Math.PI * 2 + R() * 0.4, r = (this.arena ? H + 120 : H + 300) + R() * 90, hgt = this.arena ? 50 + R() * 60 : 35 + R() * 45, wid = 90 + R() * 70;
       o.position.set(Math.cos(a) * r, hgt / 2 - 3, Math.sin(a) * r); o.scale.set(wid, hgt, wid); o.rotation.set(0, R() * 6, 0);
       o.updateMatrix(); near.setMatrixAt(i, o.matrix);
     }
@@ -1272,6 +1302,68 @@ BR.World = class World {
       m.position.set(c.x, 0, c.z); m.rotation.y = (c.axis === 'x' ? 0 : Math.PI / 2) + (c.flip ? Math.PI : 0);
       m.matrixAutoUpdate = false; m.updateMatrix();
       scene.add(m);
+    }
+
+    // ---- Natural rock: ridges / rocks / ledges are hidden collision boxes drawn as jittered,
+    // moss-topped boulders; plateaus get rocky skirts so nothing reads as a box.
+    const rockGeo = (seed) => {
+      const g = (seed % 2 ? new THREE.IcosahedronGeometry(1, 0) : new THREE.DodecahedronGeometry(1, 0)).toNonIndexed(), p = g.attributes.position, rr = BR.util.rng(seed), jit = {};
+      for (let i = 0; i < p.count; i++) {
+        const k0 = p.getX(i).toFixed(3) + p.getY(i).toFixed(3) + p.getZ(i).toFixed(3);
+        const f = jit[k0] || (jit[k0] = 0.72 + rr() * 0.5);
+        p.setXYZ(i, p.getX(i) * f, p.getY(i) * f, p.getZ(i) * f);
+      }
+      g.computeBoundingBox(); const bb = g.boundingBox, sz = new THREE.Vector3(); bb.getSize(sz); const ct = new THREE.Vector3(); bb.getCenter(ct);
+      g.translate(-ct.x, -ct.y, -ct.z); g.scale(1 / sz.x, 1 / sz.y, 1 / sz.z);                    // unit cube [-0.5, 0.5]
+      g.computeVertexNormals();
+      const n = g.attributes.normal, cl = new Float32Array(p.count * 3), moss = new THREE.Color(0x6f9a4a), stone = new THREE.Color(1, 1, 1), cc = new THREE.Color();
+      for (let i = 0; i < p.count; i++) { cc.copy(stone).lerp(moss, BR.util.clamp((n.getY(i) - 0.55) * 2.2, 0, 0.85)); cl[i * 3] = cc.r; cl[i * 3 + 1] = cc.g; cl[i * 3 + 2] = cc.b; }
+      g.setAttribute('color', new THREE.BufferAttribute(cl, 3));
+      return g;
+    };
+    const chunks = [];      // {x, y, z, sx, sy, sz, ry, tone}
+    const RR = BR.util.rng(this.seed + 77);
+    for (const b of this.props.rockFill || []) {
+      const w = b.x1 - b.x0, h = b.y1 - b.y0, d = b.z1 - b.z0, cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
+      const along = w >= d, L = Math.max(w, d), T = Math.min(w, d);
+      const tone = b.color === PAL.cliff ? 0.62 : 0.85;
+      if (L / T < 1.8) { chunks.push({ x: cx, y: b.y0 + h / 2, z: cz, sx: w * 1.08, sy: h * 1.04, sz: d * 1.08, ry: RR() * 0.4, tone: tone + RR() * 0.1 }); continue; }
+      const step = Math.max(1.8, T * 0.55), n = Math.ceil(L / step);
+      for (let i = 0; i < n; i++) {
+        const u = (i + 0.5) / n - 0.5, hh = h * (0.86 + RR() * 0.26), len = step * (1.7 + RR() * 0.6), th = T * (1.05 + RR() * 0.25);
+        const px = along ? cx + u * L : cx + (RR() - 0.5) * T * 0.15, pz = along ? cz + (RR() - 0.5) * T * 0.15 : cz + u * L;
+        chunks.push({ x: px, y: b.y0 + hh / 2, z: pz, sx: along ? len : th, sy: hh, sz: along ? th : len, ry: (RR() - 0.5) * 0.9, rx: (RR() - 0.5) * 0.25, tone: tone + RR() * 0.14 });
+        if (i % 2 === 0) {                              // base boulder on a random side
+          const side = RR() < 0.5 ? -1 : 1, bs = T * (0.45 + RR() * 0.3), bh = h * (0.25 + RR() * 0.25);
+          chunks.push({ x: px + (along ? 0 : side * T * 0.62), y: b.y0 + bh / 2, z: pz + (along ? side * T * 0.62 : 0), sx: bs * 1.3, sy: bh, sz: bs, ry: RR() * 6, rx: (RR() - 0.5) * 0.4, tone: tone + RR() * 0.15 });
+        }
+        if (h > 4 && RR() < 0.35) {                    // crag poking up from the top
+          const cs = T * (0.35 + RR() * 0.25), ch = h * (0.18 + RR() * 0.15);
+          chunks.push({ x: px, y: b.y0 + hh - ch * 0.2, z: pz, sx: cs, sy: ch * 1.6, sz: cs, ry: RR() * 6, rx: (RR() - 0.5) * 0.5, tone: tone + 0.05 });
+        }
+      }
+    }
+    for (const b of this.props.rockSkirt || []) {                                  // skirts round plateaus
+      const w = b.x1 - b.x0, h = b.y1 - b.y0, d = b.z1 - b.z0;
+      for (const [ax, az, len] of [[0, -1, w], [0, 1, w], [-1, 0, d], [1, 0, d]]) {
+        const n = Math.ceil(len / 4.5);
+        for (let i = 0; i < n; i++) {
+          const u = (i + 0.5) / n - 0.5, hh = h * (0.7 + RR() * 0.35), sz2 = 3.4 + RR() * 2;
+          const px = ax ? (ax < 0 ? b.x0 : b.x1) + ax * 0.6 : b.x0 + w / 2 + u * w, pz = az ? (az < 0 ? b.z0 : b.z1) + az * 0.6 : b.z0 + d / 2 + u * d;
+          chunks.push({ x: px, y: hh / 2, z: pz, sx: ax ? 2.6 : sz2, sy: hh, sz: az ? 2.6 : sz2, ry: RR() * 6, tone: 0.6 + RR() * 0.15 });
+        }
+      }
+    }
+    if (chunks.length) {
+      const geos = [rockGeo(11), rockGeo(29)], mats = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+      const half = Math.ceil(chunks.length / 2), meshes = geos.map((gg, i) => new THREE.InstancedMesh(gg, mats, i ? chunks.length - half : half));
+      const rcol = new THREE.Color();
+      chunks.forEach((q, i) => {
+        const m = meshes[i < half ? 0 : 1], j = i < half ? i : i - half;
+        o.position.set(q.x, q.y, q.z); o.rotation.set(q.rx || 0, q.ry, (q.rx || 0) * 0.7); o.scale.set(q.sx, q.sy, q.sz); o.updateMatrix();
+        m.setMatrixAt(j, o.matrix); m.setColorAt(j, rcol.setRGB(0.55 * q.tone + 0.05, 0.56 * q.tone + 0.05, 0.53 * q.tone + 0.04).multiplyScalar(1.15));
+      });
+      meshes.forEach(m => { m.instanceColor.needsUpdate = true; scene.add(m); });
     }
 
     // Props from the dressing pass (instanced: one draw call each)

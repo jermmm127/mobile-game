@@ -172,6 +172,42 @@ BR.Effects = class Effects {
       }
       return;
     }
+    if (t.style === 'comet' || t.style === 'phoenix') {
+      // blazing head that races down the shot + a tapering tail of embers (phoenix adds flame wings)
+      const wings = t.style === 'phoenix';
+      for (let i = 0; i < n; i++) {
+        const b = fx[i];
+        if (i === 0) {
+          P.copy(t.from).addScaledVector(t.dir, Math.max(0, head - 0.25));
+          b.position.copy(P); b.quaternion.copy(t.streak.quaternion);
+          const pulse = 0.22 + 0.06 * Math.sin(t.t * 60);
+          b.scale.set(pulse, pulse, 0.5); b.material.opacity = t.t <= t.dur ? 1 : 0; continue;
+        }
+        const u = i / n, back = u * Math.min(head, wings ? 4 : 6);
+        P.copy(t.from).addScaledVector(t.dir, Math.max(0, head - back));
+        if (wings && i % 2) { const w = Math.sin(t.t * 30 + i) * 0.12 + 0.18; P.addScaledVector(t.p1, (i % 4 === 1 ? 1 : -1) * w * (1 - u) * 1.6); }
+        else P.addScaledVector(t.p1, t.jit[i * 3] * 0.06 * u).addScaledVector(t.p2, t.jit[i * 3 + 1] * 0.06 * u);
+        b.position.copy(P); b.quaternion.copy(t.streak.quaternion);
+        const sz = (wings ? 0.14 : 0.12) * (1 - u * 0.85);
+        b.scale.set(sz, sz, sz * 1.6);
+        b.material.opacity = alive ? Math.max(0, fade) * (1 - u) : 0;
+      }
+      return;
+    }
+    if (t.style === 'rings') {
+      // flat energy plates strung along the shot, spinning and expanding as they fade
+      const len = Math.max(0.01, Math.min(head, 12)), s0 = head - len;
+      for (let i = 0; i < n; i++) {
+        const u = i / (n - 1), s = s0 + u * len, b = fx[i];
+        P.copy(t.from).addScaledVector(t.dir, s);
+        b.position.copy(P); b.quaternion.copy(t.streak.quaternion);
+        b.rotateZ(t.t * 8 + i);
+        const age = 1 - u, sz = 0.12 + age * 0.22 * Math.min(1, t.t * 6);
+        b.scale.set(sz, sz, 0.008);
+        b.material.opacity = alive ? Math.max(0, fade) * (0.25 + 0.6 * u) : 0;
+      }
+      return;
+    }
     if (t.style === 'lightning') {
       // jagged bolt along the shot that re-forks every frame
       const len = Math.max(0.01, head), seg = len / n;

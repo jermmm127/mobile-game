@@ -107,6 +107,18 @@
         return { hand, fore };
       };
       this.arms = { R: mk(false), L: mk(true) };
+      // signature reload styles for the equipped blueprints + a small VFX pool
+      this.sigReload = {};
+      for (const id in BR.CONFIG.weapons) {
+        const bp = (eq.blueprints || {})[id], B = bp && BR.Models.BLUEPRINTS[id] && BR.Models.BLUEPRINTS[id][bp];
+        if (B && B.reload) this.sigReload[id] = B.reload;
+      }
+      if (!this.sparks) {
+        this.sparks = []; this.rings = []; this.spi = 0; this.rgi = 0;
+        const bg = new THREE.BoxGeometry(1, 1, 1), rg = new THREE.RingGeometry(0.8, 1, 32);
+        for (let i = 0; i < 40; i++) { const m = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); m.visible = false; this.scene.add(m); this.sparks.push({ m, v: new THREE.Vector3(), life: 0, max: 1 }); }
+        for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })); m.visible = false; this.scene.add(m); this.rings.push({ m, life: 0, max: 1 }); }
+      }
       // Backhand fists for the karambit idle (mirrored gloves so the thumbs sit toward the centre)
       if (this.knifeHands) this.scene.remove(this.knifeHands.R, this.knifeHands.L);
       const kh = left => { const h = BR.Models.hand(eq.gloves || 'default', left); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; };
@@ -307,6 +319,29 @@
       } else this.lastBoltK = 0;
       if (ud.bolt) { ud.bolt.rotation.z = boltLift * 1.05; ud.bolt.position.z = ud.boltZ0 + boltBack * 0.075; }
 
+      // Signature reloads (Legendary / Mythic / Exotic blueprints): a flashy move + glow VFX
+      this.reloadEl = reloading ? (this.reloadEl || 0) + dt : 0;
+      const sig = !def.melee && this.sigReload[w.id];
+      if (reloading && sig) {
+        const kk = def.shellReload ? Math.min(1, this.reloadEl / 0.9) : 1 - w.reloadT / def.reload;
+        const st = sig.style, E = smooth;
+        if (st === 'twirl') { const a = E((kk - 0.06) / 0.34); orz += a * Math.PI * 2; oy += Math.sin(a * Math.PI) * 0.05; oz -= Math.sin(a * Math.PI) * 0.04; }
+        else if (st === 'flip') { const a = E((kk - 0.5) / 0.3); orx += a * Math.PI * 2; oy += Math.sin(a * Math.PI) * 0.09; }
+        else if (st === 'toss') { const a = Math.min(1, Math.max(0, (kk - 0.12) / 0.36)); oy += Math.sin(a * Math.PI) * 0.16; orx -= E(a) * Math.PI * 2; ory += Math.sin(a * Math.PI) * 0.4; }
+        else if (st === 'spin') { const a = E((kk - 0.58) / 0.3); ory += a * Math.PI * 2; ox -= Math.sin(a * Math.PI) * 0.05; }
+        else if (st === 'glitch' && kk > 0.08 && kk < 0.9) {
+          const f = Math.floor(performance.now() / 55), r1 = Math.sin(f * 12.9898) * 43758.5453, u = r1 - Math.floor(r1);
+          if (u > 0.55) { ox += (u - 0.75) * 0.08; oy += (u - 0.7) * 0.05; orz += (u - 0.7) * 0.6; }
+          model.visible = !(u > 0.93);
+        }
+        const passedR = x => this.lastSigK < x && kk >= x;
+        const at = model.localToWorld(this._v.set(0, 0.0, -0.1));
+        if (passedR(0.2)) { this.vfx(at, sig.fx, 14, 1.4); this.ringFx(at, sig.fx); BR.Audio.swish(false); }
+        if (passedR(0.68)) { this.vfx(at, sig.fx, 18, 1.8); this.ringFx(at, sig.fx); }
+        if (passedR(0.97)) this.vfx(at, 0xffffff, 10, 1.2);
+        this.lastSigK = kk;
+      } else { this.lastSigK = 0; model.visible = true; }
+
       // Reloads
       const port = ud.port, fore = ud.fore;
       if (reloading && !def.melee) {
@@ -364,7 +399,19 @@
       g.scale.setScalar(s);
 
       // Karambit ring twirl
-      if (holder.userData.spin) { holder.userData.spin.obj.quaternion.setFromAxisAngle(holder.userData.spin.axis, -spinAng); holder.userData.spin.ang = spinAng; holder.userData.spin.ringW = ringW; }
+      if (holder.userData.spin) {
+        // CS:GO-style flip: during twirls the knife turns edge-on so its ring lines up with the
+        // index finger (pointing across the screen), then flips forward over the top of the finger.
+        const sp = holder.userData.spin;
+        const finger = this._fx || (this._fx = new THREE.Vector3());
+        this._fq = (this._fq || new THREE.Quaternion()).copy(g.quaternion).invert();
+        finger.set(-0.92, 0.08, -0.38).normalize().applyQuaternion(this._fq);          // finger axis in the knife's parent frame
+        const align = (this._qa || (this._qa = new THREE.Quaternion())).setFromUnitVectors(sp.axis, finger);
+        const alignW = (this._qb || (this._qb = new THREE.Quaternion())).identity().slerp(align, ringW);
+        if (ringW > 0.001) sp.obj.quaternion.setFromAxisAngle(finger, spinAng).multiply(alignW);   // flip over the finger
+        else sp.obj.quaternion.setFromAxisAngle(sp.axis, -spinAng);
+        sp.ang = spinAng; sp.ringW = ringW;
+      }
       // Mag + muzzle flash
       if (ud.mag) { ud.mag.position.copy(magOff || this._v.set(0, 0, 0)); ud.mag.visible = magVis; }
       ud.flash.visible = this.flashT > 0 && A < 0.5;
@@ -381,6 +428,7 @@
       }
 
       this.placeArms(holder, model, ud, leftTarget, leftHidden, rightTarget);
+      this.updateVfx(dt);
       BR.Models.animate(model, performance.now() / 1000);     // Mythic blueprints: rings, orbiters, hue cycling
     }
 
@@ -567,6 +615,32 @@
         return { kind: 'grapple', w: this.grapW, p, q };
       }
       return null;
+    }
+
+    // ---- viewmodel VFX (signature reloads): additive sparks + an expanding glow ring
+    vfx(at, color, n, speed) {
+      for (let i = 0; i < n; i++) {
+        const s = this.sparks[this.spi++ % this.sparks.length];
+        s.m.position.copy(at); s.v.set(Math.random() - 0.5, Math.random() * 0.8 - 0.1, Math.random() - 0.5).normalize().multiplyScalar(speed * (0.3 + Math.random() * 0.7));
+        s.m.material.color.setHex(Math.random() < 0.25 ? 0xffffff : color); s.life = s.max = 0.35 + Math.random() * 0.3; s.m.visible = true;
+      }
+    }
+    ringFx(at, color) {
+      const r = this.rings[this.rgi++ % this.rings.length];
+      r.m.position.copy(at); r.m.lookAt(0, 0, 0); r.m.material.color.setHex(color); r.life = r.max = 0.4; r.m.visible = true;
+    }
+    updateVfx(dt) {
+      for (const s of this.sparks) {
+        if (s.life <= 0) continue;
+        s.life -= dt; if (s.life <= 0) { s.m.visible = false; continue; }
+        s.v.y -= 2.5 * dt; s.m.position.addScaledVector(s.v, dt);
+        const k = s.life / s.max; s.m.scale.setScalar(0.006 + 0.008 * k); s.m.material.opacity = k;
+      }
+      for (const r of this.rings) {
+        if (r.life <= 0) continue;
+        r.life -= dt; if (r.life <= 0) { r.m.visible = false; continue; }
+        const k = 1 - r.life / r.max; r.m.scale.setScalar(0.02 + k * 0.16); r.m.material.opacity = (1 - k) * 0.9;
+      }
     }
 
     onGrapple() { this.grapT = 0.3; }

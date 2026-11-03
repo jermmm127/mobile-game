@@ -163,7 +163,9 @@ BR.HUD = class HUD {
         </button>
       </div>
       <div class="dock">
-        <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span><em>NEW</em></button>
+        <button id="btn-cases" class="dk cases"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M8 8l1-3h6l1 3"/></svg><span>CASES</span><em>NEW</em></button>
+        <button id="btn-shop" class="dk shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>SHOP</span></button>
+        <button id="btn-ranks" class="dk ranks"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg><span>RANKED</span></button>
         <button id="btn-settings" class="dk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>SETTINGS</span></button>
         <button id="btn-hud" class="dk"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="8" cy="12" r="1.6"/><circle cx="16" cy="12" r="1.6"/></svg><span>HUD</span></button>
         <button id="btn-fs" class="dk"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>FULL</span></button>
@@ -232,7 +234,7 @@ BR.HUD = class HUD {
       <div class="coins-pill"><i class="coin"></i><span id="shop-coins" class="num">0</span></div>
     </div>
     <div id="shop-tabs" class="seg">
-      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button>
+      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button><button data-cat="feeds">KILL FEED</button>
     </div>
     <div id="shop-weps" class="chips"></div>
     <div id="shop-grid"></div>
@@ -331,6 +333,33 @@ BR.HUD = class HUD {
     <div class="q-bar"><i id="q-fill"></i></div>
     <div class="q-tip" id="q-tip">One life. If you go down, you're out.</div>
     <button id="q-cancel" class="mbtn">CANCEL</button>
+  </div>
+</div>
+
+<div id="cases" class="overlay hidden">
+  <div class="panel metal wide cases-panel">
+    <button id="cs-x" class="xbtn" aria-label="Close">✕</button>
+    <div class="cs-head"><div class="ptitle">RELEASE CASE</div><div class="coins-pill"><i class="coin"></i><span id="cs-coins" class="num">0</span></div></div>
+    <div class="cs-stage">
+      <div class="cs-case" id="cs-case"><div class="cs-lid"></div><div class="cs-body"><b>RELEASE</b><span>CASE · SEASON 1</span></div><i class="cs-shine"></i></div>
+      <div class="cs-reel hidden" id="cs-reel"><div class="cs-strip" id="cs-strip"></div><i class="cs-mark"></i></div>
+    </div>
+    <div class="cs-result hidden" id="cs-result"></div>
+    <div class="cs-actions"><button id="cs-open" class="mbtn hot">OPEN · <i class="coin"></i>600</button><button id="cs-equip" class="mbtn hidden">EQUIP</button></div>
+    <div class="sp-sec">CONTENTS · EXCLUSIVE TO THIS CASE</div>
+    <div class="cs-odds" id="cs-odds"></div>
+    <div class="cs-grid" id="cs-grid"></div>
+  </div>
+</div>
+
+<div id="ranks" class="overlay hidden">
+  <div class="panel metal wide ranks-panel">
+    <button id="rk-x" class="xbtn" aria-label="Close">✕</button>
+    <div class="ptitle">RANKED</div>
+    <div id="rk-me" class="rk-me"></div>
+    <div class="sp-sec">LEADERBOARD · SEASON 1</div>
+    <div id="rk-board" class="rk-board"></div>
+    <div class="dm-note">Earn RP in every match: placement + kills in Battle Royale, wins in 1v1 Duels. Reaching Gold, Diamond, Master and Predator unlocks exclusive kill feed banners.</div>
   </div>
 </div>
 
@@ -528,9 +557,9 @@ BR.HUD = class HUD {
     this.set('fps', this.el.fps, on ? Math.round(v) + ' fps' : '');
   }
 
-  killfeed(html) {
+  killfeed(html, cls) {
     const d = document.createElement('div');
-    d.className = 'kf';
+    d.className = 'kf' + (cls ? ' ' + cls : '');
     d.innerHTML = html;
     this.el.killfeed.prepend(d);
     while (this.el.killfeed.children.length > 5) this.el.killfeed.lastChild.remove();
@@ -746,6 +775,9 @@ BR.HUD = class HUD {
       ec.innerHTML = r.coins.parts.map(p => `<div><span>${p[0]}</span><b>+${p[1]}</b></div>`).join('') +
         `<div class="tot"><span>Coins earned</span><b><i class="coin"></i>+${r.coins.total}</b></div>`;
       if (r.coins.total > 0) BR.Audio.coin();
+      if (r.coins.rp !== undefined) ec.innerHTML += `<div class="rprow"><span>${BR.Ranks.badge(BR.Profile.data.rp || 0)} Ranked</span><b class="${r.coins.rp < 0 ? 'neg' : ''}">${r.coins.rp >= 0 ? '+' : ''}${r.coins.rp} RP</b></div>`
+        + (r.coins.rankUp ? `<div class="rprow up"><span>RANK UP!</span><b>${r.coins.rankUp}</b></div>` : '')
+        + (r.coins.unlocked && r.coins.unlocked.length ? `<div class="rprow up"><span>Unlocked</span><b>${r.coins.unlocked.join(', ')}</b></div>` : '');
     } else ec.innerHTML = '<div class="tot"><span>PRACTICE · NO COINS</span><b></b></div>';
     this.show('end', true);
   }

@@ -72,12 +72,12 @@ BR.Loot = class Loot {
     if (this.labels[wid]) return this.labels[wid];
     const def = BR.CONFIG.weapons[wid], col = '#' + TIER_COLORS[def.tier].toString(16).padStart(6, '0');
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const c = cv.getContext('2d');
-    c.font = '700 30px "Saira Semi Condensed", "Arial Narrow", sans-serif'; const text = def.name.toUpperCase(), tw = Math.min(232, c.measureText(text).width + 34);
-    const x0 = (256 - tw) / 2; c.fillStyle = 'rgba(10,12,18,0.72)';
-    c.beginPath(); if (c.roundRect) c.roundRect(x0, 8, tw, 48, 24); else c.rect(x0, 8, tw, 48); c.fill();
-    c.fillStyle = col; c.fillRect(x0 + 14, 26, 6, 12);
-    c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, 128 + 6, 33);
-    c.strokeStyle = col; c.globalAlpha = 0.6; c.lineWidth = 2; c.beginPath(); if (c.roundRect) c.roundRect(x0 + 1, 9, tw - 2, 46, 23); else c.rect(x0 + 1, 9, tw - 2, 46); c.stroke();
+    // rarity-coloured name, no background: dark outline + soft glow so it reads anywhere
+    c.font = '800 34px "Saira Semi Condensed", "Arial Narrow", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const text = def.name.toUpperCase();
+    c.lineJoin = 'round'; c.lineWidth = 7; c.strokeStyle = 'rgba(6,8,12,0.85)'; c.strokeText(text, 128, 33);
+    c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = col; c.fillText(text, 128, 33);
+    c.shadowBlur = 0; c.fillText(text, 128, 33);
     const tex = new THREE.CanvasTexture(cv);
     return (this.labels[wid] = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: true }));
   }

@@ -3,6 +3,104 @@
 // PROFILE + SHOP — coins earned in matches, spent on cosmetics. Saved per
 // device in localStorage. The shop shows a live 3D preview (Game.renderShop).
 // =============================================================================
+// ---- Ranked: RP from every match, 7 tiers with badges. Leaderboard = you + local accounts +
+// a stable field of rival players.
+BR.Ranks = {
+  tiers: [
+    { id: 'bronze', name: 'Bronze', rp: 0, c1: '#c98a55', c2: '#7a4a24', icon: '▲' },
+    { id: 'silver', name: 'Silver', rp: 400, c1: '#e3e8ee', c2: '#8a96a3', icon: '▲' },
+    { id: 'gold', name: 'Gold', rp: 1200, c1: '#ffe07a', c2: '#c98a00', icon: '◆' },
+    { id: 'platinum', name: 'Platinum', rp: 2600, c1: '#9ff3e6', c2: '#2a9a8a', icon: '◆' },
+    { id: 'diamond', name: 'Diamond', rp: 4500, c1: '#a9d4ff', c2: '#3a6bff', icon: '✦' },
+    { id: 'master', name: 'Master', rp: 7000, c1: '#e6a8ff', c2: '#7a2bd8', icon: '✦' },
+    { id: 'predator', name: 'Predator', rp: 10000, c1: '#ff8a8a', c2: '#c4001a', icon: '♛' },
+  ],
+  of(rp) { let t = 0; this.tiers.forEach((x, i) => { if (rp >= x.rp) t = i; }); return t; },
+  badge(rp, big) {
+    const T = this.tiers[this.of(rp)];
+    return `<i class="rk rk-${T.id}${big ? ' big' : ''}" style="--r1:${T.c1};--r2:${T.c2}" title="${T.name}"><b>${T.icon}</b></i>`;
+  },
+  // RP for a finished match (battle royale placement + kills; duels: win/loss)
+  forMatch(r) {
+    if (r.duel) return r.win ? 45 : -12;
+    const place = r.place || 99;
+    const p = r.win ? 140 : place <= 3 ? 85 : place <= 5 ? 60 : place <= 10 ? 32 : place <= 20 ? 10 : -8;
+    return p + Math.min(r.kills || 0, 10) * 14;
+  },
+  // Rival field: stable per device, spread from Bronze to Predator
+  rivals() {
+    if (this._rivals) return this._rivals;
+    const R = BR.util.rng(4242), names = BR.CONFIG.botNames, tags = ['', 'TTV', 'xX', 'GG', 'YT', '_', 'Pro', 'OG'];
+    const out = [];
+    for (let i = 0; i < 60; i++) {
+      const n = names[Math.floor(R() * names.length)], t = tags[Math.floor(R() * tags.length)];
+      const name = (t === 'xX' ? 'xX' + n + 'Xx' : t ? n + (t === '_' ? '_' + Math.floor(R() * 99) : t) : n + Math.floor(R() * 999)).slice(0, 16);
+      out.push({ name, rp: Math.round(14000 * Math.pow(R(), 2.2)) });
+    }
+    return (this._rivals = out);
+  },
+  board() {
+    const rows = this.rivals().map(r => Object.assign({}, r));
+    const me = BR.Accounts ? BR.Accounts.displayName() : 'You';
+    try {   // other accounts on this device
+      for (const u of Object.keys((BR.Accounts && BR.Accounts.db.users) || {})) {
+        if (u === me) continue;
+        const d = BR.util.load('velocity-royale.profile.u:' + u.toLowerCase(), null);
+        if (d) rows.push({ name: u, rp: d.rp || 0, local: true });
+      }
+    } catch (e) { /* storage may be blocked */ }
+    rows.push({ name: me, rp: BR.Profile.data.rp || 0, me: true });
+    rows.sort((a, b) => b.rp - a.rp);
+    return rows;
+  },
+};
+
+// Kill feed banners: how YOUR kills look in the kill feed. Some are rank rewards (unlock by
+// reaching that rank, can't be bought); some only come from cases.
+BR.FEEDS = {
+  none:     { name: 'Standard', price: 0 },
+  neon:     { name: 'Neon Edge', price: 300, rarity: 'Epic' },
+  flame:    { name: 'Hellfire', price: 450, rarity: 'Epic' },
+  toxic:    { name: 'Toxic', price: 450, rarity: 'Epic' },
+  royal:    { name: 'Royal Crown', price: 700, rarity: 'Legendary' },
+  galaxy:   { name: 'Galaxy', price: 800, rarity: 'Legendary' },
+  glitch:   { name: 'Glitch', price: 900, rarity: 'Legendary' },
+  rainbow:  { name: 'Prism Wave', price: 1200, rarity: 'Mythic' },
+  void:     { name: 'Void Rift', caseOnly: true, rarity: 'Epic' },
+  solar:    { name: 'Solar Burst', caseOnly: true, rarity: 'Legendary' },
+  exotic:   { name: 'Supreme', caseOnly: true, rarity: 'Exotic' },
+  rk_gold:     { name: 'Gold Laurel', rank: 2, rarity: 'Epic' },
+  rk_diamond:  { name: 'Diamond Frost', rank: 4, rarity: 'Legendary' },
+  rk_master:   { name: 'Master Flame', rank: 5, rarity: 'Mythic' },
+  rk_predator: { name: 'Apex Predator', rank: 6, rarity: 'Mythic' },
+};
+
+// ---- Cases: exclusive items you can only get by opening one. Rarer = flashier.
+BR.CASES = {
+  release: { name: 'Release Case', price: 600, odds: { Rare: 52, Epic: 28, Legendary: 13, Mythic: 6, Exotic: 1 }, dupRefund: 0.35 },
+};
+BR.CaseItems = {
+  // every caseOnly item across the cosmetic tables: [{cat, id, item}]
+  all() {
+    if (this._all) return this._all;
+    const M = BR.Models, out = [];
+    const add = (cat, table, pre) => { for (const id in table) if (table[id].caseOnly) out.push({ cat, id: pre ? pre + id : id, item: table[id] }); };
+    for (const w in M.BLUEPRINTS) add('blueprints', M.BLUEPRINTS[w], w + ':');
+    add('skins', M.SKINS); add('gloves', M.GLOVES); add('tracers', M.TRACERS); add('feeds', BR.FEEDS);
+    return (this._all = out);
+  },
+  roll(caseId, R) {
+    R = R || Math.random;
+    const C = BR.CASES[caseId], pool = this.all();
+    const tiers = Object.keys(C.odds).filter(t => pool.some(p => p.item.rarity === t));
+    const total = tiers.reduce((s, t) => s + C.odds[t], 0);
+    let x = R() * total, tier = tiers[0];
+    for (const t of tiers) { if (x < C.odds[t]) { tier = t; break; } x -= C.odds[t]; }
+    const list = pool.filter(p => p.item.rarity === tier);
+    return list[Math.floor(R() * list.length)];
+  },
+};
+
 BR.Profile = {
   KEY: 'velocity-royale.profile',
   data: null,
@@ -15,23 +113,38 @@ BR.Profile = {
     d = d || {};
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
-      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default' }, d.equip || {}),
+      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'] }, d.owned || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none' }, d.equip || {}),
+      rp: typeof d.rp === 'number' ? d.rp : 0,
+      cases: Object.assign({ opened: 0 }, d.cases || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0 }, d.stats || {}),
       dev: !!d.dev,
     };
     this.data.equip.blueprints = Object.assign({}, (d.equip && d.equip.blueprints) || {});
+    // one tracer per gun ('signature' = the blueprint's own tracer). Old saves: their single tracer goes on every gun.
+    const legacyTr = d.equip && d.equip.tracers && d.equip.tracers !== 'default' ? d.equip.tracers : null;
+    this.data.equip.tracerByGun = Object.assign({}, (d.equip && d.equip.tracerByGun) || {});
+    if (legacyTr && !(d.equip && d.equip.tracerByGun)) for (const [w] of SHOP_WEAPONS) this.data.equip.tracerByGun[w] = legacyTr;
+    if (!this.data.owned.tracers.includes('signature')) this.data.owned.tracers.push('signature');
     for (const k of ['gloves', 'blueprints']) if (!this.data.owned[k]) this.data.owned[k] = k === 'gloves' ? ['default'] : [];
+    if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
+    this.unlockRankRewards();
     // Dev accounts: infinite coins and everything unlocked (including items added later)
     if (BR.Accounts && BR.Accounts.isSeededDev()) this.data.dev = true;
     if (this.data.dev) this.grantAll();
     return this.data;
   },
+  // Rank rewards unlock themselves when you reach the rank
+  unlockRankRewards() {
+    const t = BR.Ranks.of(this.data.rp || 0), o = this.data.owned.feeds, got = [];
+    for (const id in BR.FEEDS) if (BR.FEEDS[id].rank !== undefined && t >= BR.FEEDS[id].rank && !o.includes(id)) { o.push(id); got.push(BR.FEEDS[id].name); }
+    return got;
+  },
   grantAll() {
     const M = BR.Models, o = this.data.owned;
     const add = (cat, ids) => { for (const id of ids) if (!o[cat].includes(id)) o[cat].push(id); };
     add('skins', Object.keys(M.SKINS)); add('tracers', Object.keys(M.TRACERS));
-    add('charms', Object.keys(M.CHARMS)); add('gloves', Object.keys(M.GLOVES));
+    add('charms', Object.keys(M.CHARMS)); add('gloves', Object.keys(M.GLOVES)); add('feeds', Object.keys(BR.FEEDS));
     for (const w in M.BLUEPRINTS) add('blueprints', Object.keys(M.BLUEPRINTS[w]).map(b => w + ':' + b));
   },
   save() { BR.util.save(this.KEY, this.data); },
@@ -40,27 +153,50 @@ BR.Profile = {
     if (cat === 'blueprints' && id.endsWith(':default')) return true;
     return this.data.owned[cat].includes(id);
   },
-  isEquipped(cat, id) {
+  isEquipped(cat, id, weapon) {
     if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b; }
+    if (cat === 'tracers') return (this.data.equip.tracerByGun[weapon || 'rifle'] || 'signature') === id;
     return this.data.equip[cat] === id;
   },
   infinite() { return !!this.data.dev; },
   coinsLabel() { return this.infinite() ? '∞' : String(this.data.coins); },
   canAfford(price) { return this.infinite() || this.data.coins >= price; },
-  buy(cat, id) {
+  buy(cat, id, weapon) {
     const item = BR.Shop.item(cat, id);
     if (!item || this.owns(cat, id) || !this.canAfford(item.price)) return false;
     if (!this.infinite()) this.data.coins -= item.price;
     this.data.owned[cat].push(id);
-    this.setEquip(cat, id);
+    this.setEquip(cat, id, weapon);
     this.save();
     return true;
   },
-  equip(cat, id) { if (!this.owns(cat, id)) return false; this.setEquip(cat, id); this.save(); return true; },
-  setEquip(cat, id) {
+  equip(cat, id, weapon) { if (!this.owns(cat, id)) return false; this.setEquip(cat, id, weapon); this.save(); return true; },
+  setEquip(cat, id, weapon) {
     if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; }
+    else if (cat === 'tracers') this.data.equip.tracerByGun[weapon || 'rifle'] = id;
     else this.data.equip[cat] = id;
   },
+  // Open a case: pay, roll, add (or refund a duplicate). Returns the result or null if broke.
+  openCase(caseId) {
+    const C = BR.CASES[caseId];
+    if (!this.canAfford(C.price)) return null;
+    if (!this.infinite()) this.data.coins -= C.price;
+    const r = BR.CaseItems.roll(caseId);
+    const dup = this.owns(r.cat, r.id);
+    let refund = 0;
+    if (dup) { refund = Math.round(C.price * C.dupRefund); if (!this.infinite()) this.data.coins += refund; }
+    else this.data.owned[r.cat].push(r.id);
+    this.data.cases.opened = (this.data.cases.opened || 0) + 1;
+    this.save();
+    return Object.assign({ dup, refund }, r);
+  },
+  // Equip a case drop where it makes sense (tracers go on every gun)
+  equipDrop(r) {
+    if (r.cat === 'tracers') { for (const [w] of SHOP_WEAPONS) this.data.equip.tracerByGun[w] = r.id; }
+    else this.setEquip(r.cat, r.id);
+    this.save();
+  },
+
   // Coins for a finished match. Returns the breakdown so the end screen can show it.
   award(r) {
     const C = BR.CONFIG.coins;
@@ -73,15 +209,18 @@ BR.Profile = {
     const total = parts.reduce((s, p) => s + p[1], 0);
     this.data.coins += total;
     this.data.stats.matches++;
+    const rp = BR.Ranks.forMatch(r), before = BR.Ranks.of(this.data.rp || 0);
+    this.data.rp = Math.max(0, (this.data.rp || 0) + rp);
+    const after = BR.Ranks.of(this.data.rp), unlocked = this.unlockRankRewards();
     this.data.stats.kills += r.kills;
     if (r.win) this.data.stats.wins++;
     this.save();
-    return { total, parts };
+    return { total, parts, rp, rankUp: after > before ? BR.Ranks.tiers[after].name : null, unlocked };
   },
 };
 
 const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['pistol', 'Pistol'], ['knife', 'Karambit']];
-const RARITY = { Base: '#8d97a5', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2' };
+const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
 
 BR.Shop = class Shop {
   // Catalog for a category. Blueprints are per weapon; ids look like "rifle:vandal".
@@ -92,11 +231,17 @@ BR.Shop = class Shop {
       for (const b in bps) out[weapon + ':' + b] = bps[b];
       return out;
     }
-    return cat === 'skins' ? M.SKINS : cat === 'tracers' ? M.TRACERS : cat === 'gloves' ? M.GLOVES : M.CHARMS;
+    if (cat === 'feeds') return BR.FEEDS;
+    const all = cat === 'skins' ? M.SKINS : cat === 'tracers' ? M.TRACERS : cat === 'gloves' ? M.GLOVES : M.CHARMS;
+    // case-exclusive items live in the same tables but aren't sold
+    const out = {}; for (const k in all) if (!all[k].caseOnly || BR.Profile.owns(cat, k)) out[k] = all[k];
+    return out;
   }
   static item(cat, id) {
-    if (cat === 'blueprints') { const [w] = id.split(':'); return Shop.catalog(cat, w)[id]; }
-    return Shop.catalog(cat)[id];
+    const M = BR.Models;
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); return M.BLUEPRINTS[w] && M.BLUEPRINTS[w][b]; }
+    if (cat === 'feeds') return BR.FEEDS[id];
+    return (cat === 'skins' ? M.SKINS : cat === 'tracers' ? M.TRACERS : cat === 'gloves' ? M.GLOVES : M.CHARMS)[id];
   }
 
   constructor(game) {
@@ -134,6 +279,7 @@ BR.Shop = class Shop {
   equippedId() {
     const eq = BR.Profile.data.equip;
     if (this.cat === 'blueprints') return this.weapon + ':' + (eq.blueprints[this.weapon] || 'default');
+    if (this.cat === 'tracers') return eq.tracerByGun[this.weapon] || 'signature';
     return eq[this.cat];
   }
 
@@ -155,8 +301,8 @@ BR.Shop = class Shop {
   act() {
     const P = BR.Profile, id = this.sel, cat = this.cat;
     if (!id) return;
-    if (P.owns(cat, id)) { P.equip(cat, id); BR.Audio.pickup(); }
-    else if (P.buy(cat, id)) { BR.Audio.kill(); this.flash('Unlocked!'); }
+    if (P.owns(cat, id)) { P.equip(cat, id, this.weapon); BR.Audio.pickup(); if (cat === 'tracers') this.flash('Equipped on ' + BR.CONFIG.weapons[this.weapon].name); }
+    else if (P.buy(cat, id, this.weapon)) { BR.Audio.kill(); this.flash('Unlocked!'); }
     else { BR.Audio.click(); this.flash('Not enough coins'); }
     this.game.refreshCosmetics();
     this.render();
@@ -174,38 +320,44 @@ BR.Shop = class Shop {
       return `<i class="sw bp" style="--a:${hex(it.body)};--b:${hex(it.accent)};--g:${hex(it.glow)}"></i>`;
     }
     if (cat === 'skins') return `<i class="sw" style="background:${it.swatch}"></i>`;
+    if (cat === 'tracers' && it.signature) {
+      const sig = BR.Models.resolveTracer(this.weapon, Object.assign({}, BR.Profile.data.equip, { tracerByGun: { [this.weapon]: 'signature' } }));
+      it = Object.assign({}, it, { color: sig.color, color2: sig.color2 });
+    }
     if (cat === 'tracers') {
       const rb = 'linear-gradient(90deg,#ff1f3d,#ffcc00,#39ff14,#00e5ff,#b026ff)';
       const c = it.color < 0 ? rb : it.color2 !== undefined ? `linear-gradient(90deg,${hex(it.color)},${hex(it.color2)},${hex(it.color)})` : hex(it.color);
       return `<i class="sw tr" style="background:${c};--c:${it.color < 0 ? '#fff' : hex(it.color)}"></i>`;
     }
     if (cat === 'gloves') {
-      const GS = { hyper: '#ff2fa8', scales: '#1fa37a', bloodmoon: '#a3001a', circuit: '#0b3a2a', molten: '#ff5a00', electric: '#1a3a8a', prism: 'linear-gradient(135deg,#ff3df2,#ffd84a,#1de9ff)', arctic: '#dfe6eb', carbon: '#22252a', tiger: '#e07a1f', neon: '#0c2a30', galaxy: '#3b1a7a' };
+      const GS = { c_jungle: '#2f4a1c', c_holo: 'linear-gradient(90deg,#7af7ff,#c8a2ff,#ff9ef0)', c_nebula: 'radial-gradient(circle,#ff6af0,#7b2cff,#05020f)', c_inferno: 'linear-gradient(0deg,#ffe14d,#ff7a00,#c4001a)', c_aurora: 'linear-gradient(170deg,#020a14,#00ffa6,#9b5cff)', c_gold: 'radial-gradient(circle,#fff3b0,#ffcf40,#b8860b)', hyper: '#ff2fa8', scales: '#1fa37a', bloodmoon: '#a3001a', circuit: '#0b3a2a', molten: '#ff5a00', electric: '#1a3a8a', prism: 'linear-gradient(135deg,#ff3df2,#ffd84a,#1de9ff)', arctic: '#dfe6eb', carbon: '#22252a', tiger: '#e07a1f', neon: '#0c2a30', galaxy: '#3b1a7a' };
       const bg = it.color !== undefined ? hex(it.color) : GS[id] || '#666';
       return `<i class="sw gl" style="--c:${bg};background:${bg};${it.glow ? 'box-shadow:0 0 10px ' + hex(it.glow) : ''}">✋</i>`;
     }
+    if (cat === 'feeds') return `<i class="sw fd"><span class="kf feed-${id}">${BR.Ranks.badge(BR.Profile.data.rp || 0)}<b class="me">You</b><i>✕</i></span></i>`;
     return `<i class="sw ch">${id === 'none' ? '—' : '◆'}</i>`;
   }
 
   render() {
     const P = BR.Profile, cat = this.cat, items = Shop.catalog(cat, this.weapon);
     document.querySelectorAll('#shop-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
-    const showWeps = cat === 'blueprints' || cat === 'skins';
+    const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers';
     this.el.weps.classList.toggle('hidden', !showWeps);
     this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
     this.el.coins.textContent = P.coinsLabel();
     const html = [];
     for (const id in items) {
-      const it = items[id], own = P.owns(cat, id), eq = P.isEquipped(cat, id);
+      const it = items[id], own = P.owns(cat, id), eq = P.isEquipped(cat, id, this.weapon);
       const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
-      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : '<i class="coin"></i>' + it.price}</span></button>`);
+      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : '<i class="coin"></i>' + it.price}</span></button>`);
     }
     this.el.grid.innerHTML = html.join('');
     const it = items[this.sel];
     this.el.name.textContent = it ? it.name : '';
-    const own = it && P.owns(cat, this.sel), eq = it && P.isEquipped(cat, this.sel);
-    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : 'Buy · ' + it.price;
-    this.el.action.disabled = !it || eq;
+    const own = it && P.owns(cat, this.sel), eq = it && P.isEquipped(cat, this.sel, this.weapon);
+    const locked = it && !own && (it.rank !== undefined || it.caseOnly);
+    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : 'Buy · ' + it.price;
+    this.el.action.disabled = !it || eq || locked;
     this.el.action.classList.toggle('poor', !!it && !own && !P.canAfford(it.price));
     // Preview: the equipped look, with the selected item swapped in
     const eqd = P.data.equip;
@@ -215,7 +367,7 @@ BR.Shop = class Shop {
       bp: cat === 'blueprints' ? this.sel.split(':')[1] : (eqd.blueprints[cat === 'gloves' ? 'pistol' : wpn] || 'default'),
       skin: cat === 'skins' ? this.sel : eqd.skins,
       charm: cat === 'charms' ? this.sel : eqd.charms,
-      tracer: cat === 'tracers' ? this.sel : eqd.tracers,
+      tracer: cat === 'tracers' ? (this.sel === 'signature' ? BR.Models.resolveTracer(wpn, eqd) : this.sel) : BR.Models.resolveTracer(wpn, eqd),
       gloves: cat === 'gloves' ? this.sel : eqd.gloves,
       showTracer: cat === 'tracers',
       showHands: cat === 'gloves',

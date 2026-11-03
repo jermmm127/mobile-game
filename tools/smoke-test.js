@@ -114,7 +114,7 @@ const server = http.createServer((req, res) => {
     p.mover.grapple = null; bot.alive = false;
     // tracers render as visible meshes in the player's tracer color
     p.alive = true; p.mover.pos.set(0, 150, 0); p.slots[0] = BR.Weapons.create('rifle'); p.slots[0].cool = 0; p.cur = 0; p.pitch = 0; p.weapon.reloadT = 0;
-    BR.Profile.data.equip.tracers = 'red';
+    BR.Profile.data.equip.tracerByGun.rifle = 'red';
     r.tracerFired = BR.Weapons.tryFire(g, p); g.fx.update(0.02);
     const tr = g.fx.tracers.filter(t => t.streak.visible);
     r.tracerVisible = tr.some(t => t.glow.material.color.getHex() === BR.Models.tracerColor('red', 0) && t.streak.scale.z > 1);
@@ -281,6 +281,37 @@ const server = http.createServer((req, res) => {
       r.handMeshes = BR.Models.hand('default', false).children.length;
       r.cars = (g.world.props.cars || []).length; r.roundMap = getComputedStyle(document.getElementById('minimap')).borderRadius;
     }
+    // per-gun tracers + blueprint signature tracers
+    {
+      const E = BR.Profile.data.equip, M = BR.Models;
+      E.tracerByGun.smg = 'plasma'; E.tracerByGun.rifle = 'signature'; E.blueprints.rifle = 'neonviper'; E.blueprints.sniper = 'default'; E.tracerByGun.sniper = 'signature';
+      r.perGun = M.resolveTracer('smg', E).style === 'helix' && M.resolveTracer('rifle', E).style === M.BLUEPRINTS.rifle.neonviper.tracer.style && M.resolveTracer('sniper', E) === M.TRACERS.default;
+      // cases: roll respects rarities, opening pays + grants (or refunds a duplicate)
+      const P = BR.Profile, before = P.data.coins, wasDev = P.data.dev; P.data.dev = false; P.data.coins = 5000;
+      const tally = {}; for (let i = 0; i < 2000; i++) { const it = BR.CaseItems.roll('release'); tally[it.item.rarity] = (tally[it.item.rarity] || 0) + 1; }
+      const got = P.openCase('release');
+      r.cases = { items: BR.CaseItems.all().length, rareShare: tally.Rare / 2000, exotic: tally.Exotic || 0, paid: P.data.coins <= 5000 - 600 + (got.dup ? 210 : 0), owned: P.owns(got.cat, got.id), notInShop: !BR.Shop.catalog('skins').liquidgold || P.owns('skins', 'liquidgold') };
+      P.data.coins = before; P.data.dev = wasDev;
+      // ranks: RP from a win unlocks rank rewards
+      const rp0 = P.data.rp; P.data.rp = 4400; const res = P.award({ win: true, place: 1, kills: 3, damage: 100 });
+      r.ranks = { rp: res.rp > 0, tier: BR.Ranks.tiers[BR.Ranks.of(P.data.rp)].name, diamondFeed: P.owns('feeds', 'rk_diamond'), board: BR.Ranks.board().some(x => x.me) };
+      P.data.rp = rp0;
+      // karambit flip: mid-deploy the ring axis lines up with the finger (flip over it, not a fan)
+      const v = g.vmr, P4 = g.player; P4.switchTo(2); v.lastWeapon = P4.weapon; v.drawDur = 1.05;
+      for (let i = 0; i < 40; i++) { v.drawT = 1.05 * (1 - 0.3); v.update(1 / 60, 0, 0); }
+      const sp = v.models.knife.userData.spin, ringAxis = sp.axis.clone().applyQuaternion(sp.obj.quaternion);
+      const fing = new THREE.Vector3(-0.92, 0.08, -0.38).normalize().applyQuaternion(v.root.quaternion.clone().invert());
+      r.flip = Math.abs(ringAxis.dot(fing));
+      // signature reload: Neon Viper twirls the gun during the reload
+      g.refreshCosmetics(); g.practiceSpawn('weapon', 'rifle'); const RW = P4.weapon; RW.mag = 1; v.lastWeapon = RW; v.drawT = 0;
+      BR.Weapons.startReload(RW, P4); let maxRoll = 0;
+      for (let i = 0; i < 60; i++) { BR.Weapons.update(RW, 1 / 60, P4); v.update(1 / 60, 0, 0); maxRoll = Math.max(maxRoll, Math.abs(v.root.rotation.z)); }
+      r.sigReload = { style: (v.sigReload.rifle || {}).style, maxRoll };
+      E.blueprints.rifle = 'default'; g.refreshCosmetics();
+      // island map: invisible boundary, ocean, natural rock (hidden collision boxes)
+      const Wi = g.world;
+      r.island = { edgeHidden: Wi.boxes.filter(b => b.tag === 'edge').every(b => b.hidden), sea: !!Wi.sea, rocks: Wi.props.rockFill.length > 50 && Wi.props.rockFill.every(b => b.hidden) };
+    }
     const Wd = g.world;
     r.newstuff = { knifeSpeed, bolts: !!(C.sniper.bolt && C.hunter.bolt), hunterIrons: !C.hunter.scope && !!hm.sight, sniperBolt: !!vm.models.sniper.userData.model.userData.bolt,
       lift, back, settled: Math.abs(hm.bolt.rotation.z) < 1e-3 && Math.abs(hm.bolt.position.z - hm.boltZ0) < 1e-3,
@@ -406,6 +437,12 @@ const server = http.createServer((req, res) => {
     ['karambit deploy rolls on the index finger in the ring', extra.ringRoll < 0.03],
     ['dropped weapons toss, bounce, settle and show a name tag', extra.drop.label && extra.drop.rose && extra.drop.settled],
     ['gloves merged (few draw calls), modelled cars, round minimap', extra.handMeshes <= 4 && extra.cars > 0 && extra.roundMap === '50%'],
+    ['one tracer per gun; blueprints fire their signature tracer', extra.perGun],
+    ['Release Case: rarity odds, pays, grants exclusive (not sold) items', extra.cases.items >= 25 && extra.cases.rareShare > 0.45 && extra.cases.rareShare < 0.6 && extra.cases.paid && extra.cases.owned && extra.cases.notInShop],
+    ['ranked RP, rank-reward kill feeds and a leaderboard', extra.ranks.rp && extra.ranks.diamondFeed && extra.ranks.board],
+    ['karambit flips over the finger (ring axis along the finger)', extra.flip > 0.9],
+    ['Mythic blueprint signature reload animation', extra.sigReload.style === 'twirl' && extra.sigReload.maxRoll > 1.5],
+    ['island map: hidden boundary, ocean, natural rock formations', extra.island.edgeHidden && extra.island.sea && extra.island.rocks],
     ['hunting rifle uses iron sights (no scope)', extra.newstuff.hunterIrons],
     ['map is dressed (frames, props, ponds, barrels, logs)', extra.newstuff.decor > 3000 && extra.newstuff.ponds >= 4 && extra.newstuff.barrels > 10 && extra.newstuff.logs > 20],
     ['dying ends your match (no respawn)', death.state === 'end' && !death.alive && death.endShown],

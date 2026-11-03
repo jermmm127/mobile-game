@@ -688,13 +688,14 @@ BR.Game = class Game {
 
   tracerOpts(actor) {
     if (!actor.isPlayer) return null;
-    return BR.Models.tracerOpts(BR.Profile.data.equip.tracers, this.time);
+    return BR.Models.tracerOpts(this.playerTracer(actor), this.time);
   }
 
   tracerColor(actor) {
     if (!actor.isPlayer) return 0xff9a6b;
-    return BR.Models.tracerColor(BR.Profile.data.equip.tracers, this.time);
+    return BR.Models.tracerColor(this.playerTracer(actor), this.time);
   }
+  playerTracer(actor) { return BR.Models.resolveTracer(actor.weapon ? actor.weapon.id : 'rifle', BR.Profile.data.equip); }
 
   applyDamage(victim, attacker, dmg, head, at, weaponId) {
     if (!victim.alive) return;
@@ -741,7 +742,11 @@ BR.Game = class Game {
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const nm = a => `<b class="${a.isPlayer ? 'me' : ''}">${esc(a.name)}</b>`;
     const how = weaponId === 'storm' ? 'storm' : weaponId === 'shockwave' ? 'Shockwave' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');
-    this.hud.killfeed(killer ? `${nm(killer)} <i>${esc(how)}</i> ${nm(victim)}` : `${nm(victim)} <i>${esc(how)}</i>`);
+    // your rows use your equipped kill feed banner + rank badge
+    const P = BR.Profile.data, mine = (killer && killer.isPlayer) || victim.isPlayer;
+    const badge = a => a && a.isPlayer ? BR.Ranks.badge(P.rp || 0) : '';
+    const body = killer ? `${badge(killer)}${nm(killer)} <i>${esc(how)}</i> ${badge(victim)}${nm(victim)}` : `${badge(victim)}${nm(victim)} <i>${esc(how)}</i>`;
+    this.hud.killfeed(body, killer && killer.isPlayer ? 'feed-' + (P.equip.feeds || 'none') : mine ? 'feed-none' : '');
     if (killer && killer === this.player) {
       BR.Audio.kill(head);
       if (head) this.hud.tech('HEADSHOT');

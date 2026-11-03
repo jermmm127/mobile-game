@@ -270,6 +270,84 @@
     }
     game.hud.show('duelmenu', true);
   };
+  // ---- Release Case: CS-style reel that decelerates onto the drop
+  const RCOL = { Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
+  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed' };
+  const caseCard = (e, extra) => {
+    const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
+    const hex = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
+    const sw = e.cat === 'blueprints'
+      ? `<i class="sw cbp" style="background:linear-gradient(135deg,${hex(e.item.body)} 0 45%,${hex(e.item.accent)} 45% 70%,${hex(e.item.glow)} 70%);box-shadow:0 0 12px ${hex(e.item.glow)}"></i>`
+      : shop.swatch(e.cat, e.id, e.item);
+    return `<div class="cs-card r-${e.item.rarity}${extra || ''}" style="--rc:${RCOL[e.item.rarity]}">${sw}<span class="cc-cat">${CAT_LABEL[e.cat]}</span><span class="cc-name">${nm}</span></div>`;
+  };
+  let caseBusy = false, lastDrop = null;
+  const caseRefresh = () => {
+    $('cs-coins').textContent = BR.Profile.coinsLabel();
+    const all = BR.CaseItems.all(), C = BR.CASES.release, order = ['Exotic', 'Mythic', 'Legendary', 'Epic', 'Rare'];
+    $('cs-odds').innerHTML = order.map(t => `<span style="--rc:${RCOL[t]}"><b>${t}</b> ${C.odds[t]}%</span>`).join('');
+    $('cs-grid').innerHTML = order.flatMap(t => all.filter(e => e.item.rarity === t)).map(e => caseCard(e, BR.Profile.owns(e.cat, e.id) ? ' owned' : '')).join('');
+  };
+  const openCasePanel = () => { $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden'); $('cs-reel').classList.add('hidden'); $('cs-case').classList.remove('hidden'); caseRefresh(); game.hud.show('cases', true); };
+  $('btn-cases').addEventListener('click', () => { BR.Audio.init(); openCasePanel(); });
+  $('cs-x').addEventListener('click', () => { if (!caseBusy) { game.hud.show('cases', false); BR.updateCoins(); } });
+  $('cs-open').addEventListener('click', () => {
+    if (caseBusy) return;
+    const r = BR.Profile.openCase('release');
+    if (!r) { BR.Audio.click(); $('cs-result').classList.remove('hidden'); $('cs-result').innerHTML = '<div class="cs-msg">Not enough coins</div>'; return; }
+    caseBusy = true; lastDrop = r;
+    $('cs-coins').textContent = BR.Profile.coinsLabel();
+    $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden');
+    $('cs-case').classList.add('hidden'); $('cs-reel').classList.remove('hidden');
+    // reel: 56 cards, the drop at index 50
+    const N = 56, WIN = 50, cards = [];
+    for (let i = 0; i < N; i++) cards.push(i === WIN ? r : BR.CaseItems.roll('release'));
+    const strip = $('cs-strip');
+    strip.style.transition = 'none'; strip.style.transform = 'translateX(0)';
+    strip.innerHTML = cards.map((e, i) => caseCard(e, i === WIN ? ' win' : '')).join('');
+    void strip.offsetWidth;
+    const cw = strip.children[0].getBoundingClientRect().width + 8, view = $('cs-reel').clientWidth;
+    const target = WIN * cw + cw / 2 - view / 2 + (Math.random() - 0.5) * cw * 0.6;
+    strip.style.transition = 'transform 5.6s cubic-bezier(.06,.62,.12,1)';
+    strip.style.transform = `translateX(${-target}px)`;
+    // ticks as cards pass the marker
+    let lastIdx = -1; const t0 = performance.now();
+    const tick = () => {
+      const m = new DOMMatrix(getComputedStyle(strip).transform), x = -m.m41, idx = Math.floor((x + view / 2) / cw);
+      if (idx !== lastIdx) { lastIdx = idx; BR.Audio.click(); }
+      if (performance.now() - t0 < 5700) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    setTimeout(() => {
+      caseBusy = false;
+      const col = RCOL[r.item.rarity];
+      $('cs-result').classList.remove('hidden');
+      $('cs-result').innerHTML = `<div class="cs-reveal r-${r.item.rarity}" style="--rc:${col}"><span class="rv-r">${r.item.rarity.toUpperCase()}</span>${caseCard(r, ' big')}<b>${r.item.name}</b><span>${r.dup ? 'Duplicate · +' + r.refund + ' coins back' : 'NEW · added to your collection'}</span></div>`;
+      if (!r.dup || true) $('cs-equip').classList.remove('hidden');
+      BR.Audio.kill(r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic');
+      if (r.item.rarity === 'Legendary' || r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic') BR.Audio.coin();
+      $('cs-coins').textContent = BR.Profile.coinsLabel();
+      caseRefresh();
+      BR.updateCoins();
+    }, 5800);
+  });
+  $('cs-equip').addEventListener('click', () => { if (!lastDrop) return; BR.Profile.equipDrop(lastDrop); game.refreshCosmetics(); BR.Audio.pickup(); $('cs-equip').classList.add('hidden'); });
+
+  // ---- Ranked leaderboard
+  const openRanks = () => {
+    const P = BR.Profile.data, R = BR.Ranks, t = R.of(P.rp || 0), T = R.tiers[t], N = R.tiers[t + 1];
+    const pct = N ? Math.round(((P.rp || 0) - T.rp) / (N.rp - T.rp) * 100) : 100;
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    $('rk-me').innerHTML = `${R.badge(P.rp || 0, true)}<div class="rk-info"><b>${T.name.toUpperCase()}</b><span>${P.rp || 0} RP${N ? ' · ' + (N.rp - (P.rp || 0)) + ' to ' + N.name : ' · top tier'}</span><div class="rk-prog"><i style="width:${pct}%;background:linear-gradient(90deg,${T.c2},${T.c1})"></i></div></div>`;
+    const rows = R.board(), meIdx = rows.findIndex(r => r.me);
+    const shown = rows.slice(0, 25);
+    if (meIdx >= 25) shown.push(rows[meIdx]);
+    $('rk-board').innerHTML = shown.map(r => { const i = rows.indexOf(r);
+      return `<div class="rk-row${r.me ? ' me' : ''}${i < 3 ? ' top top' + (i + 1) : ''}"><span class="pos">${i + 1}</span>${R.badge(r.rp)}<span class="nm">${esc(r.name)}${r.local ? ' <small>local</small>' : ''}</span><span class="rp">${r.rp.toLocaleString()} RP</span></div>`; }).join('');
+    game.hud.show('ranks', true);
+  };
+  $('btn-ranks').addEventListener('click', () => { BR.Audio.init(); openRanks(); });
+  $('rk-x').addEventListener('click', () => game.hud.show('ranks', false));
   $('btn-duel').addEventListener('click', () => { BR.Audio.init(); BR.openDuelMenu('setup'); });
   $('dm-go').addEventListener('click', dmGo);
   $('dm-x').addEventListener('click', dmClose);
