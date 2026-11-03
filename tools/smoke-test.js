@@ -570,6 +570,16 @@ const server = http.createServer((req, res) => {
     const a = M.worldWeapon('rifle').geometry, b = M.worldWeapon('rifle', 'hyperdrive', 'default').geometry;
     out.lootSkin = a !== b && b.attributes.position.count > a.attributes.position.count;
     P.data.equip.blueprints.rifle = 'default';
+    // camos are per gun: equipping on the SMG leaves the rifle alone; ALL puts it on every gun
+    P.data.owned.skins.push('hyperspace');
+    P.equip('skins', 'hyperspace', 'smg');
+    out.camo = { smg: P.skinFor('smg'), rifle: P.skinFor('rifle'), smgEq: P.isEquipped('skins', 'hyperspace', 'smg'), rifleEq: P.isEquipped('skins', 'hyperspace', 'rifle') };
+    g.refreshCosmetics(); const smgMat = []; vm.models.smg.traverse(o => { if (o.isMesh && o.material && o.material.map) smgMat.push(o.material.map.image); });
+    const rifleTex = []; vm.models.rifle.traverse(o => { if (o.isMesh && o.material && o.material.map && o.material.emissiveMap) rifleTex.push(1); });
+    out.camo.vmSmg = smgMat.length > 0; out.camo.vmRifleClean = rifleTex.length === 0;
+    P.equip('skins', 'opal', 'all'); P.data.owned.skins.push('opal'); P.equip('skins', 'opal', 'all');
+    out.camo.all = Object.keys(BR.CONFIG.weapons).every(w => P.skinFor(w) === 'opal');
+    P.equip('skins', 'default', 'all');
     // mastery + daily
     const before = P.owns('skins', 'm_copper'); let got = []; for (let i = 0; i < 10; i++) got = got.concat(P.addKill('smg'));
     out.mastery = { before, after: P.owns('skins', 'm_copper'), got: got.join() };
@@ -684,6 +694,7 @@ const server = http.createServer((req, res) => {
     ['gloves per weapon (and the viewmodel swaps them)', v17.gloves.lmg === 'hyperspace' && v17.gloves.rifle === 'default' && v17.gloveSwapped],
     ['loot / dropped guns wear your equipped blueprint', v17.lootSkin],
     ['weapon mastery unlocks a camo; daily reward streak + key, once a day', !v17.mastery.before && v17.mastery.after && v17.daily.streak === 3 && v17.daily.key && v17.daily.again === null],
+    ['camos equip per gun (SMG camo stays on the SMG; ALL = every gun)', v17.camo.smg === 'hyperspace' && v17.camo.rifle === 'default' && v17.camo.smgEq && !v17.camo.rifleEq && v17.camo.vmSmg && v17.camo.vmRifleClean && v17.camo.all],
     ['enemy highlight tints other players', v17.highlight],
     ['spinning case previews render', v17.spins >= 2],
     ['bots finish a match', match.alive === 1],

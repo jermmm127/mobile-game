@@ -74,7 +74,7 @@
       this.models = {};
       for (const id in BR.CONFIG.weapons) {
         const bp = (eq.blueprints || {})[id];
-        const m = BR.Models.weapon(id, eq.skins, BR.CONFIG.weapons[id].melee ? 'none' : eq.charms, bp);
+        const m = BR.Models.weapon(id, BR.Profile.skinFor(id), BR.CONFIG.weapons[id].melee ? 'none' : eq.charms, bp);
         const holder = new THREE.Group();
         if (id === 'knife') {
           // Reverse grip: handle upright in the fist (ring on top by the index finger), blade

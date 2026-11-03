@@ -934,7 +934,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.7.0',
+  version: '1.7.1',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -5853,7 +5853,7 @@ BR.Models = (function () {
       this.models = {};
       for (const id in BR.CONFIG.weapons) {
         const bp = (eq.blueprints || {})[id];
-        const m = BR.Models.weapon(id, eq.skins, BR.CONFIG.weapons[id].melee ? 'none' : eq.charms, bp);
+        const m = BR.Models.weapon(id, BR.Profile.skinFor(id), BR.CONFIG.weapons[id].melee ? 'none' : eq.charms, bp);
         const holder = new THREE.Group();
         if (id === 'knife') {
           // Reverse grip: handle upright in the fist (ring on top by the index finger), blade
@@ -7442,7 +7442,7 @@ BR.Loot = class Loot {
       // The real gun model, lying on its side and slowly turning, over a rarity ring
       // shows the gun in your equipped blueprint / camo (so drops and loot look like your skins)
       const eq = BR.Profile && BR.Profile.data && BR.Profile.data.equip;
-      const gun = BR.Models.worldWeapon(item.wid, eq && eq.blueprints ? eq.blueprints[item.wid] : null, eq ? eq.skins : null);
+      const gun = BR.Models.worldWeapon(item.wid, eq && eq.blueprints ? eq.blueprints[item.wid] : null, eq ? BR.Profile.skinFor(item.wid) : null);
       gun.scale.setScalar(1.7);
       gun.rotation.set(0, Math.PI / 2, Math.PI / 2 * 0.9);
       gun.position.y = -0.05;
@@ -8986,6 +8986,9 @@ BR.Profile = {
     const legacyTr = d.equip && d.equip.tracers && d.equip.tracers !== 'default' ? d.equip.tracers : null;
     this.data.equip.tracerByGun = Object.assign({}, (d.equip && d.equip.tracerByGun) || {});
     this.data.equip.glovesByGun = Object.assign({}, (d.equip && d.equip.glovesByGun) || {});   // gloves per weapon ('all' = equip.gloves)
+    // camos per weapon. Old saves had one camo for everything: keep that look by copying it onto every gun
+    this.data.equip.skinByGun = Object.assign({}, (d.equip && d.equip.skinByGun) || {});
+    if (!(d.equip && d.equip.skinByGun) && this.data.equip.skins && this.data.equip.skins !== 'default') for (const [w] of SHOP_WEAPONS) this.data.equip.skinByGun[w] = this.data.equip.skins;
     if (legacyTr && !(d.equip && d.equip.tracerByGun)) for (const [w] of SHOP_WEAPONS) this.data.equip.tracerByGun[w] = legacyTr;
     if (!this.data.owned.tracers.includes('signature')) this.data.owned.tracers.push('signature');
     for (const k of ['gloves', 'blueprints']) if (!this.data.owned[k]) this.data.owned[k] = k === 'gloves' ? ['default'] : [];
@@ -9027,6 +9030,7 @@ BR.Profile = {
     if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b && (!BR.MELEE[w] || (this.data.equip.melee || 'knife') === w); }
     if (cat === 'tracers') return (this.data.equip.tracerByGun[weapon || 'rifle'] || 'signature') === id;
     if (cat === 'gloves') return this.gloveFor(weapon) === id;
+    if (cat === 'skins') return weapon === 'all' ? Object.keys(BR.CONFIG.weapons).every(w => this.skinFor(w) === id) : this.skinFor(weapon || 'rifle') === id;
     return this.data.equip[cat] === id;
   },
   infinite() { return !!this.data.dev; },
@@ -9045,6 +9049,8 @@ BR.Profile = {
   setEquip(cat, id, weapon) {
     if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; if (BR.MELEE[w]) this.data.equip.melee = w; }   // equipping a knife skin makes it your knife
     else if (cat === 'tracers') this.data.equip.tracerByGun[weapon || 'rifle'] = id;
+    else if (cat === 'skins' && weapon && weapon !== 'all') this.data.equip.skinByGun[weapon] = id;          // camo on this gun only
+    else if (cat === 'skins') { for (const w in BR.CONFIG.weapons) this.data.equip.skinByGun[w] = id; }       // ALL: every gun
     else if (cat === 'gloves' && weapon && weapon !== 'all') this.data.equip.glovesByGun[weapon] = id;
     else if (cat === 'gloves') { this.data.equip.gloves = id; this.data.equip.glovesByGun = {}; }      // ALL: one pair everywhere
     else this.data.equip[cat] = id;
@@ -9074,6 +9080,7 @@ BR.Profile = {
   },
   keys(caseId) { return (this.data.keys && this.data.keys[caseId]) || 0; },
   // gloves worn with a weapon (per-weapon pick, else the default pair)
+  skinFor(weapon) { const e = this.data.equip; return (e.skinByGun && e.skinByGun[weapon]) || 'default'; },
   gloveFor(weapon) { const e = this.data.equip; return (weapon && weapon !== 'all' && e.glovesByGun && e.glovesByGun[weapon]) || e.gloves || 'default'; },
   // Open a case: pay, roll, add (or refund a duplicate). Returns the result or null if broke.
   openCase(caseId) {
@@ -9092,7 +9099,7 @@ BR.Profile = {
   // Equip a case drop where it makes sense (tracers go on every gun)
   equipDrop(r) {
     if (r.cat === 'tracers') { for (const [w] of SHOP_WEAPONS) this.data.equip.tracerByGun[w] = r.id; }
-    else this.setEquip(r.cat, r.id);
+    else this.setEquip(r.cat, r.id, r.cat === 'skins' ? ((BR.shopWeapon && BR.shopWeapon()) || 'rifle') : undefined);
     this.save();
   },
 
@@ -9203,7 +9210,7 @@ BR.Shop = class Shop {
   act() {
     const P = BR.Profile, id = this.sel, cat = this.cat;
     if (!id) return;
-    if (P.owns(cat, id)) { P.equip(cat, id, this.weapon); BR.Audio.pickup(); if (cat === 'tracers') this.flash('Equipped on ' + BR.CONFIG.weapons[this.weapon].name); }
+    if (P.owns(cat, id)) { P.equip(cat, id, this.weapon); BR.Audio.pickup(); if (cat === 'tracers' || cat === 'skins') this.flash('Equipped on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name)); }
     else if (P.buy(cat, id, this.weapon)) { BR.Audio.kill(); this.flash('Unlocked!'); }
     else { BR.Audio.click(); this.flash('Not enough coins'); }
     this.game.refreshCosmetics();
@@ -9246,8 +9253,8 @@ BR.Shop = class Shop {
     document.querySelectorAll('#shop-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
     const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers' || cat === 'gloves';
     this.el.weps.classList.toggle('hidden', !showWeps);
-    this.el.weps.classList.toggle('gl', cat === 'gloves');
-    if (cat !== 'gloves' && this.weapon === 'all') this.weapon = 'rifle';
+    this.el.weps.classList.toggle('gl', cat === 'gloves' || cat === 'skins');
+    if (cat !== 'gloves' && cat !== 'skins' && this.weapon === 'all') this.weapon = 'rifle';
     this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
     this.el.coins.textContent = P.coinsLabel();
     const html = [];
@@ -9270,7 +9277,7 @@ BR.Shop = class Shop {
     this.game.setShopPreview({
       weapon: wpn,
       bp: cat === 'blueprints' ? this.sel.split(':')[1] : (eqd.blueprints[wpn] || 'default'),
-      skin: cat === 'skins' ? this.sel : eqd.skins,
+      skin: cat === 'skins' ? this.sel : P.skinFor(wpn),
       charm: cat === 'charms' ? this.sel : eqd.charms,
       tracer: cat === 'tracers' ? (this.sel === 'signature' ? BR.Models.resolveTracer(wpn, eqd) : this.sel) : BR.Models.resolveTracer(wpn, eqd),
       gloves: cat === 'gloves' ? this.sel : P.gloveFor(wpn),
@@ -9375,7 +9382,7 @@ BR.Inventory = class Inventory {
     const P = BR.Profile, id = this.sel;
     if (!id || !P.owns(this.cat, id)) return;
     P.equip(this.cat, id, this.weapon); BR.Audio.pickup();
-    this.flash(this.cat === 'tracers' ? 'Equipped on ' + BR.CONFIG.weapons[this.weapon].name : 'Equipped');
+    this.flash(this.cat === 'tracers' || this.cat === 'skins' ? 'Equipped on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : 'Equipped');
     this.game.refreshCosmetics();
     this.render();
   }
@@ -9386,8 +9393,8 @@ BR.Inventory = class Inventory {
     document.querySelectorAll('#inv-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
     const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers' || cat === 'gloves';
     this.el.weps.classList.toggle('hidden', !showWeps);
-    this.el.weps.classList.toggle('gl', cat === 'gloves');
-    if (cat !== 'gloves' && this.weapon === 'all') this.weapon = 'rifle';
+    this.el.weps.classList.toggle('gl', cat === 'gloves' || cat === 'skins');
+    if (cat !== 'gloves' && cat !== 'skins' && this.weapon === 'all') this.weapon = 'rifle';
     this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
     this.el.count.textContent = this.total() + ' / ' + this.collectible();
     const mel = P.data.equip.melee || 'knife';
@@ -9406,7 +9413,7 @@ BR.Inventory = class Inventory {
     this.el.name.textContent = it ? it.name : '';
     this.el.rar.textContent = it && it.rarity ? it.rarity.toUpperCase() : '';
     this.el.rar.style.color = it && it.rarity ? RARITY[it.rarity] : '';
-    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + BR.CONFIG.weapons[this.weapon].name : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : 'Kill feed banner';
+    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : 'Kill feed banner';
     const eq = it && P.isEquipped(cat, this.sel, this.weapon);
     this.el.action.textContent = !it ? '' : eq ? 'Equipped' : 'Equip';
     this.el.action.disabled = !it || eq;
@@ -9417,7 +9424,7 @@ BR.Inventory = class Inventory {
     this.game.setShopPreview({
       weapon: wpn,
       bp: cat === 'blueprints' && this.sel ? this.sel.split(':')[1] : (eqd.blueprints[wpn] || 'default'),
-      skin: cat === 'skins' && this.sel ? this.sel : eqd.skins,
+      skin: cat === 'skins' && this.sel ? this.sel : P.skinFor(wpn),
       charm: cat === 'charms' && this.sel ? this.sel : eqd.charms,
       tracer: cat === 'tracers' && this.sel ? (this.sel === 'signature' ? BR.Models.resolveTracer(wpn, eqd) : this.sel) : BR.Models.resolveTracer(wpn, eqd),
       gloves: cat === 'gloves' && this.sel ? this.sel : P.gloveFor(wpn),
@@ -11674,6 +11681,8 @@ BR.Game = class Game {
   $('btn-hud2').addEventListener('click', () => layout.open());
   const shop = new BR.Shop(game);
   const inv = BR.inventory = new BR.Inventory(game, shop);
+  // which gun a camo from a case drop goes on: the gun picked in the inventory / shop chips
+  BR.shopWeapon = () => (inv.weapon && inv.weapon !== 'all' && inv.weapon) || (shop.weapon && shop.weapon !== 'all' && shop.weapon) || 'rifle';
   $('btn-inv').addEventListener('click', () => { BR.Audio.init(); inv.open(); });
   $('shop-inv').addEventListener('click', () => { shop.close(); inv.open(); });
   BR.shop = shop;

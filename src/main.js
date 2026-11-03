@@ -148,6 +148,8 @@
   $('btn-hud2').addEventListener('click', () => layout.open());
   const shop = new BR.Shop(game);
   const inv = BR.inventory = new BR.Inventory(game, shop);
+  // which gun a camo from a case drop goes on: the gun picked in the inventory / shop chips
+  BR.shopWeapon = () => (inv.weapon && inv.weapon !== 'all' && inv.weapon) || (shop.weapon && shop.weapon !== 'all' && shop.weapon) || 'rifle';
   $('btn-inv').addEventListener('click', () => { BR.Audio.init(); inv.open(); });
   $('shop-inv').addEventListener('click', () => { shop.close(); inv.open(); });
   BR.shop = shop;
