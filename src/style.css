@@ -836,3 +836,7 @@ body.duel #topbar .dp { display: flex; }
 .gcard.sel span { color: #fff; }
 .gcard.done { border-color: var(--health); background: rgba(79, 220, 138, 0.2); }
 @media (max-width: 520px) { #sp-weapons, .dm-guns { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); } .gcard img { height: 38px; } }
+
+/* Soft cinematic vignette over the 3D view (cheap: one gradient, no post-processing) */
+#play::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse 85% 80% at 50% 48%, rgba(0,0,0,0) 62%, rgba(8,16,30,0.26) 100%); }

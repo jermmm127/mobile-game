@@ -1140,7 +1140,7 @@ BR.World = class World {
     gt.repeat.set(S / 5, S / 5);
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
-    const GC = this.groundCols || [0x7d9a5a, 0x6a8a4a, 0xa4a35e];
+    const GC = this.groundCols || [0x749f4e, 0x5f8c42, 0xa8a95a];
     const grass = new THREE.Color(GC[0]), grass2 = new THREE.Color(GC[1]), dry = new THREE.Color(GC[2]), dirt = new THREE.Color(0x9c8460);
     const c = new THREE.Color();
     const towns = this.towns || [];

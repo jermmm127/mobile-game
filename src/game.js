@@ -22,6 +22,10 @@ BR.Game = class Game {
     this.canvas = document.getElementById('view');
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });   // MSAA: smooth edges (cheap on mobile tile GPUs)
     this.renderer.autoClear = false;
+    // Filmic grade: ACES tone mapping gives soft highlight roll-off, richer mid-tones and
+    // more depth than the raw linear output
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 0.92;
     const C = BR.CONFIG.camera;
     this.camera = new THREE.PerspectiveCamera(this.baseFov(), 1, C.near, C.far);
     this.camera.rotation.order = 'YXZ';
@@ -73,6 +77,7 @@ BR.Game = class Game {
     this.detail = g.detail;
     if (this.scene && this.scene.fog) this.scene.fog.far = g.fogFar;
     this.resize();
+    if (this.sun) this.applyShadows();
   }
 
   // Saturation: a CSS filter on the 3D canvas only (HUD stays untouched)
@@ -95,19 +100,56 @@ BR.Game = class Game {
     this.vmScale = w < h ? 0.6 : 1;
   }
 
+  // ------------------------------------------------------------ sun shadows (Graphics: High)
+  // A soft shadow map that follows the camera (about 80 m across), so buildings, trees,
+  // props and players ground themselves. Off on Low / Medium to keep phones at 60 fps.
+  shadowsWanted() { return (this.settings.gfx || 'medium') === 'high'; }
+  applyShadows() {
+    const on = this.shadowsWanted(), r = this.renderer, sun = this.sun;
+    r.shadowMap.enabled = on; r.shadowMap.type = THREE.PCFSoftShadowMap; r.shadowMap.autoUpdate = true;
+    if (!sun || !this.scene) return;
+    sun.castShadow = on;
+    if (on) {
+      const S = sun.shadow; S.mapSize.set(1024, 1024); S.bias = -0.0008; S.normalBias = 0.03;
+      const c = S.camera; c.left = -42; c.right = 42; c.top = 42; c.bottom = -42; c.near = 1; c.far = 320; c.updateProjectionMatrix();
+    }
+    this.scene.traverse(o => {
+      if (!o.isMesh) return;
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      const lit = m && (m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isMeshStandardMaterial);
+      o.receiveShadow = on && !!lit;
+      o.castShadow = on && !!lit && !m.transparent;
+    });
+    this.scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(mm => { mm.needsUpdate = true; }); } });
+  }
+  updateShadowCam() {
+    if (!this.sun || !this.sun.castShadow) return;
+    const p = this.camera.position, snap = 84 / 1024;                       // snap to texels: no shimmer while moving
+    const tx = Math.round(p.x / snap) * snap, tz = Math.round(p.z / snap) * snap;
+    this.sun.target.position.set(tx, 0, tz);
+    this.sun.position.set(tx, 0, tz).addScaledVector(this.sunDir, 160);
+  }
+
   // ------------------------------------------------------------ scene setup
   buildScene(seed, demo, opts) {
     if (this.scene) this.disposeScene();
-    const fogCol = 0xc4dbe9;
+    const fogCol = 0xbcd8ee;                                    // matches the sky dome's horizon band
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(fogCol);
-    this.scene.fog = new THREE.Fog(fogCol, 50, this.fogFar || 230);
-    this.scene.add(new THREE.HemisphereLight(0xe3efff, 0x6a5a40, 0.78));
-    const sun = new THREE.DirectionalLight(0xffeccc, 0.9);
-    sun.position.set(0.6, 1, 0.35);
-    this.scene.add(sun);
+    this.scene.fog = new THREE.Fog(fogCol, 70, this.fogFar || 230);
+    // Lighting: cool sky / warm ground bounce, a warm key sun from the sky's sun direction,
+    // and a faint cool fill from the other side so shaded faces aren't flat
+    this.scene.add(new THREE.HemisphereLight(0xd6e6ff, 0x5b5440, 0.82));
+    const sun = new THREE.DirectionalLight(0xfff0d4, 1.08);
+    this.sunDir = new THREE.Vector3(420, 300, 300).normalize();
+    sun.position.copy(this.sunDir);
+    this.scene.add(sun, sun.target);
+    const fill = new THREE.DirectionalLight(0xa9c4ff, 0.22); fill.position.set(-0.5, 0.35, -0.6); this.scene.add(fill);
+    this.sun = sun;
     this.world = new BR.World(seed, opts);
     this.world.buildMeshes(this.scene, this.detail);
+    // sky, clouds and far mountains are already painted in display colours: keep them out of the filmic curve
+    this.scene.traverse(o => { const m = o.material; if (m && m.isMeshBasicMaterial && m.fog === false) m.toneMapped = false; });
     this.hud.setStaticMap(this.world.renderMinimap(1024));
     this.fx = new BR.Effects(this.scene);
     this.shock = new BR.Shockwave(this);
@@ -163,6 +205,7 @@ BR.Game = class Game {
     });
     this.camera.fov = 62; this.camera.updateProjectionMatrix();
     this.camera.position.set(0, 90, 120); this.camera.lookAt(0, 0, 0);
+    this.applyShadows();
   }
 
   // ------------------------------------------------------------------ match
@@ -206,6 +249,7 @@ BR.Game = class Game {
     this.hud.show('pause', false);
     this.hud.show('play', true);
     this.hud.toast(this.practice ? 'Practice mode: tap SPAWN for guns, items and bots' : 'Freefall! Tap JUMP to open your parachute', 2800);
+    this.applyShadows();
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
   }
 
@@ -273,6 +317,7 @@ BR.Game = class Game {
     this.state = 'playing';
     this.last = performance.now();
     this.hud.duelBanner(`ROUND ${D.round}`, `${BR.CONFIG.weapons[bl[0]].name} + ${BR.CONFIG.weapons[bl[1]].name} on the other side`, 'info');
+    this.applyShadows();
   }
 
   updateDuel(dt) {
@@ -1038,6 +1083,7 @@ BR.Game = class Game {
     if (!this.scene) return;
     // skip map tiles past the fog (invisible anyway)
     if (this.world && this.scene.fog) this.world.cullChunks(this.camera.position.x, this.camera.position.z, this.scene.fog.far + 30);
+    this.updateShadowCam();
     r.render(this.scene, this.camera);
     if ((this.state === 'playing' || this.state === 'won' || this.state === 'paused') && this.player && this.player.alive) {
       r.clearDepth();
