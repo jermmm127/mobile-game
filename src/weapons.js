@@ -169,6 +169,7 @@ BR.Weapons = {
       if (dist > bestD) continue;
       const cos = (tx * dir.x + ty * dir.y + tz * dir.z) / (dist || 1);
       if (cos < (dist < 1.5 ? 0.3 : 0.88)) continue;
+      if (!this.canReach(game, actor, o)) continue;                // no knifing through walls
       best = o; bestD = dist;
     }
     if (best && bestD > d.range) {
@@ -186,8 +187,15 @@ BR.Weapons = {
     return true;
   },
 
+  // Melee needs a clear line from the attacker's eye to the target's chest or head
+  canReach(game, actor, target) {
+    const e = actor.eye(this._re || (this._re = new THREE.Vector3())), W = game.world, m = target.mover;
+    return W.lineOfSight(e.x, e.y, e.z, m.pos.x, m.pos.y + m.h * 0.6, m.pos.z) || W.lineOfSight(e.x, e.y, e.z, m.pos.x, m.pos.y + m.h - 0.2, m.pos.z);
+  },
+
   meleeHit(game, actor, target, w) {
     const d = w.def;
+    if (!this.canReach(game, actor, target)) return;            // a wall got in the way (e.g. mid-lunge)
     // Backstab if the target is facing away from us
     const tf = { x: -Math.sin(target.yaw), z: -Math.cos(target.yaw) };
     const dx = target.pos.x - actor.pos.x, dz = target.pos.z - actor.pos.z, l = Math.hypot(dx, dz) || 1;

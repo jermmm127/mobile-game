@@ -482,6 +482,49 @@ const server = http.createServer((req, res) => {
     g.state = 'menu';
     return out;
   });
+  // walls stop bullets and knives (both directions) in battle royale and the 1v1 arena
+  const walls = await page.evaluate(() => {
+    const g = BR.game, res = {};
+    const scenario = () => {
+      const W = g.world, p = g.player, bot = g.actors.find(a => a !== p);
+      const Y = 118;
+      W.addBox(-12, Y - 2, -12, 12, Y, 12, 0x888888);                 // platform high above everything
+      W.addBox(-0.3, Y, -3, 0.3, Y + 4, 3, 0x888888);                 // the wall (blocks z -3..3)
+      for (const a of [p, bot]) { a.alive = true; a.mover.dropping = false; a.mover.parachute = false; a.mover.vel.set(0, 0, 0); a.health = 100; a.shield = 0; a.pitch = 0; }
+      const hp = a => a.health + (a.shield || 0);
+      const gun = a => { a.slots[0] = BR.Weapons.create('rifle'); a.cur = 0; a.ammo.heavy = 300; };
+      const aim = (a, yaw) => { a.alive = true; a.health = 100; a.shield = 0; a.yaw = yaw; a.pitch = 0; a.recoil = 0; a.recoilDrift = 0; a.mover.onGround = true; a.mover.vel.set(0, 0, 0); if (a.weapon) a.weapon.bloom = 0; };
+      const fire = (a, n) => { for (let i = 0; i < n; i++) { a.mover.onGround = true; a.weapon.cool = 0; a.weapon.reloadT = 0; if (a.weapon.mag === 0) a.weapon.mag = a.weapon.def.mag; BR.Weapons.tryFire(g, a); } };
+      gun(p); gun(bot);
+      // through the wall: player at x=-4 facing +x, bot at x=+4 facing -x
+      p.mover.pos.set(-4, Y, 0); aim(p, -Math.PI / 2); bot.mover.pos.set(4, Y, 0); aim(bot, Math.PI / 2);
+      let b0 = hp(bot), p0 = hp(p); fire(p, 6); fire(bot, 6);
+      const throughPlayer = hp(bot) < b0, throughBot = hp(p) < p0;
+      // knife through the wall (both 0.8 m from it)
+      bot.health = 100; p.mover.pos.set(-0.9, Y, 0); bot.mover.pos.set(0.9, Y, 0); p.cur = 2; aim(p, -Math.PI / 2); p.weapon.cool = 0; b0 = hp(bot);
+      BR.Weapons.tryFire(g, p); const knifeThrough = hp(bot) < b0;
+      // control: same distance with nothing in between (z = 6, past the wall's end)
+      bot.health = 100; p.health = 100; p.cur = 0; p.mover.pos.set(-4, Y, 6); bot.mover.pos.set(4, Y, 6); aim(p, -Math.PI / 2); aim(bot, Math.PI / 2); b0 = hp(bot); p0 = hp(p);
+      fire(p, 10); fire(bot, 10);
+      const clearPlayer = hp(bot) < b0, clearBot = hp(p) < p0;
+      p.mover.pos.set(-0.9, Y, 6); bot.mover.pos.set(0.9, Y, 6); p.cur = 2; aim(p, -Math.PI / 2); aim(bot, Math.PI / 2); p.weapon.cool = 0; b0 = hp(bot);
+      BR.Weapons.tryFire(g, p); const knifeClear = hp(bot) < b0;
+      return { throughPlayer, throughBot, knifeThrough, clearPlayer, clearBot, knifeClear };
+    };
+    g.settings.bots = 3; g.startMatch(); res.br = scenario();
+    g.startDuel({ diff: 'normal', target: 3, roundTime: 60, loadout: ['rifle', 'smg'] }); res.duel = scenario();
+    g.state = 'menu';
+    return res;
+  });
+  // advanced sensitivity: horizontal / vertical multipliers scale the look
+  const sensAdv = await page.evaluate(() => {
+    const g = BR.game, S = g.settings, p = g.player, inp = g.input; g.state = 'playing';
+    const turn = (sx, sy) => { S.sensX = sx; S.sensY = sy; S.aimSmooth = 0; S.sensCurve = 0; p.ads = false; const y0 = p.yaw, q0 = p.pitch = 0;
+      inp.lookDX = 20; inp.lookDY = -10; g.controlPlayer(1 / 60); return [y0 - p.yaw, p.pitch - q0]; };
+    const a = turn(1, 1), b = turn(2, 0.5);
+    S.sensX = 1; S.sensY = 1; S.aimSmooth = 0.3;
+    return { a, b, ui: !!document.getElementById('set-sensX') && !!document.getElementById('set-gyro') };
+  });
   const run = 6.9, BR_RUN = run;
   const checks = [
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
@@ -568,10 +611,13 @@ const server = http.createServer((req, res) => {
     ['hunting rifle has more recoil', v15.icons.hunterRecoil >= 0.05 && v15.icons.hunterKick > 1],
     ['spawn menu fills slot 1 and slot 2 (pick the slot, then the gun)', v15.spawnSlots.a === 'sniper,smg,knife' && v15.spawnSlots.b === 'shotgun,smg,knife' && v15.spawnSlots.badges === 2],
     ['weapon buttons opacity can be lowered (saved)', Math.abs(v15.slotAlpha - 0.3) < 0.02 && v15.saved === 0.3],
+    ['walls stop bullets both ways and knives (battle royale)', !walls.br.throughPlayer && !walls.br.throughBot && !walls.br.knifeThrough && walls.br.clearPlayer && walls.br.clearBot && walls.br.knifeClear],
+    ['walls stop bullets both ways and knives (1v1 duel)', !walls.duel.throughPlayer && !walls.duel.throughBot && !walls.duel.knifeThrough && walls.duel.clearPlayer && walls.duel.clearBot && walls.duel.knifeClear],
+    ['advanced sensitivity: horizontal / vertical multipliers + settings UI', Math.abs(sensAdv.b[0] / sensAdv.a[0] - 2) < 0.05 && Math.abs(sensAdv.b[1] / sensAdv.a[1] - 0.5) < 0.05 && sensAdv.ui],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

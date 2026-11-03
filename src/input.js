@@ -13,6 +13,7 @@ BR.Input = class Input {
     this.root = root;
     this.moveX = 0; this.moveY = 0;
     this.lookDX = 0; this.lookDY = 0;
+    this.fireLookMult = 1;
     this.fire = false;
     this.ads = false;
     this.pressed = {};       // one-shot actions: jump, crouch, grapple, reload, swap, inspect, interact, pause, slot0-2
@@ -29,6 +30,32 @@ BR.Input = class Input {
 
   press(act) { this.pressed[act] = true; }
   consume(act) { const v = !!this.pressed[act]; this.pressed[act] = false; return v; }
+  // Gyro aiming: integrates the phone's rotation rate into yaw / pitch radians (screen-orientation aware).
+  // iOS needs DeviceMotionEvent.requestPermission() from a tap, so this is called from the settings toggle.
+  enableGyro() {
+    if (this.gyroOn) return Promise.resolve(true);
+    const start = () => {
+      this.gyroOn = true; this.gyroYaw = 0; this.gyroPitch = 0;
+      window.addEventListener('devicemotion', e => {
+        const r = e.rotationRate; if (!r || r.beta === null) return;
+        const dt = Math.min(0.05, (e.interval > 1 ? e.interval / 1000 : e.interval) || 0.016), D = Math.PI / 180;
+        const ang = (screen.orientation && screen.orientation.angle !== undefined) ? screen.orientation.angle : (window.orientation || 0);
+        let yaw, pitch;
+        if (ang === 90) { yaw = r.beta; pitch = -r.gamma; }
+        else if (ang === 270 || ang === -90) { yaw = -r.beta; pitch = r.gamma; }
+        else { yaw = r.gamma; pitch = r.beta; }
+        this.gyroYaw += yaw * D * dt; this.gyroPitch += pitch * D * dt; this.gyroSeen = true;
+      });
+      return true;
+    };
+    try {
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function')
+        return DeviceMotionEvent.requestPermission().then(st => st === 'granted' ? start() : false).catch(() => false);
+      if (typeof DeviceMotionEvent === 'undefined') return Promise.resolve(false);
+      return Promise.resolve(start());
+    } catch (e) { return Promise.resolve(false); }
+  }
+  consumeGyro() { const g = [this.gyroYaw || 0, this.gyroPitch || 0]; this.gyroYaw = 0; this.gyroPitch = 0; return g; }
   consumeLook() { const d = [this.lookDX, this.lookDY]; this.lookDX = 0; this.lookDY = 0; return d; }
   reset() {
     this.moveX = this.moveY = this.lookDX = this.lookDY = 0;
@@ -107,8 +134,9 @@ BR.Input = class Input {
         else { const k = Math.min(1, (m - 0.12) / 0.6) / m; mx *= k; my *= k; }
         this.moveX = mx; this.moveY = my;
       } else if (r.type === 'look' || r.look) {
-        this.lookDX += t.clientX - r.x;
-        this.lookDY += t.clientY - r.y;
+        const k = r.type === 'look' ? 1 : this.fireLookMult;        // drags that start on the fire button
+        this.lookDX += (t.clientX - r.x) * k;
+        this.lookDY += (t.clientY - r.y) * k;
         r.x = t.clientX; r.y = t.clientY;
       }
     }

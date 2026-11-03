@@ -853,3 +853,11 @@ body.duel #topbar .dp { display: flex; }
 .gcard .gbadge { position: absolute; top: 6px; right: 7px; min-width: 16px; padding: 1px 5px; border-radius: 6px; font: 800 10px var(--ui); font-style: normal;
   color: #111; background: var(--accent); }
 .gcard.held { border-color: rgba(255,178,36,0.45); }
+
+/* Advanced sensitivity block in Settings */
+.sens-adv { margin: 2px 0 4px; }
+.sens-adv > summary { font: 700 11px var(--ui); letter-spacing: 0.14em; color: var(--accent); cursor: pointer; padding: 6px 0; }
+.sens-adv .row { padding-left: 8px; }
+.sens-adv .seg button { font-size: 10px; }
+.sens-hint { margin: 4px 0 2px 8px; font: 500 11px/1.4 var(--ui); color: var(--muted); }
+#set-sensReset { margin-left: auto; }

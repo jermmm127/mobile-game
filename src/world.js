@@ -22,6 +22,7 @@ BR.World = class World {
     this.arena = !!(opts && opts.arena);
     this.size = this.arena ? 72 : M.size;
     this.half = M.size / 2;
+    this.gridHalf = this.size / 2;     // collision grid spans this world's own size (the duel arena is 72 m)
     this.cell = M.cell;
     this.n = Math.ceil(this.size / this.cell) + 2;
     this.cells = [];
@@ -137,7 +138,7 @@ BR.World = class World {
   }
 
   cellRange(x0, z0, x1, z1) {
-    const cs = this.cell, h = this.half, n = this.n - 1;
+    const cs = this.cell, h = this.gridHalf, n = this.n - 1;
     const r = this._cr || (this._cr = [0, 0, 0, 0]);
     r[0] = BR.util.clamp(Math.floor((x0 + h) / cs) + 1, 0, n);
     r[1] = BR.util.clamp(Math.floor((z0 + h) / cs) + 1, 0, n);
@@ -174,7 +175,7 @@ BR.World = class World {
     let best = maxDist, bestBox = null;
     if (dy < 0) { const t = -oy / dy; if (t >= 0 && t < best) { best = t; bestBox = this.ground; } }
     const ix = U.inv(dx), iy = U.inv(dy), iz = U.inv(dz);
-    const cs = this.cell, h = this.half, n = this.n;
+    const cs = this.cell, h = this.gridHalf, n = this.n;
     let cx = Math.floor((ox + h) / cs) + 1, cz = Math.floor((oz + h) / cs) + 1;
     const stepX = dx > 0 ? 1 : -1, stepZ = dz > 0 ? 1 : -1;
     const bx = (cx - 1 + (dx > 0 ? 1 : 0)) * cs - h;

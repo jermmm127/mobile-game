@@ -870,6 +870,14 @@ body.duel #topbar .dp { display: flex; }
   color: #111; background: var(--accent); }
 .gcard.held { border-color: rgba(255,178,36,0.45); }
 
+/* Advanced sensitivity block in Settings */
+.sens-adv { margin: 2px 0 4px; }
+.sens-adv > summary { font: 700 11px var(--ui); letter-spacing: 0.14em; color: var(--accent); cursor: pointer; padding: 6px 0; }
+.sens-adv .row { padding-left: 8px; }
+.sens-adv .seg button { font-size: 10px; }
+.sens-hint { margin: 4px 0 2px 8px; font: 500 11px/1.4 var(--ui); color: var(--muted); }
+#set-sensReset { margin-left: auto; }
+
 </style>
 </head>
 <body>
@@ -893,7 +901,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.6.3',
+  version: '1.6.4',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -1323,6 +1331,7 @@ BR.World = class World {
     this.arena = !!(opts && opts.arena);
     this.size = this.arena ? 72 : M.size;
     this.half = M.size / 2;
+    this.gridHalf = this.size / 2;     // collision grid spans this world's own size (the duel arena is 72 m)
     this.cell = M.cell;
     this.n = Math.ceil(this.size / this.cell) + 2;
     this.cells = [];
@@ -1438,7 +1447,7 @@ BR.World = class World {
   }
 
   cellRange(x0, z0, x1, z1) {
-    const cs = this.cell, h = this.half, n = this.n - 1;
+    const cs = this.cell, h = this.gridHalf, n = this.n - 1;
     const r = this._cr || (this._cr = [0, 0, 0, 0]);
     r[0] = BR.util.clamp(Math.floor((x0 + h) / cs) + 1, 0, n);
     r[1] = BR.util.clamp(Math.floor((z0 + h) / cs) + 1, 0, n);
@@ -1475,7 +1484,7 @@ BR.World = class World {
     let best = maxDist, bestBox = null;
     if (dy < 0) { const t = -oy / dy; if (t >= 0 && t < best) { best = t; bestBox = this.ground; } }
     const ix = U.inv(dx), iy = U.inv(dy), iz = U.inv(dz);
-    const cs = this.cell, h = this.half, n = this.n;
+    const cs = this.cell, h = this.gridHalf, n = this.n;
     let cx = Math.floor((ox + h) / cs) + 1, cz = Math.floor((oz + h) / cs) + 1;
     const stepX = dx > 0 ? 1 : -1, stepZ = dz > 0 ? 1 : -1;
     const bx = (cx - 1 + (dx > 0 ? 1 : 0)) * cs - h;
@@ -3578,6 +3587,7 @@ BR.Weapons = {
       if (dist > bestD) continue;
       const cos = (tx * dir.x + ty * dir.y + tz * dir.z) / (dist || 1);
       if (cos < (dist < 1.5 ? 0.3 : 0.88)) continue;
+      if (!this.canReach(game, actor, o)) continue;                // no knifing through walls
       best = o; bestD = dist;
     }
     if (best && bestD > d.range) {
@@ -3595,8 +3605,15 @@ BR.Weapons = {
     return true;
   },
 
+  // Melee needs a clear line from the attacker's eye to the target's chest or head
+  canReach(game, actor, target) {
+    const e = actor.eye(this._re || (this._re = new THREE.Vector3())), W = game.world, m = target.mover;
+    return W.lineOfSight(e.x, e.y, e.z, m.pos.x, m.pos.y + m.h * 0.6, m.pos.z) || W.lineOfSight(e.x, e.y, e.z, m.pos.x, m.pos.y + m.h - 0.2, m.pos.z);
+  },
+
   meleeHit(game, actor, target, w) {
     const d = w.def;
+    if (!this.canReach(game, actor, target)) return;            // a wall got in the way (e.g. mid-lunge)
     // Backstab if the target is facing away from us
     const tf = { x: -Math.sin(target.yaw), z: -Math.cos(target.yaw) };
     const dx = target.pos.x - actor.pos.x, dz = target.pos.z - actor.pos.z, l = Math.hypot(dx, dz) || 1;
@@ -7849,6 +7866,7 @@ BR.Input = class Input {
     this.root = root;
     this.moveX = 0; this.moveY = 0;
     this.lookDX = 0; this.lookDY = 0;
+    this.fireLookMult = 1;
     this.fire = false;
     this.ads = false;
     this.pressed = {};       // one-shot actions: jump, crouch, grapple, reload, swap, inspect, interact, pause, slot0-2
@@ -7865,6 +7883,32 @@ BR.Input = class Input {
 
   press(act) { this.pressed[act] = true; }
   consume(act) { const v = !!this.pressed[act]; this.pressed[act] = false; return v; }
+  // Gyro aiming: integrates the phone's rotation rate into yaw / pitch radians (screen-orientation aware).
+  // iOS needs DeviceMotionEvent.requestPermission() from a tap, so this is called from the settings toggle.
+  enableGyro() {
+    if (this.gyroOn) return Promise.resolve(true);
+    const start = () => {
+      this.gyroOn = true; this.gyroYaw = 0; this.gyroPitch = 0;
+      window.addEventListener('devicemotion', e => {
+        const r = e.rotationRate; if (!r || r.beta === null) return;
+        const dt = Math.min(0.05, (e.interval > 1 ? e.interval / 1000 : e.interval) || 0.016), D = Math.PI / 180;
+        const ang = (screen.orientation && screen.orientation.angle !== undefined) ? screen.orientation.angle : (window.orientation || 0);
+        let yaw, pitch;
+        if (ang === 90) { yaw = r.beta; pitch = -r.gamma; }
+        else if (ang === 270 || ang === -90) { yaw = -r.beta; pitch = r.gamma; }
+        else { yaw = r.gamma; pitch = r.beta; }
+        this.gyroYaw += yaw * D * dt; this.gyroPitch += pitch * D * dt; this.gyroSeen = true;
+      });
+      return true;
+    };
+    try {
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function')
+        return DeviceMotionEvent.requestPermission().then(st => st === 'granted' ? start() : false).catch(() => false);
+      if (typeof DeviceMotionEvent === 'undefined') return Promise.resolve(false);
+      return Promise.resolve(start());
+    } catch (e) { return Promise.resolve(false); }
+  }
+  consumeGyro() { const g = [this.gyroYaw || 0, this.gyroPitch || 0]; this.gyroYaw = 0; this.gyroPitch = 0; return g; }
   consumeLook() { const d = [this.lookDX, this.lookDY]; this.lookDX = 0; this.lookDY = 0; return d; }
   reset() {
     this.moveX = this.moveY = this.lookDX = this.lookDY = 0;
@@ -7943,8 +7987,9 @@ BR.Input = class Input {
         else { const k = Math.min(1, (m - 0.12) / 0.6) / m; mx *= k; my *= k; }
         this.moveX = mx; this.moveY = my;
       } else if (r.type === 'look' || r.look) {
-        this.lookDX += t.clientX - r.x;
-        this.lookDY += t.clientY - r.y;
+        const k = r.type === 'look' ? 1 : this.fireLookMult;        // drags that start on the fire button
+        this.lookDX += (t.clientX - r.x) * k;
+        this.lookDY += (t.clientY - r.y) * k;
         r.x = t.clientX; r.y = t.clientY;
       }
     }
@@ -9132,6 +9177,23 @@ BR.HUD = class HUD {
         <button data-v="easy">EASY</button><button data-v="normal">NORMAL</button><button data-v="hard">HARD</button></div></div>
       <div class="row"><label for="set-bots">BOTS</label><input id="set-bots" type="range" min="0" max="29" step="1"><output id="out-bots"></output></div>
       <div class="row"><label for="set-sens">LOOK SPEED</label><input id="set-sens" type="range" min="0.3" max="3" step="0.05"><output id="out-sens"></output></div>
+      <details class="help sens-adv"><summary>ADVANCED SENSITIVITY</summary>
+        <div class="row"><label for="set-sensX">HORIZONTAL</label><input id="set-sensX" type="range" min="0.3" max="2" step="0.05"><output id="out-sensX"></output></div>
+        <div class="row"><label for="set-sensY">VERTICAL</label><input id="set-sensY" type="range" min="0.3" max="2" step="0.05"><output id="out-sensY"></output></div>
+        <div class="row"><label for="set-sensAds">AIMING (ADS)</label><input id="set-sensAds" type="range" min="0.3" max="2" step="0.05"><output id="out-sensAds"></output></div>
+        <div class="row"><label for="set-sensScope">SNIPER SCOPE</label><input id="set-sensScope" type="range" min="0.3" max="2" step="0.05"><output id="out-sensScope"></output></div>
+        <div class="row"><label for="set-sensFire">FIRE BUTTON DRAG</label><input id="set-sensFire" type="range" min="0.3" max="2" step="0.05"><output id="out-sensFire"></output></div>
+        <div class="row"><label for="set-sensCurve">RESPONSE CURVE</label><input id="set-sensCurve" type="range" min="0" max="1" step="0.05"><output id="out-sensCurve"></output></div>
+        <div class="row"><label>GYRO AIM</label><div class="seg" id="set-gyro">
+          <button data-v="off">OFF</button><button data-v="ads">WHEN AIMING</button><button data-v="always">ALWAYS</button></div></div>
+        <div class="row"><label for="set-gyroSens">GYRO SPEED</label><input id="set-gyroSens" type="range" min="0.2" max="3" step="0.05"><output id="out-gyroSens"></output></div>
+        <div class="row toggles">
+          <label class="tg"><input type="checkbox" id="set-gyroInvX"> INVERT GYRO X</label>
+          <label class="tg"><input type="checkbox" id="set-gyroInvY"> INVERT GYRO Y</label>
+          <button id="set-sensReset" class="mbtn sm">RESET</button>
+        </div>
+        <p class="sens-hint">Each value multiplies LOOK SPEED. Response curve: 0 = linear, higher = slow drags are finer and fast flicks turn further. Gyro: tilt / turn your phone to aim (iPhone asks for motion access the first time).</p>
+      </details>
       <div class="row"><label for="set-smooth">AIM SMOOTHING</label><input id="set-smooth" type="range" min="0" max="1" step="0.05"><output id="out-smooth"></output></div>
       <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="1" step="0.05"><output id="out-stretch"></output></div>
       <div class="row"><label for="set-sat">SATURATION</label><input id="set-sat" type="range" min="0" max="2" step="0.05"><output id="out-sat"></output></div>
@@ -10376,12 +10438,26 @@ BR.Game = class Game {
     this.lookD = [dx, dy];
     const w = p.weapon;
     const zoom = p.ads && w ? w.def.zoom : 1;
-    let sens = L.touch * S.sens * (p.ads ? L.adsMult : 1) / Math.sqrt(zoom);
+    const scoped = p.ads && w && w.def.scope;
+    let sens = L.touch * S.sens * (p.ads ? L.adsMult * (scoped ? (S.sensScope ?? 1) : (S.sensAds ?? 1)) : 1) / Math.sqrt(zoom);
     const touch = inp.usingTouch;
+    inp.fireLookMult = S.sensFire ?? 1;
+    // response curve: slow drags finer, fast flicks further (0 = linear)
+    const curve = touch ? (S.sensCurve || 0) : 0;
+    if (curve > 0 && (dx || dy)) { const v = Math.hypot(dx, dy) / Math.max(dt, 1e-3); sens *= BR.util.clamp(Math.pow(v / 700, curve * 0.6), 0.5, 1.9); }
     const target = touch && S.assist ? this.findAssistTarget() : null;
     if (target) sens *= 1 - L.aimAssist * 0.6;
-    p.yaw -= dx * sens;
-    p.pitch = BR.util.clamp(p.pitch - dy * sens, -1.45, 1.45);
+    p.yaw -= dx * sens * (S.sensX ?? 1);
+    p.pitch = BR.util.clamp(p.pitch - dy * sens * (S.sensY ?? 1), -1.45, 1.45);
+    // gyro aim (always, or only while aiming down sights)
+    if (inp.gyroOn) {
+      const [gy, gp] = inp.consumeGyro();
+      if (S.gyro === 'always' || (S.gyro === 'ads' && p.ads)) {
+        const gk = (S.gyroSens ?? 1) * (p.ads ? 0.8 / Math.sqrt(zoom) : 1);
+        p.yaw += gy * gk * (S.gyroInvX ? -1 : 1);
+        p.pitch = BR.util.clamp(p.pitch + gp * gk * (S.gyroInvY ? -1 : 1), -1.45, 1.45);
+      }
+    }
     // Duel countdown: look around, but no moving or shooting yet
     if (this.duel && this.duel.phase !== 'fight') { p.input.mx = p.input.mz = 0; p.fireHeld = false; inp.consume('jump'); inp.consume('crouch'); return; }
 
@@ -10868,7 +10944,7 @@ BR.Game = class Game {
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyro: 'off', gyroSens: 1, gyroInvX: false, gyroInvY: false, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
@@ -10934,6 +11010,22 @@ BR.Game = class Game {
   range('set-stretch', 'stretch', v => v === 0 ? 'OFF' : Math.round(v * 100) + '%', () => game.resize());
   range('set-sat', 'saturation', v => Math.round(v * 100) + '%', () => game.applyColor());
   range('set-smooth', 'aimSmooth', v => v === 0 ? 'OFF' : Math.round(v * 100) + '%');
+  // advanced sensitivity
+  const mult = v => v.toFixed(2) + '×';
+  for (const k of ['sensX', 'sensY', 'sensAds', 'sensScope', 'sensFire']) { if (settings[k] === undefined) settings[k] = 1; range('set-' + k, k, mult); }
+  if (settings.sensCurve === undefined) settings.sensCurve = 0;
+  range('set-sensCurve', 'sensCurve', v => v === 0 ? 'LINEAR' : Math.round(v * 100) + '%');
+  if (settings.gyroSens === undefined) settings.gyroSens = 1;
+  range('set-gyroSens', 'gyroSens', mult);
+  if (!settings.gyro) settings.gyro = 'off';
+  seg('set-gyro', 'gyro', () => { if (settings.gyro !== 'off') game.input.enableGyro().then(ok => { if (!ok) { settings.gyro = 'off'; save(); $('set-gyro').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === 'off')); game.hud.toast('Gyro not available on this device', 1600); } }); });
+  check('set-gyroInvX', 'gyroInvX'); check('set-gyroInvY', 'gyroInvY');
+  $('set-sensReset').addEventListener('click', () => {
+    Object.assign(settings, { sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyroSens: 1 });
+    for (const k of ['sensX', 'sensY', 'sensAds', 'sensScope', 'sensFire', 'sensCurve', 'gyroSens']) { const el = $('set-' + k); el.value = settings[k]; el.dispatchEvent(new Event('input')); }
+    save();
+  });
+  if (settings.gyro !== 'off') game.input.enableGyro();
   range('set-vol', 'volume', v => Math.round(v * 100) + '%', () => BR.Audio.setVolume(settings.volume));
   check('set-assist', 'assist');
   check('set-auto', 'autoFire');

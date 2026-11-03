@@ -3,7 +3,7 @@
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyro: 'off', gyroSens: 1, gyroInvX: false, gyroInvY: false, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
@@ -69,6 +69,22 @@
   range('set-stretch', 'stretch', v => v === 0 ? 'OFF' : Math.round(v * 100) + '%', () => game.resize());
   range('set-sat', 'saturation', v => Math.round(v * 100) + '%', () => game.applyColor());
   range('set-smooth', 'aimSmooth', v => v === 0 ? 'OFF' : Math.round(v * 100) + '%');
+  // advanced sensitivity
+  const mult = v => v.toFixed(2) + '×';
+  for (const k of ['sensX', 'sensY', 'sensAds', 'sensScope', 'sensFire']) { if (settings[k] === undefined) settings[k] = 1; range('set-' + k, k, mult); }
+  if (settings.sensCurve === undefined) settings.sensCurve = 0;
+  range('set-sensCurve', 'sensCurve', v => v === 0 ? 'LINEAR' : Math.round(v * 100) + '%');
+  if (settings.gyroSens === undefined) settings.gyroSens = 1;
+  range('set-gyroSens', 'gyroSens', mult);
+  if (!settings.gyro) settings.gyro = 'off';
+  seg('set-gyro', 'gyro', () => { if (settings.gyro !== 'off') game.input.enableGyro().then(ok => { if (!ok) { settings.gyro = 'off'; save(); $('set-gyro').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === 'off')); game.hud.toast('Gyro not available on this device', 1600); } }); });
+  check('set-gyroInvX', 'gyroInvX'); check('set-gyroInvY', 'gyroInvY');
+  $('set-sensReset').addEventListener('click', () => {
+    Object.assign(settings, { sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyroSens: 1 });
+    for (const k of ['sensX', 'sensY', 'sensAds', 'sensScope', 'sensFire', 'sensCurve', 'gyroSens']) { const el = $('set-' + k); el.value = settings[k]; el.dispatchEvent(new Event('input')); }
+    save();
+  });
+  if (settings.gyro !== 'off') game.input.enableGyro();
   range('set-vol', 'volume', v => Math.round(v * 100) + '%', () => BR.Audio.setVolume(settings.volume));
   check('set-assist', 'assist');
   check('set-auto', 'autoFire');

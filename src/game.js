@@ -610,12 +610,26 @@ BR.Game = class Game {
     this.lookD = [dx, dy];
     const w = p.weapon;
     const zoom = p.ads && w ? w.def.zoom : 1;
-    let sens = L.touch * S.sens * (p.ads ? L.adsMult : 1) / Math.sqrt(zoom);
+    const scoped = p.ads && w && w.def.scope;
+    let sens = L.touch * S.sens * (p.ads ? L.adsMult * (scoped ? (S.sensScope ?? 1) : (S.sensAds ?? 1)) : 1) / Math.sqrt(zoom);
     const touch = inp.usingTouch;
+    inp.fireLookMult = S.sensFire ?? 1;
+    // response curve: slow drags finer, fast flicks further (0 = linear)
+    const curve = touch ? (S.sensCurve || 0) : 0;
+    if (curve > 0 && (dx || dy)) { const v = Math.hypot(dx, dy) / Math.max(dt, 1e-3); sens *= BR.util.clamp(Math.pow(v / 700, curve * 0.6), 0.5, 1.9); }
     const target = touch && S.assist ? this.findAssistTarget() : null;
     if (target) sens *= 1 - L.aimAssist * 0.6;
-    p.yaw -= dx * sens;
-    p.pitch = BR.util.clamp(p.pitch - dy * sens, -1.45, 1.45);
+    p.yaw -= dx * sens * (S.sensX ?? 1);
+    p.pitch = BR.util.clamp(p.pitch - dy * sens * (S.sensY ?? 1), -1.45, 1.45);
+    // gyro aim (always, or only while aiming down sights)
+    if (inp.gyroOn) {
+      const [gy, gp] = inp.consumeGyro();
+      if (S.gyro === 'always' || (S.gyro === 'ads' && p.ads)) {
+        const gk = (S.gyroSens ?? 1) * (p.ads ? 0.8 / Math.sqrt(zoom) : 1);
+        p.yaw += gy * gk * (S.gyroInvX ? -1 : 1);
+        p.pitch = BR.util.clamp(p.pitch + gp * gk * (S.gyroInvY ? -1 : 1), -1.45, 1.45);
+      }
+    }
     // Duel countdown: look around, but no moving or shooting yet
     if (this.duel && this.duel.phase !== 'fight') { p.input.mx = p.input.mz = 0; p.fireHeld = false; inp.consume('jump'); inp.consume('crouch'); return; }
 

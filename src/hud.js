@@ -233,6 +233,23 @@ BR.HUD = class HUD {
         <button data-v="easy">EASY</button><button data-v="normal">NORMAL</button><button data-v="hard">HARD</button></div></div>
       <div class="row"><label for="set-bots">BOTS</label><input id="set-bots" type="range" min="0" max="29" step="1"><output id="out-bots"></output></div>
       <div class="row"><label for="set-sens">LOOK SPEED</label><input id="set-sens" type="range" min="0.3" max="3" step="0.05"><output id="out-sens"></output></div>
+      <details class="help sens-adv"><summary>ADVANCED SENSITIVITY</summary>
+        <div class="row"><label for="set-sensX">HORIZONTAL</label><input id="set-sensX" type="range" min="0.3" max="2" step="0.05"><output id="out-sensX"></output></div>
+        <div class="row"><label for="set-sensY">VERTICAL</label><input id="set-sensY" type="range" min="0.3" max="2" step="0.05"><output id="out-sensY"></output></div>
+        <div class="row"><label for="set-sensAds">AIMING (ADS)</label><input id="set-sensAds" type="range" min="0.3" max="2" step="0.05"><output id="out-sensAds"></output></div>
+        <div class="row"><label for="set-sensScope">SNIPER SCOPE</label><input id="set-sensScope" type="range" min="0.3" max="2" step="0.05"><output id="out-sensScope"></output></div>
+        <div class="row"><label for="set-sensFire">FIRE BUTTON DRAG</label><input id="set-sensFire" type="range" min="0.3" max="2" step="0.05"><output id="out-sensFire"></output></div>
+        <div class="row"><label for="set-sensCurve">RESPONSE CURVE</label><input id="set-sensCurve" type="range" min="0" max="1" step="0.05"><output id="out-sensCurve"></output></div>
+        <div class="row"><label>GYRO AIM</label><div class="seg" id="set-gyro">
+          <button data-v="off">OFF</button><button data-v="ads">WHEN AIMING</button><button data-v="always">ALWAYS</button></div></div>
+        <div class="row"><label for="set-gyroSens">GYRO SPEED</label><input id="set-gyroSens" type="range" min="0.2" max="3" step="0.05"><output id="out-gyroSens"></output></div>
+        <div class="row toggles">
+          <label class="tg"><input type="checkbox" id="set-gyroInvX"> INVERT GYRO X</label>
+          <label class="tg"><input type="checkbox" id="set-gyroInvY"> INVERT GYRO Y</label>
+          <button id="set-sensReset" class="mbtn sm">RESET</button>
+        </div>
+        <p class="sens-hint">Each value multiplies LOOK SPEED. Response curve: 0 = linear, higher = slow drags are finer and fast flicks turn further. Gyro: tilt / turn your phone to aim (iPhone asks for motion access the first time).</p>
+      </details>
       <div class="row"><label for="set-smooth">AIM SMOOTHING</label><input id="set-smooth" type="range" min="0" max="1" step="0.05"><output id="out-smooth"></output></div>
       <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="1" step="0.05"><output id="out-stretch"></output></div>
       <div class="row"><label for="set-sat">SATURATION</label><input id="set-sat" type="range" min="0" max="2" step="0.05"><output id="out-sat"></output></div>
