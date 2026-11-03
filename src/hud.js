@@ -17,7 +17,52 @@ const WICON_PATHS = {
   butterfly: 'M6 11h22v3H6z M28 10l26-2-4 6H28z M8 15h20v2H8z',
   revolver: 'M10 6h34v5H30v3h-6l-3 9h-8l3-9h-3l-2-3H10z M44 7h12v3H44z M24 11a3 3 0 1 1 0.1 0z',
 };
-const WICON = id => `<svg viewBox="0 0 64 24"><path d="${WICON_PATHS[id] || WICON_PATHS.pistol}" fill-rule="evenodd"/></svg>`;
+// Weapon pictures rendered from the real 3D models (once, at startup, in a throwaway WebGL
+// context): a white silhouette per weapon for the HUD slots (used as a CSS mask so it takes the
+// slot colour / glow) and a lit picture for the spawn + duel loadout menus.
+BR.WeaponIcons = {
+  sil: {}, pic: {},
+  build() {
+    if (this.done) return; this.done = true;
+    let r;
+    try {
+      const W = 320, H = 120;
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      r = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, preserveDrawingBuffer: true });
+      r.setPixelRatio(1); r.setSize(W, H, false); r.setClearColor(0x000000, 0);
+      const sc = new THREE.Scene();
+      sc.add(new THREE.HemisphereLight(0xffffff, 0x6a7484, 1.7));
+      const dl = new THREE.DirectionalLight(0xffffff, 1.3); dl.position.set(-2, 2.5, 1.2); sc.add(dl);       // key (camera side)
+      const rim = new THREE.DirectionalLight(0xbfd6ff, 0.8); rim.position.set(1, 1.5, -2); sc.add(rim);         // cool rim
+      sc.add(new THREE.AmbientLight(0xffffff, 0.35));
+      const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 10);
+      const css = [];
+      for (const id in BR.CONFIG.weapons) {
+        const m = BR.Models.weapon(id, 'default', 'none');
+        if (m.userData.flash) m.userData.flash.visible = false;
+        if (id === 'butterfly') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
+        const g = new THREE.Group(); g.add(m); sc.add(g);
+        g.updateMatrixWorld(true);
+        const box = new THREE.Box3();
+        m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash) box.expandByObject(o); });
+        const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+        const pad = 1.08, w = Math.max(sz.z, sz.y * W / H) * pad / 2, h = w * H / W;
+        cam.left = -w; cam.right = w; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
+        cam.position.set(c.x - 3, c.y, c.z); cam.up.set(0, 1, 0); cam.lookAt(c);   // side view, muzzle to the left
+        sc.overrideMaterial = null; r.render(sc, cam); this.pic[id] = cv.toDataURL('image/png');
+        sc.overrideMaterial = white; r.render(sc, cam); this.sil[id] = cv.toDataURL('image/png');
+        sc.remove(g);
+        css.push(`.wsil-${id}{-webkit-mask-image:url(${this.sil[id]});mask-image:url(${this.sil[id]})}`);
+      }
+      const st = document.createElement('style'); st.textContent = css.join('\n'); document.head.appendChild(st);
+    } catch (e) { this.sil = {}; this.pic = {}; }
+    finally { if (r) { r.dispose(); if (r.forceContextLoss) r.forceContextLoss(); } }
+  },
+  has(id) { return !!this.sil[id]; },
+};
+const WICON_SVG = id => `<svg viewBox="0 0 64 24"><path d="${WICON_PATHS[id] || WICON_PATHS.pistol}" fill-rule="evenodd"/></svg>`;
+const WICON = id => BR.WeaponIcons.has(id) ? `<i class="wsil wsil-${id}"></i>` : WICON_SVG(id);
 
 const ICON = {
   fire: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>',

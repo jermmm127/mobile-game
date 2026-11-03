@@ -836,6 +836,23 @@ body.duel #topbar .dp { display: flex; }
 .melee-pick button { flex: 1; padding: 7px 4px; font: 700 11px var(--ui); letter-spacing: 0.08em; color: #e8ecf2; background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .melee-pick button.sel { color: #111; background: var(--accent, #ffb02e); border-color: transparent; box-shadow: 0 0 12px rgba(255,176,46,0.35); }
 
+/* Weapon silhouettes (rendered from the models) in the HUD slots */
+.slot .sicon .wsil { display: block; width: 100%; height: 100%; background: currentColor; -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
+.slot .sicon { width: 64px; }
+/* Weapon cards (spawn menu + duel loadout) */
+.sp-grid.gcards, #sp-weapons, .dm-guns { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 8px; }
+.gcard { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px 7px; cursor: pointer;
+  background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.015)); border: 1px solid var(--line); border-radius: 12px;
+  color: #e8ecf2; transition: transform 0.12s, border-color 0.12s, background 0.12s; -webkit-tap-highlight-color: transparent; }
+.gcard img { width: 100%; height: 46px; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.55)) drop-shadow(0 0 1px rgba(255,255,255,0.25)); pointer-events: none; }
+.gcard span { font: 700 10px var(--ui); letter-spacing: 0.1em; color: var(--muted); }
+.gcard:hover, .gcard:active { border-color: rgba(255,255,255,0.28); transform: translateY(-1px); }
+.gcard.sel { border-color: var(--accent); background: linear-gradient(160deg, rgba(255,178,36,0.22), rgba(255,178,36,0.05)); box-shadow: 0 0 14px rgba(255,178,36,0.25); }
+.gcard.sel span { color: #fff; }
+.gcard.done { border-color: var(--health); background: rgba(79, 220, 138, 0.2); }
+@media (max-width: 520px) { #sp-weapons, .dm-guns { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); } .gcard img { height: 38px; } }
+
 </style>
 </head>
 <body>
@@ -859,7 +876,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.5.11',
+  version: '1.6.0',
 
   map: {
     size: 640,          // square map edge length (m) — ~4x the area of v0.3
@@ -1009,7 +1026,7 @@ BR.CONFIG = {
     rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 45, reload: 2.4, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.015, recoilH: 0.018, zoom: 1.5, tier: 2, color: 0x2e3136 },
     holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, recoilH: 0.009, zoom: 1.75, tier: 2, color: 0x33363c, suppressed: true, holo: true },
     // Lightweight bolt-action with open iron sights: accurate from the hip (easy no-scopes), moves fast
-    hunter:  { name: 'Hunting Rifle', ammo: 'heavy', dmg: 78, pellets: 1, rpm: 75, mag: 5, reload: 2.0, spread: 0.006, ads: 0.05, bloom: 0, bloomMax: 0, range: 250, head: 2.0, recoil: 0.035, zoom: 1.45, tier: 2, color: 0x7a4a2a, bolt: true, easyHip: true, speedMult: 1.05, knockback: 2 },
+    hunter:  { name: 'Hunting Rifle', ammo: 'heavy', dmg: 78, pellets: 1, rpm: 75, mag: 5, reload: 2.0, spread: 0.006, ads: 0.05, bloom: 0, bloomMax: 0, range: 250, head: 2.0, recoil: 0.05, kick: 1.5, zoom: 1.45, tier: 2, color: 0x7a4a2a, bolt: true, easyHip: true, speedMult: 1.05, knockback: 2 },
     sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4 },
   },
 
@@ -3499,11 +3516,19 @@ BR.Weapons = {
       // Random recoil: vertical kick varies shot to shot; automatic rifles also wander
       // sideways on a random walk, so sprays need control. Aiming tames it.
       const ads = actor.ads ? 0.6 : 1;
-      actor.recoil += d.recoil * (0.75 + Math.random() * 0.5) * ads;
       if (d.recoilH) {
-        actor.recoilDrift = BR.util.clamp((actor.recoilDrift || 0) * 0.85 + (Math.random() - 0.5) * 0.9, -1, 1);
-        actor.yaw += (actor.recoilDrift * 0.7 + (Math.random() - 0.5) * 0.6) * d.recoilH * ads;
-      } else actor.yaw += (Math.random() - 0.5) * d.recoil * 0.4;
+        // automatics: wide shot-to-shot vertical variance, a sideways random walk that sometimes
+        // kicks the other way, and a little jitter in every direction, so no two sprays match
+        actor.recoil += d.recoil * (0.5 + Math.random() * 1.0) * ads;
+        let dr = (actor.recoilDrift || 0) * 0.8 + (Math.random() - 0.5) * 1.4;
+        if (Math.random() < 0.14) dr -= (actor.recoilDrift || 0) * 1.6;              // sudden direction change
+        actor.recoilDrift = BR.util.clamp(dr, -1.25, 1.25);
+        actor.yaw += (actor.recoilDrift * 0.8 + (Math.random() - 0.5) * 1.0) * d.recoilH * ads;
+        actor.pitch += (Math.random() - 0.5) * d.recoil * 0.35 * ads;
+      } else {
+        actor.recoil += d.recoil * (0.75 + Math.random() * 0.5) * ads;
+        actor.yaw += (Math.random() - 0.5) * d.recoil * 0.4;
+      }
     }
     game.onShot(actor, w);
     return true;
@@ -4343,12 +4368,15 @@ BR.Models = (function () {
       k.box(0.022, 0.014, 0.04, -0.02, Y(88), Z(180), M.dark);                    // laser module
       k.cyl(0.005, 0.003, -0.02, Y(88), Z(180) - 0.021, M.reticle, 'z', 8);
       // folding bipod: clamp + two splayed legs with feet
-      k.box(0.03, 0.016, 0.03, 0, Y(146), Z(196), M.dark);
+      k.box(0.036, 0.02, 0.036, 0, Y(147), Z(172), M.dark);
+      const bipodSteel = cache.mat.bipod || (cache.mat.bipod = new THREE.MeshPhongMaterial({ color: 0x9aa3ad, specular: 0xdde4ea, shininess: 70 }));
       for (const sx of [-1, 1]) {
-        const leg = new THREE.Group(); leg.position.set(sx * 0.012, Y(148), Z(196)); leg.rotation.set(0.42, 0, sx * 0.32); g.add(leg);
-        const up = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.13, 8), M.dark); up.position.y = -0.065; leg.add(up);
-        const lo = new THREE.Mesh(new THREE.CylinderGeometry(0.0048, 0.0048, 0.11, 8), M.metal); lo.position.y = -0.17; leg.add(lo);
-        const ft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.008, 0.008, 10), M.grip); ft.position.y = -0.228; leg.add(ft);
+        const leg = new THREE.Group(); leg.position.set(sx * 0.016, Y(150), Z(172)); leg.rotation.set(0.85, 0, sx * 0.55); g.add(leg);
+        k.box(0.016, 0.016, 0.02, sx * 0.016, Y(150), Z(172), M.dark);                                                        // hinge
+        const up = new THREE.Mesh(new THREE.CylinderGeometry(0.0105, 0.0105, 0.16, 10), M.dark); up.position.y = -0.08; leg.add(up);
+        const cl = new THREE.Mesh(new THREE.CylinderGeometry(0.0125, 0.0125, 0.018, 10), bipodSteel); cl.position.y = -0.16; leg.add(cl);   // lock collar
+        const lo = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.15, 10), bipodSteel); lo.position.y = -0.235; leg.add(lo);
+        const ft = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 8), M.grip); ft.scale.y = 0.7; ft.position.y = -0.312; leg.add(ft);
       }
       // receiver + long top rail, ejection port, bolt
       prof([[248, 96], [366, 96], [374, 106], [374, 142], [248, 142]], 0.06, S, 0.004);
@@ -8859,7 +8887,52 @@ const WICON_PATHS = {
   butterfly: 'M6 11h22v3H6z M28 10l26-2-4 6H28z M8 15h20v2H8z',
   revolver: 'M10 6h34v5H30v3h-6l-3 9h-8l3-9h-3l-2-3H10z M44 7h12v3H44z M24 11a3 3 0 1 1 0.1 0z',
 };
-const WICON = id => `<svg viewBox="0 0 64 24"><path d="${WICON_PATHS[id] || WICON_PATHS.pistol}" fill-rule="evenodd"/></svg>`;
+// Weapon pictures rendered from the real 3D models (once, at startup, in a throwaway WebGL
+// context): a white silhouette per weapon for the HUD slots (used as a CSS mask so it takes the
+// slot colour / glow) and a lit picture for the spawn + duel loadout menus.
+BR.WeaponIcons = {
+  sil: {}, pic: {},
+  build() {
+    if (this.done) return; this.done = true;
+    let r;
+    try {
+      const W = 320, H = 120;
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      r = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, preserveDrawingBuffer: true });
+      r.setPixelRatio(1); r.setSize(W, H, false); r.setClearColor(0x000000, 0);
+      const sc = new THREE.Scene();
+      sc.add(new THREE.HemisphereLight(0xffffff, 0x6a7484, 1.7));
+      const dl = new THREE.DirectionalLight(0xffffff, 1.3); dl.position.set(-2, 2.5, 1.2); sc.add(dl);       // key (camera side)
+      const rim = new THREE.DirectionalLight(0xbfd6ff, 0.8); rim.position.set(1, 1.5, -2); sc.add(rim);         // cool rim
+      sc.add(new THREE.AmbientLight(0xffffff, 0.35));
+      const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 10);
+      const css = [];
+      for (const id in BR.CONFIG.weapons) {
+        const m = BR.Models.weapon(id, 'default', 'none');
+        if (m.userData.flash) m.userData.flash.visible = false;
+        if (id === 'butterfly') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
+        const g = new THREE.Group(); g.add(m); sc.add(g);
+        g.updateMatrixWorld(true);
+        const box = new THREE.Box3();
+        m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash) box.expandByObject(o); });
+        const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+        const pad = 1.08, w = Math.max(sz.z, sz.y * W / H) * pad / 2, h = w * H / W;
+        cam.left = -w; cam.right = w; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
+        cam.position.set(c.x - 3, c.y, c.z); cam.up.set(0, 1, 0); cam.lookAt(c);   // side view, muzzle to the left
+        sc.overrideMaterial = null; r.render(sc, cam); this.pic[id] = cv.toDataURL('image/png');
+        sc.overrideMaterial = white; r.render(sc, cam); this.sil[id] = cv.toDataURL('image/png');
+        sc.remove(g);
+        css.push(`.wsil-${id}{-webkit-mask-image:url(${this.sil[id]});mask-image:url(${this.sil[id]})}`);
+      }
+      const st = document.createElement('style'); st.textContent = css.join('\n'); document.head.appendChild(st);
+    } catch (e) { this.sil = {}; this.pic = {}; }
+    finally { if (r) { r.dispose(); if (r.forceContextLoss) r.forceContextLoss(); } }
+  },
+  has(id) { return !!this.sil[id]; },
+};
+const WICON_SVG = id => `<svg viewBox="0 0 64 24"><path d="${WICON_PATHS[id] || WICON_PATHS.pistol}" fill-rule="evenodd"/></svg>`;
+const WICON = id => BR.WeaponIcons.has(id) ? `<i class="wsil wsil-${id}"></i>` : WICON_SVG(id);
 
 const ICON = {
   fire: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>',
@@ -10926,8 +10999,12 @@ BR.Game = class Game {
   const practice = () => { BR.Audio.init(); tryFullscreen(); game.startMatch({ practice: true }); };
   $('btn-practice').addEventListener('click', practice);
   // spawn menu
+  // weapon cards with pictures of the real models
+  BR.WeaponIcons.build();
+  const gcard = (id, attrs, sel) => { const d = BR.CONFIG.weapons[id], pic = BR.WeaponIcons.pic[id];
+    return `<button class="gcard${sel ? ' sel' : ''}" ${attrs}>${pic ? `<img src="${pic}" alt="">` : ''}<span>${d.name.toUpperCase()}</span></button>`; };
   $('sp-weapons').innerHTML = Object.keys(BR.CONFIG.weapons).filter(id => !BR.CONFIG.weapons[id].melee)
-    .map(id => `<button class="mbtn sm" data-sp="weapon" data-arg="${id}">${BR.CONFIG.weapons[id].name.toUpperCase()}</button>`).join('');
+    .map(id => gcard(id, `data-sp="weapon" data-arg="${id}"`)).join('');
   $('spawnmenu').addEventListener('click', e => {
     const b = e.target.closest('[data-sp]');
     if (!b) return;
@@ -10953,7 +11030,7 @@ BR.Game = class Game {
   };
   dmSeg('dm-diff', 'diff'); dmSeg('dm-target', 'target', true); dmSeg('dm-time', 'roundTime', true);
   const dmGuns = () => {
-    for (const k of [0, 1]) $('dm-g' + k).innerHTML = GUNS.map(id => `<button class="mbtn sm${DS.loadout[k] === id ? ' sel' : ''}" data-slot="${k}" data-gun="${id}">${BR.CONFIG.weapons[id].name.toUpperCase()}</button>`).join('');
+    for (const k of [0, 1]) $('dm-g' + k).innerHTML = GUNS.map(id => gcard(id, `data-slot="${k}" data-gun="${id}"`, DS.loadout[k] === id)).join('');
   };
   $('duelmenu').addEventListener('click', e => {
     const b = e.target.closest('[data-gun]');

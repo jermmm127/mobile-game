@@ -819,3 +819,20 @@ body.duel #topbar .dp { display: flex; }
 .melee-pick span { font: 700 10px var(--ui); letter-spacing: 0.12em; color: var(--muted); margin-right: 2px; }
 .melee-pick button { flex: 1; padding: 7px 4px; font: 700 11px var(--ui); letter-spacing: 0.08em; color: #e8ecf2; background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .melee-pick button.sel { color: #111; background: var(--accent, #ffb02e); border-color: transparent; box-shadow: 0 0 12px rgba(255,176,46,0.35); }
+
+/* Weapon silhouettes (rendered from the models) in the HUD slots */
+.slot .sicon .wsil { display: block; width: 100%; height: 100%; background: currentColor; -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
+.slot .sicon { width: 64px; }
+/* Weapon cards (spawn menu + duel loadout) */
+.sp-grid.gcards, #sp-weapons, .dm-guns { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 8px; }
+.gcard { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px 7px; cursor: pointer;
+  background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.015)); border: 1px solid var(--line); border-radius: 12px;
+  color: #e8ecf2; transition: transform 0.12s, border-color 0.12s, background 0.12s; -webkit-tap-highlight-color: transparent; }
+.gcard img { width: 100%; height: 46px; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.55)) drop-shadow(0 0 1px rgba(255,255,255,0.25)); pointer-events: none; }
+.gcard span { font: 700 10px var(--ui); letter-spacing: 0.1em; color: var(--muted); }
+.gcard:hover, .gcard:active { border-color: rgba(255,255,255,0.28); transform: translateY(-1px); }
+.gcard.sel { border-color: var(--accent); background: linear-gradient(160deg, rgba(255,178,36,0.22), rgba(255,178,36,0.05)); box-shadow: 0 0 14px rgba(255,178,36,0.25); }
+.gcard.sel span { color: #fff; }
+.gcard.done { border-color: var(--health); background: rgba(79, 220, 138, 0.2); }
+@media (max-width: 520px) { #sp-weapons, .dm-guns { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); } .gcard img { height: 38px; } }

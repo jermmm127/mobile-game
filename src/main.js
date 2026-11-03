@@ -213,8 +213,12 @@
   const practice = () => { BR.Audio.init(); tryFullscreen(); game.startMatch({ practice: true }); };
   $('btn-practice').addEventListener('click', practice);
   // spawn menu
+  // weapon cards with pictures of the real models
+  BR.WeaponIcons.build();
+  const gcard = (id, attrs, sel) => { const d = BR.CONFIG.weapons[id], pic = BR.WeaponIcons.pic[id];
+    return `<button class="gcard${sel ? ' sel' : ''}" ${attrs}>${pic ? `<img src="${pic}" alt="">` : ''}<span>${d.name.toUpperCase()}</span></button>`; };
   $('sp-weapons').innerHTML = Object.keys(BR.CONFIG.weapons).filter(id => !BR.CONFIG.weapons[id].melee)
-    .map(id => `<button class="mbtn sm" data-sp="weapon" data-arg="${id}">${BR.CONFIG.weapons[id].name.toUpperCase()}</button>`).join('');
+    .map(id => gcard(id, `data-sp="weapon" data-arg="${id}"`)).join('');
   $('spawnmenu').addEventListener('click', e => {
     const b = e.target.closest('[data-sp]');
     if (!b) return;
@@ -240,7 +244,7 @@
   };
   dmSeg('dm-diff', 'diff'); dmSeg('dm-target', 'target', true); dmSeg('dm-time', 'roundTime', true);
   const dmGuns = () => {
-    for (const k of [0, 1]) $('dm-g' + k).innerHTML = GUNS.map(id => `<button class="mbtn sm${DS.loadout[k] === id ? ' sel' : ''}" data-slot="${k}" data-gun="${id}">${BR.CONFIG.weapons[id].name.toUpperCase()}</button>`).join('');
+    for (const k of [0, 1]) $('dm-g' + k).innerHTML = GUNS.map(id => gcard(id, `data-slot="${k}" data-gun="${id}"`, DS.loadout[k] === id)).join('');
   };
   $('duelmenu').addEventListener('click', e => {
     const b = e.target.closest('[data-gun]');

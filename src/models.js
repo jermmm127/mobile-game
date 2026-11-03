@@ -785,12 +785,15 @@ BR.Models = (function () {
       k.box(0.022, 0.014, 0.04, -0.02, Y(88), Z(180), M.dark);                    // laser module
       k.cyl(0.005, 0.003, -0.02, Y(88), Z(180) - 0.021, M.reticle, 'z', 8);
       // folding bipod: clamp + two splayed legs with feet
-      k.box(0.03, 0.016, 0.03, 0, Y(146), Z(196), M.dark);
+      k.box(0.036, 0.02, 0.036, 0, Y(147), Z(172), M.dark);
+      const bipodSteel = cache.mat.bipod || (cache.mat.bipod = new THREE.MeshPhongMaterial({ color: 0x9aa3ad, specular: 0xdde4ea, shininess: 70 }));
       for (const sx of [-1, 1]) {
-        const leg = new THREE.Group(); leg.position.set(sx * 0.012, Y(148), Z(196)); leg.rotation.set(0.42, 0, sx * 0.32); g.add(leg);
-        const up = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.13, 8), M.dark); up.position.y = -0.065; leg.add(up);
-        const lo = new THREE.Mesh(new THREE.CylinderGeometry(0.0048, 0.0048, 0.11, 8), M.metal); lo.position.y = -0.17; leg.add(lo);
-        const ft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.008, 0.008, 10), M.grip); ft.position.y = -0.228; leg.add(ft);
+        const leg = new THREE.Group(); leg.position.set(sx * 0.016, Y(150), Z(172)); leg.rotation.set(0.85, 0, sx * 0.55); g.add(leg);
+        k.box(0.016, 0.016, 0.02, sx * 0.016, Y(150), Z(172), M.dark);                                                        // hinge
+        const up = new THREE.Mesh(new THREE.CylinderGeometry(0.0105, 0.0105, 0.16, 10), M.dark); up.position.y = -0.08; leg.add(up);
+        const cl = new THREE.Mesh(new THREE.CylinderGeometry(0.0125, 0.0125, 0.018, 10), bipodSteel); cl.position.y = -0.16; leg.add(cl);   // lock collar
+        const lo = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.15, 10), bipodSteel); lo.position.y = -0.235; leg.add(lo);
+        const ft = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 8), M.grip); ft.scale.y = 0.7; ft.position.y = -0.312; leg.add(ft);
       }
       // receiver + long top rail, ejection port, bolt
       prof([[248, 96], [366, 96], [374, 106], [374, 142], [248, 142]], 0.06, S, 0.004);

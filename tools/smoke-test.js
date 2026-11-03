@@ -461,6 +461,12 @@ const server = http.createServer((req, res) => {
       const full = run(), fullNoReload = !(rw.reloadT > 0);
       rw.mag = 3; vm.inspectT = 0; inp.press('reload'); g.update(1 / 60); const reloads = rw.reloadT > 0 && !(vm.inspectT > 0);
       out.reloadInspect = { knife, full, fullNoReload, reloads }; }
+    // weapon pictures from the models: slot silhouettes + menu cards; hunting rifle kicks harder
+    { const WI = BR.WeaponIcons, ids = Object.keys(C.weapons);
+      g.hud.update && g.state === 'playing';
+      out.icons = { sil: ids.every(id => WI.sil[id] && WI.sil[id].length > 500), pic: ids.every(id => WI.pic[id]),
+        slot: !!document.querySelector('.slot .sicon .wsil'), spawnCards: document.querySelectorAll('#sp-weapons .gcard img').length,
+        duelCards: document.querySelectorAll('#dm-g0 .gcard img').length, hunterRecoil: C.weapons.hunter.recoil, hunterKick: C.weapons.hunter.kick }; }
     // weapon-slot opacity in the HUD editor
     const sa = document.getElementById('ed-slot-alpha'); sa.value = 0.3; sa.dispatchEvent(new Event('input'));
     out.slotAlpha = parseFloat(getComputedStyle(document.querySelector('#play > .slot:not(.empty)')).opacity);
@@ -551,6 +557,8 @@ const server = http.createServer((req, res) => {
     ['every gun builds with every blueprint + camo; per-gun tracers', v15.cosmetics.bad.length === 0 && v15.cosmetics.built > 200 && v15.cosmetics.tracers],
     ['inventory melee picker swaps karambit / butterfly (one at a time)', v15.meleePick.a.join() === 'butterfly,butterfly' && v15.meleePick.b.join() === 'knife,knife,1'],
     ['reload button inspects with a knife or a full mag, reloads otherwise', v15.reloadInspect.knife && v15.reloadInspect.full && v15.reloadInspect.fullNoReload && v15.reloadInspect.reloads],
+    ['weapon slots + spawn/duel menus use pictures of the real models', v15.icons.sil && v15.icons.pic && v15.icons.slot && v15.icons.spawnCards >= 8 && v15.icons.duelCards >= 8],
+    ['hunting rifle has more recoil', v15.icons.hunterRecoil >= 0.05 && v15.icons.hunterKick > 1],
     ['weapon buttons opacity can be lowered (saved)', Math.abs(v15.slotAlpha - 0.3) < 0.02 && v15.saved === 0.3],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
