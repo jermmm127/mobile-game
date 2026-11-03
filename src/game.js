@@ -102,11 +102,28 @@ BR.Game = class Game {
     this.vmScale = w < h ? 0.6 : 1;
   }
 
+  // ------------------------------------------------------------ enemy highlight
+  // Tints every other player's own materials so they read clearly in shade, foliage and clutter.
+  // It's a colour tint only: walls still hide them (no seeing through geometry).
+  applyHighlight() {
+    const mode = this.settings.highlight || 'off', k = mode === 'bright' ? 0.5 : mode === 'subtle' ? 0.22 : 0;
+    const col = this._hlc || (this._hlc = new THREE.Color(0xff3b30));
+    for (const a of this.actors || []) {
+      if (a.isPlayer || !a.mesh) continue;
+      a.mesh.traverse(o => {
+        if (!o.isMesh || !o.material || !o.material.emissive) return;
+        if (!o.userData.hlOwn) { o.material = o.material.clone(); o.userData.hlOwn = true; o.userData.hlBase = o.material.emissive.clone(); }
+        o.material.emissive.copy(o.userData.hlBase).lerp(col, k);
+      });
+    }
+  }
+
   // ------------------------------------------------------------ sun shadows (Graphics: High)
   // A soft shadow map that follows the camera (about 80 m across), so buildings, trees,
   // props and players ground themselves. Off on Low / Medium to keep phones at 60 fps.
   shadowsWanted() { return (this.settings.gfx || 'medium') === 'high'; }
   applyShadows() {
+    this.applyHighlight();
     const on = this.shadowsWanted(), r = this.renderer, sun = this.sun;
     r.shadowMap.enabled = on; r.shadowMap.type = THREE.PCFSoftShadowMap; r.shadowMap.autoUpdate = true;
     if (!sun || !this.scene) return;
@@ -147,6 +164,7 @@ BR.Game = class Game {
     sun.position.copy(this.sunDir);
     this.scene.add(sun, sun.target);
     const fill = new THREE.DirectionalLight(0xa9c4ff, 0.22); fill.position.set(-0.5, 0.35, -0.6); this.scene.add(fill);
+    this.muzzleLight = new THREE.PointLight(0xffc27a, 0, 9, 2); this.scene.add(this.muzzleLight);   // flashes on your shots
     this.sun = sun;
     this.world = new BR.World(seed, opts);
     this.world.buildMeshes(this.scene, this.detail);
@@ -834,6 +852,18 @@ BR.Game = class Game {
     if (killer && killer === this.player) {
       BR.Audio.kill(head);
       if (head) this.hud.tech('HEADSHOT');
+      // equipped kill finisher plays on the victim
+      // weapon mastery: count the kill, announce any camo it unlocks
+      const unlocked = BR.Profile.addKill(weaponId);
+      if (unlocked.length) setTimeout(() => this.hud.toast('UNLOCKED · ' + unlocked.join(', ') + ' camo', 2400), 900);
+      const fin = P.equip.finishers;
+      if (fin && fin !== 'none' && this.fx.finisher) this.fx.finisher(fin, victim.pos.clone(), victim);
+      // multi-kill callouts (kills within 4 s of each other) + a kill punch on the camera
+      const mk = this.multiKill || (this.multiKill = { n: 0, t: -9 });
+      mk.n = this.time - mk.t < 4 ? mk.n + 1 : 1; mk.t = this.time;
+      const MK = [null, null, 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'RAMPAGE'];
+      if (mk.n >= 2) { this.hud.tech(MK[Math.min(mk.n, 5)]); BR.Audio.coin(); }
+      this.cam.shake = Math.max(this.cam.shake || 0, 0.12 + (head ? 0.06 : 0)); this.cam.hitFov = Math.min(10, (this.cam.hitFov || 0) - 3);
       this.hud.toast(`Eliminated ${victim.name}  ·  +${BR.CONFIG.coins.perKill} coins`, 1400);
     }
     if (victim === this.player) {
@@ -848,6 +878,11 @@ BR.Game = class Game {
   }
 
   onShot(actor, w) {
+    // your shots light up the surroundings for a split second
+    if (actor.isPlayer && this.muzzleLight && !w.def.melee && !w.def.suppressed) {
+      this.muzzleLight.position.copy(this.camera.position).addScaledVector(this.camera.getWorldDirection(this._mlv || (this._mlv = new THREE.Vector3())), 1.2);
+      this.muzzleLight.intensity = w.def.pellets > 1 || w.def.kick > 1 ? 3.2 : 2.2;
+    }
     const cp = this.camera.position;
     const dx = actor.pos.x - cp.x, dz = actor.pos.z - cp.z;
     const dist = actor.isPlayer ? 0 : Math.hypot(dx, dz);
@@ -1102,6 +1137,7 @@ BR.Game = class Game {
     // skip map tiles past the fog (invisible anyway)
     if (this.world && this.scene.fog) this.world.cullChunks(this.camera.position.x, this.camera.position.z, this.scene.fog.far + 30);
     this.updateShadowCam();
+    if (this.muzzleLight && this.muzzleLight.intensity > 0.01) this.muzzleLight.intensity *= 0.6; else if (this.muzzleLight) this.muzzleLight.intensity = 0;
     r.render(this.scene, this.camera);
     if ((this.state === 'playing' || this.state === 'won' || this.state === 'paused') && this.player && this.player.alive) {
       r.clearDepth();

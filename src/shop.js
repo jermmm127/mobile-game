@@ -69,29 +69,47 @@ BR.FEEDS = {
   void:     { name: 'Void Rift', caseOnly: true, rarity: 'Epic' },
   solar:    { name: 'Solar Burst', caseOnly: true, rarity: 'Legendary' },
   exotic:   { name: 'Supreme', caseOnly: true, rarity: 'Exotic' },
+  nova:     { name: 'Nova Burst', caseOnly: true, case: 'nova', rarity: 'Legendary' },
   rk_gold:     { name: 'Gold Laurel', rank: 2, rarity: 'Epic' },
   rk_diamond:  { name: 'Diamond Frost', rank: 4, rarity: 'Legendary' },
   rk_master:   { name: 'Master Flame', rank: 5, rarity: 'Mythic' },
   rk_predator: { name: 'Apex Predator', rank: 6, rarity: 'Mythic' },
 };
 
+// ---- Kill finishers: a show on the player you eliminate (src/effects.js finisher())
+BR.FINISHERS = {
+  none:      { name: 'None', price: 0 },
+  shatter:   { name: 'Shatter', price: 600, rarity: 'Epic', c1: '#bfe8ff', c2: '#ffffff' },
+  ascend:    { name: 'Ascend', price: 1000, rarity: 'Legendary', c1: '#ffe08a', c2: '#fff6d6' },
+  firework:  { name: 'Grand Finale', price: 1100, rarity: 'Legendary', c1: '#ff3df2', c2: '#1de9ff' },
+  voidpop:   { name: 'Void Pop', price: 1600, rarity: 'Mythic', c1: '#b04bff', c2: '#050008' },
+  glitchout: { name: 'Glitch Out', caseOnly: true, case: 'nova', rarity: 'Mythic', c1: '#ff2244', c2: '#2266ff' },
+  starfall:  { name: 'Starfall', caseOnly: true, case: 'nova', rarity: 'Exotic', c1: '#ffd24a', c2: '#ff5a00' },
+};
 // ---- Cases: exclusive items you can only get by opening one. Rarer = flashier.
 BR.CASES = {
-  release: { name: 'Release Case', price: 600, odds: { Rare: 52, Epic: 28, Legendary: 13, Mythic: 6, Exotic: 1 }, dupRefund: 0.35 },
+  release: { name: 'Release Case', price: 600, odds: { Rare: 52, Epic: 28, Legendary: 13, Mythic: 6, Exotic: 1 }, dupRefund: 0.35, label: 'RELEASE', sub: 'CASE · SEASON 1' },
+  // Season 2: only Legendary and up. Every drop is animated.
+  nova: { name: 'Nova Case', price: 900, odds: { Legendary: 58, Mythic: 34, Exotic: 8 }, dupRefund: 0.4, label: 'NOVA', sub: 'CASE · SEASON 2' },
 };
 BR.CaseItems = {
   // every caseOnly item across the cosmetic tables: [{cat, id, item}]
-  all() {
+  // all caseOnly items, or only one case's items (an item's .case, default 'release')
+  all(caseId) {
+    const full = this._full();
+    return caseId ? full.filter(e => (e.item.case || 'release') === caseId) : full;
+  },
+  _full() {
     if (this._all) return this._all;
     const M = BR.Models, out = [];
     const add = (cat, table, pre) => { for (const id in table) if (table[id].caseOnly) out.push({ cat, id: pre ? pre + id : id, item: table[id] }); };
     for (const w in M.BLUEPRINTS) add('blueprints', M.BLUEPRINTS[w], w + ':');
-    add('skins', M.SKINS); add('gloves', M.GLOVES); add('tracers', M.TRACERS); add('feeds', BR.FEEDS);
+    add('skins', M.SKINS); add('gloves', M.GLOVES); add('tracers', M.TRACERS); add('feeds', BR.FEEDS); add('finishers', BR.FINISHERS);
     return (this._all = out);
   },
   roll(caseId, R) {
     R = R || Math.random;
-    const C = BR.CASES[caseId], pool = this.all();
+    const C = BR.CASES[caseId], pool = this.all(caseId);
     const tiers = Object.keys(C.odds).filter(t => pool.some(p => p.item.rarity === t));
     const total = tiers.reduce((s, t) => s + C.odds[t], 0);
     let x = R() * total, tier = tiers[0];
@@ -113,8 +131,8 @@ BR.Profile = {
     d = d || {};
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
-      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', melee: 'knife' }, d.equip || {}),
+      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'] }, d.owned || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', melee: 'knife' }, d.equip || {}),
       rp: typeof d.rp === 'number' ? d.rp : 0,
       cases: Object.assign({ opened: 0 }, d.cases || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0 }, d.stats || {}),
@@ -124,9 +142,12 @@ BR.Profile = {
     // one tracer per gun ('signature' = the blueprint's own tracer). Old saves: their single tracer goes on every gun.
     const legacyTr = d.equip && d.equip.tracers && d.equip.tracers !== 'default' ? d.equip.tracers : null;
     this.data.equip.tracerByGun = Object.assign({}, (d.equip && d.equip.tracerByGun) || {});
+    this.data.equip.glovesByGun = Object.assign({}, (d.equip && d.equip.glovesByGun) || {});   // gloves per weapon ('all' = equip.gloves)
     if (legacyTr && !(d.equip && d.equip.tracerByGun)) for (const [w] of SHOP_WEAPONS) this.data.equip.tracerByGun[w] = legacyTr;
     if (!this.data.owned.tracers.includes('signature')) this.data.owned.tracers.push('signature');
     for (const k of ['gloves', 'blueprints']) if (!this.data.owned[k]) this.data.owned[k] = k === 'gloves' ? ['default'] : [];
+    if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
+    if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
     this.unlockRankRewards();
     // Dev accounts: infinite coins and everything unlocked (including items added later)
@@ -162,6 +183,7 @@ BR.Profile = {
   isEquipped(cat, id, weapon) {
     if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b && (!BR.MELEE[w] || (this.data.equip.melee || 'knife') === w); }
     if (cat === 'tracers') return (this.data.equip.tracerByGun[weapon || 'rifle'] || 'signature') === id;
+    if (cat === 'gloves') return this.gloveFor(weapon) === id;
     return this.data.equip[cat] === id;
   },
   infinite() { return !!this.data.dev; },
@@ -180,13 +202,41 @@ BR.Profile = {
   setEquip(cat, id, weapon) {
     if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; if (BR.MELEE[w]) this.data.equip.melee = w; }   // equipping a knife skin makes it your knife
     else if (cat === 'tracers') this.data.equip.tracerByGun[weapon || 'rifle'] = id;
+    else if (cat === 'gloves' && weapon && weapon !== 'all') this.data.equip.glovesByGun[weapon] = id;
+    else if (cat === 'gloves') { this.data.equip.gloves = id; this.data.equip.glovesByGun = {}; }      // ALL: one pair everywhere
     else this.data.equip[cat] = id;
   },
+  // ---- Weapon mastery: kills per weapon; camos unlock at 10 / 25 / 50 / 100 kills with any one gun
+  addKill(weapon) {
+    const d = this.data; d.mastery = d.mastery || {};
+    if (!weapon || !BR.CONFIG.weapons[weapon]) return [];
+    d.mastery[weapon] = (d.mastery[weapon] || 0) + 1;
+    const got = [], best = Math.max(...Object.values(d.mastery));
+    for (const id in BR.Models.SKINS) { const it = BR.Models.SKINS[id]; if (it.mastery && best >= it.mastery && !this.owns('skins', id)) { d.owned.skins.push(id); got.push(it.name); } }
+    this.save();
+    return got;
+  },
+  // ---- Daily reward: log in on consecutive days to grow the streak; every 3rd day adds a Nova Case key
+  claimDaily(today) {
+    const d = this.data; today = today || new Date().toISOString().slice(0, 10);
+    d.daily = d.daily || { last: null, streak: 0 }; d.keys = d.keys || {};
+    if (d.daily.last === today) return null;
+    const y = new Date(Date.parse(today) - 864e5).toISOString().slice(0, 10);
+    d.daily.streak = d.daily.last === y ? d.daily.streak + 1 : 1; d.daily.last = today;
+    const coins = 100 + 50 * Math.min(d.daily.streak - 1, 6), key = d.daily.streak % 3 === 0;
+    if (!this.infinite()) d.coins += coins;
+    if (key) d.keys.nova = (d.keys.nova || 0) + 1;
+    this.save();
+    return { streak: d.daily.streak, coins, key };
+  },
+  keys(caseId) { return (this.data.keys && this.data.keys[caseId]) || 0; },
+  // gloves worn with a weapon (per-weapon pick, else the default pair)
+  gloveFor(weapon) { const e = this.data.equip; return (weapon && weapon !== 'all' && e.glovesByGun && e.glovesByGun[weapon]) || e.gloves || 'default'; },
   // Open a case: pay, roll, add (or refund a duplicate). Returns the result or null if broke.
   openCase(caseId) {
     const C = BR.CASES[caseId];
-    if (!this.canAfford(C.price)) return null;
-    if (!this.infinite()) this.data.coins -= C.price;
+    if (this.keys(caseId) > 0) this.data.keys[caseId]--;                 // a free key opens it
+    else { if (!this.canAfford(C.price)) return null; if (!this.infinite()) this.data.coins -= C.price; }
     const r = BR.CaseItems.roll(caseId);
     const dup = this.owns(r.cat, r.id);
     let refund = 0;
@@ -226,7 +276,7 @@ BR.Profile = {
 };
 
 BR.MELEE = { knife: true, butterfly: true };
-const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['pistol', 'Pistol'], ['knife', 'Karambit'], ['butterfly', 'Butterfly']];
+const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['pistol', 'Pistol'], ['knife', 'Karambit'], ['butterfly', 'Butterfly']];
 const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
 
 BR.Shop = class Shop {
@@ -239,6 +289,7 @@ BR.Shop = class Shop {
       return out;
     }
     if (cat === 'feeds') return BR.FEEDS;
+    if (cat === 'finishers') { const out = {}; for (const k in BR.FINISHERS) if (!BR.FINISHERS[k].caseOnly || BR.Profile.owns(cat, k)) out[k] = BR.FINISHERS[k]; return out; }
     const all = cat === 'skins' ? M.SKINS : cat === 'tracers' ? M.TRACERS : cat === 'gloves' ? M.GLOVES : M.CHARMS;
     // case-exclusive items live in the same tables but aren't sold
     const out = {}; for (const k in all) if (!all[k].caseOnly || BR.Profile.owns(cat, k)) out[k] = all[k];
@@ -248,6 +299,7 @@ BR.Shop = class Shop {
     const M = BR.Models;
     if (cat === 'blueprints') { const [w, b] = id.split(':'); return M.BLUEPRINTS[w] && M.BLUEPRINTS[w][b]; }
     if (cat === 'feeds') return BR.FEEDS[id];
+    if (cat === 'finishers') return BR.FINISHERS[id];
     return (cat === 'skins' ? M.SKINS : cat === 'tracers' ? M.TRACERS : cat === 'gloves' ? M.GLOVES : M.CHARMS)[id];
   }
 
@@ -258,7 +310,7 @@ BR.Shop = class Shop {
     this.sel = null;
     const $ = id => document.getElementById(id);
     this.el = { root: $('shop'), grid: $('shop-grid'), coins: $('shop-coins'), name: $('shop-sel-name'), action: $('shop-action'), msg: $('shop-msg'), weps: $('shop-weps') };
-    this.el.weps.innerHTML = SHOP_WEAPONS.map(([id, n]) => `<button data-w="${id}">${n}</button>`).join('');
+    this.el.weps.innerHTML = '<button data-w="all" class="w-all">ALL</button>' + SHOP_WEAPONS.map(([id, n]) => `<button data-w="${id}">${n}</button>`).join('');
     $('shop-tabs').addEventListener('click', e => {
       const b = e.target.closest('button[data-cat]');
       if (!b) return;
@@ -327,6 +379,7 @@ BR.Shop = class Shop {
       return `<i class="sw bp" style="--a:${hex(it.body)};--b:${hex(it.accent)};--g:${hex(it.glow)}"></i>`;
     }
     if (cat === 'skins') return `<i class="sw" style="background:${it.swatch}"></i>`;
+    if (cat === 'finishers') return it.c1 ? `<i class="sw fin" style="background:radial-gradient(circle at 50% 60%,${it.c2} 0 12%,${it.c1} 30%,transparent 62%),#0b0d12"></i>` : `<i class="sw" style="background:#2a2f37"></i>`;
     if (cat === 'tracers' && it.signature) {
       const sig = BR.Models.resolveTracer(this.weapon, Object.assign({}, BR.Profile.data.equip, { tracerByGun: { [this.weapon]: 'signature' } }));
       it = Object.assign({}, it, { color: sig.color, color2: sig.color2 });
@@ -348,34 +401,36 @@ BR.Shop = class Shop {
   render() {
     const P = BR.Profile, cat = this.cat, items = Shop.catalog(cat, this.weapon);
     document.querySelectorAll('#shop-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
-    const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers';
+    const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers' || cat === 'gloves';
     this.el.weps.classList.toggle('hidden', !showWeps);
+    this.el.weps.classList.toggle('gl', cat === 'gloves');
+    if (cat !== 'gloves' && this.weapon === 'all') this.weapon = 'rifle';
     this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
     this.el.coins.textContent = P.coinsLabel();
     const html = [];
     for (const id in items) {
       const it = items[id], own = P.owns(cat, id), eq = P.isEquipped(cat, id, this.weapon);
       const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
-      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : '<i class="coin"></i>' + it.price}</span></button>`);
+      html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : it.mastery ? 'Mastery · ' + it.mastery + ' kills' : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : '<i class="coin"></i>' + it.price}</span></button>`);
     }
     this.el.grid.innerHTML = html.join('');
     const it = items[this.sel];
     this.el.name.textContent = it ? it.name : '';
     const own = it && P.owns(cat, this.sel), eq = it && P.isEquipped(cat, this.sel, this.weapon);
-    const locked = it && !own && (it.rank !== undefined || it.caseOnly);
-    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : 'Buy · ' + it.price;
+    const locked = it && !own && (it.rank !== undefined || it.caseOnly || it.mastery);
+    this.el.action.textContent = !it ? '' : eq ? 'Equipped' : own ? 'Equip' : it.mastery ? it.mastery + ' kills with one gun' : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : 'Buy · ' + it.price;
     this.el.action.disabled = !it || eq || locked;
     this.el.action.classList.toggle('poor', !!it && !own && !P.canAfford(it.price));
     // Preview: the equipped look, with the selected item swapped in
     const eqd = P.data.equip;
-    const wpn = showWeps ? this.weapon : 'holoar';
+    const wpn = showWeps ? (this.weapon === 'all' ? 'pistol' : this.weapon) : 'holoar';
     this.game.setShopPreview({
-      weapon: cat === 'gloves' ? 'pistol' : wpn,
-      bp: cat === 'blueprints' ? this.sel.split(':')[1] : (eqd.blueprints[cat === 'gloves' ? 'pistol' : wpn] || 'default'),
+      weapon: wpn,
+      bp: cat === 'blueprints' ? this.sel.split(':')[1] : (eqd.blueprints[wpn] || 'default'),
       skin: cat === 'skins' ? this.sel : eqd.skins,
       charm: cat === 'charms' ? this.sel : eqd.charms,
       tracer: cat === 'tracers' ? (this.sel === 'signature' ? BR.Models.resolveTracer(wpn, eqd) : this.sel) : BR.Models.resolveTracer(wpn, eqd),
-      gloves: cat === 'gloves' ? this.sel : eqd.gloves,
+      gloves: cat === 'gloves' ? this.sel : P.gloveFor(wpn),
       showTracer: cat === 'tracers',
       showHands: cat === 'gloves',
     });
@@ -395,7 +450,7 @@ BR.Inventory = class Inventory {
     const $ = id => document.getElementById(id);
     this.el = { root: $('inventory'), grid: $('inv-grid'), weps: $('inv-weps'), action: $('inv-action'), msg: $('inv-msg'), count: $('inv-count'),
       name: $('inv-name'), rar: $('inv-rar'), sub: $('inv-sub'), feed: $('inv-feed'), stage: $('inv-stage') };
-    this.el.weps.innerHTML = SHOP_WEAPONS.map(([id, n]) => `<button data-w="${id}">${n}</button>`).join('');
+    this.el.weps.innerHTML = '<button data-w="all" class="w-all">ALL</button>' + SHOP_WEAPONS.map(([id, n]) => `<button data-w="${id}">${n}</button>`).join('');
     $('inv-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-cat]'); if (!b) return; this.cat = b.dataset.cat; this.sel = null; this.render(); });
     this.el.weps.addEventListener('click', e => { const b = e.target.closest('button[data-w]'); if (!b) return; this.weapon = b.dataset.w; this.sel = null; this.render(); });
     this.el.grid.addEventListener('click', e => { const c = e.target.closest('[data-id]'); if (!c) return; this.sel = c.dataset.id; this.game.inspectReset(); this.render(); });
@@ -439,9 +494,17 @@ BR.Inventory = class Inventory {
     for (const id in all) if (P.owns(this.cat, id)) out[id] = all[id];
     return out;
   }
+  // everything that can be collected (shop + case + mastery + rank rewards), for the progress counter
+  collectible() {
+    if (this._coll) return this._coll;
+    const M = BR.Models; let n = 0;
+    for (const t of [M.SKINS, M.TRACERS, M.CHARMS, M.GLOVES, BR.FEEDS, BR.FINISHERS]) n += Object.keys(t).filter(k => k !== 'default' && k !== 'none' && k !== 'signature').length;
+    for (const w in M.BLUEPRINTS) n += Object.keys(M.BLUEPRINTS[w]).filter(k => k !== 'default').length;
+    return (this._coll = n);
+  }
   total() {
     const o = BR.Profile.data.owned; let n = 0;
-    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
+    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds', 'finishers']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
     return n + (o.blueprints || []).length;
   }
   open(focus) {
@@ -478,10 +541,12 @@ BR.Inventory = class Inventory {
   render() {
     const P = BR.Profile, cat = this.cat, items = this.items();
     document.querySelectorAll('#inv-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
-    const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers';
+    const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers' || cat === 'gloves';
     this.el.weps.classList.toggle('hidden', !showWeps);
+    this.el.weps.classList.toggle('gl', cat === 'gloves');
+    if (cat !== 'gloves' && this.weapon === 'all') this.weapon = 'rifle';
     this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
-    this.el.count.textContent = this.total();
+    this.el.count.textContent = this.total() + ' / ' + this.collectible();
     const mel = P.data.equip.melee || 'knife';
     document.querySelectorAll('#inv-melee button').forEach(b => b.classList.toggle('sel', b.dataset.m === mel));
     if (!this.sel || !items[this.sel]) this.sel = items[this.equippedId()] ? this.equippedId() : Object.keys(items)[0] || null;
@@ -505,14 +570,14 @@ BR.Inventory = class Inventory {
     // kill feed banners show as a big banner instead of a gun
     this.el.feed.classList.toggle('hidden', cat !== 'feeds');
     if (cat === 'feeds' && it) this.el.feed.innerHTML = `<div class="kf feed-${this.sel}">${BR.Ranks.badge(P.data.rp || 0)}<b class="me">${BR.Accounts ? BR.Accounts.displayName() : 'You'}</b> <i>Rifle ✕</i> <b>Rival</b></div>`;
-    const eqd = P.data.equip, wpn = showWeps ? this.weapon : cat === 'gloves' ? 'pistol' : 'holoar';
+    const eqd = P.data.equip, wpn = showWeps ? (this.weapon === 'all' ? 'pistol' : this.weapon) : 'holoar';
     this.game.setShopPreview({
       weapon: wpn,
       bp: cat === 'blueprints' && this.sel ? this.sel.split(':')[1] : (eqd.blueprints[wpn] || 'default'),
       skin: cat === 'skins' && this.sel ? this.sel : eqd.skins,
       charm: cat === 'charms' && this.sel ? this.sel : eqd.charms,
       tracer: cat === 'tracers' && this.sel ? (this.sel === 'signature' ? BR.Models.resolveTracer(wpn, eqd) : this.sel) : BR.Models.resolveTracer(wpn, eqd),
-      gloves: cat === 'gloves' && this.sel ? this.sel : eqd.gloves,
+      gloves: cat === 'gloves' && this.sel ? this.sel : P.gloveFor(wpn),
       showTracer: cat === 'tracers', showHands: cat === 'gloves', hideGun: cat === 'feeds',
     });
   }

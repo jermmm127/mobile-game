@@ -251,6 +251,8 @@ BR.World = class World {
 
   generate() {
     const R = this.rand, U = BR.util, H = this.half;
+    const A = (this.size / 640) * (this.size / 640);   // feature counts scale with map area
+    const N = n => Math.round(n * A);
 
     // Boundary walls
     const bw = 6, bh = 26;
@@ -265,9 +267,9 @@ BR.World = class World {
     // decides what gets built there.
     const NAMES = ['Relay Spire', 'Rust Basin', 'Dustwater', 'Hollow Yards', 'Cinder Flats', 'Skyhook',
       'Gravel Point', 'Ironbark', 'Saltmarsh', 'Bastion', 'Lowtide', 'Overpass', 'Redline', 'Kestrel Ridge'];
-    const TYPES = ['town', 'yard', 'town', 'relay', 'town', 'outpost', 'town', 'yard', 'town', 'relay', 'outpost', 'town'];
+    const TYPES = ['town', 'yard', 'town', 'relay', 'town', 'outpost', 'town', 'yard', 'town', 'relay', 'outpost', 'town', 'yard', 'town'];
     const pois = [];
-    for (let tries = 0; pois.length < 12 && tries < 3000; tries++) {
+    for (let tries = 0; pois.length < Math.min(14, Math.round(12 * Math.sqrt(A))) && tries < 3000; tries++) {
       const px = U.rand(R, -H + 60, H - 60), pz = U.rand(R, -H + 60, H - 60);
       if (pois.every(t => Math.hypot(t.x - px, t.z - pz) > 125)) pois.push({ x: px, z: pz });
     }
@@ -283,33 +285,33 @@ BR.World = class World {
     }
 
     // Long rock ridges carve the map into regions (with gaps to run through)
-    for (let i = 0; i < 7; i++) this.ridge();
+    for (let i = 0; i < N(7); i++) this.ridge();
 
     // Landmarks
-    for (let i = 0; i < 4; i++) this.placeRandom(34, 34, (x, z) => this.mesa(x, z));
-    for (let i = 0; i < 6; i++) this.placeRandom(14, 14, (x, z) => this.tower(x, z));
-    for (let i = 0; i < 14; i++) this.placeRandom(18, 18, (x, z) => this.wallRunLane(x, z));
+    for (let i = 0; i < N(4); i++) this.placeRandom(34, 34, (x, z) => this.mesa(x, z));
+    for (let i = 0; i < N(6); i++) this.placeRandom(14, 14, (x, z) => this.tower(x, z));
+    for (let i = 0; i < N(14); i++) this.placeRandom(18, 18, (x, z) => this.wallRunLane(x, z));
     // Movement playgrounds
-    for (let i = 0; i < 10; i++) this.placeRandom(34, 34, (x, z) => this.parkourCourse(x, z));
-    for (let i = 0; i < 6; i++) this.placeRandom(18, 18, (x, z) => this.pillarMaze(x, z));
-    for (let i = 0; i < 60; i++) this.placeRandom(4, 4, (x, z) => this.jumpPad(x, z));
+    for (let i = 0; i < N(10); i++) this.placeRandom(34, 34, (x, z) => this.parkourCourse(x, z));
+    for (let i = 0; i < N(6); i++) this.placeRandom(18, 18, (x, z) => this.pillarMaze(x, z));
+    for (let i = 0; i < N(60); i++) this.placeRandom(4, 4, (x, z) => this.jumpPad(x, z));
 
     // Ponds (before the scatter so they find room; visual water, walkable)
-    for (let i = 0; i < 10; i++) this.placeRandom(22, 22, (x, z) => this.props.ponds.push({ x, z, r: 5 + R() * 4 }));
+    for (let i = 0; i < N(10); i++) this.placeRandom(22, 22, (x, z) => this.props.ponds.push({ x, z, r: 5 + R() * 4 }));
 
     // Scatter
-    for (let i = 0; i < 70; i++) this.placeRandom(8, 8, (x, z) => this.container(x, z));
-    for (let i = 0; i < 140; i++) this.placeRandom(5, 5, (x, z) => this.crateStack(x, z));
-    for (let i = 0; i < 160; i++) this.placeRandom(7, 7, (x, z) => this.rock(x, z));
-    for (let i = 0; i < 120; i++) this.placeRandom(7, 7, (x, z) => this.coverWall(x, z));
-    for (let i = 0; i < 520; i++) this.placeRandom(2, 2, (x, z) => this.tree(x, z));
-    for (let i = 0; i < 50; i++) this.placeRandom(12, 3, (x, z) => this.fence(x, z));
+    for (let i = 0; i < N(70); i++) this.placeRandom(8, 8, (x, z) => this.container(x, z));
+    for (let i = 0; i < N(140); i++) this.placeRandom(5, 5, (x, z) => this.crateStack(x, z));
+    for (let i = 0; i < N(160); i++) this.placeRandom(7, 7, (x, z) => this.rock(x, z));
+    for (let i = 0; i < N(120); i++) this.placeRandom(7, 7, (x, z) => this.coverWall(x, z));
+    for (let i = 0; i < N(520); i++) this.placeRandom(2, 2, (x, z) => this.tree(x, z));
+    for (let i = 0; i < N(50); i++) this.placeRandom(12, 3, (x, z) => this.fence(x, z));
 
     // Visual dressing (own RNG so it never changes the gameplay layout)
     this.dress();
 
     // Open-field loot so nobody is empty-handed for long
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < N(220); i++) {
       const x = U.rand(R, -H + 10, H - 10), z = U.rand(R, -H + 10, H - 10);
       if (this.free(x - 0.5, z - 0.5, x + 0.5, z + 0.5, 0.5)) this.lootSpots.push({ x, y: 0, z, tier: 0 });
     }

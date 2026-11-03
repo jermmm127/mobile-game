@@ -867,13 +867,30 @@ body.duel #topbar .dp { display: flex; }
   filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)) drop-shadow(0 0 8px var(--rc)); }
 .cs-card.big .cc-img { width: 146px; height: 68px; }
 /* Shotgun crosshair: four corner brackets forming a square that opens with the spread */
-.xh.sq { --sqh: max(var(--gap), calc(var(--len) + 5px)); }
-.xh.sq i { display: block; width: var(--len); height: var(--len); background: transparent; box-shadow: none; border: 0 solid var(--xc); box-sizing: border-box;
-  top: auto; bottom: auto; left: auto; right: auto; border-radius: 1px; }
-.xh.sq .c-t { left: calc(-1 * var(--sqh)); top: calc(-1 * var(--sqh)); border-left-width: var(--thick); border-top-width: var(--thick); }
-.xh.sq .c-r { left: calc(var(--sqh) - var(--len)); top: calc(-1 * var(--sqh)); border-right-width: var(--thick); border-top-width: var(--thick); }
-.xh.sq .c-l { left: calc(-1 * var(--sqh)); top: calc(var(--sqh) - var(--len)); border-left-width: var(--thick); border-bottom-width: var(--thick); }
-.xh.sq .c-b { left: calc(var(--sqh) - var(--len)); top: calc(var(--sqh) - var(--len)); border-right-width: var(--thick); border-bottom-width: var(--thick); }
+.xh.sq { --sqh: max(calc(var(--gap) * 0.62), calc(var(--len) * 0.6 + 6px)); --sql: calc(var(--len) * 0.6); }
+.xh.sq i { display: block; width: var(--sql); height: var(--sql); background: transparent; box-shadow: none; border: 0 solid var(--xc); box-sizing: border-box;
+  top: auto; bottom: auto; left: auto; right: auto; }
+.xh.sq .c-t { left: calc(-1 * var(--sqh)); top: calc(-1 * var(--sqh)); border-left-width: var(--thick); border-top-width: var(--thick); border-top-left-radius: 6px; }
+.xh.sq .c-r { left: calc(var(--sqh) - var(--sql)); top: calc(-1 * var(--sqh)); border-right-width: var(--thick); border-top-width: var(--thick); border-top-right-radius: 6px; }
+.xh.sq .c-l { left: calc(-1 * var(--sqh)); top: calc(var(--sqh) - var(--sql)); border-left-width: var(--thick); border-bottom-width: var(--thick); border-bottom-left-radius: 6px; }
+.xh.sq .c-b { left: calc(var(--sqh) - var(--sql)); top: calc(var(--sqh) - var(--sql)); border-right-width: var(--thick); border-bottom-width: var(--thick); border-bottom-right-radius: 6px; }
 .xh.sq.ol { filter: drop-shadow(0 0 1px rgba(0,0,0,0.85)); }
 .xh.sq u { display: none; }
 .xh.sq b { display: block; }
+
+/* weapon chips: the ALL chip only shows on the Gloves tab */
+.chips .w-all { display: none; } .chips.gl .w-all { display: inline-flex; }
+
+/* Case picker + the Nova case look */
+.cs-pick { margin: 0 auto 6px; max-width: 360px; }
+.cs-pick em { font-style: normal; font-size: 8px; padding: 1px 4px; margin-left: 4px; border-radius: 4px; background: #ff3df2; color: #fff; vertical-align: 1px; }
+.cs-case.nova .cs-body { background: linear-gradient(135deg, #1a0638, #6a1bff 45%, #ff3df2 75%, #1de9ff); }
+.cs-case.nova .cs-lid { background: linear-gradient(135deg, #2a0a50, #b04bff); }
+.cs-case.nova { box-shadow: 0 0 34px rgba(176,75,255,0.55); }
+
+/* Spinning case previews: 12-frame turntable sprite */
+.cs-card .cc-spin { display: block; flex: none; width: 100px; height: 40px; background-size: 1200px 40px; background-repeat: no-repeat;
+  animation: ccspin 1.5s steps(12) infinite; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)) drop-shadow(0 0 8px var(--rc)); pointer-events: none; }
+.cs-card.big .cc-spin { width: 150px; height: 60px; background-size: 1800px 60px; animation-name: ccspin-big; }
+@keyframes ccspin { to { background-position-x: -1200px; } }
+@keyframes ccspin-big { to { background-position-x: -1800px; } }

@@ -3,7 +3,7 @@
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyro: 'off', gyroSens: 1, gyroInvX: false, gyroInvY: false, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', volume: 0.6, assist: true, autoFire: false, showFps: false,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyro: 'off', gyroSens: 1, gyroInvX: false, gyroInvY: false, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', highlight: 'subtle', volume: 0.6, assist: true, autoFire: false, showFps: false,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
@@ -13,6 +13,7 @@
   const save = () => BR.util.save('velocity-royale.settings', settings);
   BR.Accounts.load();
   BR.Profile.load();
+  setTimeout(() => daily(), 0);
 
   let game;
   try {
@@ -62,6 +63,8 @@
   };
   seg('set-diff', 'difficulty');
   seg('set-gfx', 'gfx', () => game.applyGraphics());
+  if (!settings.highlight) settings.highlight = 'subtle';
+  seg('set-hl', 'highlight', () => game.applyHighlight());
   $('set-bots').max = BR.CONFIG.match.maxBots;
   range('set-bots', 'bots', v => v === 0 ? 'NONE' : v + '');
   range('set-sens', 'sens', v => v.toFixed(2) + '×');
@@ -166,7 +169,10 @@
       $('acct-dev').classList.toggle('hidden', !BR.Profile.infinite());
     }
   };
-  const afterAuth = () => { BR.Profile.load(); game.refreshCosmetics(); BR.updateCoins(); renderAccount(); };
+  // daily login reward: streak coins, a Nova Case key every 3rd day
+  const daily = () => { const r = BR.Profile.claimDaily(); if (!r) return;
+    setTimeout(() => { game.hud.toast(`DAILY REWARD · Day ${r.streak} streak · +${r.coins} coins${r.key ? ' · +1 NOVA CASE KEY' : ''}`, 3200); BR.Audio.coin && BR.Audio.coin(); BR.updateCoins(); }, 700); };
+  const afterAuth = () => { BR.Profile.load(); daily(); game.refreshCosmetics(); BR.updateCoins(); renderAccount(); };
   $('acct-chip').addEventListener('click', () => { renderAccount(); $('account').classList.remove('hidden'); });
   $('acct-close').addEventListener('click', () => $('account').classList.add('hidden'));
   $('acct-tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; acctMode = b.dataset.v; renderAccount(); });
@@ -281,7 +287,7 @@
   });
 
   // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts
-  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'shotgun', 'sniper', 'hunter', 'revolver', 'pistol'];
+  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'sniper', 'hunter', 'revolver', 'pistol'];
   let dmMode = 'setup', dmTimer = null;
   const dmSeg = (id, key, num) => {
     const el = $(id), sync = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', String(DS[key]) === b.dataset.v));
@@ -329,25 +335,33 @@
   const caseCard = (e, extra) => {
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
     const hex = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
-    const cp = BR.WeaponIcons && BR.WeaponIcons.cpic[e.cat + ':' + e.id];
-    const sw = cp ? `<img class="cc-img" src="${cp}" alt="">` : e.cat === 'blueprints'
+    const ck = e.cat + ':' + e.id, sp = BR.WeaponIcons && BR.WeaponIcons.spin[ck], cp = BR.WeaponIcons && BR.WeaponIcons.cpic[ck];
+    const sw = sp ? `<i class="cc-spin" style="background-image:url(${sp})"></i>` : cp ? `<img class="cc-img" data-ck="${ck}" src="${cp}" alt="">` : e.cat === 'blueprints'
       ? `<i class="sw cbp" style="background:linear-gradient(135deg,${hex(e.item.body)} 0 45%,${hex(e.item.accent)} 45% 70%,${hex(e.item.glow)} 70%);box-shadow:0 0 12px ${hex(e.item.glow)}"></i>`
       : shop.swatch(e.cat, e.id, e.item);
     return `<div class="cs-card r-${e.item.rarity}${extra || ''}" style="--rc:${RCOL[e.item.rarity]}">${sw}<span class="cc-cat">${CAT_LABEL[e.cat]}</span><span class="cc-name">${nm}</span></div>`;
   };
-  let caseBusy = false, lastDrop = null;
+  let caseBusy = false, lastDrop = null, curCase = 'release';
   const caseRefresh = () => {
     $('cs-coins').textContent = BR.Profile.coinsLabel();
-    const all = BR.CaseItems.all(), C = BR.CASES.release, order = ['Exotic', 'Mythic', 'Legendary', 'Epic', 'Rare'];
-    $('cs-odds').innerHTML = order.map(t => `<span style="--rc:${RCOL[t]}"><b>${t}</b> ${C.odds[t]}%</span>`).join('');
+    const all = BR.CaseItems.all(curCase), C = BR.CASES[curCase], order = ['Exotic', 'Mythic', 'Legendary', 'Epic', 'Rare'];
+    $('cs-odds').innerHTML = order.filter(t => C.odds[t]).map(t => `<span style="--rc:${RCOL[t]}"><b>${t}</b> ${C.odds[t]}%</span>`).join('');
+    $('cs-title').textContent = C.name.toUpperCase(); $('cs-label').textContent = C.label; $('cs-sub').textContent = C.sub; $('cs-price').textContent = BR.Profile.keys(curCase) > 0 ? 'FREE KEY ×' + BR.Profile.keys(curCase) : C.price;
+    $('cs-case').classList.toggle('nova', curCase === 'nova');
+    document.querySelectorAll('#cs-pick button').forEach(b => b.classList.toggle('sel', b.dataset.c === curCase));
     $('cs-grid').innerHTML = order.flatMap(t => all.filter(e => e.item.rarity === t)).map(e => caseCard(e, BR.Profile.owns(e.cat, e.id) ? ' owned' : '')).join('');
   };
-  const openCasePanel = () => { $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden'); $('cs-reel').classList.add('hidden'); $('cs-case').classList.remove('hidden'); caseRefresh(); game.hud.show('cases', true); };
+  // spin the case items: render turntables in the background and swap them in as they finish
+  const spinCase = () => BR.WeaponIcons.queueSpins(BR.CaseItems.all(curCase), (key, url) => {
+    document.querySelectorAll('#cases img.cc-img').forEach(im => { if (im.dataset.ck === key) { const i = document.createElement('i'); i.className = 'cc-spin'; i.style.backgroundImage = `url(${url})`; im.replaceWith(i); } });
+  });
+  const openCasePanel = () => { setTimeout(spinCase, 60); $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden'); $('cs-reel').classList.add('hidden'); $('cs-case').classList.remove('hidden'); caseRefresh(); game.hud.show('cases', true); };
   $('btn-cases').addEventListener('click', () => { BR.Audio.init(); openCasePanel(); });
+  $('cs-pick').addEventListener('click', e => { const b = e.target.closest('button[data-c]'); if (!b || caseBusy) return; curCase = b.dataset.c; BR.Audio.click(); openCasePanel(); });
   $('cs-x').addEventListener('click', () => { if (!caseBusy) { game.hud.show('cases', false); BR.updateCoins(); } });
   $('cs-open').addEventListener('click', () => {
     if (caseBusy) return;
-    const r = BR.Profile.openCase('release');
+    const r = BR.Profile.openCase(curCase);
     if (!r) { BR.Audio.click(); $('cs-result').classList.remove('hidden'); $('cs-result').innerHTML = '<div class="cs-msg">Not enough coins</div>'; return; }
     caseBusy = true; lastDrop = r;
     $('cs-coins').textContent = BR.Profile.coinsLabel();
@@ -355,7 +369,7 @@
     $('cs-case').classList.add('hidden'); $('cs-reel').classList.remove('hidden');
     // reel: 56 cards, the drop at index 50
     const N = 56, WIN = 50, cards = [];
-    for (let i = 0; i < N; i++) cards.push(i === WIN ? r : BR.CaseItems.roll('release'));
+    for (let i = 0; i < N; i++) cards.push(i === WIN ? r : BR.CaseItems.roll(curCase));
     const strip = $('cs-strip');
     strip.style.transition = 'none'; strip.style.transform = 'translateX(0)';
     strip.innerHTML = cards.map((e, i) => caseCard(e, i === WIN ? ' win' : '')).join('');

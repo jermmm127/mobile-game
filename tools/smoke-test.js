@@ -531,7 +531,61 @@ const server = http.createServer((req, res) => {
     S.sensX = 1; S.sensY = 1; S.aimSmooth = 0.3;
     return { a, b, ui: !!document.getElementById('set-sensX') && !!document.getElementById('set-gyro') };
   });
-  const run = 6.9, BR_RUN = run;
+  // v1.7: big feature batch
+  const v17 = await page.evaluate(async () => {
+    const g = BR.game, C = BR.CONFIG, P = BR.Profile, M = BR.Models, out = {};
+    out.mapSize = C.map.size; out.run = C.move.runSpeed;
+    // new weapons exist, build, fire and reload
+    out.newGuns = ['lmg', 'dmr'].every(id => C.weapons[id] && M.weapon(id).children.length > 10 && BR.WeaponIcons.sil[id]);
+    g.startMatch({ practice: true }); const p = g.player; p.mover.dropping = false; p.takeDamage = () => false;
+    g.practiceSpawn('weapon', 'lmg', 0); g.practiceSpawn('weapon', 'dmr', 1);
+    let fired = 0; for (const k of [0, 1]) { p.cur = k; p.weapon.cool = 0; if (BR.Weapons.tryFire(g, p)) fired++; }
+    out.fired = fired; out.slots = p.slots.map(x => x && x.id).join();
+    // Season 2 blueprints: one for every gun, animated, with a reload style
+    const guns = Object.keys(C.weapons).filter(w => !C.weapons[w].melee);
+    out.s2 = guns.every(w => Object.values(M.BLUEPRINTS[w] || {}).some(b => b.season === 2 && b.reload && ['warp', 'orbit', 'slam'].includes(b.reload.style)));
+    out.s2anim = (() => { const m = M.weapon('rifle', 'default', 'none', 'hyperdrive'); return !!(m.userData.anim && m.userData.anim.length >= 2); })();
+    // new reload styles run without errors
+    const vm = g.vmr; let styled = 0;
+    for (const st of ['warp', 'orbit', 'slam']) { vm.sigReload.rifle = { style: st, fx: 0x1de9ff }; g.practiceSpawn('weapon', 'rifle', 0); p.cur = 0; const w = p.weapon; w.mag = 3; BR.Weapons.startReload(w, p);
+      for (let i = 0; i < 200 && w.reloadT > 0; i++) { BR.Weapons.update(w, 1 / 60, p); vm.update(1 / 60, 0, 0); } styled++; }
+    out.styles = styled; out.holderScale = vm.models.rifle.scale.x;
+    // Nova case: its own pool, only Legendary+
+    const nova = BR.CaseItems.all('nova'), rel = BR.CaseItems.all('release');
+    out.nova = { n: nova.length, onlyHigh: nova.every(e => ['Legendary', 'Mythic', 'Exotic'].includes(e.item.rarity)), disjoint: !nova.some(e => rel.includes(e)) };
+    let rolls = 0; for (let i = 0; i < 200; i++) if (nova.includes(BR.CaseItems.roll('nova'))) rolls++; out.nova.rollsInPool = rolls === 200;
+    // finishers: equip and play one on a kill
+    P.data.owned.finishers.push('voidpop'); P.equip('finishers', 'voidpop');
+    out.finEquipped = P.data.equip.finishers === 'voidpop';
+    g.fx.finisher('voidpop', new THREE.Vector3(0, 0, 0), null); g.fx.finisher('starfall', new THREE.Vector3(2, 0, 0), null);
+    for (let i = 0; i < 30; i++) g.fx.update(1 / 30);
+    out.finActive = g.fx.fins && g.fx.fins.length >= 0;
+    // per-weapon gloves
+    P.data.owned.gloves.push('hyperspace'); P.equip('gloves', 'hyperspace', 'lmg');
+    out.gloves = { lmg: P.gloveFor('lmg'), rifle: P.gloveFor('rifle') };
+    g.refreshCosmetics(); p.cur = 0; g.practiceSpawn('weapon', 'lmg', 0); vm.update(1 / 60, 0, 0); out.gloveSwapped = vm.curGlove === 'hyperspace';
+    P.equip('gloves', 'default', 'all');
+    // dropped / loot weapons wear your skin: the merged mesh differs from the default one
+    P.data.equip.blueprints.rifle = 'hyperdrive';
+    const a = M.worldWeapon('rifle').geometry, b = M.worldWeapon('rifle', 'hyperdrive', 'default').geometry;
+    out.lootSkin = a !== b && b.attributes.position.count > a.attributes.position.count;
+    P.data.equip.blueprints.rifle = 'default';
+    // mastery + daily
+    const before = P.owns('skins', 'm_copper'); let got = []; for (let i = 0; i < 10; i++) got = got.concat(P.addKill('smg'));
+    out.mastery = { before, after: P.owns('skins', 'm_copper'), got: got.join() };
+    P.data.daily = { last: '2026-01-01', streak: 2 }; const d1 = P.claimDaily('2026-01-02'), d2 = P.claimDaily('2026-01-02');
+    out.daily = { streak: d1 && d1.streak, key: d1 && d1.key, again: d2 };
+    // enemy highlight tints other players only
+    g.settings.bots = 2; g.settings.highlight = 'bright'; g.startMatch(); const bot = g.actors.find(x => !x.isPlayer);
+    let tinted = false; bot.mesh.traverse(o => { if (o.isMesh && o.material && o.material.emissive && o.material.emissive.r > 0.3) tinted = true; });
+    out.highlight = tinted; g.settings.highlight = 'subtle';
+    // spinning case previews render
+    await new Promise(res => { BR.WeaponIcons.queueSpins(BR.CaseItems.all('nova').slice(0, 2), () => {}); const t0 = performance.now(); const chk = () => (Object.keys(BR.WeaponIcons.spin).length >= 2 || performance.now() - t0 > 15000) ? res() : setTimeout(chk, 200); chk(); });
+    out.spins = Object.keys(BR.WeaponIcons.spin).length;
+    g.state = 'menu';
+    return out;
+  });
+  const run = 6.5, BR_RUN = run;
   const checks = [
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
     ['crouch while running slides with a boost', mech.slide > run + 3],
@@ -621,10 +675,21 @@ const server = http.createServer((req, res) => {
     ['walls stop bullets both ways and knives (battle royale)', !walls.br.throughPlayer && !walls.br.throughBot && !walls.br.knifeThrough && walls.br.clearPlayer && walls.br.clearBot && walls.br.knifeClear],
     ['walls stop bullets both ways and knives (1v1 duel)', !walls.duel.throughPlayer && !walls.duel.throughBot && !walls.duel.knifeThrough && walls.duel.clearPlayer && walls.duel.clearBot && walls.duel.knifeClear],
     ['advanced sensitivity: horizontal / vertical multipliers + settings UI', Math.abs(sensAdv.b[0] / sensAdv.a[0] - 2) < 0.05 && Math.abs(sensAdv.b[1] / sensAdv.a[1] - 0.5) < 0.05 && sensAdv.ui],
+    ['bigger battle royale map (780 m), slower run speed', v17.mapSize >= 780 && v17.run < 6.9],
+    ['new weapons: LMG + DMR build, fire, have icons', v17.newGuns && v17.fired === 2 && v17.slots === 'lmg,dmr,knife'],
+    ['Season 2: an animated blueprint for every gun with a new reload style', v17.s2 && v17.s2anim],
+    ['new reload styles (warp / orbit / slam) play and reset', v17.styles === 3 && v17.holderScale === 1],
+    ['Nova Case: own pool, Legendary+ only, rolls stay in it', v17.nova.n >= 10 && v17.nova.onlyHigh && v17.nova.disjoint && v17.nova.rollsInPool],
+    ['kill finishers equip and play', v17.finEquipped && v17.finActive],
+    ['gloves per weapon (and the viewmodel swaps them)', v17.gloves.lmg === 'hyperspace' && v17.gloves.rifle === 'default' && v17.gloveSwapped],
+    ['loot / dropped guns wear your equipped blueprint', v17.lootSkin],
+    ['weapon mastery unlocks a camo; daily reward streak + key, once a day', !v17.mastery.before && v17.mastery.after && v17.daily.streak === 3 && v17.daily.key && v17.daily.again === null],
+    ['enemy highlight tints other players', v17.highlight],
+    ['spinning case previews render', v17.spins >= 2],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

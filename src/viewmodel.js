@@ -95,7 +95,7 @@
           holder.userData.spin = { obj: spin, axis };
         } else if (id === 'butterfly') {
           // held like a hammer grip: handles in the fist, blade angled forward and in
-          m.rotation.set(-0.5, 0.4, 0.12); m.scale.setScalar(0.95);
+          m.rotation.set(-0.8, 0.3, 0.5); m.scale.setScalar(1.0);
           m.userData.baseRot = m.rotation.clone();
           // everything pivots inside the fist about the handle pin, so the held (safe) handle can
           // stay put while the blade and bite handle flip round it
@@ -136,6 +136,7 @@
       if (this.knifeHands) this.scene.remove(this.knifeHands.R, this.knifeHands.L, this.knifeHands.RB);
       const kh = left => { const h = BR.Models.hand(eq.gloves || 'default', left, true); h.scale.setScalar(1.3); h.visible = false; this.scene.add(h); return h; };
       this.knifeHands = { R: kh(true), L: kh(false), RB: kh(false) };
+      this.curGlove = null;          // forces the per-weapon glove pass on the next frame
       // Wrist grapple launcher (child of the left hand: aims where the fingers point)
       const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
       const orange = new THREE.MeshLambertMaterial({ color: 0xffa31a, emissive: 0x552200 });
@@ -203,6 +204,17 @@
       const holder = this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
       holder.visible = true;
 
+      // Gloves can differ per weapon: swap the glove meshes in place (keeps the wrist launcher etc.)
+      const gid = BR.Profile && BR.Profile.gloveFor ? BR.Profile.gloveFor(w.id) : 'default';
+      if (gid !== this.curGlove) {
+        this.curGlove = gid;
+        const swap = (grp, left, fist) => {
+          for (let i = grp.children.length - 1; i >= 0; i--) if (grp.children[i].userData.glove) grp.remove(grp.children[i]);
+          const src = BR.Models.hand(gid, left, fist); while (src.children.length) grp.add(src.children[0]);
+        };
+        swap(this.arms.R.hand, false, false); swap(this.arms.L.hand, true, false);
+        swap(this.knifeHands.R, true, true); swap(this.knifeHands.L, false, true); swap(this.knifeHands.RB, false, true);
+      }
       // New weapon in hand: draw animation
       if (w !== this.lastWeapon) {
         this.lastWeapon = w;
@@ -225,7 +237,7 @@
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
-      if (w.id === 'butterfly') { hx = 0.14 * s; hy = -0.05; hz = -0.4; }
+      if (w.id === 'butterfly') { hx = 0.17 * s; hy = -0.13; hz = -0.42; }
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
       if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) * 0.78 - sg.z; }
       const A = this.adsW, nA = 1 - A * 0.85;
@@ -398,6 +410,25 @@
         else if (st === 'flip') { const a = E((kk - 0.5) / 0.3); orx += a * Math.PI * 2; oy += Math.sin(a * Math.PI) * 0.09; }
         else if (st === 'toss') { const a = Math.min(1, Math.max(0, (kk - 0.12) / 0.36)); oy += Math.sin(a * Math.PI) * 0.16; orx -= E(a) * Math.PI * 2; ory += Math.sin(a * Math.PI) * 0.4; }
         else if (st === 'spin') { const a = E((kk - 0.58) / 0.3); ory += a * Math.PI * 2; ox -= Math.sin(a * Math.PI) * 0.05; }
+        else if (st === 'warp') {
+          // the gun shrinks into a portal, blinks, and pops back out bigger with a ring burst
+          const sh = win(kk, 0.12, 0.3, 0.52, 0.68);
+          holder.scale.setScalar(1 - 0.94 * sh + 0.08 * win(kk, 0.66, 0.72, 0.74, 0.86));
+          orz += sh * Math.PI * 1.5; oy += sh * 0.05;
+          if (this.lastSigK < 0.3 && kk >= 0.3) { this.ringFx(model.localToWorld(this._v.set(0, 0, 0)), sig.fx); }
+          if (this.lastSigK < 0.66 && kk >= 0.66) { this.ringFx(model.localToWorld(this._v.set(0, 0, 0)), sig.fx); this.pos.z.vel += 0.6; }
+        }
+        else if (st === 'orbit') {
+          // the gun swings round a little loop while rolling once
+          const a = E((kk - 0.18) / 0.5), ang = a * Math.PI * 2;
+          ox += Math.sin(ang) * 0.07; oy += (1 - Math.cos(ang)) * 0.045; oz -= Math.sin(ang * 0.5) * 0.05; orz -= ang; ory += Math.sin(ang) * 0.25;
+        }
+        else if (st === 'slam') {
+          // heave the gun up, then slam it down with a shockwave and a heavy settle
+          const up = win(kk, 0.1, 0.3, 0.36, 0.44), dn = win(kk, 0.42, 0.47, 0.5, 0.66);
+          oy += up * 0.12 - dn * 0.07; orx += up * 0.7 - dn * 0.35; orz += up * 0.25;
+          if (this.lastSigK < 0.46 && kk >= 0.46) { const at2 = model.localToWorld(this._v.set(0, -0.05, 0)); this.ringFx(at2, sig.fx); this.vfx(at2, sig.fx, 22, 2); this.pos.y.vel -= 0.9; }
+        }
         else if (st === 'glitch' && kk > 0.08 && kk < 0.9) {
           const f = Math.floor(performance.now() / 55), r1 = Math.sin(f * 12.9898) * 43758.5453, u = r1 - Math.floor(r1);
           if (u > 0.55) { ox += (u - 0.75) * 0.08; oy += (u - 0.7) * 0.05; orz += (u - 0.7) * 0.6; }
@@ -410,6 +441,7 @@
         if (passedR(0.97)) this.vfx(at, 0xffffff, 10, 1.2);
         this.lastSigK = kk;
       } else { this.lastSigK = 0; model.visible = true; }
+      if (!(reloading && sig && sig.style === 'warp') && holder.scale.x !== 1) holder.scale.setScalar(1);
 
       // Butterfly: fluid wrist follow-through. A spring per axis is driven by how fast the blade and
       // bite handle are swinging, so every flip rolls / lifts / turns the wrist and it settles smoothly.

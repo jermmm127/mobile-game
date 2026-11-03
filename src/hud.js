@@ -74,6 +74,51 @@ BR.WeaponIcons = {
     finally { if (r) { r.dispose(); if (r.forceContextLoss) r.forceContextLoss(); } }
   },
   has(id) { return !!this.sil[id]; },
+  // ---- spinning previews for case items: a 12-frame turntable strip per item, rendered lazily one
+  // item per frame (keeps the UI smooth), then swapped in for the static picture
+  spin: {},
+  modelFor(e) {
+    if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); const m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly') m.rotation.x = -Math.PI / 2; return m; }
+    if (e.cat === 'skins') return BR.Models.weapon('rifle', e.id, 'none');
+    if (e.cat === 'gloves') { const m = BR.Models.hand(e.id, false); m.rotation.set(0, 0, -0.35); return m; }
+    return null;
+  },
+  queueSpins(entries, onReady) {
+    this.q = (this.q || []).concat(entries.filter(e => !this.spin[e.cat + ':' + e.id] && this.modelFor(e)));
+    this.onReady = onReady;
+    if (this.running) return;
+    this.running = true;
+    const F = 12, W = 120, H = 48;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    let r = null;
+    try { r = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, preserveDrawingBuffer: true }); } catch (err) { this.running = false; return; }
+    r.setPixelRatio(1); r.setSize(W, H, false); r.setClearColor(0x000000, 0);
+    const sc = new THREE.Scene();
+    sc.add(new THREE.HemisphereLight(0xffffff, 0x6a7484, 1.7));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.3); dl.position.set(-2, 2.5, 1.2); sc.add(dl); sc.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 20);
+    const strip = document.createElement('canvas'); strip.width = W * F; strip.height = H; const sx = strip.getContext('2d');
+    const step = () => {
+      const e = this.q.shift();
+      if (!e) { this.running = false; r.dispose(); if (r.forceContextLoss) r.forceContextLoss(); return; }
+      const key = e.cat + ':' + e.id, m = this.modelFor(e);
+      const turn = new THREE.Group(), g = new THREE.Group(); g.add(m); turn.add(g); sc.add(turn);
+      if (BR.Models.animate) BR.Models.animate(m, 1.2);
+      turn.updateMatrixWorld(true);
+      const box = new THREE.Box3(); m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash) box.expandByObject(o); });
+      const c = box.getCenter(new THREE.Vector3()); g.position.sub(c);
+      const rad = box.getSize(new THREE.Vector3()).length() / 2, w = rad * 1.02, h = w * H / W;
+      cam.left = -w; cam.right = w; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
+      cam.position.set(-4, 0.9, 0); cam.lookAt(0, 0, 0);
+      sx.clearRect(0, 0, strip.width, strip.height);
+      for (let f = 0; f < F; f++) { turn.rotation.y = f / F * Math.PI * 2; r.render(sc, cam); sx.drawImage(cv, f * W, 0); }
+      sc.remove(turn);
+      this.spin[key] = strip.toDataURL('image/png');
+      if (this.onReady) this.onReady(key, this.spin[key]);
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  },
 };
 const WICON_SVG = id => `<svg viewBox="0 0 64 24"><path d="${WICON_PATHS[id] || WICON_PATHS.pistol}" fill-rule="evenodd"/></svg>`;
 const WICON = id => BR.WeaponIcons.has(id) ? `<i class="wsil wsil-${id}"></i>` : WICON_SVG(id);
@@ -268,6 +313,8 @@ BR.HUD = class HUD {
       <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="2" step="0.05"><output id="out-stretch"></output></div>
       <div class="row"><label for="set-sat">SATURATION</label><input id="set-sat" type="range" min="0" max="2" step="0.05"><output id="out-sat"></output></div>
       <div class="row"><label for="set-fov">FOV</label><input id="set-fov" type="range" min="60" max="110" step="1"><output id="out-fov"></output></div>
+      <div class="row"><label>ENEMY HIGHLIGHT</label><div class="seg" id="set-hl">
+        <button data-v="off">OFF</button><button data-v="subtle">SUBTLE</button><button data-v="bright">BRIGHT</button></div></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
         <button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
       <div class="row"><label for="set-vol">VOLUME</label><input id="set-vol" type="range" min="0" max="1" step="0.05"><output id="out-vol"></output></div>
@@ -314,7 +361,7 @@ BR.HUD = class HUD {
       <div class="coins-pill"><i class="coin"></i><span id="shop-coins" class="num">0</span></div>
     </div>
     <div id="shop-tabs" class="seg">
-      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button><button data-cat="feeds">KILL FEED</button>
+      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
     <div id="shop-weps" class="chips"></div>
     <div id="shop-grid"></div>
@@ -336,7 +383,7 @@ BR.HUD = class HUD {
   <div class="shop-panel metal">
     <div class="shop-head"><div class="ptitle">INVENTORY</div><div class="coins-pill"><span id="inv-count" class="num">0</span>&nbsp;items</div></div>
     <div id="inv-tabs" class="seg">
-      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button>
+      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
     <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
     <div id="inv-weps" class="chips"></div>
@@ -443,13 +490,14 @@ BR.HUD = class HUD {
 <div id="cases" class="overlay hidden">
   <div class="panel metal wide cases-panel">
     <button id="cs-x" class="xbtn" aria-label="Close">✕</button>
-    <div class="cs-head"><div class="ptitle">RELEASE CASE</div><div class="coins-pill"><i class="coin"></i><span id="cs-coins" class="num">0</span></div></div>
+    <div class="cs-head"><div class="ptitle" id="cs-title">RELEASE CASE</div><div class="coins-pill"><i class="coin"></i><span id="cs-coins" class="num">0</span></div></div>
+    <div class="seg cs-pick" id="cs-pick"><button data-c="release" class="sel">RELEASE · S1</button><button data-c="nova">NOVA · S2 <em>NEW</em></button></div>
     <div class="cs-stage">
-      <div class="cs-case" id="cs-case"><div class="cs-lid"></div><div class="cs-body"><b>RELEASE</b><span>CASE · SEASON 1</span></div><i class="cs-shine"></i></div>
+      <div class="cs-case" id="cs-case"><div class="cs-lid"></div><div class="cs-body"><b id="cs-label">RELEASE</b><span id="cs-sub">CASE · SEASON 1</span></div><i class="cs-shine"></i></div>
       <div class="cs-reel hidden" id="cs-reel"><div class="cs-strip" id="cs-strip"></div><i class="cs-mark"></i></div>
     </div>
     <div class="cs-result hidden" id="cs-result"></div>
-    <div class="cs-actions"><button id="cs-open" class="mbtn hot">OPEN · <i class="coin"></i>600</button><button id="cs-equip" class="mbtn hidden">EQUIP</button><button id="cs-inspect" class="mbtn hidden">INSPECT</button></div>
+    <div class="cs-actions"><button id="cs-open" class="mbtn hot">OPEN · <i class="coin"></i><span id="cs-price">600</span></button><button id="cs-equip" class="mbtn hidden">EQUIP</button><button id="cs-inspect" class="mbtn hidden">INSPECT</button></div>
     <div class="sp-sec">CONTENTS · EXCLUSIVE TO THIS CASE</div>
     <div class="cs-odds" id="cs-odds"></div>
     <div class="cs-grid" id="cs-grid"></div>

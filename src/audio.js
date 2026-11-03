@@ -72,6 +72,8 @@ BR.Audio = {
   shot(id, dist, pan, suppressed) {
     const near = 1 / (1 + dist / 18);
     if (id === 'hunter') id = 'sniper';
+    if (id === 'lmg') { this.burst(2700 * (0.4 + 0.6 * near), 0.8, 0.17, 0.62 * near, pan); if (dist < 8) this.tone(120, 40, 0.14, 0.32 * near, 'sine'); return; }
+    if (id === 'dmr') { this.burst(2900 * (0.4 + 0.6 * near), 0.85, 0.26, 0.72 * near, pan); if (dist < 8) this.tone(140, 42, 0.2, 0.38 * near, 'sine'); return; }
     if (id === 'revolver') { this.burst(1900 * (0.4 + 0.6 * near), 0.9, 0.3, 0.7 * near, pan); if (dist < 8) this.tone(130, 40, 0.25, 0.4 * near, 'sine'); return; }
     const v = id === 'sniper' ? 0.9 : id === 'shotgun' ? 0.8 : id === 'rifle' ? 0.55 : id === 'smg' ? 0.38 : 0.45;
     const freq = (id === 'sniper' ? 2600 : id === 'shotgun' ? 1600 : id === 'smg' ? 4200 : 3200) * (0.4 + 0.6 * near);

@@ -72,6 +72,32 @@ BR.Models = (function () {
       }
       c.shadowBlur = 0;
     }, 256), (tx, t) => { tx.offset.set(t * 0.02, t * 0.035); }),
+    // ---- Season 2 animated textures
+    hyperspace: () => animTex(canvasTex('hyperspace', (c, s) => {
+      c.fillStyle = '#03030c'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 160; i++) { const y = Math.random() * s, x = Math.random() * s, l = 10 + Math.random() * 60, hue = Math.random() < 0.5 ? 190 : 300;
+        const g = c.createLinearGradient(x, 0, x + l, 0); g.addColorStop(0, `hsla(${hue},100%,70%,0)`); g.addColorStop(1, `hsla(${hue},100%,75%,${0.4 + Math.random() * 0.6})`);
+        c.fillStyle = g; c.fillRect(x, y, l, 1 + Math.random() * 1.5); }
+    }, 256), (tx, t) => { tx.offset.set(-t * 0.45, 0); }),
+    acid: () => animTex(canvasTex('acid', (c, s) => {
+      c.fillStyle = '#041a06'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 70; i++) { const x = Math.random() * s, y = Math.random() * s, r = 3 + Math.random() * 16;
+        const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(200,255,90,0.95)'); g.addColorStop(0.6, 'rgba(60,255,60,0.5)'); g.addColorStop(1, 'rgba(0,80,0,0)');
+        c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); }
+    }, 256), (tx, t) => { tx.offset.set(Math.sin(t * 0.5) * 0.05, -t * 0.12); }),
+    opal: () => animTex(canvasTex('opal', (c, s) => {
+      for (let y = 0; y < s; y += 2) for (let x = 0; x < s; x += 2) {
+        const v = Math.sin(x * 0.045 + Math.sin(y * 0.03) * 3) + Math.cos(y * 0.04 + Math.sin(x * 0.02) * 2);
+        c.fillStyle = `hsl(${(v * 60 + 200) % 360},70%,${78 + v * 6}%)`; c.fillRect(x, y, 2, 2); }
+    }, 128), (tx, t) => { tx.offset.set(t * 0.03, Math.sin(t * 0.4) * 0.05); }),
+    voidrift: () => animTex(canvasTex('voidrift', (c, s) => {
+      c.fillStyle = '#07020f'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 22; i++) { let x = Math.random() * s, y = Math.random() * s; c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 7; k++) { x += (Math.random() - 0.5) * 44; y += (Math.random() - 0.5) * 44; c.lineTo(x, y); }
+        c.strokeStyle = Math.random() < 0.5 ? '#b04bff' : '#ff3df2'; c.lineWidth = 1 + Math.random() * 2.5; c.shadowColor = '#9b2cff'; c.shadowBlur = 10; c.stroke(); }
+      c.shadowBlur = 0;
+      for (let i = 0; i < 60; i++) { c.fillStyle = `rgba(230,200,255,${Math.random()})`; c.fillRect(Math.random() * s, Math.random() * s, 1.3, 1.3); }
+    }, 256), (tx, t) => { tx.offset.set(t * 0.03, -t * 0.02); }),
     prism: () => animTex(canvasTex('prism', (c, s) => {
       const g = c.createLinearGradient(0, 0, s, s);
       ['#ff3df2', '#ffd84a', '#39ff88', '#1de9ff', '#7b2cff', '#ff3df2'].forEach((col, i) => g.addColorStop(i / 5, col));
@@ -195,6 +221,16 @@ BR.Models = (function () {
     inferno: { name: 'Inferno', caseOnly: true, rarity: 'Mythic', swatch: 'linear-gradient(0deg,#ffe14d,#ff7a00,#c4001a,#2a0003)' },
     aurora:  { name: 'Aurora Borealis', caseOnly: true, rarity: 'Mythic', swatch: 'linear-gradient(170deg,#020a14,#00ffa6 40%,#9b5cff 70%,#020a14)' },
     liquidgold:{ name: 'Liquid Gold', caseOnly: true, rarity: 'Exotic', swatch: 'radial-gradient(circle at 35% 35%,#fff3b0,#ffcf40 35%,#b8860b 80%)' },
+    // Season 2 camos (animated)
+    hyperspace: { name: 'Hyperspace', price: 1500, rarity: 'Mythic', swatch: 'linear-gradient(90deg,#03030c,#1de9ff 40%,#03030c 45%,#ff3df2 80%,#03030c)' },
+    opal:       { name: 'Opaline', price: 1300, rarity: 'Legendary', swatch: 'linear-gradient(135deg,#d6f0ff,#ffd6f6,#e8ffd6,#d6e0ff)' },
+    acid:       { name: 'Acid Bath', caseOnly: true, case: 'nova', rarity: 'Mythic', swatch: 'radial-gradient(circle at 40% 40%,#c8ff5a,#1fdc3c 40%,#041a06 75%)' },
+    voidrift:   { name: 'Rift Walker', caseOnly: true, case: 'nova', rarity: 'Exotic', swatch: 'linear-gradient(135deg,#07020f,#b04bff 45%,#07020f 55%,#ff3df2 90%)' },
+    // weapon mastery (kills with any one weapon)
+    m_copper:      { name: 'Mastery: Copper', mastery: 10, rarity: 'Rare', swatch: 'linear-gradient(135deg,#6a3418,#e08a4a,#6a3418)' },
+    m_chrome:      { name: 'Mastery: Chrome', mastery: 25, rarity: 'Epic', swatch: 'linear-gradient(135deg,#8a96a2,#ffffff,#8a96a2)' },
+    m_volt:        { name: 'Mastery: Volt', mastery: 50, rarity: 'Legendary', swatch: 'linear-gradient(135deg,#060a1a,#6fc8ff 45%,#060a1a 55%,#dff4ff)' },
+    m_singularity: { name: 'Mastery: Singularity', mastery: 100, rarity: 'Mythic', swatch: 'radial-gradient(circle,#ff3df2,#b04bff 30%,#07020f 70%)' },
   };
   const TRACERS = {
     signature: { name: 'Blueprint Signature', price: 0, color: 0xffe9a8, signature: true },
@@ -222,6 +258,9 @@ BR.Models = (function () {
     supernova: { name: 'Supernova', caseOnly: true, rarity: 'Legendary', color: 0xffffff, color2: 0xffc93a, style: 'comet' },
     blackhole: { name: 'Event Horizon', caseOnly: true, rarity: 'Legendary', color: 0xb48cff, color2: 0x2a0a4a, style: 'rings' },
     rbcomet:   { name: 'Rainbow Comet', caseOnly: true, rarity: 'Mythic', color: -1, color2: -1, style: 'comet' },
+    // Season 2 (Nova Case)
+    novaflare: { name: 'Nova Flare', caseOnly: true, case: 'nova', rarity: 'Legendary', color: 0xffffff, color2: 0xff3df2, style: 'comet' },
+    acidhelix: { name: 'Acid Helix', caseOnly: true, case: 'nova', rarity: 'Legendary', color: 0xc8ff5a, color2: 0x1fdc3c, style: 'helix' },
     phoenix:   { name: 'Phoenix', caseOnly: true, rarity: 'Exotic', color: 0xffe14d, color2: 0xff3a00, style: 'phoenix' },
   };
   const CHARMS = {
@@ -253,6 +292,14 @@ BR.Models = (function () {
       case 'jungle': m = new THREE.MeshLambertMaterial({ map: TEX.jungle() }); break;
       case 'holo': m = new THREE.MeshPhongMaterial({ map: TEX.holo(), emissive: 0xffffff, emissiveMap: TEX.holo(), emissiveIntensity: 0.45, specular: 0xffffff, shininess: 160, transparent: true, opacity: 0.92 }); break;
       case 'diamond': m = new THREE.MeshPhongMaterial({ map: TEX.diamond(), specular: 0xffffff, shininess: 200, emissive: 0x1a3a50 }); break;
+      case 'hyperspace': case 'acid': case 'voidrift':
+        m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: 0.95, specular: 0x888888, shininess: 70 }); break;
+      case 'opal': m = new THREE.MeshPhongMaterial({ map: TEX.opal(), specular: 0xffffff, shininess: 190, emissive: 0x1a1a24 }); break;
+      // weapon-mastery camos (unlocked by kills, never sold)
+      case 'm_copper': m = new THREE.MeshPhongMaterial({ color: 0xb8693a, specular: 0xffc8a0, shininess: 95, emissive: 0x1a0a04 }); break;
+      case 'm_chrome': m = new THREE.MeshPhongMaterial({ color: 0xd8e0e8, specular: 0xffffff, shininess: 170, emissive: 0x1a1f24 }); break;
+      case 'm_volt': m = new THREE.MeshPhongMaterial({ map: TEX.electric(), emissive: 0xffffff, emissiveMap: TEX.electric(), emissiveIntensity: 1, specular: 0x888888, shininess: 60 }); break;
+      case 'm_singularity': m = new THREE.MeshPhongMaterial({ map: TEX.voidrift(), emissive: 0xffffff, emissiveMap: TEX.voidrift(), emissiveIntensity: 1, specular: 0xffffff, shininess: 120 }); break;
       case 'nebula': case 'inferno': case 'aurora':
         m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: 0.85, specular: 0x888888, shininess: 60 }); break;
       case 'liquidgold': m = new THREE.MeshPhongMaterial({ map: TEX.liquidgold(), specular: 0xfff4c0, shininess: 180, emissive: 0x4a3000, emissiveMap: TEX.liquidgold(), emissiveIntensity: 0.4 }); break;
@@ -761,6 +808,68 @@ BR.Models = (function () {
       hands(g, [0, -0.06, 0.17], [0, -0.03, -0.12], [0.06, 0.05, 0.11]);
       anchors(g, -0.626, BY, [-0.035, -0.02, 0.24]);
     },
+    // LMG: belt-fed light machine gun. Boxy receiver with a feed cover and carry handle, perforated
+    // barrel shroud, flash hider, folded bipod, vertical foregrip, an ammo box with a brass belt
+    // feeding the side (the "mag" for reloads), pistol grip and a fixed stock.
+    lmg(g, S, M) {
+      const k = kit(g), I = v => v, prof = profiler(g, I, I), BY = 0.045;
+      prof([[-0.18, -0.01], [-0.18, 0.082], [0.12, 0.082], [0.145, 0.06], [0.145, -0.01]], 0.07, S, 0.005);
+      k.box(0.074, 0.02, 0.22, 0, 0.094, -0.04, M.dark);                                        // feed cover
+      for (let i = 0; i < 5; i++) k.box(0.076, 0.004, 0.006, 0, 0.105, -0.12 + i * 0.04, M.metal);
+      for (const z of [-0.1, 0.02]) k.box(0.012, 0.05, 0.012, 0, 0.125, z, M.dark);              // carry handle
+      k.box(0.016, 0.014, 0.15, 0, 0.152, -0.04, M.grip);
+      k.cyl(0.027, 0.34, 0, BY, -0.35, M.dark, 'z', 14);                                        // perforated shroud
+      for (let i = 0; i < 7; i++) for (const a of [0.6, 1.57, 2.54]) k.box(0.012, 0.008, 0.02, Math.cos(a) * 0.026, BY + Math.sin(a) * 0.026, -0.22 - i * 0.045, M.grip);
+      k.cyl(0.0125, 0.24, 0, BY, -0.62, M.metal, 'z', 12);
+      k.cyl(0.017, 0.06, 0, BY, -0.77, M.dark, 'z', 10);                                        // flash hider
+      for (const x of [-0.012, 0.012]) k.box(0.006, 0.006, 0.22, x, 0.006, -0.4, M.metal);       // folded bipod
+      k.box(0.026, 0.11, 0.032, 0, -0.04, -0.3, M.grip);                                        // vertical foregrip
+      const box = k.box(0.06, 0.12, 0.11, -0.02, -0.075, -0.06, M.dark);                         // ammo box
+      const belt = [];
+      for (let i = 0; i < 6; i++) belt.push(k.box(0.012, 0.012, 0.03, -0.036 - i * 0.003, 0.0 + i * 0.008, -0.05, M.brass));
+      magGroup(g, [box, k.box(0.062, 0.012, 0.112, -0.02, -0.02, -0.06, M.metal)].concat(belt));
+      prof([[0.02, -0.01], [0.026, -0.01], [0.028, -0.034], [0.062, -0.036], [0.064, -0.01], [0.07, -0.01], [0.068, -0.044], [0.022, -0.042]], 0.012, M.dark, 0.0015);
+      prof([[0.06, -0.006], [0.1, -0.006], [0.122, -0.11], [0.112, -0.122], [0.086, -0.122], [0.078, -0.06], [0.066, -0.03]], 0.04, M.grip, 0.005);
+      prof([[0.14, 0.07], [0.36, 0.05], [0.372, 0.045], [0.372, -0.1], [0.33, -0.1], [0.17, -0.02], [0.14, -0.01]], 0.052, S, 0.005);
+      k.box(0.054, 0.15, 0.014, 0, -0.025, 0.375, M.grip);
+      irons(g, M, 0.124, 0.06, -0.5, true);
+      g.userData.sightDist = 0.36;
+      hands(g, [0, -0.075, 0.09], [0, -0.07, -0.3], [0.05, 0.05, -0.05]);
+      anchors(g, -0.8, BY, [-0.045, -0.02, 0.16]);
+    },
+    // DMR: semi-auto marksman rifle. Slim receiver, long slotted free-float handguard, muzzle brake,
+    // full-length top rail with a compact prism optic, straight 12-round mag, adjustable stock.
+    dmr(g, S, M) {
+      const k = kit(g), I = v => v, prof = profiler(g, I, I), BY = 0.045;
+      prof([[-0.2, 0.0], [-0.2, 0.075], [0.1, 0.075], [0.12, 0.06], [0.12, 0.0]], 0.054, S, 0.005);
+      prof([[-0.52, 0.012], [-0.52, 0.074], [-0.2, 0.074], [-0.2, 0.0], [-0.5, 0.0]], 0.05, M.dark, 0.004);
+      for (let i = 0; i < 6; i++) for (const sx of [-1, 1]) k.box(0.002, 0.012, 0.03, sx * 0.0255, 0.038, -0.47 + i * 0.045, M.grip);
+      k.box(0.026, 0.008, 0.62, 0, 0.08, -0.2, M.dark);                                          // top rail
+      for (let i = 0; i < 18; i++) k.box(0.027, 0.004, 0.006, 0, 0.0855, -0.49 + i * 0.034, M.metal);
+      k.cyl(0.011, 0.32, 0, BY, -0.68, M.metal, 'z', 12);
+      k.box(0.034, 0.03, 0.05, 0, BY, -0.86, M.dark);                                          // brake
+      for (let i = 0; i < 3; i++) k.box(0.036, 0.016, 0.006, 0, BY, -0.845 - i * 0.012, M.grip);
+      // compact prism optic
+      const OY = 0.128, OZ = -0.07;
+      k.box(0.03, 0.02, 0.07, 0, 0.094, OZ, M.dark);
+      k.cyl(0.021, 0.12, 0, OY, OZ, M.scopeTube, 'z', 20);
+      k.cyl(0.025, 0.03, 0, OY, OZ - 0.07, M.scopeTube, 'z', 20);
+      k.cyl(0.023, 0.03, 0, OY, OZ + 0.07, M.scopeTube, 'z', 20);
+      k.cyl(0.008, 0.016, 0, OY + 0.025, OZ, M.metal, 'y', 12);
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.023, 24), M.lensCoat); lens.position.set(0, OY, OZ - 0.084); g.add(lens);
+      const chev = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 3), M.reticle); chev.position.set(0, OY, OZ - 0.082); chev.rotation.z = Math.PI / 2; g.add(chev);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.0085, 0.0095, 40), M.reticle); ring.position.set(0, OY, OZ - 0.082); g.add(ring);
+      const sight = new THREE.Object3D(); sight.position.set(0, OY, OZ); g.add(sight);
+      g.userData.sight = sight; g.userData.sightDist = 0.4;
+      magGroup(g, [prof([[-0.08, 0.0], [-0.03, 0.0], [-0.034, -0.11], [-0.086, -0.104]], 0.034, M.dark, 0.003)]);
+      prof([[0.01, 0.0], [0.016, 0.0], [0.018, -0.024], [0.054, -0.026], [0.056, 0.0], [0.062, 0.0], [0.06, -0.034], [0.012, -0.032]], 0.012, M.dark, 0.0015);
+      prof([[0.05, 0.004], [0.088, 0.004], [0.11, -0.1], [0.1, -0.112], [0.074, -0.112], [0.066, -0.05], [0.056, -0.022]], 0.04, M.grip, 0.005);
+      prof([[0.12, 0.06], [0.33, 0.05], [0.34, 0.045], [0.34, -0.085], [0.3, -0.085], [0.15, -0.012], [0.12, -0.004]], 0.048, S, 0.005);
+      k.box(0.04, 0.02, 0.12, 0, 0.068, 0.25, M.grip);                                          // cheek riser
+      k.box(0.05, 0.135, 0.014, 0, -0.02, 0.345, M.grip);
+      hands(g, [0, -0.075, 0.075], [0, -0.005, -0.36], [0.05, 0.05, 0.02]);
+      anchors(g, -0.89, BY, [-0.035, -0.02, 0.15]);
+    },
     // Sniper: a heavy long-range bolt-action in desert tan. Ported muzzle brake, fluted
     // heavy barrel, skeletonised handguard with a top rail and a folding bipod, flat-top
     // receiver with a long rail, big scope with a wide ocular bell and turrets, ribbed
@@ -1029,11 +1138,26 @@ BR.Models = (function () {
   // One merged, vertex-colored geometry per weapon: a single draw call for world
   // models (loot on the ground, guns in bots' hands).
   const mergedCache = {};
-  function merged(id) {
-    if (mergedCache[id]) return mergedCache[id];
-    const g = new THREE.Group();
+  // average colour of a (canvas) texture, cached: lets the one-draw-call world models carry camo tints
+  const avgCache = {};
+  function texAvg(tex) {
+    const img = tex && tex.image; if (!img || !img.getContext && !(img instanceof HTMLImageElement)) return null;
+    const k = tex.uuid; if (avgCache[k]) return avgCache[k];
+    try {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 8; const x = cv.getContext('2d'); x.drawImage(img, 0, 0, 8, 8);
+      const d = x.getImageData(0, 0, 8, 8).data; let r = 0, gg = 0, b = 0;
+      for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; }
+      return (avgCache[k] = new THREE.Color(r / 16320, gg / 16320, b / 16320));
+    } catch (e) { return null; }
+  }
+  // One merged, vertex-coloured mesh per weapon (+ optional blueprint / camo): one draw call in the world
+  function merged(id, bpId, skin) {
+    const key = id + '|' + (bpId || 'default') + '|' + (skin || 'default');
+    if (mergedCache[key]) return mergedCache[key];
+    let g = new THREE.Group();
     const def = BR.CONFIG.weapons[id];
-    (BUILD[id] || BUILD.pistol)(g, skinMaterial('default', def.color), MAT());
+    if ((bpId && bpId !== 'default') || (skin && skin !== 'default')) g = BR.Models.weapon(id, skin || 'default', 'none', bpId);
+    else (BUILD[id] || BUILD.pistol)(g, skinMaterial('default', def.color), MAT());
     g.updateMatrixWorld(true);
     const pos = [], nor = [], col = [];
     const c = new THREE.Color();
@@ -1045,6 +1169,9 @@ BR.Models = (function () {
       geo.applyMatrix4(o.matrixWorld);
       if (!geo.attributes.normal) geo.computeVertexNormals();
       c.copy(mat.color || new THREE.Color(0x888888));
+      const tav = mat.map ? texAvg(mat.map) : mat.emissiveMap ? texAvg(mat.emissiveMap) : null;
+      if (tav) c.multiply(tav);
+      if (mat.isMeshBasicMaterial === false && mat.emissive && mat.emissiveIntensity > 0.5 && !mat.map) c.lerp(mat.emissive, 0.5);
       const p = geo.attributes.position, n = geo.attributes.normal;
       for (let i = 0; i < p.count; i++) {
         pos.push(p.getX(i), p.getY(i), p.getZ(i));
@@ -1058,7 +1185,7 @@ BR.Models = (function () {
     out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     out.computeBoundingSphere();
     out._shared = true;
-    return (mergedCache[id] = out);
+    return (mergedCache[key] = out);
   }
   let mergedMat = null;
 
@@ -1625,6 +1752,95 @@ BR.Models = (function () {
     const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#120a24'); g.addColorStop(0.3, '#5a2bb0'); g.addColorStop(0.55, '#1a1040'); g.addColorStop(0.8, '#2b6bb0'); g.addColorStop(1, '#0a0614');
     c.fillStyle = g; c.fillRect(0, 0, s, s);
     for (let i = 0; i < 10; i++) { c.strokeStyle = `rgba(200,170,255,${0.15 + Math.random() * 0.2})`; c.beginPath(); c.arc(Math.random() * s, Math.random() * s, 10 + Math.random() * 40, 0, 3); c.stroke(); } }) });
+  // ---------------------------------------------------------- Season 2 (original designs)
+  // Five animated themes that fit any gun: each reads the model's own muzzle / body size so the
+  // effects sit on the barrel and the sides whatever the weapon. Reload styles: warp, slam, orbit.
+  const bodyInfo = g => {
+    g.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    g.traverse(o => { if (o.isMesh && o !== g.userData.flash) box.expandByObject(o); });
+    const mz = g.userData.muzzle ? g.userData.muzzle.position : new THREE.Vector3(0, 0.04, box.min.z);
+    return { box, mz, hw: Math.min(0.045, (box.max.x - box.min.x) / 2), by: mz.y, z0: mz.z, z1: box.max.z, len: box.max.z - mz.z };
+  };
+  const S2THEME = {
+    // energy rings racing up the barrel, light streaks flowing back along the sides
+    hyperdrive(g, k, P) {
+      const I = bodyInfo(g), G = liveGlow(0x1de9ff), M2 = liveGlow(0xff3df2);
+      anim(g, t => { const a = 0.5 + 0.5 * Math.sin(t * 2.4); G.color.setHSL(0.52 + 0.3 * a, 1, 0.6); M2.color.setHSL(0.86 - 0.3 * a, 1, 0.62); });
+      const rings = [0, 1, 2].map(i => ring(g, 0.032 + i * 0.007, 0.0048, i % 2 ? M2 : G, 0, I.by, I.z0 + 0.04));
+      anim(g, t => rings.forEach((r, i) => { const f = (t * 0.9 + i / 3) % 1; r.position.z = I.z0 + 0.03 + f * Math.min(0.32, I.len * 0.45); r.scale.setScalar(1.25 - f * 0.5); r.rotation.z = t * 4; }));
+      for (const sx of [-1, 1]) { k.box(0.004, 0.008, I.len * 0.55, sx * (I.hw + 0.002), I.by - 0.012, (I.z0 + I.z1) / 2 + I.len * 0.1, sx > 0 ? G : M2); k.box(0.004, 0.004, I.len * 0.4, sx * (I.hw + 0.002), I.by + 0.01, (I.z0 + I.z1) / 2 + I.len * 0.15, sx > 0 ? M2 : G); }
+      const st = []; for (let i = 0; i < 16; i++) { const b = k.box(0.005, 0.005, 0.06, (i % 2 ? 1 : -1) * (I.hw + 0.004), I.by - 0.03 + (i % 4) * 0.018, 0, i % 3 ? G : M2); st.push({ b, o: i / 12 }); }
+      anim(g, t => st.forEach(({ b, o }) => { const f = (t * 1.3 + o) % 1; b.position.z = I.z0 + f * I.len; b.scale.z = 0.4 + Math.sin(f * Math.PI) * 1.4; }));
+    },
+    // a crown of flickering flame cones at the muzzle, embers circling the body, lava strips
+    crown(g, k, P) {
+      const I = bodyInfo(g), F = liveGlow(0xff7a00), H = liveGlow(0xffd24a), lava = new THREE.MeshPhongMaterial({ map: TEX.molten(), emissive: 0xffffff, emissiveMap: TEX.molten(), emissiveIntensity: 1 });
+      const crown = new THREE.Group(); crown.position.set(0, I.by, I.z0 - 0.01); g.add(crown);
+      const cones = []; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, c = new THREE.Mesh(new THREE.ConeGeometry(0.011, 0.075, 6), i % 2 ? F : H); c.position.set(Math.cos(a) * 0.042, Math.sin(a) * 0.042, 0); c.rotation.set(-Math.PI / 2, 0, 0); crown.add(c); cones.push(c); }
+      anim(g, t => { crown.rotation.z = t * 1.6; cones.forEach((c, i) => { c.scale.set(1, 0.7 + 0.5 * Math.abs(Math.sin(t * 9 + i * 1.7)), 1); }); F.color.setHSL(0.05 + 0.03 * Math.sin(t * 7), 1, 0.55); });
+      for (const sx of [-1, 1]) k.box(0.004, 0.028, I.len * 0.55, sx * (I.hw + 0.002), I.by - 0.01, (I.z0 + I.z1) / 2, lava);
+      orbiters(g, 7, new THREE.OctahedronGeometry(0.009, 0), H, 0, I.by, (I.z0 + I.z1) / 2, 0.075, 2.2, 'z');
+    },
+    // little ringed planets orbiting the barrel, twinkling stars, nebula side panels
+    nebula(g, k, P) {
+      const I = bodyInfo(g), neb = new THREE.MeshPhongMaterial({ map: TEX.nebula(), emissive: 0xffffff, emissiveMap: TEX.nebula(), emissiveIntensity: 0.9 });
+      for (const sx of [-1, 1]) k.box(0.004, 0.034, I.len * 0.55, sx * (I.hw + 0.002), I.by - 0.008, (I.z0 + I.z1) / 2, neb);
+      const piv = new THREE.Group(); piv.position.set(0, I.by, I.z0 + I.len * 0.25); g.add(piv);
+      [[0xffb46a, 0.016], [0x7fd0ff, 0.012], [0xff7ad8, 0.009]].forEach(([c, r], i) => { const pl = new THREE.Group(); const pa = i / 3 * Math.PI * 2; pl.position.set(Math.cos(pa) * 0.08, Math.sin(pa) * 0.08, 0); piv.add(pl);
+        pl.add(new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), chrome(c))); const rr = new THREE.Mesh(new THREE.TorusGeometry(r * 1.7, r * 0.18, 6, 24), liveGlow(0xffffff)); rr.rotation.x = 1.2; pl.add(rr); });
+      anim(g, t => { piv.rotation.z = t * 0.9; });
+      const stars = []; for (let i = 0; i < 14; i++) { const m = liveGlow(0xffffff), b = k.box(0.004, 0.004, 0.004, (Math.random() - 0.5) * I.hw * 3, I.by + 0.02 + Math.random() * 0.06, I.z0 + Math.random() * I.len, m); stars.push({ m, o: Math.random() * 6 }); }
+      anim(g, t => stars.forEach(({ m, o }) => m.color.setScalar(0.3 + 0.7 * Math.abs(Math.sin(t * 2.5 + o)))));
+    },
+    // glass vials on the sides with rising bubbles, a heartbeat glow
+    toxic(g, k, P) {
+      const I = bodyInfo(g), G = liveGlow(0x7dff3a), glass = crystal(0x7dff3a), zc = (I.z0 + I.z1) / 2;
+      const bubbles = [];
+      for (const sx of [-1, 1]) {
+        const v = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.07, 12), glass); v.rotation.x = Math.PI / 2; v.position.set(sx * (I.hw + 0.012), I.by - 0.015, zc); g.add(v);
+        for (let i = 0; i < 4; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.0035, 6, 5), G); g.add(b); bubbles.push({ b, x: sx * (I.hw + 0.012), o: Math.random() }); }
+      }
+      anim(g, t => bubbles.forEach(({ b, x, o }, i) => { const f = (t * 0.8 + o) % 1; b.position.set(x + Math.sin(t * 5 + i) * 0.003, I.by - 0.022 + f * 0.016, zc - 0.03 + f * 0.06); }));
+      const strip = k.box(0.006, 0.006, I.len * 0.6, 0, I.by + 0.034, zc, G);
+      anim(g, t => { const h = Math.pow(Math.max(0, Math.sin(t * 5.2)), 12) + Math.pow(Math.max(0, Math.sin(t * 5.2 - 0.6)), 12) * 0.6; G.color.setHSL(0.27, 1, 0.45 + h * 0.4); strip.scale.y = 1 + h * 3; });
+    },
+    // a halo of crystal shards orbiting the receiver, rainbow glow strips
+    prism(g, k, P) {
+      const I = bodyInfo(g), G = liveGlow(0xffffff); hueCycle(g, G, 0, 1, 0.8, 0.62);
+      const cg = crystal(0xbfe8ff); cg.emissive.setHex(0x4a90c0); orbiters(g, 8, new THREE.OctahedronGeometry(0.016, 0), cg, 0, I.by + 0.01, (I.z0 + I.z1) / 2 + 0.02, 0.085, 1.4, 'z');
+      for (const sx of [-1, 1]) k.box(0.004, 0.01, I.len * 0.6, sx * (I.hw + 0.002), I.by - 0.004, (I.z0 + I.z1) / 2, G);
+      const h = ring(g, 0.055, 0.004, G, 0, I.by, I.z0 + 0.02); anim(g, t => { h.rotation.y = t * 1.3; h.rotation.x = t * 0.7; });
+    },
+  };
+  // one Season 2 blueprint per weapon: [weapon, id, name, theme, body, accent, glow, rarity, price | case, reload]
+  const S2 = [
+    ['rifle', 'hyperdrive', 'Hyperdrive', 'hyperdrive', 0x0b0b1a, 0x1de9ff, 0x1de9ff, 'Mythic', 2400, 'warp'],
+    ['holoar', 'prismheart', 'Prism Heart', 'prism', 0xeef2ff, 0xbfe8ff, 0xffffff, 'Exotic', 'nova', 'warp'],
+    ['smg', 'toxicpulse', 'Toxic Pulse', 'toxic', 0x0a1a08, 0x2a3a20, 0x7dff3a, 'Mythic', 2200, 'orbit'],
+    ['shotgun', 'moltencrown', 'Molten Crown', 'crown', 0x1a0806, 0x3a1208, 0xff7a00, 'Mythic', 'nova', 'slam'],
+    ['sniper', 'nebuladrift', 'Nebula Drift', 'nebula', 0x0c0a24, 0xffd36a, 0xb48cff, 'Mythic', 2600, 'orbit'],
+    ['hunter', 'starseeker', 'Starseeker', 'nebula', 0x1a1030, 0xd8c4ff, 0x9fd8ff, 'Legendary', 1500, 'orbit'],
+    ['revolver', 'spectra', 'Spectra', 'prism', 0x1a1a24, 0xffffff, 0xffffff, 'Mythic', 'nova', 'warp'],
+    ['pistol', 'venom', 'Venom Rush', 'toxic', 0x10200a, 0x7dff3a, 0x7dff3a, 'Legendary', 1300, 'orbit'],
+    ['lmg', 'forgeheart', 'Forgeheart', 'crown', 0x1c0d06, 0x4a1e0a, 0xff8a1f, 'Mythic', 2400, 'slam'],
+    ['dmr', 'lightspeed', 'Lightspeed', 'hyperdrive', 0x050510, 0xff3df2, 0xff3df2, 'Exotic', 'nova', 'warp'],
+  ];
+  const S2BP = {};
+  for (const [w, id, name, theme, body, accent, glow, rarity, price, reload] of S2) {
+    const e = { name, rarity, body, bodyGloss: 2, accent, accentGloss: 2, glow, mod: S2THEME[theme], reload: { style: reload, fx: glow }, season: 2 };
+    if (price === 'nova') { e.caseOnly = true; e.case = 'nova'; } else e.price = price;
+    (S2BP[w] = S2BP[w] || {})[id] = e;
+  }
+  // Season 2 knives: animated blades
+  BLADES.riftblade = animBlade('voidrift', 1);
+  BLADES.hyperblade = animBlade('hyperspace', 0.95);
+  BLADES.acidblade = animBlade('acid', 0.9);
+  S2BP.knife = { abyss: { name: 'Abyss', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0x07020f, bodyGloss: 2, accent: 0xb04bff, glow: 0xb04bff, blade: 'riftblade', season: 2 },
+    lightspeed: { name: 'Lightspeed', rarity: 'Mythic', price: 2600, body: 0x05050f, bodyGloss: 2, accent: 0x1de9ff, glow: 0x1de9ff, blade: 'hyperblade', season: 2 } };
+  S2BP.butterfly = { biohazard: { name: 'Biohazard', rarity: 'Mythic', caseOnly: true, case: 'nova', body: 0x041a06, bodyGloss: 2, accent: 0x7dff3a, glow: 0x7dff3a, blade: 'acidblade', season: 2 },
+    riftwing: { name: 'Riftwing', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0x07020f, bodyGloss: 2, accent: 0xff3df2, glow: 0xff3df2, blade: 'riftblade', season: 2 } };
+  for (const w in S2BP) MYTHIC[w] = Object.assign(MYTHIC[w] || {}, S2BP[w]);
   for (const w in MYTHIC) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, MYTHIC[w]);
   // Signature tracers: every Legendary / Mythic blueprint fires its own tracer (used when that
   // gun's tracer is set to "Blueprint Signature"). Hand-picked styles, the rest derived from the glow.
@@ -1675,6 +1891,11 @@ BR.Models = (function () {
     c_inferno:{ name: 'Inferno', caseOnly: true, rarity: 'Legendary', tex: 'inferno', emissive: 1, pad: 0x2a0003, glow: 0xffb000, fx: true },
     c_aurora: { name: 'Aurora', caseOnly: true, rarity: 'Mythic', tex: 'aurora', emissive: 1, pad: 0x020a14, glow: 0x00ffa6, fx: true },
     c_gold:   { name: 'Liquid Gold', caseOnly: true, rarity: 'Exotic', tex: 'liquidgold', emissive: 0.35, gloss: true, pad: 0x8a5a00, glow: 0xfff3b0, fx: true },
+    // Season 2 gloves (animated)
+    hyperspace: { name: 'Lightspeed', price: 1200, tex: 'hyperspace', emissive: 1, pad: 0x05050f, glow: 0x1de9ff, fx: true, rarity: 'Mythic' },
+    opal:       { name: 'Pearl Touch', price: 1000, tex: 'opal', gloss: true, pad: 0xf2f4ff, glow: 0xffd6f6, fx: true, rarity: 'Legendary' },
+    acid:       { name: 'Biohazard', caseOnly: true, case: 'nova', tex: 'acid', emissive: 1, pad: 0x041a06, glow: 0x7dff3a, fx: true, rarity: 'Mythic' },
+    voidrift:   { name: 'Riftgrip', caseOnly: true, case: 'nova', tex: 'voidrift', emissive: 1, pad: 0x07020f, glow: 0xb04bff, fx: true, rarity: 'Exotic' },
   };
   function gloveMats(id) {
     const key = 'glove-' + id;
@@ -1727,7 +1948,7 @@ BR.Models = (function () {
     const key = (id || 'default') + (left ? 'L' : 'R') + (fist ? 'F' : '');
     if (!handCache[key]) handCache[key] = buildHand(id, left, fist);
     const g = new THREE.Group();
-    for (const m of handCache[key].children) g.add(new THREE.Mesh(m.geometry, m.material));
+    for (const m of handCache[key].children) { const c = new THREE.Mesh(m.geometry, m.material); c.userData.glove = true; g.add(c); }
     return g;
   }
   function buildHand(id, left, fist) {
@@ -1819,9 +2040,9 @@ BR.Models = (function () {
       }
       return c[id];
     },
-    worldWeapon(id) {
+    worldWeapon(id, bpId, skin) {
       mergedMat = mergedMat || new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-      return new THREE.Mesh(merged(id), mergedMat);
+      return new THREE.Mesh(merged(id, bpId, skin), mergedMat);
     },
     // Build a weapon model: blueprint design (optional), camo (optional), charm (optional).
     weapon(id, skin, charmId, bpId) {

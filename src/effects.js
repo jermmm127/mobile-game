@@ -258,7 +258,74 @@ BR.Effects = class Effects {
     f.life = f.max = 0.05;
   }
 
+  // ---- bullet holes: small dark quads on the wall face that was hit (pooled, oldest reused)
+  decal(p, n) {
+    if (!this.decals) {
+      this.decals = []; this.di = 0;
+      const tex = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d');
+        const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, 'rgba(10,10,10,0.95)'); g.addColorStop(0.35, 'rgba(25,22,20,0.85)'); g.addColorStop(0.6, 'rgba(60,55,50,0.35)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        x.fillStyle = g; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); })();
+      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+      const geo = new THREE.PlaneGeometry(0.16, 0.16);
+      for (let i = 0; i < 60; i++) { const m = new THREE.Mesh(geo, mat); m.visible = false; this.scene.add(m); this.decals.push(m); }
+    }
+    const m = this.decals[this.di++ % this.decals.length];
+    m.position.copy(p).addScaledVector(n, 0.012);
+    m.lookAt(m.position.x + n.x, m.position.y + n.y, m.position.z + n.z);
+    m.rotation.z = Math.random() * 6; m.scale.setScalar(0.7 + Math.random() * 0.5); m.visible = true;
+  }
+
+  // ---- kill finishers: short additive shows on the victim (equippable cosmetic)
+  finisher(style, p, victim) {
+    const sc = this.scene, fins = this.fins || (this.fins = []);
+    const mat = (c, op) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op === undefined ? 1 : op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const add = (mesh, life, upd) => { mesh.frustumCulled = false; sc.add(mesh); fins.push({ mesh, life, upd, t: 0 }); return mesh; };
+    const hideBody = at => fins.push({ mesh: null, life: at, t: 0, upd: (t, m, done) => { if (done && victim && victim.mesh) victim.mesh.visible = false; } });
+    const c = p.clone();
+    if (style === 'shatter') {
+      hideBody(0.02);
+      this.burst(c.clone().setY(c.y + 0.9), [0xbfe8ff, 0xffffff, 0x7fd0ff], 46, 9, 0.12, 1.1, 8);
+      const r = add(new THREE.Mesh(new THREE.RingGeometry(0.2, 0.28, 40), mat(0xdff4ff)), 0.6, (t, m) => { m.scale.setScalar(1 + t * 9); m.material.opacity = 1 - t / 0.6; });
+      r.position.copy(c).setY(c.y + 1); r.lookAt(r.position.x, r.position.y + 1, r.position.z);
+    } else if (style === 'ascend') {
+      const beam = add(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 30, 20, 1, true), mat(0xffe08a, 0.0)), 1.6, (t, m) => { m.material.opacity = Math.min(0.55, t * 3) * (1 - Math.max(0, t - 1.1) / 0.5); m.scale.x = m.scale.z = 1 - t * 0.3; });
+      beam.position.copy(c).setY(c.y + 15);
+      fins.push({ mesh: null, life: 1.2, t: 0, upd: (t) => { if (victim && victim.mesh) { victim.mesh.position.y += 0.03 + t * 0.02; victim.mesh.visible = t < 1.15; } } });
+      for (let i = 0; i < 4; i++) setTimeout(() => this.burst(c.clone().setY(c.y + 0.5 + i * 0.6), [0xffe08a, 0xffffff], 10, 2.5, 0.06, 1.2, -3), i * 180);
+    } else if (style === 'firework') {
+      hideBody(0.15);
+      const rocket = add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), mat(0xffffff)), 0.55, (t, m) => { m.position.y = c.y + 1 + t * 22; if (Math.random() < 0.6) this.burst(m.position, [0xffb547, 0xffffff], 2, 0.8, 0.05, 0.4, 2); });
+      rocket.position.copy(c);
+      setTimeout(() => { const at = c.clone().setY(c.y + 13); this.burst(at, [0xff3df2, 0x1de9ff, 0xffe14d, 0x39ff88, 0xff5a3a], 70, 13, 0.1, 1.4, 4);
+        const r = add(new THREE.Mesh(new THREE.RingGeometry(0.6, 0.8, 48), mat(0xffffff)), 0.7, (t, m) => { m.scale.setScalar(1 + t * 14); m.material.opacity = 1 - t / 0.7; m.lookAt(m.position.clone().add(new THREE.Vector3(0, 0, 1))); }); r.position.copy(at); }, 520);
+    } else if (style === 'voidpop') {
+      const orb = add(new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: 0x050008 })), 0.9, (t, m) => { const k = t < 0.5 ? t / 0.5 : 1 - (t - 0.5) / 0.4; m.scale.setScalar(Math.max(0.01, k * 0.75)); });
+      orb.position.copy(c).setY(c.y + 0.9);
+      const halo = add(new THREE.Mesh(new THREE.RingGeometry(0.8, 1.0, 48), mat(0xb04bff)), 0.9, (t, m) => { m.scale.setScalar(Math.max(0.05, 1.4 - t * 1.5)); m.rotation.z = t * 6; m.material.opacity = 0.9; m.lookAt(m.position.x, m.position.y + 1, m.position.z); });
+      halo.position.copy(orb.position);
+      fins.push({ mesh: null, life: 0.5, t: 0, upd: (t) => { if (victim && victim.mesh) { victim.mesh.scale.setScalar(Math.max(0.02, 1 - t * 2)); if (t > 0.48) victim.mesh.visible = false; } } });
+      setTimeout(() => { this.burst(orb.position, [0xb04bff, 0xff3df2, 0xffffff], 50, 11, 0.09, 0.9, 0);
+        const sw = add(new THREE.Mesh(new THREE.RingGeometry(0.3, 0.42, 48), mat(0xff3df2)), 0.6, (t, m) => { m.scale.setScalar(1 + t * 16); m.material.opacity = 1 - t / 0.6; }); sw.position.copy(c).setY(c.y + 0.1); sw.rotation.x = -Math.PI / 2; }, 820);
+    } else if (style === 'glitchout') {
+      const cols = [0xff2244, 0x22ff66, 0x2266ff];
+      const cubes = []; for (let i = 0; i < 18; i++) { const m = add(new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), mat(cols[i % 3], 0.9)), 1.0, (t, mm) => { const f = Math.floor(t * 18 + i); mm.visible = (f % 3) !== 0; mm.position.x += (Math.random() - 0.5) * 0.08; mm.position.y += t * 0.04; mm.material.opacity = 0.9 * (1 - t); }); m.position.set(c.x + (Math.random() - 0.5) * 0.7, c.y + Math.random() * 1.8, c.z + (Math.random() - 0.5) * 0.7); cubes.push(m); }
+      fins.push({ mesh: null, life: 0.5, t: 0, upd: (t) => { if (victim && victim.mesh) { victim.mesh.visible = Math.floor(t * 30) % 2 === 0 && t < 0.45; victim.mesh.position.x += (Math.random() - 0.5) * 0.06; } } });
+    } else if (style === 'starfall') {
+      const met = add(new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10), mat(0xffd24a)), 0.5, (t, m) => { m.position.set(c.x + 14 * (1 - t / 0.5), c.y + 1 + 26 * (1 - t / 0.5), c.z); if (Math.random() < 0.9) this.burst(m.position, [0xffb547, 0xff5a00, 0xffffff], 3, 1.2, 0.09, 0.5, 0); });
+      met.position.copy(c);
+      setTimeout(() => { if (victim && victim.mesh) victim.mesh.visible = false;
+        this.burst(c.clone().setY(c.y + 0.4), [0xffd24a, 0xff5a00, 0xffffff, 0xff2a00], 80, 14, 0.11, 1.2, 9);
+        const r = add(new THREE.Mesh(new THREE.RingGeometry(0.4, 0.62, 48), mat(0xffb547)), 0.8, (t, m) => { m.scale.setScalar(1 + t * 13); m.material.opacity = 1 - t / 0.8; }); r.position.copy(c).setY(c.y + 0.08); r.rotation.x = -Math.PI / 2;
+        const col = add(new THREE.Mesh(new THREE.CylinderGeometry(0.4, 1.2, 6, 16, 1, true), mat(0xffe08a, 0.7)), 0.5, (t, m) => { m.material.opacity = 0.7 * (1 - t / 0.5); m.scale.x = m.scale.z = 1 + t * 2; }); col.position.copy(c).setY(c.y + 3); }, 500);
+    }
+  }
+
   update(dt) {
+    if (this.fins) for (let i = this.fins.length - 1; i >= 0; i--) {
+      const f = this.fins[i]; f.t += dt; const done = f.t >= f.life;
+      if (f.upd) f.upd(Math.min(f.t, f.life), f.mesh, done);
+      if (done) { if (f.mesh) { this.scene.remove(f.mesh); f.mesh.geometry.dispose(); f.mesh.material.dispose(); } this.fins.splice(i, 1); }
+    }
     for (const s of this.sparks) {
       if (s.life <= 0) continue;
       s.life -= dt;

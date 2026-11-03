@@ -99,7 +99,9 @@ BR.Loot = class Loot {
     if (item.kind === 'weapon') {
       const def = BR.CONFIG.weapons[item.wid];
       // The real gun model, lying on its side and slowly turning, over a rarity ring
-      const gun = BR.Models.worldWeapon(item.wid);
+      // shows the gun in your equipped blueprint / camo (so drops and loot look like your skins)
+      const eq = BR.Profile && BR.Profile.data && BR.Profile.data.equip;
+      const gun = BR.Models.worldWeapon(item.wid, eq && eq.blueprints ? eq.blueprints[item.wid] : null, eq ? eq.skins : null);
       gun.scale.setScalar(1.7);
       gun.rotation.set(0, Math.PI / 2, Math.PI / 2 * 0.9);
       gun.position.y = -0.05;

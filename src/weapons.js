@@ -109,6 +109,16 @@ BR.Weapons = {
         else hits.set(hit.actor, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z });
       } else if (hit.t < maxRange) {
         game.fx.impact(end, false);
+        // bullet hole on the face that was hit (your shots only)
+        if (actor.isPlayer && game.fx.decal) {
+          const b = game.world.hit.box, n = this._dn || (this._dn = new THREE.Vector3());
+          if (!b || b === game.world.ground) n.set(0, 1, 0);
+          else {
+            const d = [[Math.abs(end.x - b.x0), -1, 0, 0], [Math.abs(end.x - b.x1), 1, 0, 0], [Math.abs(end.y - b.y0), 0, -1, 0], [Math.abs(end.y - b.y1), 0, 1, 0], [Math.abs(end.z - b.z0), 0, 0, -1], [Math.abs(end.z - b.z1), 0, 0, 1]];
+            d.sort((a, c) => a[0] - c[0]); n.set(d[0][1], d[0][2], d[0][3]);
+          }
+          game.fx.decal(end, n);
+        }
       }
       if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
     }

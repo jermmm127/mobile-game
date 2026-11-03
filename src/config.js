@@ -7,10 +7,10 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.6.7',
+  version: '1.7.0',
 
   map: {
-    size: 640,          // square map edge length (m) — ~4x the area of v0.3
+    size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
     cell: 8,            // spatial-hash cell size for collision / raycasts
   },
 
@@ -57,7 +57,7 @@ BR.CONFIG = {
 
   // ---- Movement (shared by player AND bots) --------------------------------
   move: {
-    runSpeed: 6.9,          // top ground speed from input alone
+    runSpeed: 6.5,          // top ground speed from input alone
     crouchSpeed: 3.4,
     accelGround: 12,
     friction: 8,
@@ -158,15 +158,19 @@ BR.CONFIG = {
     holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, recoilH: 0.009, zoom: 1.75, tier: 2, color: 0x33363c, suppressed: true, holo: true },
     // Lightweight bolt-action with open iron sights: accurate from the hip (easy no-scopes), moves fast
     hunter:  { name: 'Hunting Rifle', ammo: 'heavy', dmg: 78, pellets: 1, rpm: 75, mag: 5, reload: 2.0, spread: 0.006, ads: 0.05, bloom: 0, bloomMax: 0, range: 250, head: 2.0, recoil: 0.05, kick: 1.5, zoom: 1.45, tier: 2, color: 0x7a4a2a, bolt: true, easyHip: true, speedMult: 1.05, knockback: 2 },
+    // Light machine gun: 80-round belt box, long sustained fire, slower to move with and reload
+    lmg:     { name: 'LMG', ammo: 'heavy', dmg: 20, pellets: 1, rpm: 720, mag: 80, reload: 3.6, spread: 0.03, ads: 0.4, bloom: 0.004, bloomMax: 0.045, range: 90, head: 1.5, recoil: 0.012, recoilH: 0.02, kick: 0.6, zoom: 1.35, tier: 2, color: 0x3a3d33, speedMult: 0.9 },
+    // Designated marksman rifle: semi-auto, hard-hitting, low-power prism optic
+    dmr:     { name: 'DMR', ammo: 'heavy', dmg: 44, pellets: 1, rpm: 240, mag: 12, reload: 2.3, spread: 0.012, ads: 0.15, bloom: 0.012, bloomMax: 0.04, range: 200, head: 2.0, recoil: 0.03, kick: 0.9, zoom: 2.2, tier: 2, color: 0x5a5448 },
     sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4 },
   },
 
   // Loot rolls by spot tier. Weights are relative.
   loot: {
     tables: [
-      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, revolver: 4, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
-      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, revolver: 8, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
-      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, revolver: 9, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
+      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, revolver: 4, dmr: 2, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
+      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, revolver: 8, lmg: 6, dmr: 6, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
+      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, revolver: 9, lmg: 10, dmr: 9, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
     ],
     healAmount: 50,
     shieldAmount: 50,
