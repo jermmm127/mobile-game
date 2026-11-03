@@ -89,8 +89,8 @@ BR.Actor = class Actor {
     this.health = A.maxHealth;
     this.shield = 0;
     this.alive = true;
-    // 2 guns + the knife you always carry (yours: karambit or butterfly, whichever you equipped)
-    this.slots = [null, null, BR.Weapons.create(opts && opts.isPlayer && BR.Profile && BR.Profile.data ? (BR.Profile.data.equip.melee || 'knife') : 'knife')];
+    // 2 guns + the knife you always carry (yours: bayonet, karambit or butterfly, whichever you equipped)
+    this.slots = [null, null, BR.Weapons.create(opts && opts.isPlayer && BR.Profile && BR.Profile.data ? (BR.Profile.data.equip.melee || 'bayonet') : 'bayonet')];
     this.cur = 2;
     this.grappleCd = 0;
     this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0;
@@ -369,9 +369,9 @@ BR.Actor = class Actor {
       u.wid = wid;
       while (u.gun.children.length) u.gun.remove(u.gun.children[0]);
       if (wid) {
-        const sc = wid === 'knife' ? 1.6 : 1.15, gm = BR.Models.worldWeapon(wid);
+        const sc = wid === 'knife' ? 1.6 : wid === 'bayonet' ? 1.3 : 1.15, gm = BR.Models.worldWeapon(wid);
         gm.scale.setScalar(sc); u.gun.add(gm);
-        u.gp = BR.Models.gripPoints(wid); u.gunScale = sc; u.gun.userData.knife = wid === 'knife';
+        u.gp = BR.Models.gripPoints(wid); u.gunScale = sc; u.gun.userData.knife = wid === 'knife' || wid === 'bayonet';
       }
     }
   }

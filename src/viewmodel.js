@@ -102,6 +102,11 @@
           const inner = new THREE.Group(); while (m.children.length) inner.add(m.children[0]); m.add(inner);
           m.userData.inner = inner; m.userData.pivot = new THREE.Vector3(0, 0.004, 0.001);
           holder.add(m);
+        } else if (id === 'bayonet') {
+          // forward hammer grip: blade out front angled up and in, edge down, flat toward you
+          m.rotation.set(-1.05, 0.38, 0.42); m.userData.baseRot = m.rotation.clone();
+          m.userData.pivot = new THREE.Vector3(0, -0.01, 0);       // flips turn about the balance point by the guard
+          holder.add(m);
         } else holder.add(m);
         holder.userData.model = m;
         holder.visible = false;
@@ -140,14 +145,14 @@
       // Glowing blade trail (butterfly blueprints with a .trail colour): a ribbon between the blade
       // tip and mid-blade over the last frames, drawn additively and fading toward the tail
       if (this.bfTrail) { this.scene.remove(this.bfTrail.mesh); this.bfTrail.mesh.geometry.dispose(); this.bfTrail = null; }
-      { const bpId = (eq.blueprints || {}).butterfly, B = bpId && BR.Models.BLUEPRINTS.butterfly && BR.Models.BLUEPRINTS.butterfly[bpId];
-        if (B && B.trail) {
+      { const mel = eq.melee || 'bayonet', bpId = (eq.blueprints || {})[mel], B = bpId && BR.Models.BLUEPRINTS[mel] && BR.Models.BLUEPRINTS[mel][bpId];
+        if (B && B.trail && this.models[mel] && this.models[mel].userData.model.userData.trailTip) {
           const N = 11, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), idx = [];
           for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
           geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
           const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
           mesh.frustumCulled = false; mesh.visible = false; this.scene.add(mesh);
-          this.bfTrail = { mesh, N, tips: [], mids: [], color: new THREE.Color(B.trail), on: 0 };
+          this.bfTrail = { mesh, N, tips: [], mids: [], color: new THREE.Color(B.trail), on: 0, id: mel };
         } }
       // Wrist grapple launcher (child of the left hand: aims where the fingers point)
       const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
@@ -250,6 +255,8 @@
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.17 * s; hy = -0.13; hz = -0.42; }
+      if (w.id === 'bayonet') { hx = 0.16 * s; hy = -0.15; hz = -0.42; }
+      let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
       if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) * 0.78 - sg.z; }
       const A = this.adsW, nA = 1 - A * 0.85;
@@ -294,6 +301,17 @@
           bfly = { a: Math.PI + Math.PI * p1, flip: Math.PI + Math.PI * p2 - 0.16 * settle, roll: 0 };
           orx -= 0.08 * win(t, 0.36, 0.48, 0.56, 0.72);
           this.bflySwish(t, [0.2, 0.44]);
+        } else if (w.id === 'bayonet') {
+          // Bayonet deploy: the fist comes up, flicks the knife out of the hand so it spins end over
+          // end once in the air above the fist, and catches it back in the hammer grip (small dip on the catch)
+          const rise = smooth(t / 0.16);
+          oy += -(1 - rise) * 0.2; orx += (1 - rise) * 0.3; ox -= (1 - rise) * 0.02;
+          const a = clamp01((t - 0.14) / 0.5);                                         // airborne 0.14 -> 0.64
+          const flick = win(t, 0.1, 0.16, 0.16, 0.26), catchK = win(t, 0.6, 0.66, 0.66, 0.82);
+          orx -= 0.22 * flick - 0.16 * catchK; oy += 0.02 * flick - 0.025 * catchK;
+          bay = { lift: Math.sin(a * Math.PI) * 0.085, flip: -easeInOut(a) * Math.PI * 2, roll: 0 };
+          if (t > 0.14 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
+          if (t > 0.64 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.click(); }
         } else if (def.melee) {
           // Karambit deploy: the hand comes up near the centre, turning a little upright, while the
           // knife twirls twice around the index finger in the ring, then drops into the low hold
@@ -327,6 +345,17 @@
           orz += 0.16 * show; orx -= 0.08 * show; ox -= 0.035 * show; oy += 0.05 * show; oz -= 0.02 * show;
           orx -= 0.1 * win(t, 0.8, 0.86, 0.88, 0.95);
           this.bflySwish(t, [0.08, 0.22, 0.3, 0.84]);
+        } else if (w.id === 'bayonet') {
+          // Bayonet inspect: raise it and turn the flat of the blade to the camera, roll the knife a
+          // full turn in the fingers, show the other side, then toss-flip it and catch
+          const show = win(t, 0.02, 0.14, 0.4, 0.5), other = win(t, 0.5, 0.6, 0.7, 0.78);
+          ory += 0.55 * show - 0.35 * other; orz += 0.35 * show + 0.15 * other; orx -= 0.12 * show; ox -= 0.04 * show; oy += 0.06 * show + 0.03 * other;
+          orz += 0.03 * Math.sin(t * Math.PI * 3) * show;
+          const rl = easeInOut((t - 0.3) / 0.18), a = clamp01((t - 0.78) / 0.17);
+          bay = { lift: Math.sin(a * Math.PI) * 0.07, flip: -easeInOut(a) * Math.PI * 2, roll: Math.PI * 2 * rl };
+          orx -= 0.15 * win(t, 0.74, 0.78, 0.78, 0.84) - 0.1 * win(t, 0.93, 0.96, 0.96, 1);
+          if (t > 0.3 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
+          if (t > 0.78 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
         } else if (def.melee) {
           // Karambit inspect: the hand rises to the centre and turns upright while the knife twirls
           // round the ring finger and ends hanging below the fist; hold that show pose with a gentle
@@ -471,8 +500,9 @@
         // idle: a slow relaxed wrist drift so the hold never looks frozen
         if (!bfly) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.035 * Math.sin(q * 1.1); orx += 0.025 * Math.sin(q * 0.8 + 1); ory += 0.03 * Math.sin(q * 0.6); }
       }
-      // butterfly blade trail: sample after the pose is applied (see end of update)
-      this._trailFrame = w.id === 'butterfly' && this.bfTrail ? { model } : null;
+      if (w.id === 'bayonet' && !bay) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.03 * Math.sin(q * 1.1); orx += 0.02 * Math.sin(q * 0.8 + 1); ory += 0.025 * Math.sin(q * 0.6); }
+      // melee blade trail: sample after the pose is applied (see end of update)
+      this._trailFrame = this.bfTrail && this.bfTrail.id === w.id ? { model } : null;
       // Reloads
       const port = ud.port, fore = ud.fore;
       if (reloading && !def.melee) {
@@ -570,6 +600,14 @@
         if (inner) { inner.rotation.set(fl, bfly && bfly.roll ? bfly.roll : 0, 0); const c = Math.cos(fl), sn = Math.sin(fl); inner.position.set(0, pv.y - (pv.y * c - pv.z * sn), pv.z - (pv.y * sn + pv.z * c)); }
         const br = model.userData.baseRot; if (br) model.rotation.copy(br);
       }
+      // Bayonet toss / roll: the knife moves inside the (still) fist about its balance point
+      if (ud.bayonet && ud.inner) {
+        const inr = ud.inner, pv = model.userData.pivot || this._v.set(0, 0, 0);
+        inr.rotation.set(bay ? bay.flip : 0, bay ? bay.roll : 0, 0);
+        const r = this._v2.copy(pv).applyEuler(inr.rotation);
+        inr.position.set(pv.x - r.x, pv.y - r.y + (bay ? bay.lift : 0), pv.z - r.z);
+        const br = model.userData.baseRot; if (br) model.rotation.copy(br);
+      }
       // Karambit ring twirl
       if (holder.userData.spin) {
         // CS:GO-style flip: during twirls the knife turns edge-on so its ring lines up with the
@@ -615,7 +653,7 @@
       // right hand on the grip (palm against the grip's right side, fingers wrapping the front)
       let gp = model.localToWorld(this._v.copy(ud.grip));
       const spin = holder.userData.spin;
-      const bf = !!ud.handleA;
+      const bf = !!ud.handleA || !!ud.bayonet;
       const KH = this.knifeHands;
       let H = spin ? (spin.ringW > 0.45 ? KH.RP : KH.R) : bf ? KH.RB : R.hand;     // karambit: backhand fist (pointing finger in the ring while it spins); butterfly: hammer-grip fist
       R.hand.visible = KH.R.visible = KH.L.visible = KH.RB.visible = KH.RP.visible = false;
@@ -845,7 +883,7 @@
       const T = this.bfTrail, f = this._trailFrame, m = T.mesh;
       if (!f) { m.visible = false; T.tips.length = T.mids.length = 0; return; }
       const inner = f.model.userData.inner || f.model; inner.updateMatrixWorld(true);
-      const tip = inner.localToWorld(new THREE.Vector3(0, 0.138, -0.003)), mid = inner.localToWorld(new THREE.Vector3(0, 0.085, -0.003));
+      const tip = inner.localToWorld((f.model.userData.trailTip || new THREE.Vector3(0, 0.138, -0.003)).clone()), mid = inner.localToWorld((f.model.userData.trailMid || new THREE.Vector3(0, 0.085, -0.003)).clone());
       const last = T.tips[0], speed = last ? tip.distanceTo(last) / Math.max(dt, 1e-3) : 0;
       T.tips.unshift(tip); T.mids.unshift(mid); if (T.tips.length > T.N) { T.tips.length = T.N; T.mids.length = T.N; }
       T.on += ((speed > 0.6 ? 1 : 0) - T.on) * Math.min(1, dt * 10);      // shows while the blade is whipping round

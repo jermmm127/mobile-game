@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.7.4',
+  version: '1.7.5',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -57,13 +57,13 @@ BR.CONFIG = {
 
   // ---- Movement (shared by player AND bots) --------------------------------
   move: {
-    runSpeed: 6.5,          // top ground speed from input alone
-    crouchSpeed: 3.4,
+    runSpeed: 5.9,          // top ground speed from input alone
+    crouchSpeed: 3.1,
     accelGround: 12,
     friction: 8,
     stopSpeed: 3,
     accelAir: 10,           // Quake-style air accel: steer & strafe, keeps momentum
-    maxSpeed: 20,           // hard cap on horizontal speed
+    maxSpeed: 18.5,         // hard cap on horizontal speed
 
     gravity: 24,
     jumpSpeed: 8.2,         // ~1.4 m jump apex
@@ -75,8 +75,8 @@ BR.CONFIG = {
     mantleHeight: 1.75,     // grab & climb ledges this far above your feet while airborne
 
     slideMinSpeed: 0.8,     // fraction of runSpeed you need before Crouch becomes a slide
-    slideBoost: 4.5,
-    slideMaxSpeed: 15.5,
+    slideBoost: 4.0,
+    slideMaxSpeed: 14,
     slideFriction: 0.45,
     slideEndSpeed: 4.2,
     slideMaxTime: 1.1,
@@ -89,14 +89,14 @@ BR.CONFIG = {
     wallRunMaxTime: 1.4,
     wallRunStartLift: 2.5,
     wallRunEnterVy: 5,      // must be past the fast part of a jump before a wall-run catches
-    wallRunSpeedSustain: 8.2,
+    wallRunSpeedSustain: 7.6,
     wallJumpOut: 7,
     wallJumpUp: 8,
 
     grapple: {
       range: 60,            // how far the hook reaches (walls, ground, trees, players: anything)
       pull: 40,             // pull acceleration (m/s²)
-      maxSpeed: 23,         // top speed while reeling in
+      maxSpeed: 21,         // top speed while reeling in
       maxTime: 1.6,         // auto-release after this long
       gravityScale: 0.3,
       cooldown: 5,          // seconds, starts when the hook releases
@@ -149,6 +149,8 @@ BR.CONFIG = {
     // Revolver: six heavy rounds, big punch, swing-out cylinder + speedloader reload
     revolver: { name: 'Revolver', ammo: 'heavy', dmg: 58, pellets: 1, rpm: 150, mag: 6, reload: 2.2, spread: 0.012, ads: 0.3, bloom: 0.012, bloomMax: 0.04, range: 90, head: 2.0, recoil: 0.055, zoom: 1.25, tier: 2, color: 0x8a8f96, revolver: true, knockback: 2 },
     butterfly: { name: 'Butterfly Knife', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 150, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.2 },
+    // Default knife: M9-style bayonet (flipped into the hand on draw)
+    bayonet: { name: 'M9 Bayonet', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.5, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1c1e22, speedMult: 1.2 },
     knife:   { name: 'Karambit', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1b1d21, speedMult: 1.2 },
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x26282c },
     smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 1100, mag: 35, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.0035, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.0095, recoilH: 0.012, zoom: 1.3, tier: 1, color: 0x2f3237 },

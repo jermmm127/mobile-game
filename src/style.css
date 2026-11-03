@@ -182,6 +182,9 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 #loc::after { content: ''; display: block; height: 2px; margin: 6px auto 0; width: 40%; background: var(--accent); }
 #loc.on { animation: loc 2.8s ease-out forwards; }
 @keyframes loc { 0% { opacity: 0; letter-spacing: 0.3em; } 15% { opacity: 1; letter-spacing: 0.02em; } 75% { opacity: 1; } 100% { opacity: 0; } }
+#speedo { position: absolute; left: 50%; top: calc(50% + 46px); transform: translateX(-50%); pointer-events: none; display: flex; align-items: baseline; gap: 3px; font: italic 800 15px var(--display, var(--ui)); color: rgba(255,255,255,.82); text-shadow: 0 1px 3px rgba(0,0,0,.7); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+#speedo i { font: 600 9px var(--ui); font-style: normal; opacity: .7; letter-spacing: .08em; }
+#speedo.sp0 { opacity: .55; } #speedo.sp1 { color: #fff; } #speedo.sp2 { color: #7fe3ff; } #speedo.sp3 { color: #ffb347; }
 #fps { position: absolute; top: calc(124px + var(--st)); right: calc(12px + var(--sr)); font: 600 12px var(--ui); color: var(--muted); }
 
 #toast {

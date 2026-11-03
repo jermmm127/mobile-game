@@ -5,7 +5,7 @@
 //
 // States: drop -> loot / roam / zone -> fight
 // =============================================================================
-const PREF_DIST = { knife: 1.5, butterfly: 1.5, revolver: 18, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holoar: 30, hunter: 38, sniper: 55, lmg: 22, dmr: 45 };
+const PREF_DIST = { knife: 1.5, butterfly: 1.5, bayonet: 1.5, revolver: 18, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holoar: 30, hunter: 38, sniper: 55, lmg: 22, dmr: 45 };
 
 BR.BotBrain = class BotBrain {
   constructor(actor, game, diff) {

@@ -25,6 +25,8 @@ const server = http.createServer((req, res) => {
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   await page.goto(url);
   await page.waitForFunction(() => window.BR && BR.game);
+  // the older checks below cover the karambit, so carry it (the bayonet is the default knife and has its own checks)
+  await page.evaluate(() => { BR.Profile.data.equip.melee = 'knife'; BR.game.refreshCosmetics(); });
 
   const mech = await page.evaluate(() => {
     const dt = 1 / 60, yawFor = (dx, dz) => Math.atan2(-dx, -dz);
@@ -600,6 +602,21 @@ const server = http.createServer((req, res) => {
       const base = BR.Models.weapon('butterfly', 'default', 'none'), ns = BR.Models.weapon('butterfly', 'default', 'none', 'nightshade'); let aura = 0; ns.traverse(o => { if (o.material && o.material.blending === THREE.AdditiveBlending) aura++; });
       out.nightshade = { bp: !!(B && B.trail && B.rarity === 'Mythic'), trail: !!vm.bfTrail, trailSeen, base: !!base, aura };
       P.data.equip.blueprints.butterfly = null; P.data.equip.melee = 'knife'; g.refreshCosmetics(); out.nightshade.cleared = !vm.bfTrail; }
+    // v1.7.5: M9 bayonet = default knife, flipped into the hand on draw; blueprints, camos, case items; speedometer
+    { const tryLoad = (d0) => { const k = P.KEY, saved = P.data, ul = BR.util.load, sv = P.save; BR.util.load = () => d0; P.save = () => {};
+        try { P.load(); return P.data.equip.melee; } finally { BR.util.load = ul; P.save = sv; P.data = saved; P.KEY = k; } };
+      const fresh = tryLoad(null), migrated = tryLoad({ equip: { melee: 'knife' } }), kept = tryLoad({ equip: { melee: 'butterfly' }, meleeV: 2 });
+      P.data.equip.melee = 'bayonet'; g.refreshCosmetics(); p.cur = 2; vm.lastWeapon = null; let maxFlip = 0, maxLift = 0;
+      const inr = vm.models.bayonet.userData.model.userData.inner;
+      for (let i = 0; i < 70; i++) { vm.update(1 / 60, 0, 0); maxFlip = Math.max(maxFlip, Math.abs(inr.rotation.x)); maxLift = Math.max(maxLift, inr.position.y); }
+      const BB = BR.Models.BLUEPRINTS.bayonet || {}, ids = Object.keys(BB).filter(k => k !== 'default');
+      const caseR = BR.CaseItems.all('release').filter(e => e.id.startsWith('bayonet:')).length, caseN = BR.CaseItems.all('nova').filter(e => e.id.startsWith('bayonet:')).length;
+      const cm = BR.Models.weapon('bayonet', 'sabertooth', 'none'); const camoBlade = !!cm.userData.blade.material.map;
+      out.bayonet = { fresh, migrated, kept, slot: p.slots[2] && p.slots[2].id, maxFlip, maxLift, settled: Math.abs(inr.rotation.x) < 0.01 && Math.abs(inr.position.y) < 0.002, fist: vm.knifeHands.RB.visible,
+        bps: ids.length, caseR, caseN, camoBlade, trail: !!(BB.emberfang && BB.emberfang.trail), newCamos: ['sabertooth', 'ultraviolet', 'emerald', 'tidewater'].every(k => BR.Models.SKINS[k]) };
+      g.settings.showSpeed = true; p.mover.vel.set(7, 0, 0); g.update ? null : null; g.hud.speed(p.mover.speedH, true);
+      const sp = document.getElementById('speedo'); out.bayonet.speedo = sp && sp.style.display !== 'none' && sp.textContent.includes('7.0') && /M\/S/i.test(sp.textContent);
+      g.hud.speed(0, false); out.bayonet.speedoOff = sp.style.display === 'none'; p.mover.vel.set(0, 0, 0); }
     // mastery + daily
     const before = P.owns('skins', 'm_copper'); let got = []; for (let i = 0; i < 10; i++) got = got.concat(P.addKill('smg'));
     out.mastery = { before, after: P.owns('skins', 'm_copper'), got: got.join() };
@@ -615,7 +632,7 @@ const server = http.createServer((req, res) => {
     g.state = 'menu';
     return out;
   });
-  const run = 6.5, BR_RUN = run;
+  const run = 5.9, BR_RUN = run;
   const checks = [
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
     ['crouch while running slides with a boost', mech.slide > run + 3],
@@ -718,6 +735,9 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['M9 bayonet: default knife, flips into the hand on draw and settles in the fist', v17.bayonet.fresh === 'bayonet' && v17.bayonet.migrated === 'bayonet' && v17.bayonet.kept === 'butterfly' && v17.bayonet.slot === 'bayonet' && v17.bayonet.maxFlip > 2 && v17.bayonet.maxLift > 0.05 && v17.bayonet.settled && v17.bayonet.fist],
+    ['bayonet blueprints (shop + both cases), camo on the blade, new camos, trails', v17.bayonet.bps >= 9 && v17.bayonet.caseR >= 2 && v17.bayonet.caseN >= 2 && v17.bayonet.camoBlade && v17.bayonet.trail && v17.bayonet.newCamos],
+    ['speedometer shows m/s and can be turned off; movement slowed', v17.bayonet.speedo && v17.bayonet.speedoOff && v17.run < 6],
     ['Nightshade butterfly: purple aura + glowing trail on the flips', v17.nightshade.bp && v17.nightshade.trail && v17.nightshade.trailSeen && v17.nightshade.base && v17.nightshade.aura >= 2 && v17.nightshade.cleared],
     ['enemy highlight tints other players', v17.highlight],
     ['spinning case previews render', v17.spins >= 2],

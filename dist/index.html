@@ -198,6 +198,9 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 #loc::after { content: ''; display: block; height: 2px; margin: 6px auto 0; width: 40%; background: var(--accent); }
 #loc.on { animation: loc 2.8s ease-out forwards; }
 @keyframes loc { 0% { opacity: 0; letter-spacing: 0.3em; } 15% { opacity: 1; letter-spacing: 0.02em; } 75% { opacity: 1; } 100% { opacity: 0; } }
+#speedo { position: absolute; left: 50%; top: calc(50% + 46px); transform: translateX(-50%); pointer-events: none; display: flex; align-items: baseline; gap: 3px; font: italic 800 15px var(--display, var(--ui)); color: rgba(255,255,255,.82); text-shadow: 0 1px 3px rgba(0,0,0,.7); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+#speedo i { font: 600 9px var(--ui); font-style: normal; opacity: .7; letter-spacing: .08em; }
+#speedo.sp0 { opacity: .55; } #speedo.sp1 { color: #fff; } #speedo.sp2 { color: #7fe3ff; } #speedo.sp3 { color: #ffb347; }
 #fps { position: absolute; top: calc(124px + var(--st)); right: calc(12px + var(--sr)); font: 600 12px var(--ui); color: var(--muted); }
 
 #toast {
@@ -949,7 +952,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.7.4',
+  version: '1.7.5',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -999,13 +1002,13 @@ BR.CONFIG = {
 
   // ---- Movement (shared by player AND bots) --------------------------------
   move: {
-    runSpeed: 6.5,          // top ground speed from input alone
-    crouchSpeed: 3.4,
+    runSpeed: 5.9,          // top ground speed from input alone
+    crouchSpeed: 3.1,
     accelGround: 12,
     friction: 8,
     stopSpeed: 3,
     accelAir: 10,           // Quake-style air accel: steer & strafe, keeps momentum
-    maxSpeed: 20,           // hard cap on horizontal speed
+    maxSpeed: 18.5,         // hard cap on horizontal speed
 
     gravity: 24,
     jumpSpeed: 8.2,         // ~1.4 m jump apex
@@ -1017,8 +1020,8 @@ BR.CONFIG = {
     mantleHeight: 1.75,     // grab & climb ledges this far above your feet while airborne
 
     slideMinSpeed: 0.8,     // fraction of runSpeed you need before Crouch becomes a slide
-    slideBoost: 4.5,
-    slideMaxSpeed: 15.5,
+    slideBoost: 4.0,
+    slideMaxSpeed: 14,
     slideFriction: 0.45,
     slideEndSpeed: 4.2,
     slideMaxTime: 1.1,
@@ -1031,14 +1034,14 @@ BR.CONFIG = {
     wallRunMaxTime: 1.4,
     wallRunStartLift: 2.5,
     wallRunEnterVy: 5,      // must be past the fast part of a jump before a wall-run catches
-    wallRunSpeedSustain: 8.2,
+    wallRunSpeedSustain: 7.6,
     wallJumpOut: 7,
     wallJumpUp: 8,
 
     grapple: {
       range: 60,            // how far the hook reaches (walls, ground, trees, players: anything)
       pull: 40,             // pull acceleration (m/s²)
-      maxSpeed: 23,         // top speed while reeling in
+      maxSpeed: 21,         // top speed while reeling in
       maxTime: 1.6,         // auto-release after this long
       gravityScale: 0.3,
       cooldown: 5,          // seconds, starts when the hook releases
@@ -1091,6 +1094,8 @@ BR.CONFIG = {
     // Revolver: six heavy rounds, big punch, swing-out cylinder + speedloader reload
     revolver: { name: 'Revolver', ammo: 'heavy', dmg: 58, pellets: 1, rpm: 150, mag: 6, reload: 2.2, spread: 0.012, ads: 0.3, bloom: 0.012, bloomMax: 0.04, range: 90, head: 2.0, recoil: 0.055, zoom: 1.25, tier: 2, color: 0x8a8f96, revolver: true, knockback: 2 },
     butterfly: { name: 'Butterfly Knife', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 150, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.2 },
+    // Default knife: M9-style bayonet (flipped into the hand on draw)
+    bayonet: { name: 'M9 Bayonet', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.5, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1c1e22, speedMult: 1.2 },
     knife:   { name: 'Karambit', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1b1d21, speedMult: 1.2 },
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x26282c },
     smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 1100, mag: 35, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.0035, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.0095, recoilH: 0.012, zoom: 1.3, tier: 1, color: 0x2f3237 },
@@ -3823,6 +3828,30 @@ BR.Models = (function () {
         const g = c.createRadialGradient(x, y - 4, 1, x, y, 11); g.addColorStop(0, '#9dffcf'); g.addColorStop(0.5, '#1fa37a'); g.addColorStop(1, '#3b1a7a');
         c.fillStyle = g; c.beginPath(); c.arc(x, y, 9, 0, Math.PI); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.5)'; c.stroke(); }
     }, 256),
+    // knife-collection camos (v1.7.5)
+    sabertooth: () => canvasTex('sabertooth', (c, s) => {
+      const g = c.createLinearGradient(0, 0, s, 0); g.addColorStop(0, '#ffb000'); g.addColorStop(0.5, '#ff7a00'); g.addColorStop(1, '#ffcc33'); c.fillStyle = g; c.fillRect(0, 0, s, s);
+      c.fillStyle = '#140a02';
+      for (let i = 0; i < 9; i++) { const y = i * s / 9 + 4; c.beginPath(); c.moveTo(0, y);
+        for (let x = 0; x <= s; x += 8) c.lineTo(x, y + Math.sin(x * 0.09 + i * 1.7) * 5 + (x % 16 ? 3 : -3));
+        for (let x = s; x >= 0; x -= 8) c.lineTo(x, y + 4 + Math.sin(x * 0.07 + i) * 2);
+        c.closePath(); c.fill(); }
+    }, 128),
+    ultraviolet: () => canvasTex('ultraviolet', (c, s) => {
+      const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#1a0630'); g.addColorStop(0.5, '#4a1a7a'); g.addColorStop(1, '#12041f'); c.fillStyle = g; c.fillRect(0, 0, s, s);
+      for (let y = 0; y < s; y += 2) { c.fillStyle = `rgba(190,140,255,${0.04 + 0.05 * Math.sin(y * 0.3)})`; c.fillRect(0, y, s, 1); }
+    }, 128),
+    emerald: () => animTex(canvasTex('emerald', (c, s) => {
+      for (let y = 0; y < s; y += 2) for (let x = 0; x < s; x += 2) {
+        const v = Math.sin(x * 0.08 + Math.sin(y * 0.06) * 2.5) * 0.5 + Math.cos(y * 0.05 + x * 0.02) * 0.5;
+        c.fillStyle = `hsl(${148 + v * 18},${85 + v * 10}%,${22 + (v + 1) * 18}%)`; c.fillRect(x, y, 2, 2); }
+      for (let i = 0; i < 70; i++) { c.fillStyle = `rgba(200,255,225,${Math.random() * 0.9})`; c.fillRect(Math.random() * s, Math.random() * s, 1.5, 1.5); }
+    }, 128), (tx, t) => { tx.offset.set(Math.sin(t * 0.35) * 0.06, t * 0.04); }),
+    tidewater: () => animTex(canvasTex('tidewater', (c, s) => {
+      c.fillStyle = '#04122a'; c.fillRect(0, 0, s, s);
+      for (let i = 0; i < 14; i++) { c.beginPath(); for (let x = 0; x <= s; x += 4) { const y = i * s / 14 + Math.sin(x * 0.07 + i) * 6; x ? c.lineTo(x, y) : c.moveTo(x, y); }
+        c.strokeStyle = i % 3 ? 'rgba(80,190,255,0.75)' : 'rgba(220,250,255,0.95)'; c.lineWidth = i % 3 ? 2.5 : 1.2; c.stroke(); }
+    }, 128), (tx, t) => { tx.offset.set(t * 0.08, Math.sin(t * 0.6) * 0.03); }),
     damascus: () => canvasTex('damascus', (c, s) => {
       for (let y = 0; y < s; y++) for (let x = 0; x < s; x += 2) {
         const v = Math.sin((x * 0.09) + Math.sin(y * 0.05) * 3 + Math.sin(x * 0.03 + y * 0.02) * 2) * 0.5 + 0.5;
@@ -3923,6 +3952,11 @@ BR.Models = (function () {
     opal:       { name: 'Opaline', price: 1300, rarity: 'Legendary', swatch: 'linear-gradient(135deg,#d6f0ff,#ffd6f6,#e8ffd6,#d6e0ff)' },
     acid:       { name: 'Acid Bath', caseOnly: true, case: 'nova', rarity: 'Mythic', swatch: 'radial-gradient(circle at 40% 40%,#c8ff5a,#1fdc3c 40%,#041a06 75%)' },
     voidrift:   { name: 'Rift Walker', caseOnly: true, case: 'nova', rarity: 'Exotic', swatch: 'linear-gradient(135deg,#07020f,#b04bff 45%,#07020f 55%,#ff3df2 90%)' },
+    // knife collection (v1.7.5): look best on the bayonet blade, work on every gun
+    ultraviolet:{ name: 'Ultraviolet', price: 650, rarity: 'Epic', swatch: 'linear-gradient(135deg,#12041f,#4a1a7a 50%,#1a0630)' },
+    sabertooth: { name: 'Sabertooth', price: 1100, rarity: 'Legendary', swatch: 'repeating-linear-gradient(170deg,#ff9a00 0 7px,#140a02 7px 10px)' },
+    emerald:    { name: 'Emerald Ripple', caseOnly: true, rarity: 'Mythic', swatch: 'linear-gradient(135deg,#043a1e,#1fdc7a 45%,#bfffe0 55%,#043a1e)' },
+    tidewater:  { name: 'Riptide', caseOnly: true, case: 'nova', rarity: 'Legendary', swatch: 'repeating-linear-gradient(170deg,#04122a 0 5px,#50beff 5px 7px,#dffaff 7px 8px)' },
     // weapon mastery (kills with any one weapon)
     m_copper:      { name: 'Mastery: Copper', mastery: 10, rarity: 'Rare', swatch: 'linear-gradient(135deg,#6a3418,#e08a4a,#6a3418)' },
     m_chrome:      { name: 'Mastery: Chrome', mastery: 25, rarity: 'Epic', swatch: 'linear-gradient(135deg,#8a96a2,#ffffff,#8a96a2)' },
@@ -3991,6 +4025,10 @@ BR.Models = (function () {
       case 'diamond': m = new THREE.MeshPhongMaterial({ map: TEX.diamond(), specular: 0xffffff, shininess: 200, emissive: 0x1a3a50 }); break;
       case 'hyperspace': case 'acid': case 'voidrift':
         m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: 0.95, specular: 0x888888, shininess: 70 }); break;
+      case 'sabertooth': m = new THREE.MeshPhongMaterial({ map: TEX.sabertooth(), specular: 0xffe0a0, shininess: 130 }); break;
+      case 'ultraviolet': m = new THREE.MeshPhongMaterial({ map: TEX.ultraviolet(), specular: 0xd8b8ff, shininess: 110, emissive: 0x0a0214 }); break;
+      case 'emerald': m = new THREE.MeshPhongMaterial({ map: TEX.emerald(), specular: 0xc8ffe0, shininess: 180, emissive: 0xffffff, emissiveMap: TEX.emerald(), emissiveIntensity: 0.25 }); break;
+      case 'tidewater': m = new THREE.MeshPhongMaterial({ map: TEX.tidewater(), specular: 0xdff8ff, shininess: 160, emissive: 0xffffff, emissiveMap: TEX.tidewater(), emissiveIntensity: 0.55 }); break;
       case 'opal': m = new THREE.MeshPhongMaterial({ map: TEX.opal(), specular: 0xffffff, shininess: 190, emissive: 0x1a1a24 }); break;
       // weapon-mastery camos (unlocked by kills, never sold)
       case 'm_copper': m = new THREE.MeshPhongMaterial({ color: 0xb8693a, specular: 0xffc8a0, shininess: 95, emissive: 0x1a0a04 }); break;
@@ -4798,8 +4836,60 @@ BR.Models = (function () {
       const latch = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.022, 0.006), M.metal); latch.position.set(-0.004, -0.128, 0.0); hB.add(latch);
       g.userData.handleA = hA; g.userData.handleB = hB;
       g.userData.blade = blade;
+      g.userData.trailTip = new THREE.Vector3(0, 0.138, -0.003); g.userData.trailMid = new THREE.Vector3(0, 0.085, -0.003);
       hands(g, [0, -0.07, 0.0], null, null);
       anchors(g, 0.14, 0, [0, -0.13, 0]);
+      g.userData.flash.visible = false;
+    },
+    // Bayonet (M9-style, original model): spear/clip-point blade with a saw-tooth spine, wire-cutter
+    // slot and fuller, a crossguard with a muzzle ring on the spine side, a ribbed round grip and a
+    // slotted pommel. Built upright like the butterfly (blade +Y, edge toward -Z, grip down -Y) so it
+    // uses the same hammer-grip fist. All parts sit in userData.inner so the draw can toss and
+    // flip the knife while the fist stays put. A camo goes on the BLADE (handle stays black rubber).
+    bayonet(g, S, M, opts) {
+      const inner = new THREE.Group(); g.add(inner);
+      const camo = opts && opts.camo;
+      const bladeMat = (opts && opts.blade) || camo || M.blade;
+      const handleMat = camo ? (cache.mat.bayGrip || (cache.mat.bayGrip = new THREE.MeshPhongMaterial({ color: 0x17191c, specular: 0x333333, shininess: 18 }))) : S;
+      const ext = (pts, depth, bevel, holes) => {
+        const sh = new THREE.Shape(); sh.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) { const p = pts[i]; if (p.length === 4) sh.quadraticCurveTo(p[0], p[1], p[2], p[3]); else sh.lineTo(p[0], p[1]); }
+        sh.closePath();
+        for (const h of holes || []) { const pa = new THREE.Path(); pa.absellipse(h[0], h[1], h[2], h[3], 0, Math.PI * 2, false, 0); sh.holes.push(pa); }
+        const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: !!bevel, bevelThickness: bevel || 0, bevelSize: bevel || 0, bevelSegments: 2, curveSegments: 12 });
+        geo.translate(0, 0, -depth / 2);
+        const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 6, uv.getY(i) * 6);
+        const m = new THREE.Mesh(geo, null); m.rotation.y = -Math.PI / 2; return m;     // shape x -> model +Z (spine), y -> up
+      };
+      // blade: straight spine, clipped spear point, gently rising edge; wire-cutter slot near the guard
+      const blade = ext([[0.0125, 0.0], [0.0125, 0.112], [0.0125, 0.132, 0.004, 0.152], [-0.0015, 0.163], [-0.011, 0.138, -0.0155, 0.104], [-0.0162, 0.012], [-0.012, 0.0]], 0.0034, 0.0008,
+        [[-0.003, 0.03, 0.0035, 0.0085]]);
+      blade.material = bladeMat; inner.add(blade);
+      const edgeM = (opts && (opts.blade || camo)) ? bladeMat : (cache.mat.bayEdge || (cache.mat.bayEdge = new THREE.MeshPhongMaterial({ color: 0xf2f6fa, specular: 0xffffff, shininess: 200 })));
+      const grind = ext([[-0.0162, 0.014], [-0.0158, 0.1], [-0.011, 0.137, -0.0018, 0.161], [-0.0035, 0.152], [-0.0085, 0.13, -0.0112, 0.1], [-0.0118, 0.016]], 0.0044, 0);
+      grind.material = edgeM; inner.add(grind);
+      const fuller = ext([[0.004, 0.048], [0.0072, 0.05], [0.0072, 0.104], [0.004, 0.1]], 0.0041, 0); fuller.material = M.dark; inner.add(fuller);
+      const clip = ext([[0.0125, 0.112], [0.0125, 0.13, 0.004, 0.152], [0.0005, 0.155], [0.0085, 0.124]], 0.0042, 0); clip.material = M.metal; inner.add(clip);
+      // saw teeth along the spine
+      for (let i = 0; i < 9; i++) { const t = new THREE.Mesh(new THREE.BoxGeometry(0.0036, 0.0036, 0.0036), M.metal); t.rotation.x = Math.PI / 4; t.position.set(0, 0.04 + i * 0.0068, 0.0128); inner.add(t); }
+      // ricasso + crossguard; muzzle ring on the spine side
+      const ric = new THREE.Mesh(new THREE.BoxGeometry(0.0052, 0.012, 0.03), M.metal); ric.position.set(0, 0.002, -0.001); inner.add(ric);
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(0.0115, 0.0075, 0.052), M.metal); guard.position.set(0, -0.006, -0.002); inner.add(guard);
+      const gtip = new THREE.Mesh(new THREE.SphereGeometry(0.0062, 10, 8), M.metal); gtip.scale.set(0.95, 0.8, 1); gtip.position.set(0, -0.006, -0.028); inner.add(gtip);
+      const mring = new THREE.Mesh(new THREE.TorusGeometry(0.0105, 0.0032, 10, 26), M.metal); mring.rotation.y = Math.PI / 2; mring.position.set(0, -0.006, 0.033); inner.add(mring);
+      // grip: slightly oval, swelling in the middle, with raised ribs
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.0128, 0.0118, 0.104, 18), handleMat); grip.scale.set(0.82, 1, 1.12); grip.position.set(0, -0.064, 0); inner.add(grip);
+      const swell = new THREE.Mesh(new THREE.SphereGeometry(0.0134, 16, 10), handleMat); swell.scale.set(0.82, 2.6, 1.12); swell.position.set(0, -0.066, 0); inner.add(swell);
+      const ribM = camo ? handleMat : (cache.mat.bayRib || (cache.mat.bayRib = new THREE.MeshLambertMaterial({ color: 0x101113 })));
+      for (let i = 0; i < 7; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.0128, 0.0013, 6, 22), i % 2 ? ribM : handleMat); r.rotation.x = Math.PI / 2; r.scale.set(0.84, 1.14, 1); r.position.set(0, -0.026 - i * 0.012, 0); inner.add(r); }
+      // pommel with a release slot
+      const pom = new THREE.Mesh(new THREE.CylinderGeometry(0.0128, 0.0142, 0.016, 18), M.metal); pom.scale.set(0.85, 1, 1.15); pom.position.set(0, -0.123, 0); inner.add(pom);
+      const slot = new THREE.Mesh(new THREE.BoxGeometry(0.0145, 0.004, 0.012), M.dark); slot.position.set(0, -0.124, 0.004); inner.add(slot);
+      const latch = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.01, 0.006), M.metal); latch.position.set(0, -0.114, 0.0165); inner.add(latch);
+      g.userData.inner = inner; g.userData.blade = blade; g.userData.bayonet = true;
+      g.userData.trailTip = new THREE.Vector3(0, 0.158, 0); g.userData.trailMid = new THREE.Vector3(0, 0.1, 0);
+      hands(g, [0, -0.07, 0.0], null, null);
+      anchors(g, 0.15, 0, [0, -0.13, 0]);
       g.userData.flash.visible = false;
     },
   };
@@ -5567,6 +5657,50 @@ BR.Models = (function () {
   S2BP.butterfly = { nightshade: { name: 'Nightshade', rarity: 'Mythic', price: 2800, body: 0x120a1e, bodyGloss: 2, accent: 0xb04bff, glow: 0xb04bff, blade: 'nightshade', trail: 0xb04bff, mod: nightshadeAura, season: 2 },
     biohazard: { name: 'Biohazard', rarity: 'Mythic', caseOnly: true, case: 'nova', body: 0x041a06, bodyGloss: 2, accent: 0x7dff3a, glow: 0x7dff3a, blade: 'acidblade', season: 2 },
     riftwing: { name: 'Riftwing', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0x07020f, bodyGloss: 2, accent: 0xff3df2, glow: 0xff3df2, blade: 'riftblade', season: 2 } };
+  // ---- M9-style bayonet blueprints (shop, Release Case, Nova Case). Blades are animated where it
+  // counts; `trail` adds the glowing blade trail in first person (same as Nightshade).
+  BLADES.tideblade = animBlade('tidewater', 0.7);
+  BLADES.emberblade = animBlade('molten', 1);
+  BLADES.solarblade = animBlade('liquidgold', 0.5);
+  BLADES.glacier = () => new THREE.MeshPhongMaterial({ color: 0xd8f4ff, specular: 0xffffff, shininess: 200, transparent: true, opacity: 0.82, emissive: 0x2a6a9a, side: THREE.DoubleSide });
+  BLADES.nightops = () => new THREE.MeshPhongMaterial({ color: 0x2a2d32, specular: 0x6a7078, shininess: 40, side: THREE.DoubleSide });
+  // glowing line down the fuller + along the saw teeth
+  const bayGlow = (g, mat) => { const inr = g.userData.inner; if (!inr) return;
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.0046, 0.05, 0.0024), mat); f.position.set(0, 0.076, 0.0056); inr.add(f);
+    for (const x of [-0.0021, 0.0021]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.0006, 0.064, 0.0016), mat); r.position.set(x, 0.067, 0.0135); inr.add(r); } };
+  const BAYBP = {
+    nightops: { name: 'Night Ops', rarity: 'Rare', price: 450, body: 0x101113, accent: 0x101113, glow: 0x6a7078, blade: 'nightops' },
+    fade: { name: 'Fade', rarity: 'Legendary', price: 1300, body: 0x121216, accent: 0x121216, glow: 0xff5ec4, blade: 'fade' },
+    doppler: { name: 'Doppler', rarity: 'Legendary', price: 1300, body: 0x0e0e12, accent: 0x0e0e12, glow: 0x4a8bff, blade: 'doppler' },
+    riptide: { name: 'Riptide', rarity: 'Legendary', price: 1500, body: 0x06162e, bodyGloss: 2, accent: 0x50beff, glow: 0x9fe8ff, blade: 'tideblade',
+      mod(g, k, P) { const G = liveGlow(0x9fe8ff); hueCycle(g, G, 0.52, 0.58, 2, 0.7); bayGlow(g, G); } },
+    emberfang: { name: 'Emberfang', rarity: 'Mythic', price: 2600, body: 0x1a0805, bodyGloss: 1, accent: 0xff6a00, glow: 0xff6a00, blade: 'emberblade', trail: 0xff7a1a,
+      mod(g, k, P) { const G = liveGlow(0xff7a00); hueCycle(g, G, 0.02, 0.1, 4, 0.55); bayGlow(g, G);
+        const inr = g.userData.inner, fl = [];
+        for (let i = 0; i < 6; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.0034, 0.016, 5), G); f.position.set(0, 0.044 + i * 0.011, 0.018); inr.add(f); fl.push(f); }
+        anim(g, t => fl.forEach((f, i) => { f.scale.y = 0.5 + 0.8 * Math.abs(Math.sin(t * 9 + i * 1.9)); f.position.z = 0.017 + 0.004 * f.scale.y; })); } },
+    glacier: { name: 'Glacier', rarity: 'Legendary', caseOnly: true, body: 0xbfeaff, bodyGloss: 2, accent: 0xe8f6ff, glow: 0xdff6ff, blade: 'glacier',
+      mod(g, k, P) { const ice = crystal(0xd8f4ff), inr = g.userData.inner, sh = [];
+        for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.005, 0), ice); s.scale.y = 2; inr.add(s); sh.push(s); }
+        anim(g, t => sh.forEach((s, i) => { const a = t * 1.3 + i / 4 * 6.283; s.position.set(Math.sin(a) * 0.012, 0.03 + ((t * 0.05 + i / 4) % 1) * 0.12, Math.cos(a) * 0.028); s.rotation.set(t * 2 + i, t, 0); })); } },
+    gammaburst: { name: 'Gamma Burst', rarity: 'Mythic', caseOnly: true, body: 0x03140a, bodyGloss: 2, accent: 0x39ff88, glow: 0x39ff88, blade: 'gamma', trail: 0x39ff88,
+      mod(g, k, P) { const G = liveGlow(0x39ff88); hueCycle(g, G, 0.3, 0.42, 2.4, 0.58); bayGlow(g, G);
+        const r = new THREE.Mesh(new THREE.TorusGeometry(0.0108, 0.0016, 8, 24), G); r.rotation.y = Math.PI / 2; r.position.set(0, -0.006, 0.033); g.userData.inner.add(r); } },
+    solarcrown: { name: 'Solar Crown', rarity: 'Mythic', caseOnly: true, case: 'nova', body: 0x2a1a02, bodyGloss: 2, accent: 0xffc93a, accentGloss: 2, glow: 0xffd24a, blade: 'solarblade', trail: 0xffc93a, season: 2,
+      mod(g, k, P) { const G = liveGlow(0xffd24a); hueCycle(g, G, 0.1, 0.15, 3, 0.6); bayGlow(g, G); const inr = g.userData.inner;
+        const halo = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.0015, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+        halo.rotation.x = Math.PI / 2; halo.position.y = -0.006; inr.add(halo);
+        const rays = orbiters(g, 8, new THREE.ConeGeometry(0.002, 0.01, 4), G, 0, -0.006, 0, 0.036, 1.5, 'y'); inr.add(rays);
+        anim(g, t => { halo.material.opacity = 0.5 + 0.35 * Math.sin(t * 3); halo.scale.setScalar(1 + 0.06 * Math.sin(t * 3)); }); } },
+    singularity: { name: 'Singularity', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0x07020f, bodyGloss: 2, accent: 0xb04bff, glow: 0xff3df2, blade: 'riftblade', trail: 0xd06bff, season: 2,
+      mod(g, k, P) { const G = liveGlow(0xff3df2); hueCycle(g, G, 0.75, 0.92, 1.4, 0.62); bayGlow(g, G); const inr = g.userData.inner;
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.008, 16, 12), new THREE.MeshBasicMaterial({ color: 0x000000 })); core.position.y = -0.138; inr.add(core);
+        const disk = new THREE.Mesh(new THREE.RingGeometry(0.009, 0.019, 32), new THREE.MeshBasicMaterial({ color: 0xd06bff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+        disk.position.y = -0.138; disk.rotation.x = 1.2; inr.add(disk);
+        const motes = orbiters(g, 5, new THREE.OctahedronGeometry(0.0025, 0), G, 0, -0.138, 0, 0.022, 4, 'y'); inr.add(motes);
+        anim(g, t => { disk.rotation.z = t * 2.5; disk.material.opacity = 0.55 + 0.3 * Math.sin(t * 4); }); } },
+  };
+  S2BP.bayonet = BAYBP;
   for (const w in S2BP) MYTHIC[w] = Object.assign(MYTHIC[w] || {}, S2BP[w]);
   for (const w in MYTHIC) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, MYTHIC[w]);
   // Signature tracers: every Legendary / Mythic blueprint fires its own tracer (used when that
@@ -5581,7 +5715,7 @@ BR.Models = (function () {
   };
   for (const w in BLUEPRINTS) for (const b in BLUEPRINTS[w]) {
     const bp = BLUEPRINTS[w][b];
-    if (w === 'knife' || w === 'butterfly' || !(bp.rarity === 'Legendary' || bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) continue;
+    if (BR.CONFIG.weapons[w] && BR.CONFIG.weapons[w].melee || !(bp.rarity === 'Legendary' || bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) continue;
     const sg = SIG[b] || ['dual', bp.glow, 0xffffff];
     bp.tracer = bp.tracer || { name: bp.name + ' Signature', style: sg[0], color: sg[1], color2: sg[2] };
     // signature reload animation (viewmodel): twirl | flip | toss | spin | glitch, VFX in the blueprint's glow
@@ -5782,6 +5916,7 @@ BR.Models = (function () {
       else if (bp) S = bpMat(bp.body, bp.bodyGloss || 0);
       else S = skinMaterial('default', def.color);
       const opts = {};
+      if (skin && skin !== 'default') opts.camo = S;
       if (bp && bp.blade) opts.blade = cache.mat['blade' + bp.blade] || (cache.mat['blade' + bp.blade] = BLADES[bp.blade]());
       ROUND = true;
       try {
@@ -5927,6 +6062,11 @@ BR.Models = (function () {
           const inner = new THREE.Group(); while (m.children.length) inner.add(m.children[0]); m.add(inner);
           m.userData.inner = inner; m.userData.pivot = new THREE.Vector3(0, 0.004, 0.001);
           holder.add(m);
+        } else if (id === 'bayonet') {
+          // forward hammer grip: blade out front angled up and in, edge down, flat toward you
+          m.rotation.set(-1.05, 0.38, 0.42); m.userData.baseRot = m.rotation.clone();
+          m.userData.pivot = new THREE.Vector3(0, -0.01, 0);       // flips turn about the balance point by the guard
+          holder.add(m);
         } else holder.add(m);
         holder.userData.model = m;
         holder.visible = false;
@@ -5965,14 +6105,14 @@ BR.Models = (function () {
       // Glowing blade trail (butterfly blueprints with a .trail colour): a ribbon between the blade
       // tip and mid-blade over the last frames, drawn additively and fading toward the tail
       if (this.bfTrail) { this.scene.remove(this.bfTrail.mesh); this.bfTrail.mesh.geometry.dispose(); this.bfTrail = null; }
-      { const bpId = (eq.blueprints || {}).butterfly, B = bpId && BR.Models.BLUEPRINTS.butterfly && BR.Models.BLUEPRINTS.butterfly[bpId];
-        if (B && B.trail) {
+      { const mel = eq.melee || 'bayonet', bpId = (eq.blueprints || {})[mel], B = bpId && BR.Models.BLUEPRINTS[mel] && BR.Models.BLUEPRINTS[mel][bpId];
+        if (B && B.trail && this.models[mel] && this.models[mel].userData.model.userData.trailTip) {
           const N = 11, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), idx = [];
           for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
           geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
           const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
           mesh.frustumCulled = false; mesh.visible = false; this.scene.add(mesh);
-          this.bfTrail = { mesh, N, tips: [], mids: [], color: new THREE.Color(B.trail), on: 0 };
+          this.bfTrail = { mesh, N, tips: [], mids: [], color: new THREE.Color(B.trail), on: 0, id: mel };
         } }
       // Wrist grapple launcher (child of the left hand: aims where the fingers point)
       const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
@@ -6075,6 +6215,8 @@ BR.Models = (function () {
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.17 * s; hy = -0.13; hz = -0.42; }
+      if (w.id === 'bayonet') { hx = 0.16 * s; hy = -0.15; hz = -0.42; }
+      let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
       if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) * 0.78 - sg.z; }
       const A = this.adsW, nA = 1 - A * 0.85;
@@ -6119,6 +6261,17 @@ BR.Models = (function () {
           bfly = { a: Math.PI + Math.PI * p1, flip: Math.PI + Math.PI * p2 - 0.16 * settle, roll: 0 };
           orx -= 0.08 * win(t, 0.36, 0.48, 0.56, 0.72);
           this.bflySwish(t, [0.2, 0.44]);
+        } else if (w.id === 'bayonet') {
+          // Bayonet deploy: the fist comes up, flicks the knife out of the hand so it spins end over
+          // end once in the air above the fist, and catches it back in the hammer grip (small dip on the catch)
+          const rise = smooth(t / 0.16);
+          oy += -(1 - rise) * 0.2; orx += (1 - rise) * 0.3; ox -= (1 - rise) * 0.02;
+          const a = clamp01((t - 0.14) / 0.5);                                         // airborne 0.14 -> 0.64
+          const flick = win(t, 0.1, 0.16, 0.16, 0.26), catchK = win(t, 0.6, 0.66, 0.66, 0.82);
+          orx -= 0.22 * flick - 0.16 * catchK; oy += 0.02 * flick - 0.025 * catchK;
+          bay = { lift: Math.sin(a * Math.PI) * 0.085, flip: -easeInOut(a) * Math.PI * 2, roll: 0 };
+          if (t > 0.14 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
+          if (t > 0.64 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.click(); }
         } else if (def.melee) {
           // Karambit deploy: the hand comes up near the centre, turning a little upright, while the
           // knife twirls twice around the index finger in the ring, then drops into the low hold
@@ -6152,6 +6305,17 @@ BR.Models = (function () {
           orz += 0.16 * show; orx -= 0.08 * show; ox -= 0.035 * show; oy += 0.05 * show; oz -= 0.02 * show;
           orx -= 0.1 * win(t, 0.8, 0.86, 0.88, 0.95);
           this.bflySwish(t, [0.08, 0.22, 0.3, 0.84]);
+        } else if (w.id === 'bayonet') {
+          // Bayonet inspect: raise it and turn the flat of the blade to the camera, roll the knife a
+          // full turn in the fingers, show the other side, then toss-flip it and catch
+          const show = win(t, 0.02, 0.14, 0.4, 0.5), other = win(t, 0.5, 0.6, 0.7, 0.78);
+          ory += 0.55 * show - 0.35 * other; orz += 0.35 * show + 0.15 * other; orx -= 0.12 * show; ox -= 0.04 * show; oy += 0.06 * show + 0.03 * other;
+          orz += 0.03 * Math.sin(t * Math.PI * 3) * show;
+          const rl = easeInOut((t - 0.3) / 0.18), a = clamp01((t - 0.78) / 0.17);
+          bay = { lift: Math.sin(a * Math.PI) * 0.07, flip: -easeInOut(a) * Math.PI * 2, roll: Math.PI * 2 * rl };
+          orx -= 0.15 * win(t, 0.74, 0.78, 0.78, 0.84) - 0.1 * win(t, 0.93, 0.96, 0.96, 1);
+          if (t > 0.3 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
+          if (t > 0.78 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
         } else if (def.melee) {
           // Karambit inspect: the hand rises to the centre and turns upright while the knife twirls
           // round the ring finger and ends hanging below the fist; hold that show pose with a gentle
@@ -6296,8 +6460,9 @@ BR.Models = (function () {
         // idle: a slow relaxed wrist drift so the hold never looks frozen
         if (!bfly) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.035 * Math.sin(q * 1.1); orx += 0.025 * Math.sin(q * 0.8 + 1); ory += 0.03 * Math.sin(q * 0.6); }
       }
-      // butterfly blade trail: sample after the pose is applied (see end of update)
-      this._trailFrame = w.id === 'butterfly' && this.bfTrail ? { model } : null;
+      if (w.id === 'bayonet' && !bay) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.03 * Math.sin(q * 1.1); orx += 0.02 * Math.sin(q * 0.8 + 1); ory += 0.025 * Math.sin(q * 0.6); }
+      // melee blade trail: sample after the pose is applied (see end of update)
+      this._trailFrame = this.bfTrail && this.bfTrail.id === w.id ? { model } : null;
       // Reloads
       const port = ud.port, fore = ud.fore;
       if (reloading && !def.melee) {
@@ -6395,6 +6560,14 @@ BR.Models = (function () {
         if (inner) { inner.rotation.set(fl, bfly && bfly.roll ? bfly.roll : 0, 0); const c = Math.cos(fl), sn = Math.sin(fl); inner.position.set(0, pv.y - (pv.y * c - pv.z * sn), pv.z - (pv.y * sn + pv.z * c)); }
         const br = model.userData.baseRot; if (br) model.rotation.copy(br);
       }
+      // Bayonet toss / roll: the knife moves inside the (still) fist about its balance point
+      if (ud.bayonet && ud.inner) {
+        const inr = ud.inner, pv = model.userData.pivot || this._v.set(0, 0, 0);
+        inr.rotation.set(bay ? bay.flip : 0, bay ? bay.roll : 0, 0);
+        const r = this._v2.copy(pv).applyEuler(inr.rotation);
+        inr.position.set(pv.x - r.x, pv.y - r.y + (bay ? bay.lift : 0), pv.z - r.z);
+        const br = model.userData.baseRot; if (br) model.rotation.copy(br);
+      }
       // Karambit ring twirl
       if (holder.userData.spin) {
         // CS:GO-style flip: during twirls the knife turns edge-on so its ring lines up with the
@@ -6440,7 +6613,7 @@ BR.Models = (function () {
       // right hand on the grip (palm against the grip's right side, fingers wrapping the front)
       let gp = model.localToWorld(this._v.copy(ud.grip));
       const spin = holder.userData.spin;
-      const bf = !!ud.handleA;
+      const bf = !!ud.handleA || !!ud.bayonet;
       const KH = this.knifeHands;
       let H = spin ? (spin.ringW > 0.45 ? KH.RP : KH.R) : bf ? KH.RB : R.hand;     // karambit: backhand fist (pointing finger in the ring while it spins); butterfly: hammer-grip fist
       R.hand.visible = KH.R.visible = KH.L.visible = KH.RB.visible = KH.RP.visible = false;
@@ -6670,7 +6843,7 @@ BR.Models = (function () {
       const T = this.bfTrail, f = this._trailFrame, m = T.mesh;
       if (!f) { m.visible = false; T.tips.length = T.mids.length = 0; return; }
       const inner = f.model.userData.inner || f.model; inner.updateMatrixWorld(true);
-      const tip = inner.localToWorld(new THREE.Vector3(0, 0.138, -0.003)), mid = inner.localToWorld(new THREE.Vector3(0, 0.085, -0.003));
+      const tip = inner.localToWorld((f.model.userData.trailTip || new THREE.Vector3(0, 0.138, -0.003)).clone()), mid = inner.localToWorld((f.model.userData.trailMid || new THREE.Vector3(0, 0.085, -0.003)).clone());
       const last = T.tips[0], speed = last ? tip.distanceTo(last) / Math.max(dt, 1e-3) : 0;
       T.tips.unshift(tip); T.mids.unshift(mid); if (T.tips.length > T.N) { T.tips.length = T.N; T.mids.length = T.N; }
       T.on += ((speed > 0.6 ? 1 : 0) - T.on) * Math.min(1, dt * 10);      // shows while the blade is whipping round
@@ -6797,8 +6970,8 @@ BR.Actor = class Actor {
     this.health = A.maxHealth;
     this.shield = 0;
     this.alive = true;
-    // 2 guns + the knife you always carry (yours: karambit or butterfly, whichever you equipped)
-    this.slots = [null, null, BR.Weapons.create(opts && opts.isPlayer && BR.Profile && BR.Profile.data ? (BR.Profile.data.equip.melee || 'knife') : 'knife')];
+    // 2 guns + the knife you always carry (yours: bayonet, karambit or butterfly, whichever you equipped)
+    this.slots = [null, null, BR.Weapons.create(opts && opts.isPlayer && BR.Profile && BR.Profile.data ? (BR.Profile.data.equip.melee || 'bayonet') : 'bayonet')];
     this.cur = 2;
     this.grappleCd = 0;
     this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0;
@@ -7077,9 +7250,9 @@ BR.Actor = class Actor {
       u.wid = wid;
       while (u.gun.children.length) u.gun.remove(u.gun.children[0]);
       if (wid) {
-        const sc = wid === 'knife' ? 1.6 : 1.15, gm = BR.Models.worldWeapon(wid);
+        const sc = wid === 'knife' ? 1.6 : wid === 'bayonet' ? 1.3 : 1.15, gm = BR.Models.worldWeapon(wid);
         gm.scale.setScalar(sc); u.gun.add(gm);
-        u.gp = BR.Models.gripPoints(wid); u.gunScale = sc; u.gun.userData.knife = wid === 'knife';
+        u.gp = BR.Models.gripPoints(wid); u.gunScale = sc; u.gun.userData.knife = wid === 'knife' || wid === 'bayonet';
       }
     }
   }
@@ -7113,7 +7286,7 @@ BR.Actor = class Actor {
 //
 // States: drop -> loot / roam / zone -> fight
 // =============================================================================
-const PREF_DIST = { knife: 1.5, butterfly: 1.5, revolver: 18, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holoar: 30, hunter: 38, sniper: 55, lmg: 22, dmr: 45 };
+const PREF_DIST = { knife: 1.5, butterfly: 1.5, bayonet: 1.5, revolver: 18, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holoar: 30, hunter: 38, sniper: 55, lmg: 22, dmr: 45 };
 
 BR.BotBrain = class BotBrain {
   constructor(actor, game, diff) {
@@ -9061,12 +9234,15 @@ BR.Profile = {
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
       owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', melee: 'knife' }, d.equip || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', melee: 'bayonet' }, d.equip || {}),
       rp: typeof d.rp === 'number' ? d.rp : 0,
       cases: Object.assign({ opened: 0 }, d.cases || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0, deaths: 0 }, d.stats || {}),
       dev: !!d.dev,
+      meleeV: d.meleeV || 0,
     };
+    // v1.7.5: the M9 bayonet is the new default knife (one-time switch for older saves)
+    if (this.data.meleeV < 2) { this.data.equip.melee = 'bayonet'; this.data.meleeV = 2; }
     this.data.equip.blueprints = Object.assign({}, (d.equip && d.equip.blueprints) || {});
     // one tracer per gun ('signature' = the blueprint's own tracer). Old saves: their single tracer goes on every gun.
     const legacyTr = d.equip && d.equip.tracers && d.equip.tracers !== 'default' ? d.equip.tracers : null;
@@ -9113,7 +9289,7 @@ BR.Profile = {
     return this.data.owned[cat].includes(id);
   },
   isEquipped(cat, id, weapon) {
-    if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b && (!BR.MELEE[w] || (this.data.equip.melee || 'knife') === w); }
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b && (!BR.MELEE[w] || (this.data.equip.melee || 'bayonet') === w); }
     if (cat === 'tracers') return (this.data.equip.tracerByGun[weapon || 'rifle'] || 'signature') === id;
     if (cat === 'gloves') return this.gloveFor(weapon) === id;
     if (cat === 'skins') return weapon === 'all' ? Object.keys(BR.CONFIG.weapons).every(w => this.skinFor(w) === id) : this.skinFor(weapon || 'rifle') === id;
@@ -9214,8 +9390,8 @@ BR.Profile = {
   },
 };
 
-BR.MELEE = { knife: true, butterfly: true };
-const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['pistol', 'Pistol'], ['knife', 'Karambit'], ['butterfly', 'Butterfly']];
+BR.MELEE = { bayonet: true, knife: true, butterfly: true };
+const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly']];
 const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
 
 BR.Shop = class Shop {
@@ -9393,12 +9569,12 @@ BR.Inventory = class Inventory {
     $('inv-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-cat]'); if (!b) return; this.cat = b.dataset.cat; this.sel = null; this.render(); });
     this.el.weps.addEventListener('click', e => { const b = e.target.closest('button[data-w]'); if (!b) return; this.weapon = b.dataset.w; this.sel = null; this.render(); });
     this.el.grid.addEventListener('click', e => { const c = e.target.closest('[data-id]'); if (!c) return; this.sel = c.dataset.id; this.game.inspectReset(); this.render(); });
-    // Melee: carry either the karambit or the butterfly knife (one at a time)
+    // Melee: carry the bayonet, the karambit or the butterfly knife (one at a time)
     $('inv-melee').addEventListener('click', e => {
       const b = e.target.closest('button[data-m]'); if (!b) return;
       const P = BR.Profile; P.data.equip.melee = b.dataset.m; P.save(); BR.Audio.pickup();
       this.cat = 'blueprints'; this.weapon = b.dataset.m; this.sel = null;
-      this.flash((b.dataset.m === 'butterfly' ? 'Butterfly knife' : 'Karambit') + ' equipped');
+      this.flash(({ butterfly: 'Butterfly knife', knife: 'Karambit', bayonet: 'M9 Bayonet' })[b.dataset.m] + ' equipped');
       this.game.refreshCosmetics(); this.render();
     });
     this.el.action.addEventListener('click', () => this.act());
@@ -9486,7 +9662,7 @@ BR.Inventory = class Inventory {
     if (cat !== 'gloves' && cat !== 'skins' && this.weapon === 'all') this.weapon = 'rifle';
     this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
     this.el.count.textContent = this.total() + ' / ' + this.collectible();
-    const mel = P.data.equip.melee || 'knife';
+    const mel = P.data.equip.melee || 'bayonet';
     document.querySelectorAll('#inv-melee button').forEach(b => b.classList.toggle('sel', b.dataset.m === mel));
     if (!this.sel || !items[this.sel]) this.sel = items[this.equippedId()] ? this.equippedId() : Object.keys(items)[0] || null;
     const html = [];
@@ -9541,6 +9717,7 @@ const WICON_PATHS = {
   hunter: 'M0 10h62v2H40c-7 0-11 3-15 9h-9c3-4 7-8 10-9H0z M30 8h6v2h-6z',
   knife: 'M28 6a4 4 0 1 1 0.1 0z M24 9l8 2c-2 8-8 12-18 12 7-3 10-8 10-14z',
   butterfly: 'M6 11h22v3H6z M28 10l26-2-4 6H28z M8 15h20v2H8z',
+  bayonet: 'M4 10h20v6H4z M24 7h3v12h-3z M27 10h20l9 3-9 3H27z',
   revolver: 'M10 6h34v5H30v3h-6l-3 9h-8l3-9h-3l-2-3H10z M44 7h12v3H44z M24 11a3 3 0 1 1 0.1 0z',
 };
 // Weapon pictures rendered from the real 3D models (once, at startup, in a throwaway WebGL
@@ -9583,14 +9760,14 @@ BR.WeaponIcons = {
       };
       for (const id in BR.CONFIG.weapons) {
         const m = BR.Models.weapon(id, 'default', 'none');
-        if (id === 'butterfly') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
+        if (id === 'butterfly' || id === 'bayonet') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
         [this.pic[id], this.sil[id]] = shoot(m, true);
         css.push(`.wsil-${id}{-webkit-mask-image:url(${this.sil[id]});mask-image:url(${this.sil[id]})}`);
       }
       // Release Case contents: blueprints as their own model, camos on a rifle, gloves on a hand
       for (const e of (BR.CaseItems ? BR.CaseItems.all() : [])) {
         let m = null;
-        if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly') m.rotation.x = -Math.PI / 2; }
+        if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly' || w === 'bayonet') m.rotation.x = -Math.PI / 2; }
         else if (e.cat === 'skins') m = BR.Models.weapon('rifle', e.id, 'none');
         else if (e.cat === 'gloves') { m = BR.Models.hand(e.id, false); m.rotation.set(0, 0, -0.35); }
         if (m) this.cpic[e.cat + ':' + e.id] = shoot(m, false)[0];
@@ -9604,7 +9781,7 @@ BR.WeaponIcons = {
   // item per frame (keeps the UI smooth), then swapped in for the static picture
   spin: {},
   modelFor(e) {
-    if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); const m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly') m.rotation.x = -Math.PI / 2; return m; }
+    if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); const m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly' || w === 'bayonet') m.rotation.x = -Math.PI / 2; return m; }
     if (e.cat === 'skins') return BR.Models.weapon('rifle', e.id, 'none');
     if (e.cat === 'gloves') { const m = BR.Models.hand(e.id, false); m.rotation.set(0, 0, -0.35); return m; }
     return null;
@@ -9716,6 +9893,7 @@ BR.HUD = class HUD {
   <div id="bigmap"><canvas id="bigmap-cv" width="720" height="720"></canvas><div class="bm-hint">Tap the minimap to close</div></div>
   <div id="loc"></div>
   <div id="fps"></div>
+  <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
   <div id="state-tag"></div>
   <div id="tech"></div>
@@ -9849,6 +10027,7 @@ BR.HUD = class HUD {
         <label class="tg"><input type="checkbox" id="set-assist"> AIM ASSIST</label>
         <label class="tg"><input type="checkbox" id="set-auto"> AUTO-FIRE</label>
         <label class="tg"><input type="checkbox" id="set-fps"> SHOW FPS</label>
+        <label class="tg"><input type="checkbox" id="set-speed"> SPEED (M/S)</label>
       </div>
       <details class="help xh-set"><summary>CROSSHAIR</summary>
         <div class="xh-wrap">
@@ -9912,7 +10091,7 @@ BR.HUD = class HUD {
     <div id="inv-tabs" class="seg">
       <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
-    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
+    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
     <div id="inv-weps" class="chips"></div>
     <div id="inv-grid"></div>
     <div class="shop-foot">
@@ -10078,7 +10257,7 @@ BR.HUD = class HUD {
     this.$ = $;
     this.el = {
       play: $('play'), alive: $('alive'), kills: $('kills'), zoneTime: $('zone-time'), zoneLbl: $('zone-lbl'),
-      killfeed: $('killfeed'), minimap: $('minimap'), toast: $('toast'), fps: $('fps'),
+      killfeed: $('killfeed'), minimap: $('minimap'), toast: $('toast'), fps: $('fps'), speedo: $('speedo'),
       mag: $('mag'), reserve: $('reserve'), reloadBar: $('reload-bar'), reloadFill: $('reload-bar').firstElementChild,
       shieldFill: $('shield-fill'), healthFill: $('health-fill'), shieldTxt: $('shield-txt'), healthTxt: $('health-txt'),
       slots: Array.from(document.querySelectorAll('#play > .slot')),
@@ -10235,6 +10414,16 @@ BR.HUD = class HUD {
     this.drawMinimap(game);
   }
 
+  // Speedometer: horizontal speed in m/s under the crosshair (tints up as you go faster)
+  speed(v, on) {
+    const el = this.el.speedo; if (!el) return;
+    if (!on) { if (this._spOn !== false) { el.style.display = 'none'; this._spOn = false; } return; }
+    if (this._spOn !== true) { el.style.display = ''; this._spOn = true; }
+    const t = Math.round(v * 10) / 10; if (t === this._spV) return; this._spV = t;
+    el.firstChild.textContent = t.toFixed(1);
+    const run = BR.CONFIG.move.runSpeed, tier = v > run * 2 ? 3 : v > run * 1.35 ? 2 : v > run * 0.6 ? 1 : 0;
+    if (tier !== this._spTier) { el.className = 'sp' + tier; this._spTier = tier; }
+  }
   fps(v, on) {
     const sc = BR.game && BR.game.perf ? Math.round(BR.game.perf.scale * 100) : 100;
     this.set('fps', this.el.fps, on ? Math.round(v) + ' fps' + (sc < 100 ? ' · ' + sc + '% res' : '') : '');
@@ -10783,7 +10972,7 @@ BR.Game = class Game {
       a.mover.dropping = false; a.mover.vel.set(0, 0, 0);
       a.mover.pos.set(sp.x, 0, sp.z);
       a.yaw = sp.yaw; a.pitch = 0;
-      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create(a.isPlayer ? (BR.Profile.data.equip.melee || 'knife') : 'knife')];
+      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create(a.isPlayer ? (BR.Profile.data.equip.melee || 'bayonet') : 'bayonet')];
       a.cur = 0;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = 50;
@@ -11056,6 +11245,7 @@ BR.Game = class Game {
     this.updateCamera(dt);
     this.hud.update(this, dt);
     this.hud.fps(this.fpsVal, this.settings.showFps);
+    this.hud.speed(p.alive && !p.mover.dropping ? p.mover.speedH : 0, this.settings.showSpeed !== false && p.alive);
 
     // Match end
     if (this.duel) this.updateDuel(dt);
@@ -11488,7 +11678,7 @@ BR.Game = class Game {
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
     const wid = p.weapon || 'holoar';
     const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
-    const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'revolver' ? 2.4 : 1.6;
+    const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'bayonet' ? 3.3 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'revolver' ? 2.4 : 1.6;
     g.scale.setScalar(sc);
     g.rotation.y = Math.PI / 2;
     g.position.set(0, wid === 'knife' ? 0.05 : -0.05, -0.15);
@@ -11600,7 +11790,7 @@ BR.Game = class Game {
   refreshCosmetics() {
     this.vmr.rebuild();
     // swapped knives? give the player the newly equipped one
-    const p = this.player, mel = BR.Profile.data.equip.melee || 'knife';
+    const p = this.player, mel = BR.Profile.data.equip.melee || 'bayonet';
     if (p && p.slots && p.slots[2] && p.slots[2].id !== mel) { p.slots[2] = BR.Weapons.create(mel); if (p.cur === 2) this.vmr.lastWeapon = null; }
   }
 
@@ -11629,7 +11819,7 @@ BR.Game = class Game {
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyro: 'off', gyroSens: 1, gyroInvX: false, gyroInvY: false, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', highlight: 'subtle', volume: 0.6, assist: true, autoFire: false, showFps: false,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyro: 'off', gyroSens: 1, gyroInvX: false, gyroInvY: false, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', highlight: 'subtle', volume: 0.6, assist: true, autoFire: false, showFps: false, showSpeed: true,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
@@ -11718,6 +11908,7 @@ BR.Game = class Game {
   check('set-assist', 'assist');
   check('set-auto', 'autoFire');
   check('set-fps', 'showFps');
+  check('set-speed', 'showSpeed');
   // ---- crosshair editor -------------------------------------------------------
   const X = settings.xh;
   BR.xh = X;

@@ -15,6 +15,7 @@ const WICON_PATHS = {
   hunter: 'M0 10h62v2H40c-7 0-11 3-15 9h-9c3-4 7-8 10-9H0z M30 8h6v2h-6z',
   knife: 'M28 6a4 4 0 1 1 0.1 0z M24 9l8 2c-2 8-8 12-18 12 7-3 10-8 10-14z',
   butterfly: 'M6 11h22v3H6z M28 10l26-2-4 6H28z M8 15h20v2H8z',
+  bayonet: 'M4 10h20v6H4z M24 7h3v12h-3z M27 10h20l9 3-9 3H27z',
   revolver: 'M10 6h34v5H30v3h-6l-3 9h-8l3-9h-3l-2-3H10z M44 7h12v3H44z M24 11a3 3 0 1 1 0.1 0z',
 };
 // Weapon pictures rendered from the real 3D models (once, at startup, in a throwaway WebGL
@@ -57,14 +58,14 @@ BR.WeaponIcons = {
       };
       for (const id in BR.CONFIG.weapons) {
         const m = BR.Models.weapon(id, 'default', 'none');
-        if (id === 'butterfly') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
+        if (id === 'butterfly' || id === 'bayonet') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
         [this.pic[id], this.sil[id]] = shoot(m, true);
         css.push(`.wsil-${id}{-webkit-mask-image:url(${this.sil[id]});mask-image:url(${this.sil[id]})}`);
       }
       // Release Case contents: blueprints as their own model, camos on a rifle, gloves on a hand
       for (const e of (BR.CaseItems ? BR.CaseItems.all() : [])) {
         let m = null;
-        if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly') m.rotation.x = -Math.PI / 2; }
+        if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly' || w === 'bayonet') m.rotation.x = -Math.PI / 2; }
         else if (e.cat === 'skins') m = BR.Models.weapon('rifle', e.id, 'none');
         else if (e.cat === 'gloves') { m = BR.Models.hand(e.id, false); m.rotation.set(0, 0, -0.35); }
         if (m) this.cpic[e.cat + ':' + e.id] = shoot(m, false)[0];
@@ -78,7 +79,7 @@ BR.WeaponIcons = {
   // item per frame (keeps the UI smooth), then swapped in for the static picture
   spin: {},
   modelFor(e) {
-    if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); const m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly') m.rotation.x = -Math.PI / 2; return m; }
+    if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); const m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly' || w === 'bayonet') m.rotation.x = -Math.PI / 2; return m; }
     if (e.cat === 'skins') return BR.Models.weapon('rifle', e.id, 'none');
     if (e.cat === 'gloves') { const m = BR.Models.hand(e.id, false); m.rotation.set(0, 0, -0.35); return m; }
     return null;
@@ -190,6 +191,7 @@ BR.HUD = class HUD {
   <div id="bigmap"><canvas id="bigmap-cv" width="720" height="720"></canvas><div class="bm-hint">Tap the minimap to close</div></div>
   <div id="loc"></div>
   <div id="fps"></div>
+  <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
   <div id="state-tag"></div>
   <div id="tech"></div>
@@ -323,6 +325,7 @@ BR.HUD = class HUD {
         <label class="tg"><input type="checkbox" id="set-assist"> AIM ASSIST</label>
         <label class="tg"><input type="checkbox" id="set-auto"> AUTO-FIRE</label>
         <label class="tg"><input type="checkbox" id="set-fps"> SHOW FPS</label>
+        <label class="tg"><input type="checkbox" id="set-speed"> SPEED (M/S)</label>
       </div>
       <details class="help xh-set"><summary>CROSSHAIR</summary>
         <div class="xh-wrap">
@@ -386,7 +389,7 @@ BR.HUD = class HUD {
     <div id="inv-tabs" class="seg">
       <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
-    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
+    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
     <div id="inv-weps" class="chips"></div>
     <div id="inv-grid"></div>
     <div class="shop-foot">
@@ -552,7 +555,7 @@ BR.HUD = class HUD {
     this.$ = $;
     this.el = {
       play: $('play'), alive: $('alive'), kills: $('kills'), zoneTime: $('zone-time'), zoneLbl: $('zone-lbl'),
-      killfeed: $('killfeed'), minimap: $('minimap'), toast: $('toast'), fps: $('fps'),
+      killfeed: $('killfeed'), minimap: $('minimap'), toast: $('toast'), fps: $('fps'), speedo: $('speedo'),
       mag: $('mag'), reserve: $('reserve'), reloadBar: $('reload-bar'), reloadFill: $('reload-bar').firstElementChild,
       shieldFill: $('shield-fill'), healthFill: $('health-fill'), shieldTxt: $('shield-txt'), healthTxt: $('health-txt'),
       slots: Array.from(document.querySelectorAll('#play > .slot')),
@@ -709,6 +712,16 @@ BR.HUD = class HUD {
     this.drawMinimap(game);
   }
 
+  // Speedometer: horizontal speed in m/s under the crosshair (tints up as you go faster)
+  speed(v, on) {
+    const el = this.el.speedo; if (!el) return;
+    if (!on) { if (this._spOn !== false) { el.style.display = 'none'; this._spOn = false; } return; }
+    if (this._spOn !== true) { el.style.display = ''; this._spOn = true; }
+    const t = Math.round(v * 10) / 10; if (t === this._spV) return; this._spV = t;
+    el.firstChild.textContent = t.toFixed(1);
+    const run = BR.CONFIG.move.runSpeed, tier = v > run * 2 ? 3 : v > run * 1.35 ? 2 : v > run * 0.6 ? 1 : 0;
+    if (tier !== this._spTier) { el.className = 'sp' + tier; this._spTier = tier; }
+  }
   fps(v, on) {
     const sc = BR.game && BR.game.perf ? Math.round(BR.game.perf.scale * 100) : 100;
     this.set('fps', this.el.fps, on ? Math.round(v) + ' fps' + (sc < 100 ? ' · ' + sc + '% res' : '') : '');
