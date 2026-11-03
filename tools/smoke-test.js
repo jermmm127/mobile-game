@@ -260,7 +260,7 @@ const server = http.createServer((req, res) => {
       r.shock = { n0, used: n0 - before > 0, rise: maxY - y0, picked: P2.nades === before + 1, model: !!it.mesh.userData.nade };
       const fxT = g.fx; fxT.tracer(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 2, -30), true, 0xffffff, BR.Models.tracerOpts('thunder', 0));
       const tt = fxT.tracers[(fxT.ti - 1) % fxT.tracers.length]; fxT.update(0.02);
-      r.styledTracer = !!(tt.fx && tt.fx.some(b => b.visible)) && Object.values(BR.Models.TRACERS).filter(x => x.style).length >= 8;
+      r.styledTracer = !!(tt.fx && (tt.fx.some(b => b.visible) || tt.seg.some(b => b.visible))) && Object.values(BR.Models.TRACERS).filter(x => x.style).length >= 8;
       const hud = g.hud, dummy = {}; hud.damageNumber(new THREE.Vector3(0, 1, -5), 20, false, dummy, false); hud.damageNumber(new THREE.Vector3(0, 1, -5), 30, true, dummy, false);
       const shown = hud.numPool.filter(q => q.victim === dummy && q.life > 0);
       r.dmgStack = shown.length === 1 && Math.round(shown[0].total) === 50 && shown[0].el.classList.contains('head');
@@ -617,6 +617,22 @@ const server = http.createServer((req, res) => {
       g.settings.showSpeed = true; p.mover.vel.set(7, 0, 0); g.update ? null : null; g.hud.speed(p.mover.speedH, true);
       const sp = document.getElementById('speedo'); out.bayonet.speedo = sp && sp.style.display !== 'none' && sp.textContent.includes('7.0') && /M\/S/i.test(sp.textContent);
       g.hud.speed(0, false); out.bayonet.speedoOff = sp.style.display === 'none'; p.mover.vel.set(0, 0, 0); }
+    // v1.7.6: soft beam tracers, spray pattern + recovery, kill reward
+    { const T = g.fx.tracers[0]; out.beams = T.streak.geometry.type !== 'BoxGeometry' && !!T.head && T.head.isSprite && !!T.streak.material.map && g.fx.cam === g.camera;
+      g.fx.tracer(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 2, -60), true, 0xffffff, { style: 'lightning', color2: 0x88aaff }); g.fx.update(0.05); out.beamOk = true;
+      p.slots[0] = BR.Weapons.create('rifle'); p.cur = 0; p.ads = false; p.pitch = 0; p.recoil = 0; p.sprayLast = -9; p.mover.onGround = true; p.mover.vel.set(0, 0, 0);
+      const kicks = [], yaws = [];
+      for (let i = 0; i < 22; i++) { g.time += 0.09; const w = p.slots[0]; w.cool = 0; w.mag = 30; const r0 = p.recoil, y0 = p.yaw; BR.Weapons.tryFire(g, p); kicks.push(p.recoil - r0); yaws.push(p.yaw - y0); }
+      let flips = 0; for (let i = 7; i < yaws.length; i++) if (Math.sign(p.sprayDir * Math.sin((i) * 0.42 + p.sprayPhase)) !== Math.sign(p.sprayDir * Math.sin((i - 1) * 0.42 + p.sprayPhase))) flips++;
+      for (let i = 0; i < 30; i++) { p.recoil > 0 && (p.pitch += p.recoil, p.recoil = 0); }
+      const peak = p.pitch; g.time += 0.3; for (let i = 0; i < 60; i++) { g.time += 1 / 60; p.update(1 / 60); }
+      out.spray = { first: kicks[0], mid: kicks[8], ramps: kicks[0] < kicks[8] * 0.8, flips, peak, after: p.pitch, recovered: p.pitch < peak * 0.6 && p.pitch >= -1e-6 };
+      // kill reward
+      g.settings.bots = 2; g.startMatch(); const bot2 = g.actors.find(x => !x.isPlayer); const fins0 = (g.fx.fins || []).length;
+      g.applyDamage(bot2, g.player, 999, true, { x: bot2.pos.x, y: bot2.pos.y + 1.6, z: bot2.pos.z }, 'rifle');
+      const kb = document.getElementById('killban');
+      out.killReward = { banner: kb.className.includes('on') && /HEADSHOT|KILL/.test(kb.textContent), flash: document.getElementById('killflash').className.includes('on'), hitStop: g.hitStop > 0, fx: (g.fx.fins || []).length > fins0 };
+      g.hitStop = 0; }
     // mastery + daily
     const before = P.owns('skins', 'm_copper'); let got = []; for (let i = 0; i < 10; i++) got = got.concat(P.addKill('smg'));
     out.mastery = { before, after: P.owns('skins', 'm_copper'), got: got.join() };
@@ -735,6 +751,9 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['tracers are soft camera-facing beams with a glowing head (no boxes)', v17.beams && v17.beamOk],
+    ['spray: first shot light, climb ramps up, smooth side sway, view recovers after', v17.spray.ramps && v17.spray.flips <= 4 && v17.spray.recovered],
+    ['kill reward: banner + screen flash + hit-stop + on-body burst', v17.killReward.banner && v17.killReward.flash && v17.killReward.hitStop && v17.killReward.fx],
     ['M9 bayonet: default knife, flips into the hand on draw and settles in the fist', v17.bayonet.fresh === 'bayonet' && v17.bayonet.migrated === 'bayonet' && v17.bayonet.kept === 'butterfly' && v17.bayonet.slot === 'bayonet' && v17.bayonet.maxFlip > 2 && v17.bayonet.maxLift > 0.05 && v17.bayonet.settled && v17.bayonet.fist],
     ['bayonet blueprints (shop + both cases), camo on the blade, new camos, trails', v17.bayonet.bps >= 9 && v17.bayonet.caseR >= 2 && v17.bayonet.caseN >= 2 && v17.bayonet.camoBlade && v17.bayonet.trail && v17.bayonet.newCamos],
     ['speedometer shows m/s and can be turned off; movement slowed', v17.bayonet.speedo && v17.bayonet.speedoOff && v17.run < 6],

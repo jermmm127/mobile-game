@@ -171,7 +171,7 @@ BR.Game = class Game {
     // sky, clouds and far mountains are already painted in display colours: keep them out of the filmic curve
     this.scene.traverse(o => { const m = o.material; if (m && m.isMeshBasicMaterial && m.fog === false) m.toneMapped = false; });
     this.hud.setStaticMap(this.world.renderMinimap(1024));
-    this.fx = new BR.Effects(this.scene);
+    this.fx = new BR.Effects(this.scene); this.fx.cam = this.camera;
     this.shock = new BR.Shockwave(this);
     this.loot = new BR.Loot(this);
     this.loot.spawnFromWorld(this.world);
@@ -500,6 +500,8 @@ BR.Game = class Game {
     this.fpsAcc += dt; this.fpsN++;
     if (this.fpsAcc > 0.5) { this.fpsVal = this.fpsN / this.fpsAcc; this.fpsAcc = 0; this.fpsN = 0; }
     dt = Math.min(dt, 0.05);
+    // hit-stop: a split second of slow motion when you get a kill
+    if (this.hitStop > 0) { this.hitStop -= dt; dt *= 0.3; }
     if (this.state === 'playing' || this.state === 'dead' || this.state === 'won') this.update(dt);
     else if (this.state === 'menu') this.updateDemo(dt);
     else if (this.state === 'shop') this.updateShop(dt);
@@ -851,21 +853,22 @@ BR.Game = class Game {
     const body = killer ? `${badge(killer)}${nm(killer)} <i>${esc(how)}</i> ${badge(victim)}${nm(victim)}` : `${badge(victim)}${nm(victim)} <i>${esc(how)}</i>`;
     this.hud.killfeed(body, killer && killer.isPlayer ? 'feed-' + (P.equip.feeds || 'none') : mine ? 'feed-none' : '');
     if (killer && killer === this.player) {
-      BR.Audio.kill(head);
-      if (head) this.hud.tech('HEADSHOT');
       // equipped kill finisher plays on the victim
       // weapon mastery: count the kill, announce any camo it unlocks
       const unlocked = BR.Profile.addKill(weaponId);
       if (unlocked.length) setTimeout(() => this.hud.toast('UNLOCKED · ' + unlocked.join(', ') + ' camo', 2400), 900);
       const fin = P.equip.finishers;
       if (fin && fin !== 'none' && this.fx.finisher) this.fx.finisher(fin, victim.pos.clone(), victim);
-      // multi-kill callouts (kills within 4 s of each other) + a kill punch on the camera
+      // multi-kill streak (kills within 4 s of each other)
       const mk = this.multiKill || (this.multiKill = { n: 0, t: -9 });
       mk.n = this.time - mk.t < 4 ? mk.n + 1 : 1; mk.t = this.time;
-      const MK = [null, null, 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'RAMPAGE'];
-      if (mk.n >= 2) { this.hud.tech(MK[Math.min(mk.n, 5)]); BR.Audio.coin(); }
-      this.cam.shake = Math.max(this.cam.shake || 0, 0.12 + (head ? 0.06 : 0)); this.cam.hitFov = Math.min(10, (this.cam.hitFov || 0) - 3);
-      this.hud.toast(`Eliminated ${victim.name}  ·  +${BR.CONFIG.coins.perKill} coins`, 1400);
+      // the reward: on-body burst (lighter under a finisher), banner + screen flash, layered sound,
+      // a split second of slow motion and a punch on the camera
+      if (this.fx.killBurst) this.fx.killBurst(victim.pos.clone(), head, mk.n, !!(fin && fin !== 'none'));
+      this.hud.killBanner({ name: victim.name, head, streak: mk.n, coins: BR.CONFIG.coins.perKill });
+      BR.Audio.kill(head, mk.n);
+      this.hitStop = head || mk.n >= 2 ? 0.12 : 0.08;
+      this.cam.shake = Math.max(this.cam.shake || 0, 0.14 + (head ? 0.06 : 0)); this.cam.hitFov = Math.min(10, (this.cam.hitFov || 0) - 3.5);
     }
     if (victim === this.player) {
       this.deathPos = victim.pos.clone();
@@ -998,7 +1001,7 @@ BR.Game = class Game {
     this.inspect = { on: false, yaw: 0, pitch: 0, zoom: 1, vy: 0, vx: 0, idle: 0, dragging: false };
     this.shopPivot = new THREE.Group();
     s.add(this.shopPivot);
-    this.shopFx = new BR.Effects(s);   // real in-game tracers, slowed down for the preview
+    this.shopFx = new BR.Effects(s); this.shopFx.cam = this.shopCam;   // real in-game tracers, slowed down for the preview
     this.shopTracerT = 0;
   }
 

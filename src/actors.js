@@ -209,6 +209,14 @@ BR.Actor = class Actor {
       this.pitch = Math.min(1.45, this.pitch + k);
       this.recoil -= k;
     }
+    // recoil recovery: a moment after you stop shooting, the view settles back down most of the
+    // climb (never below where the spray started, so pulling down yourself is never punished)
+    if (this.recoilPull > 0 && this.game && this.game.time - (this.sprayLast ?? -9) > 0.09) {
+      const k = Math.min(this.recoilPull, this.recoilPull * 9 * dt + 0.0002);
+      this.recoilPull -= k;
+      const floor = Math.min(this.pitch, this.sprayPitch0 ?? this.pitch);
+      this.pitch = Math.max(floor, this.pitch - k * 0.75);
+    }
     for (const w of this.slots) if (w) BR.Weapons.update(w, dt, this);
     if (this.fireHeld) BR.Weapons.tryFire(this.game, this);
     if (this.mesh) this.syncMesh(dt);

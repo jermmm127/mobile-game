@@ -212,6 +212,41 @@ body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 #toast.on { opacity: 1; transform: translate(-50%, 0); }
 #state-tag { position: absolute; top: calc(50% + 34px); left: 50%; transform: translateX(-50%); font: 600 10px var(--ui); letter-spacing: 0.3em; color: rgba(255, 255, 255, 0.75); opacity: 0; transition: opacity 0.15s; text-shadow: 0 1px 3px #000; }
 #state-tag.on { opacity: 1; }
+/* ---- kill reward ---- */
+#killflash { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(255, 48, 64, 0.38) 100%); }
+#killflash.head { background: radial-gradient(ellipse at center, transparent 50%, rgba(255, 200, 60, 0.42) 100%); }
+#killflash.streak { background: radial-gradient(ellipse at center, transparent 48%, rgba(255, 61, 242, 0.42) 100%); }
+#killflash.on { animation: kflash 0.55s ease-out; }
+@keyframes kflash { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+#killban { position: absolute; left: 50%; top: 21%; transform: translateX(-50%); display: grid; justify-items: center; pointer-events: none; opacity: 0;
+  --kc: #ff3b4e; --kg: rgba(255, 59, 78, 0.7); }
+#killban.head { --kc: #ffc93a; --kg: rgba(255, 201, 58, 0.75); }
+#killban.streak { --kc: #ff3df2; --kg: rgba(255, 61, 242, 0.75); }
+#killban.s4, #killban.s5 { --kc: #1de9ff; --kg: rgba(29, 233, 255, 0.8); }
+#killban .kb-skull { width: 46px; height: 46px; display: block; filter: drop-shadow(0 0 10px var(--kg)) drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
+#killban .kb-skull svg { width: 100%; height: 100%; fill: #fff; }
+#killban .kb-skull svg path { fill: var(--kc); stroke: #fff; stroke-width: 2.5px; paint-order: stroke; }
+#killban .kb-t { margin-top: 4px; font: italic 800 22px var(--display); letter-spacing: .06em; color: #fff; text-shadow: 0 0 16px var(--kg), 0 2px 3px rgba(0,0,0,.7); white-space: nowrap; }
+#killban .kb-n { font: 600 12px var(--ui); letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.82); text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+#killban .kb-x { position: absolute; top: 2px; left: calc(50% + 26px); font: italic 800 20px var(--display); font-style: italic; color: var(--kc); text-shadow: 0 0 12px var(--kg), 0 2px 3px rgba(0,0,0,.6); }
+#killban .kb-c { margin-top: 3px; text-decoration: none; font: 700 12px var(--ui); color: #ffd84a; letter-spacing: .08em; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+#killban .kb-c:not(:empty)::after { content: ' COINS'; font-size: 10px; opacity: .8; }
+#killban .kb-ring { position: absolute; left: 50%; top: 23px; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; border: 2px solid var(--kc); opacity: 0; box-shadow: 0 0 14px var(--kg); }
+#killban.on { animation: kbIn .5s cubic-bezier(.2, 1.6, .4, 1) forwards; }
+#killban.on .kb-skull { animation: kbSkull .55s cubic-bezier(.2, 1.8, .4, 1); }
+#killban.on .kb-ring { animation: kbRing .6s ease-out; }
+#killban.on .kb-ring.r2 { animation: kbRing .8s .12s ease-out both; }
+#killban.on .kb-t { animation: kbText .45s .05s cubic-bezier(.2, 1.4, .4, 1) both; }
+#killban.on .kb-x { animation: kbX .5s .18s cubic-bezier(.2, 2, .4, 1) both; }
+#killban.on .kb-c { animation: kbText .4s .25s ease-out both; }
+#killban.out { opacity: 1; animation: kbOut .35s ease-in forwards; }
+@keyframes kbIn { 0% { opacity: 0; transform: translateX(-50%) scale(1.35); } 100% { opacity: 1; transform: translateX(-50%) scale(1); } }
+@keyframes kbOut { to { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.92); } }
+@keyframes kbSkull { 0% { transform: scale(2.2) rotate(-14deg); } 60% { transform: scale(.9) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes kbRing { 0% { opacity: 1; transform: scale(.6); } 100% { opacity: 0; transform: scale(3.2); } }
+@keyframes kbText { 0% { opacity: 0; transform: translateY(8px) scale(.8); letter-spacing: .4em; } 100% { opacity: 1; transform: none; } }
+@keyframes kbX { 0% { opacity: 0; transform: scale(2.6) rotate(-20deg); } 100% { opacity: 1; transform: none; } }
 #tech {
   position: absolute; top: calc(50% + 54px); left: 50%; transform: translateX(-50%);
   font: 800 italic 20px var(--display); letter-spacing: 0.04em; color: #fff; opacity: 0; white-space: nowrap;
@@ -541,6 +576,7 @@ body.editing #play > [data-act].ed-sel:not(#view) { outline: 2px solid var(--acc
 
 @media (prefers-reduced-motion: reduce) {
   #toast, #hitmarker.on, .kf, .btn.prompt, .rec b { transition: none; animation: none; }
+  #killban.on, #killban.on *, #killflash.on { animation-duration: .01s !important; }
 }
 
 /* ---- matchmaking queue ---- */
@@ -952,7 +988,7 @@ body.duel #topbar .dp { display: flex; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.7.5',
+  version: '1.7.6',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1330,11 +1366,14 @@ BR.Audio = {
     if (head) { this.tone(2637, 2600, 0.32, 0.2, 'sine'); this.tone(3951, 3900, 0.22, 0.1, 'sine'); this.tone(5274, 5200, 0.12, 0.05, 'sine'); }
   },
   // Kills: punchy thump + rising two-note chime (bigger on a headshot kill)
-  kill(head) {
-    this.tone(140, 45, 0.22, 0.35, 'sine'); this.burst(900, 0.8, 0.12, 0.2);
-    this.tone(880, 880, 0.09, 0.16, 'triangle');
-    setTimeout(() => this.tone(1320, 1320, 0.16, 0.16, 'triangle'), 70);
-    if (head) setTimeout(() => { this.tone(1760, 1760, 0.24, 0.14, 'triangle'); this.tone(3520, 3500, 0.3, 0.08, 'sine'); }, 140);
+  // streak raises the chime a step per kill in the streak
+  kill(head, streak) {
+    const st = Math.pow(1.122, Math.min((streak || 1) - 1, 5));
+    this.tone(150, 38, 0.32, 0.42, 'sine'); this.burst(900, 0.8, 0.12, 0.22); this.burst(5200, 1.6, 0.06, 0.08, 0, 'bandpass');
+    this.tone(880 * st, 880 * st, 0.09, 0.16, 'triangle');
+    setTimeout(() => { this.tone(1320 * st, 1320 * st, 0.18, 0.16, 'triangle'); this.tone(2640 * st, 2630 * st, 0.12, 0.05, 'sine'); }, 70);
+    if (head) setTimeout(() => { this.tone(1760 * st, 1760 * st, 0.26, 0.14, 'triangle'); this.tone(3520, 3500, 0.34, 0.08, 'sine'); }, 140);
+    if (streak >= 2) setTimeout(() => { this.tone(1980 * st, 1990 * st, 0.3, 0.12, 'square'); this.tone(990 * st, 995 * st, 0.3, 0.1, 'triangle'); }, 200);
   },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },
   pickup() { this.tone(660, 990, 0.09, 0.12, 'sine'); },
@@ -3599,6 +3638,8 @@ BR.Weapons = {
             d.sort((a, c) => a[0] - c[0]); n.set(d[0][1], d[0][2], d[0][3]);
           }
           game.fx.decal(end, n);
+          // hard surfaces kick up a few hot sparks (not every pellet)
+          if (p < 2 && Math.random() < 0.7) game.fx.burst(end, [0xffd27a, 0xffffff, 0xffa040], 3, 3.2, 0.035, 0.22, 9);
         }
       }
       if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
@@ -3624,22 +3665,31 @@ BR.Weapons = {
     }
     w.bloom = Math.min(d.bloomMax, w.bloom + d.bloom);
     if (actor.isPlayer) {
-      // Random recoil: vertical kick varies shot to shot; automatic rifles also wander
-      // sideways on a random walk, so sprays need control. Aiming tames it.
-      const ads = actor.ads ? 0.6 : 1;
+      // Spray recoil you can learn and control (aiming tames it):
+      //  - the first shot is near-perfect, the climb ramps up over ~5 shots, then levels off and eases
+      //    once the gun "settles" (long sprays stay controllable)
+      //  - sideways the gun snakes smoothly left/right (a sine sway whose side and phase change every
+      //    spray) instead of jittering, plus a touch of randomness so no two sprays match exactly
+      //  - when you let go, the view recovers most of the climb (never past where you started)
+      const ads = actor.ads ? 0.6 : 1, now = game.time || 0, gap = 60 / d.rpm;
+      if (!(now - (actor.sprayLast ?? -9) <= gap * 2.2 + 0.1)) {
+        actor.sprayN = 0; actor.sprayPhase = Math.random() * 6.283; actor.sprayDir = Math.random() < 0.5 ? -1 : 1;
+        actor.recoilPull = 0; actor.sprayPitch0 = actor.pitch;
+      }
+      actor.sprayLast = now; const n = actor.sprayN++;
+      let v;
       if (d.recoilH) {
-        // automatics: wide shot-to-shot vertical variance, a sideways random walk that sometimes
-        // kicks the other way, and a little jitter in every direction, so no two sprays match
-        actor.recoil += d.recoil * (0.5 + Math.random() * 1.0) * ads;
-        let dr = (actor.recoilDrift || 0) * 0.8 + (Math.random() - 0.5) * 1.4;
-        if (Math.random() < 0.14) dr -= (actor.recoilDrift || 0) * 1.6;              // sudden direction change
-        actor.recoilDrift = BR.util.clamp(dr, -1.25, 1.25);
-        actor.yaw += (actor.recoilDrift * 0.8 + (Math.random() - 0.5) * 1.0) * d.recoilH * ads;
-        actor.pitch += (Math.random() - 0.5) * d.recoil * 0.35 * ads;
+        const ramp = 0.45 + 0.65 * Math.min(1, n / 5) - (n > 14 ? 0.22 : 0);
+        v = d.recoil * ramp * (0.88 + Math.random() * 0.24) * ads;
+        const side = Math.min(1, n / 6);
+        actor.recoilDrift = Math.sin(n * 0.42 + actor.sprayPhase) * actor.sprayDir;
+        actor.yaw += d.recoilH * ads * (side * actor.recoilDrift * 0.9 + (Math.random() - 0.5) * 0.35);
+        actor.pitch += (Math.random() - 0.5) * d.recoil * 0.1 * ads;
       } else {
-        actor.recoil += d.recoil * (0.75 + Math.random() * 0.5) * ads;
+        v = d.recoil * (0.85 + Math.random() * 0.3) * ads;
         actor.yaw += (Math.random() - 0.5) * d.recoil * 0.4;
       }
+      actor.recoil += v; actor.recoilPull = (actor.recoilPull || 0) + v;
     }
     game.onShot(actor, w);
     return true;
@@ -7090,6 +7140,14 @@ BR.Actor = class Actor {
       this.pitch = Math.min(1.45, this.pitch + k);
       this.recoil -= k;
     }
+    // recoil recovery: a moment after you stop shooting, the view settles back down most of the
+    // climb (never below where the spray started, so pulling down yourself is never punished)
+    if (this.recoilPull > 0 && this.game && this.game.time - (this.sprayLast ?? -9) > 0.09) {
+      const k = Math.min(this.recoilPull, this.recoilPull * 9 * dt + 0.0002);
+      this.recoilPull -= k;
+      const floor = Math.min(this.pitch, this.sprayPitch0 ?? this.pitch);
+      this.pitch = Math.max(floor, this.pitch - k * 0.75);
+    }
     for (const w of this.slots) if (w) BR.Weapons.update(w, dt, this);
     if (this.fireHeld) BR.Weapons.tryFire(this.game, this);
     if (this.mesh) this.syncMesh(dt);
@@ -8021,35 +8079,35 @@ BR.Zone = class Zone {
 BR.Effects = class Effects {
   constructor(scene) {
     this.scene = scene;
+    this.cam = null;                 // set by the game: beams turn to face it
     this.tracers = [];
     this.puffs = [];
-    // Tracers: a bright travelling streak (the "bullet") + a faint trail behind it.
-    // Unit box along +Z, stretched/oriented per shot. Additive so colors glow.
-    const unit = new THREE.BoxGeometry(1, 1, 1); unit.translate(0, 0, 0.5);
+    const T = BR.Effects.tex();
+    // Tracers: soft camera-facing beams (no boxes): a hot tapered streak (the "bullet") with a glowing
+    // head sprite, a wide soft glow around it and a thin fading trail. Additive so colours glow.
+    const beamMat = (map, op) => new THREE.MeshBasicMaterial({ map, color: 0xffe2a0, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+    const geo = BR.Effects.beamGeo();
     for (let i = 0; i < 48; i++) {
-      const mk = op => new THREE.Mesh(unit, new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-      const streak = mk(1), trail = mk(0.35), glow = mk(0.3);
-      streak.visible = trail.visible = glow.visible = false;
-      streak.frustumCulled = trail.frustumCulled = glow.frustumCulled = false;
-      scene.add(glow, trail, streak);
-      this.tracers.push({ streak, trail, glow, life: 0, from: new THREE.Vector3(), dir: new THREE.Vector3(), len: 0, t: 0, dur: 0, w: 0.03, sl: 5.5 });
+      const streak = new THREE.Mesh(geo, beamMat(T.streak, 1)), trail = new THREE.Mesh(geo, beamMat(T.soft, 0.35)), glow = new THREE.Mesh(geo, beamMat(T.soft, 0.3));
+      const head = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xffe2a0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      for (const m of [streak, trail, glow, head]) { m.visible = false; m.frustumCulled = false; }
+      scene.add(glow, trail, streak, head);
+      this.tracers.push({ streak, trail, glow, head, life: 0, from: new THREE.Vector3(), dir: new THREE.Vector3(), len: 0, t: 0, dur: 0, w: 0.03, sl: 5.5 });
     }
-    const pg = new THREE.BoxGeometry(0.16, 0.16, 0.16);
+    // impact puffs: soft dust / blood sprites that bloom and fade
     for (let i = 0; i < 40; i++) {
-      const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
-      const mesh = new THREE.Mesh(pg, m);
-      mesh.visible = false;
+      const mesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.smoke, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+      mesh.visible = false; mesh.scale.setScalar(0.3);
       scene.add(mesh);
-      this.puffs.push({ mesh, life: 0, max: 0.25 });
+      this.puffs.push({ mesh, life: 0, max: 0.25, s0: 0.3 });
     }
     this.ti = 0; this.pi = 0;
-    // Sparks: tiny additive cubes with velocity + gravity (hit bursts, headshot crits, shockwaves)
+    // Sparks: soft glowing streaks with velocity + gravity, stretched along their motion
     this.sparks = [];
-    const sg = new THREE.BoxGeometry(1, 1, 1);
-    for (let i = 0; i < 90; i++) {
-      const m = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+    for (let i = 0; i < 120; i++) {
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: T.spark, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
       m.visible = false; m.frustumCulled = false; scene.add(m);
-      this.sparks.push({ m, v: new THREE.Vector3(), life: 0, max: 1, s: 0.05, g: 9 });
+      this.sparks.push({ m, p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, max: 1, s: 0.05, g: 9 });
     }
     this.si = 0;
     // Grapple rope + hook
@@ -8101,29 +8159,33 @@ BR.Effects = class Effects {
     t.sl = (opts && opts.streak) || 6;
     t.w = mine ? 0.06 : 0.04;
     const c = color !== undefined ? color : mine ? 0xffe9a8 : 0xff9a6b;
-    t.streak.material.color.setHex(c); t.trail.material.color.setHex(c); t.glow.material.color.setHex(c);
+    t.streak.material.color.setHex(c); t.trail.material.color.setHex(c); t.glow.material.color.setHex(c); t.head.material.color.setHex(c);
     // the core burns hotter (towards white) so colors read as bright light
-    t.streak.material.color.lerp(this._white || (this._white = new THREE.Color(0xffffff)), 0.35);
-    const look = this._look || (this._look = new THREE.Vector3());
-    look.copy(from).add(t.dir);
-    t.streak.position.copy(from); t.streak.lookAt(look);
-    t.trail.position.copy(from); t.trail.lookAt(look);
-    t.glow.position.copy(from); t.glow.lookAt(look);
-    t.streak.visible = t.trail.visible = t.glow.visible = true;
-    // styled tracers: extra additive "beads" (spiral strands, sparks, bolt segments)
+    const W = this._white || (this._white = new THREE.Color(0xffffff));
+    t.streak.material.color.lerp(W, 0.45); t.head.material.color.lerp(W, 0.6);
+    t.streak.visible = t.trail.visible = t.glow.visible = t.head.visible = true;
+    // styled tracers: extra additive pieces (spiral strands, embers, bolt segments, energy rings)
     t.style = opts && opts.style || null;
-    if (t.fx) for (const b of t.fx) b.visible = false;
+    if (t.fx) { for (const b of t.fx) b.visible = false; for (const b of t.seg) b.visible = false; t.sheath.visible = false; }
     if (t.style) {
       if (!t.fx) {
-        t.fx = [];
+        const T = BR.Effects.tex(), geo = BR.Effects.beamGeo();
+        t.fx = []; t.seg = [];
         for (let i = 0; i < 16; i++) {
-          const b = new THREE.Mesh(this._beadGeo || (this._beadGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0, 0.5)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+          const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
           b.frustumCulled = false; b.visible = false; this.scene.add(b); t.fx.push(b);
+          const s = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: T.soft, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+          s.frustumCulled = false; s.visible = false; this.scene.add(s); t.seg.push(s);
         }
+        t.sheath = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: T.soft, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+        t.sheath.frustumCulled = false; t.sheath.visible = false; this.scene.add(t.sheath);
         t.p1 = new THREE.Vector3(); t.p2 = new THREE.Vector3(); t.jit = [];
       }
-      const c2 = opts.color2 !== undefined ? opts.color2 : c;
-      for (const b of t.fx) { b.material.color.setHex(c2); b.visible = true; }
+      const c2 = opts.color2 !== undefined ? opts.color2 : c, T = BR.Effects.tex();
+      const dots = t.style === 'helix' || t.style === 'spark' || t.style === 'comet' || t.style === 'phoenix' || t.style === 'rings';
+      for (const b of t.fx) { b.material.color.setHex(c2); b.material.map = t.style === 'rings' ? T.ring : T.dot; b.visible = dots; }
+      for (const b of t.seg) { b.material.color.setHex(c2); b.visible = t.style === 'lightning'; }
+      t.sheath.material.color.setHex(c2); t.sheath.visible = t.style === 'dual';
       if (t.style === 'dual') t.glow.material.color.setHex(c2);
       t.p1.crossVectors(t.dir, Math.abs(t.dir.y) > 0.9 ? this._ax || (this._ax = new THREE.Vector3(1, 0, 0)) : this._ay || (this._ay = new THREE.Vector3(0, 1, 0))).normalize();
       t.p2.crossVectors(t.dir, t.p1).normalize();
@@ -8134,20 +8196,34 @@ BR.Effects = class Effects {
     this.placeTracer(t);
   }
 
+  // Point a beam quad from `a` along unit `dir` for `len`, `w` wide, turned around its own axis to face the camera
+  beam(m, a, dir, len, w) {
+    const X = this._bX || (this._bX = new THREE.Vector3()), Y = this._bY || (this._bY = new THREE.Vector3()), V = this._bV || (this._bV = new THREE.Vector3());
+    if (this.cam) V.copy(this.cam.position).sub(a).addScaledVector(dir, -len * 0.5); else V.set(0, 1, 0);
+    X.crossVectors(dir, V); if (X.lengthSq() < 1e-8) X.set(1, 0, 0).cross(dir); X.normalize();
+    Y.crossVectors(dir, X);
+    m.quaternion.setFromRotationMatrix((this._bM || (this._bM = new THREE.Matrix4())).makeBasis(X, Y, dir));
+    m.position.copy(a); m.scale.set(w, 1, Math.max(0.01, len));
+  }
+
   placeTracer(t) {
     const k = Math.min(1, t.t / t.dur);
     const head = t.len * k, sl = Math.min(t.len, t.sl);
     const tail = Math.max(0, head - sl);
-    t.streak.position.copy(t.from).addScaledVector(t.dir, tail);
-    t.streak.scale.set(t.w, t.w, Math.max(0.01, head - tail));
-    t.trail.position.copy(t.from);
-    t.trail.scale.set(t.w * 0.45, t.w * 0.45, Math.max(0.01, head));
-    const fade = t.t > t.dur ? 1 - (t.t - t.dur) / 0.12 : 1;
-    t.streak.material.opacity = t.t > t.dur ? 0 : 1;
-    t.trail.material.opacity = 0.4 * Math.max(0, fade);
-    t.glow.position.copy(t.streak.position);
-    t.glow.scale.set(t.w * 4, t.w * 4, t.streak.scale.z);
-    t.glow.material.opacity = t.t > t.dur ? 0 : t.style === 'dual' ? 0.5 : 0.28;
+    const A = this._tA || (this._tA = new THREE.Vector3());
+    const fade = t.t > t.dur ? 1 - (t.t - t.dur) / 0.14 : 1, live = t.t <= t.dur;
+    A.copy(t.from).addScaledVector(t.dir, tail);
+    // close to the lens a world-width beam fills the screen: thin it while it's near the camera
+    const near = this.cam ? Math.min(1, 0.15 + this.cam.position.distanceTo(A) / 14) : 1;
+    this.beam(t.streak, A, t.dir, head - tail, t.w * 2.6 * near);
+    this.beam(t.glow, A, t.dir, head - tail, t.w * 8 * near);
+    this.beam(t.trail, t.from, t.dir, head, t.w * 1.1 * (this.cam ? Math.min(1, 0.3 + this.cam.position.distanceTo(t.from) / 6) : 1));
+    t.streak.material.opacity = live ? 1 : 0;
+    t.trail.material.opacity = 0.32 * Math.max(0, fade);
+    t.glow.material.opacity = live ? (t.style === 'dual' ? 0.42 : 0.24) : 0;
+    t.head.position.copy(t.from).addScaledVector(t.dir, head);
+    t.head.scale.setScalar(t.w * (live ? 7 : 4));
+    t.head.material.opacity = live ? 1 : 0;
     if (t.style) this.placeStyled(t, head, tail, fade);
   }
 
@@ -8156,9 +8232,8 @@ BR.Effects = class Effects {
     const alive = t.t <= t.dur + 0.12;
     if (t.style === 'dual') {
       // a pulsing outer sheath in the second colour
-      const b = fx[0]; for (let i = 1; i < n; i++) fx[i].visible = false;
-      b.position.copy(t.trail.position); b.quaternion.copy(t.trail.quaternion);
-      b.scale.set(t.w * 2.2, t.w * 2.2, Math.max(0.01, head)); b.material.opacity = 0.28 * Math.max(0, fade);
+      this.beam(t.sheath, t.from, t.dir, head, t.w * (4.5 + Math.sin(t.t * 50)));
+      t.sheath.material.opacity = 0.3 * Math.max(0, fade);
       return;
     }
     if (t.style === 'helix') {
@@ -8168,8 +8243,8 @@ BR.Effects = class Effects {
         const strand = i & 1, u = (i >> 1) / (n / 2 - 1), s = s0 + u * len;
         const a = s * 2.4 + t.phase + strand * Math.PI;
         P.copy(t.from).addScaledVector(t.dir, s).addScaledVector(t.p1, Math.cos(a) * 0.11).addScaledVector(t.p2, Math.sin(a) * 0.11);
-        fx[i].position.copy(P); fx[i].quaternion.copy(t.streak.quaternion);
-        fx[i].scale.set(0.05, 0.05, 0.22);
+        fx[i].position.copy(P);
+        fx[i].scale.setScalar(0.1 + 0.08 * u);
         fx[i].material.opacity = alive ? Math.max(0, fade) * (0.4 + 0.6 * u) : 0;
       }
       return;
@@ -8180,9 +8255,8 @@ BR.Effects = class Effects {
         const u = i / n, s = Math.max(0, head - u * Math.min(head, 7));
         const drift = (t.t * 1.6 + u) * 0.25;
         P.copy(t.from).addScaledVector(t.dir, s).addScaledVector(t.p1, t.jit[i * 3] * drift).addScaledVector(t.p2, t.jit[i * 3 + 1] * drift - drift * 0.4);
-        fx[i].position.copy(P); fx[i].quaternion.copy(t.streak.quaternion);
-        const sz = 0.07 * (1 - u * 0.6);
-        fx[i].scale.set(sz, sz, sz);
+        fx[i].position.copy(P);
+        fx[i].scale.setScalar(0.15 * (1 - u * 0.6));
         fx[i].material.opacity = alive ? Math.max(0, fade) * (1 - u * 0.7) * (0.6 + 0.4 * Math.sin(t.t * 40 + i)) : 0;
       }
       return;
@@ -8194,17 +8268,15 @@ BR.Effects = class Effects {
         const b = fx[i];
         if (i === 0) {
           P.copy(t.from).addScaledVector(t.dir, Math.max(0, head - 0.25));
-          b.position.copy(P); b.quaternion.copy(t.streak.quaternion);
-          const pulse = 0.22 + 0.06 * Math.sin(t.t * 60);
-          b.scale.set(pulse, pulse, 0.5); b.material.opacity = t.t <= t.dur ? 1 : 0; continue;
+          b.position.copy(P);
+          b.scale.setScalar(0.5 + 0.12 * Math.sin(t.t * 60)); b.material.opacity = t.t <= t.dur ? 1 : 0; continue;
         }
         const u = i / n, back = u * Math.min(head, wings ? 4 : 6);
         P.copy(t.from).addScaledVector(t.dir, Math.max(0, head - back));
         if (wings && i % 2) { const w = Math.sin(t.t * 30 + i) * 0.12 + 0.18; P.addScaledVector(t.p1, (i % 4 === 1 ? 1 : -1) * w * (1 - u) * 1.6); }
         else P.addScaledVector(t.p1, t.jit[i * 3] * 0.06 * u).addScaledVector(t.p2, t.jit[i * 3 + 1] * 0.06 * u);
-        b.position.copy(P); b.quaternion.copy(t.streak.quaternion);
-        const sz = (wings ? 0.14 : 0.12) * (1 - u * 0.85);
-        b.scale.set(sz, sz, sz * 1.6);
+        b.position.copy(P);
+        b.scale.setScalar((wings ? 0.32 : 0.28) * (1 - u * 0.8));
         b.material.opacity = alive ? Math.max(0, fade) * (1 - u) : 0;
       }
       return;
@@ -8215,10 +8287,9 @@ BR.Effects = class Effects {
       for (let i = 0; i < n; i++) {
         const u = i / (n - 1), s = s0 + u * len, b = fx[i];
         P.copy(t.from).addScaledVector(t.dir, s);
-        b.position.copy(P); b.quaternion.copy(t.streak.quaternion);
-        b.rotateZ(t.t * 8 + i);
-        const age = 1 - u, sz = 0.12 + age * 0.22 * Math.min(1, t.t * 6);
-        b.scale.set(sz, sz, 0.008);
+        b.position.copy(P); b.material.rotation = t.t * 8 + i;
+        const age = 1 - u, sz = 0.24 + age * 0.4 * Math.min(1, t.t * 6);
+        b.scale.setScalar(sz);
         b.material.opacity = alive ? Math.max(0, fade) * (0.25 + 0.6 * u) : 0;
       }
       return;
@@ -8230,9 +8301,9 @@ BR.Effects = class Effects {
       for (let i = 0; i < n; i++) {
         const s1 = (i + 1) * seg, j = i === n - 1 ? 0 : 0.16;
         Q.copy(t.from).addScaledVector(t.dir, s1).addScaledVector(t.p1, (Math.random() * 2 - 1) * j).addScaledVector(t.p2, (Math.random() * 2 - 1) * j);
-        const b = fx[i];
-        b.position.copy(P); b.lookAt(Q);
-        b.scale.set(0.035, 0.035, P.distanceTo(Q));
+        const b = t.seg[i], d = this._sd || (this._sd = new THREE.Vector3()), L = P.distanceTo(Q);
+        d.subVectors(Q, P).divideScalar(Math.max(L, 1e-4));
+        this.beam(b, P, d, L, 0.09);
         b.material.opacity = alive ? Math.max(0, fade) : 0;
         P.copy(Q);
       }
@@ -8242,18 +8313,19 @@ BR.Effects = class Effects {
   impact(p, blood) {
     const f = this.puffs[this.pi++ % this.puffs.length];
     f.mesh.position.copy(p);
-    f.mesh.material.color.setHex(blood ? 0xff4a5a : 0xd9d2c0);
-    f.mesh.material.opacity = 0.9;
+    f.mesh.material.color.setHex(blood ? 0xd8283c : 0xcfc6b2);
+    f.mesh.material.opacity = 0.85; f.mesh.material.blending = THREE.NormalBlending; f.mesh.material.rotation = Math.random() * 6;
     f.mesh.visible = true;
-    f.mesh.scale.setScalar(1);
-    f.life = f.max = 0.25;
+    f.s0 = blood ? 0.32 : 0.26; f.grow = blood ? 1.4 : 2.2;
+    f.mesh.scale.setScalar(f.s0);
+    f.life = f.max = blood ? 0.3 : 0.4;
   }
 
   // Burst of n sparks from p: color, speed, size, life, gravity
   burst(p, color, n, speed, size, life, grav) {
     for (let i = 0; i < n; i++) {
       const s = this.sparks[this.si++ % this.sparks.length];
-      s.m.position.copy(p);
+      s.p.copy(p); s.m.position.copy(p);
       s.v.set(Math.random() * 2 - 1, Math.random() * 1.6 - 0.3, Math.random() * 2 - 1).normalize().multiplyScalar(speed * (0.4 + Math.random() * 0.8));
       s.m.material.color.setHex(Array.isArray(color) ? color[i % color.length] : color);
       s.s = (size || 0.05) * (0.6 + Math.random() * 0.8);
@@ -8267,10 +8339,11 @@ BR.Effects = class Effects {
     const f = this.puffs[this.pi++ % this.puffs.length];
     f.mesh.position.copy(p);
     f.mesh.material.color.setHex(0xffd27a);
-    f.mesh.material.opacity = 1;
+    f.mesh.material.opacity = 1; f.mesh.material.blending = THREE.AdditiveBlending; f.mesh.material.rotation = Math.random() * 6;
     f.mesh.visible = true;
-    f.mesh.scale.setScalar(1.6);
-    f.life = f.max = 0.05;
+    f.s0 = 0.55; f.grow = 3;
+    f.mesh.scale.setScalar(f.s0);
+    f.life = f.max = 0.06;
   }
 
   // ---- bullet holes: small dark quads on the wall face that was hit (pooled, oldest reused)
@@ -8335,6 +8408,30 @@ BR.Effects = class Effects {
     }
   }
 
+  // Default kill reward on the victim: a glowing ground shockwave, a short light pillar, a rising
+  // soul orb that pops into sparks, and a spark burst (gold on headshots, magenta/cyan on streaks)
+  killBurst(p, head, streak, light) {
+    const sc = this.scene, fins = this.fins || (this.fins = []), T = BR.Effects.tex();
+    const col = streak >= 4 ? 0x1de9ff : streak >= 2 ? 0xff3df2 : head ? 0xffc93a : 0xff3b4e;
+    const add = (mesh, life, upd) => { mesh.frustumCulled = false; sc.add(mesh); fins.push({ mesh, life, upd, t: 0 }); return mesh; };
+    const mat = (c, op, map) => new THREE.MeshBasicMaterial({ color: c, map: map || null, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const c = p.clone(), chest = c.clone().setY(c.y + 1.0);
+    this.burst(chest, [col, 0xffffff, col], light ? 12 : 26, head ? 9 : 7, 0.08, 0.7, 6);
+    const ring = add(new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 48), mat(col, 1)), 0.6, (t, m) => { m.scale.setScalar(1 + t * 11); m.material.opacity = Math.pow(1 - t / 0.6, 1.5); });
+    ring.position.copy(c).setY(c.y + 0.08); ring.rotation.x = -Math.PI / 2;
+    if (light) return;
+    const ring2 = add(new THREE.Mesh(new THREE.RingGeometry(0.7, 0.78, 48), mat(0xffffff, 0.8)), 0.45, (t, m) => { m.scale.setScalar(1 + t * 7); m.material.opacity = 0.8 * (1 - t / 0.45); m.lookAt(this.cam ? this.cam.position : m.position.clone().setZ(m.position.z + 1)); });
+    ring2.position.copy(chest);
+    const pillar = add(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.5, 9, 20, 1, true), mat(col, 0)), 0.55, (t, m) => { m.material.opacity = Math.min(0.5, t * 6) * (1 - t / 0.55); m.scale.x = m.scale.z = 1 - t * 0.9; m.scale.y = 0.5 + t * 1.6; });
+    pillar.position.copy(c).setY(c.y + 4.5);
+    const orb = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    add(orb, 0.75, (t, m, done) => { m.position.set(c.x + Math.sin(t * 9) * 0.08, c.y + 1.1 + t * 2.4, c.z); m.scale.setScalar(0.5 + 0.25 * Math.sin(t * 30) + t * 0.4); m.material.opacity = 1;
+      if (done) this.burst(m.position, [col, 0xffffff], 18, 5, 0.06, 0.6, -1); });
+    orb.position.copy(chest);
+    if (head) { const flare = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xfff0b0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+      add(flare, 0.3, (t, m) => { m.scale.setScalar(0.6 + t * 9); m.material.opacity = 1 - t / 0.3; }); flare.position.copy(c).setY(c.y + 1.65); }
+  }
+
   update(dt) {
     if (this.fins) for (let i = this.fins.length - 1; i >= 0; i--) {
       const f = this.fins[i]; f.t += dt; const done = f.t >= f.life;
@@ -8346,10 +8443,11 @@ BR.Effects = class Effects {
       s.life -= dt;
       if (s.life <= 0) { s.m.visible = false; continue; }
       s.v.y -= s.g * dt; s.v.multiplyScalar(1 - dt * 2.5);
-      s.m.position.addScaledVector(s.v, dt);
-      const k = s.life / s.max;
-      s.m.scale.set(s.s, s.s, s.s * (1 + s.v.length() * 0.08));
-      s.m.lookAt(s.m.position.x + s.v.x, s.m.position.y + s.v.y, s.m.position.z + s.v.z);
+      s.p.addScaledVector(s.v, dt);
+      const k = s.life / s.max, sp = s.v.length(), D = this._spd || (this._spd = new THREE.Vector3()), A = this._spa || (this._spa = new THREE.Vector3());
+      if (sp > 1e-4) D.copy(s.v).divideScalar(sp); else D.set(0, 1, 0);
+      const L = s.s * (1.6 + sp * 0.1);
+      this.beam(s.m, A.copy(s.p).addScaledVector(D, -L * 0.5), D, L, s.s * 1.6);      // streak centred on the spark, along its motion
       s.m.material.opacity = Math.min(1, k * 1.6);
     }
     for (const r of this.rings) {
@@ -8363,18 +8461,40 @@ BR.Effects = class Effects {
     for (const t of this.tracers) {
       if (!t.trail.visible) continue;
       t.t += dt;
-      if (t.t >= t.life) { t.streak.visible = t.trail.visible = t.glow.visible = false; if (t.fx) for (const b of t.fx) b.visible = false; continue; }
+      if (t.t >= t.life) { t.streak.visible = t.trail.visible = t.glow.visible = t.head.visible = false; if (t.fx) { for (const b of t.fx) b.visible = false; for (const b of t.seg) b.visible = false; t.sheath.visible = false; } continue; }
       this.placeTracer(t);
     }
     for (const f of this.puffs) {
       if (!f.mesh.visible) continue;
       f.life -= dt;
       const k = Math.max(0, f.life / f.max);
-      f.mesh.material.opacity = k;
-      f.mesh.scale.setScalar(f.mesh.scale.x + dt * 4);
+      f.mesh.material.opacity = k * k * 0.9;
+      f.mesh.scale.setScalar(f.mesh.scale.x + dt * (f.grow || 3) * (0.4 + k));
       if (f.life <= 0) f.mesh.visible = false;
     }
   }
+};
+
+// Shared soft textures (grayscale; tinted by material colour) + the beam quad (x = width, z = 0..1 length)
+BR.Effects.beamGeo = () => BR.Effects._geo || (BR.Effects._geo = new THREE.PlaneGeometry(1, 1).rotateX(Math.PI / 2).translate(0, 0, 0.5));
+BR.Effects.tex = () => {
+  if (BR.Effects._tex) return BR.Effects._tex;
+  const mk = (w, h, fn) => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'), img = x.createImageData(w, h);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const v = Math.max(0, Math.min(1, fn((i + 0.5) / w, 1 - (j + 0.5) / h))), o = (j * w + i) * 4; img.data[o] = img.data[o + 1] = img.data[o + 2] = 255; img.data[o + 3] = Math.round(v * 255); }
+    x.putImageData(img, 0, 0); const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; return t;
+  };
+  const across = u => { const d = Math.abs(u * 2 - 1); return Math.pow(1 - d, 1.8) * 0.7 + Math.pow(Math.max(0, 1 - d * 2.2), 2) * 0.6; };
+  BR.Effects._tex = {
+    // u across the beam, v along it (0 = tail, 1 = head): bright core, soft edges, tapered tail, rounded head
+    streak: mk(32, 128, (u, v) => across(u) * Math.pow(v, 0.7) * Math.min(1, (1 - v) * 14 + 0.25) * (1 - Math.abs(u * 2 - 1) * (1 - v) * 0.6)),
+    soft: mk(32, 64, (u, v) => across(u) * Math.min(1, v * 6) * Math.min(1, (1 - v) * 6)),
+    spark: mk(16, 64, (u, v) => across(u) * Math.sin(v * Math.PI) * (0.4 + 0.6 * v)),
+    dot: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return Math.pow(Math.max(0, 1 - r), 2.2) + Math.max(0, 1 - r * 3.5) * 0.8; }),
+    ring: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return Math.exp(-Math.pow((r - 0.75) / 0.09, 2)) + Math.max(0, 1 - r) * 0.15; }),
+    smoke: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; const n = 0.75 + 0.25 * Math.sin(u * 23 + v * 9) * Math.sin(v * 19 - u * 7); return Math.pow(Math.max(0, 1 - r), 1.5) * n; }),
+  };
+  return BR.Effects._tex;
 };
 
 </script>
@@ -9895,6 +10015,8 @@ BR.HUD = class HUD {
   <div id="fps"></div>
   <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
+  <div id="killflash"></div>
+  <div id="killban"><u class="kb-ring"></u><u class="kb-ring r2"></u><i class="kb-skull"><svg viewBox="0 0 64 64"><path d="M32 4C18 4 8 14 8 27c0 8 4 14 9 17v8c0 2 2 4 4 4h3v-6h4v6h8v-6h4v6h3c2 0 4-2 4-4v-8c5-3 9-9 9-17C56 14 46 4 32 4zm-11 32a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm22 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-11 9-4-6h8z"/></svg></i><b class="kb-t">ELIMINATED</b><span class="kb-n"></span><em class="kb-x"></em><s class="kb-c"></s></div>
   <div id="state-tag"></div>
   <div id="tech"></div>
 
@@ -10464,6 +10586,21 @@ BR.HUD = class HUD {
     this._toastTO = setTimeout(() => t.classList.remove('on'), ms || 1800);
   }
 
+  // Kill reward banner: skull punch-in with expanding rings, ELIMINATED / HEADSHOT, the victim's
+  // name, a streak badge (x2, x3...) and the coins earned, plus a coloured screen-edge flash
+  killBanner(o) {
+    const k = this.$('killban'), f = this.$('killflash'); if (!k) return;
+    const MK = [null, null, 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'RAMPAGE', 'UNSTOPPABLE'];
+    k.querySelector('.kb-t').textContent = o.streak >= 2 ? MK[Math.min(o.streak, 6)] : o.head ? 'HEADSHOT' : 'ELIMINATED';
+    k.querySelector('.kb-n').textContent = o.name || '';
+    k.querySelector('.kb-x').textContent = o.streak >= 2 ? '×' + o.streak : '';
+    k.querySelector('.kb-c').textContent = o.coins ? '+' + o.coins : '';
+    const cls = (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak s' + Math.min(o.streak, 5) : '');
+    k.className = ''; void k.offsetWidth; k.className = 'on' + cls;
+    clearTimeout(this._kbTO); this._kbTO = setTimeout(() => { k.className = 'out' + cls; }, 1500 + Math.min(o.streak || 1, 4) * 150);
+    if (f) { f.className = ''; void f.offsetWidth; f.className = 'on' + (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak' : ''); }
+  }
+
   hitmarker(head, kill) {
     const h = this.el.hitmarker;
     h.className = '';
@@ -10836,7 +10973,7 @@ BR.Game = class Game {
     // sky, clouds and far mountains are already painted in display colours: keep them out of the filmic curve
     this.scene.traverse(o => { const m = o.material; if (m && m.isMeshBasicMaterial && m.fog === false) m.toneMapped = false; });
     this.hud.setStaticMap(this.world.renderMinimap(1024));
-    this.fx = new BR.Effects(this.scene);
+    this.fx = new BR.Effects(this.scene); this.fx.cam = this.camera;
     this.shock = new BR.Shockwave(this);
     this.loot = new BR.Loot(this);
     this.loot.spawnFromWorld(this.world);
@@ -11165,6 +11302,8 @@ BR.Game = class Game {
     this.fpsAcc += dt; this.fpsN++;
     if (this.fpsAcc > 0.5) { this.fpsVal = this.fpsN / this.fpsAcc; this.fpsAcc = 0; this.fpsN = 0; }
     dt = Math.min(dt, 0.05);
+    // hit-stop: a split second of slow motion when you get a kill
+    if (this.hitStop > 0) { this.hitStop -= dt; dt *= 0.3; }
     if (this.state === 'playing' || this.state === 'dead' || this.state === 'won') this.update(dt);
     else if (this.state === 'menu') this.updateDemo(dt);
     else if (this.state === 'shop') this.updateShop(dt);
@@ -11516,21 +11655,22 @@ BR.Game = class Game {
     const body = killer ? `${badge(killer)}${nm(killer)} <i>${esc(how)}</i> ${badge(victim)}${nm(victim)}` : `${badge(victim)}${nm(victim)} <i>${esc(how)}</i>`;
     this.hud.killfeed(body, killer && killer.isPlayer ? 'feed-' + (P.equip.feeds || 'none') : mine ? 'feed-none' : '');
     if (killer && killer === this.player) {
-      BR.Audio.kill(head);
-      if (head) this.hud.tech('HEADSHOT');
       // equipped kill finisher plays on the victim
       // weapon mastery: count the kill, announce any camo it unlocks
       const unlocked = BR.Profile.addKill(weaponId);
       if (unlocked.length) setTimeout(() => this.hud.toast('UNLOCKED · ' + unlocked.join(', ') + ' camo', 2400), 900);
       const fin = P.equip.finishers;
       if (fin && fin !== 'none' && this.fx.finisher) this.fx.finisher(fin, victim.pos.clone(), victim);
-      // multi-kill callouts (kills within 4 s of each other) + a kill punch on the camera
+      // multi-kill streak (kills within 4 s of each other)
       const mk = this.multiKill || (this.multiKill = { n: 0, t: -9 });
       mk.n = this.time - mk.t < 4 ? mk.n + 1 : 1; mk.t = this.time;
-      const MK = [null, null, 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'RAMPAGE'];
-      if (mk.n >= 2) { this.hud.tech(MK[Math.min(mk.n, 5)]); BR.Audio.coin(); }
-      this.cam.shake = Math.max(this.cam.shake || 0, 0.12 + (head ? 0.06 : 0)); this.cam.hitFov = Math.min(10, (this.cam.hitFov || 0) - 3);
-      this.hud.toast(`Eliminated ${victim.name}  ·  +${BR.CONFIG.coins.perKill} coins`, 1400);
+      // the reward: on-body burst (lighter under a finisher), banner + screen flash, layered sound,
+      // a split second of slow motion and a punch on the camera
+      if (this.fx.killBurst) this.fx.killBurst(victim.pos.clone(), head, mk.n, !!(fin && fin !== 'none'));
+      this.hud.killBanner({ name: victim.name, head, streak: mk.n, coins: BR.CONFIG.coins.perKill });
+      BR.Audio.kill(head, mk.n);
+      this.hitStop = head || mk.n >= 2 ? 0.12 : 0.08;
+      this.cam.shake = Math.max(this.cam.shake || 0, 0.14 + (head ? 0.06 : 0)); this.cam.hitFov = Math.min(10, (this.cam.hitFov || 0) - 3.5);
     }
     if (victim === this.player) {
       this.deathPos = victim.pos.clone();
@@ -11663,7 +11803,7 @@ BR.Game = class Game {
     this.inspect = { on: false, yaw: 0, pitch: 0, zoom: 1, vy: 0, vx: 0, idle: 0, dragging: false };
     this.shopPivot = new THREE.Group();
     s.add(this.shopPivot);
-    this.shopFx = new BR.Effects(s);   // real in-game tracers, slowed down for the preview
+    this.shopFx = new BR.Effects(s); this.shopFx.cam = this.shopCam;   // real in-game tracers, slowed down for the preview
     this.shopTracerT = 0;
   }
 

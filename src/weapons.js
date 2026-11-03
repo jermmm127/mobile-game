@@ -118,6 +118,8 @@ BR.Weapons = {
             d.sort((a, c) => a[0] - c[0]); n.set(d[0][1], d[0][2], d[0][3]);
           }
           game.fx.decal(end, n);
+          // hard surfaces kick up a few hot sparks (not every pellet)
+          if (p < 2 && Math.random() < 0.7) game.fx.burst(end, [0xffd27a, 0xffffff, 0xffa040], 3, 3.2, 0.035, 0.22, 9);
         }
       }
       if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
@@ -143,22 +145,31 @@ BR.Weapons = {
     }
     w.bloom = Math.min(d.bloomMax, w.bloom + d.bloom);
     if (actor.isPlayer) {
-      // Random recoil: vertical kick varies shot to shot; automatic rifles also wander
-      // sideways on a random walk, so sprays need control. Aiming tames it.
-      const ads = actor.ads ? 0.6 : 1;
+      // Spray recoil you can learn and control (aiming tames it):
+      //  - the first shot is near-perfect, the climb ramps up over ~5 shots, then levels off and eases
+      //    once the gun "settles" (long sprays stay controllable)
+      //  - sideways the gun snakes smoothly left/right (a sine sway whose side and phase change every
+      //    spray) instead of jittering, plus a touch of randomness so no two sprays match exactly
+      //  - when you let go, the view recovers most of the climb (never past where you started)
+      const ads = actor.ads ? 0.6 : 1, now = game.time || 0, gap = 60 / d.rpm;
+      if (!(now - (actor.sprayLast ?? -9) <= gap * 2.2 + 0.1)) {
+        actor.sprayN = 0; actor.sprayPhase = Math.random() * 6.283; actor.sprayDir = Math.random() < 0.5 ? -1 : 1;
+        actor.recoilPull = 0; actor.sprayPitch0 = actor.pitch;
+      }
+      actor.sprayLast = now; const n = actor.sprayN++;
+      let v;
       if (d.recoilH) {
-        // automatics: wide shot-to-shot vertical variance, a sideways random walk that sometimes
-        // kicks the other way, and a little jitter in every direction, so no two sprays match
-        actor.recoil += d.recoil * (0.5 + Math.random() * 1.0) * ads;
-        let dr = (actor.recoilDrift || 0) * 0.8 + (Math.random() - 0.5) * 1.4;
-        if (Math.random() < 0.14) dr -= (actor.recoilDrift || 0) * 1.6;              // sudden direction change
-        actor.recoilDrift = BR.util.clamp(dr, -1.25, 1.25);
-        actor.yaw += (actor.recoilDrift * 0.8 + (Math.random() - 0.5) * 1.0) * d.recoilH * ads;
-        actor.pitch += (Math.random() - 0.5) * d.recoil * 0.35 * ads;
+        const ramp = 0.45 + 0.65 * Math.min(1, n / 5) - (n > 14 ? 0.22 : 0);
+        v = d.recoil * ramp * (0.88 + Math.random() * 0.24) * ads;
+        const side = Math.min(1, n / 6);
+        actor.recoilDrift = Math.sin(n * 0.42 + actor.sprayPhase) * actor.sprayDir;
+        actor.yaw += d.recoilH * ads * (side * actor.recoilDrift * 0.9 + (Math.random() - 0.5) * 0.35);
+        actor.pitch += (Math.random() - 0.5) * d.recoil * 0.1 * ads;
       } else {
-        actor.recoil += d.recoil * (0.75 + Math.random() * 0.5) * ads;
+        v = d.recoil * (0.85 + Math.random() * 0.3) * ads;
         actor.yaw += (Math.random() - 0.5) * d.recoil * 0.4;
       }
+      actor.recoil += v; actor.recoilPull = (actor.recoilPull || 0) + v;
     }
     game.onShot(actor, w);
     return true;

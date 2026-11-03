@@ -193,6 +193,8 @@ BR.HUD = class HUD {
   <div id="fps"></div>
   <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
+  <div id="killflash"></div>
+  <div id="killban"><u class="kb-ring"></u><u class="kb-ring r2"></u><i class="kb-skull"><svg viewBox="0 0 64 64"><path d="M32 4C18 4 8 14 8 27c0 8 4 14 9 17v8c0 2 2 4 4 4h3v-6h4v6h8v-6h4v6h3c2 0 4-2 4-4v-8c5-3 9-9 9-17C56 14 46 4 32 4zm-11 32a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm22 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-11 9-4-6h8z"/></svg></i><b class="kb-t">ELIMINATED</b><span class="kb-n"></span><em class="kb-x"></em><s class="kb-c"></s></div>
   <div id="state-tag"></div>
   <div id="tech"></div>
 
@@ -760,6 +762,21 @@ BR.HUD = class HUD {
     t.classList.add('on');
     clearTimeout(this._toastTO);
     this._toastTO = setTimeout(() => t.classList.remove('on'), ms || 1800);
+  }
+
+  // Kill reward banner: skull punch-in with expanding rings, ELIMINATED / HEADSHOT, the victim's
+  // name, a streak badge (x2, x3...) and the coins earned, plus a coloured screen-edge flash
+  killBanner(o) {
+    const k = this.$('killban'), f = this.$('killflash'); if (!k) return;
+    const MK = [null, null, 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'RAMPAGE', 'UNSTOPPABLE'];
+    k.querySelector('.kb-t').textContent = o.streak >= 2 ? MK[Math.min(o.streak, 6)] : o.head ? 'HEADSHOT' : 'ELIMINATED';
+    k.querySelector('.kb-n').textContent = o.name || '';
+    k.querySelector('.kb-x').textContent = o.streak >= 2 ? '×' + o.streak : '';
+    k.querySelector('.kb-c').textContent = o.coins ? '+' + o.coins : '';
+    const cls = (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak s' + Math.min(o.streak, 5) : '');
+    k.className = ''; void k.offsetWidth; k.className = 'on' + cls;
+    clearTimeout(this._kbTO); this._kbTO = setTimeout(() => { k.className = 'out' + cls; }, 1500 + Math.min(o.streak || 1, 4) * 150);
+    if (f) { f.className = ''; void f.offsetWidth; f.className = 'on' + (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak' : ''); }
   }
 
   hitmarker(head, kill) {

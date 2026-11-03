@@ -6,35 +6,35 @@
 BR.Effects = class Effects {
   constructor(scene) {
     this.scene = scene;
+    this.cam = null;                 // set by the game: beams turn to face it
     this.tracers = [];
     this.puffs = [];
-    // Tracers: a bright travelling streak (the "bullet") + a faint trail behind it.
-    // Unit box along +Z, stretched/oriented per shot. Additive so colors glow.
-    const unit = new THREE.BoxGeometry(1, 1, 1); unit.translate(0, 0, 0.5);
+    const T = BR.Effects.tex();
+    // Tracers: soft camera-facing beams (no boxes): a hot tapered streak (the "bullet") with a glowing
+    // head sprite, a wide soft glow around it and a thin fading trail. Additive so colours glow.
+    const beamMat = (map, op) => new THREE.MeshBasicMaterial({ map, color: 0xffe2a0, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+    const geo = BR.Effects.beamGeo();
     for (let i = 0; i < 48; i++) {
-      const mk = op => new THREE.Mesh(unit, new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-      const streak = mk(1), trail = mk(0.35), glow = mk(0.3);
-      streak.visible = trail.visible = glow.visible = false;
-      streak.frustumCulled = trail.frustumCulled = glow.frustumCulled = false;
-      scene.add(glow, trail, streak);
-      this.tracers.push({ streak, trail, glow, life: 0, from: new THREE.Vector3(), dir: new THREE.Vector3(), len: 0, t: 0, dur: 0, w: 0.03, sl: 5.5 });
+      const streak = new THREE.Mesh(geo, beamMat(T.streak, 1)), trail = new THREE.Mesh(geo, beamMat(T.soft, 0.35)), glow = new THREE.Mesh(geo, beamMat(T.soft, 0.3));
+      const head = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xffe2a0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      for (const m of [streak, trail, glow, head]) { m.visible = false; m.frustumCulled = false; }
+      scene.add(glow, trail, streak, head);
+      this.tracers.push({ streak, trail, glow, head, life: 0, from: new THREE.Vector3(), dir: new THREE.Vector3(), len: 0, t: 0, dur: 0, w: 0.03, sl: 5.5 });
     }
-    const pg = new THREE.BoxGeometry(0.16, 0.16, 0.16);
+    // impact puffs: soft dust / blood sprites that bloom and fade
     for (let i = 0; i < 40; i++) {
-      const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
-      const mesh = new THREE.Mesh(pg, m);
-      mesh.visible = false;
+      const mesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.smoke, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+      mesh.visible = false; mesh.scale.setScalar(0.3);
       scene.add(mesh);
-      this.puffs.push({ mesh, life: 0, max: 0.25 });
+      this.puffs.push({ mesh, life: 0, max: 0.25, s0: 0.3 });
     }
     this.ti = 0; this.pi = 0;
-    // Sparks: tiny additive cubes with velocity + gravity (hit bursts, headshot crits, shockwaves)
+    // Sparks: soft glowing streaks with velocity + gravity, stretched along their motion
     this.sparks = [];
-    const sg = new THREE.BoxGeometry(1, 1, 1);
-    for (let i = 0; i < 90; i++) {
-      const m = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+    for (let i = 0; i < 120; i++) {
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: T.spark, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
       m.visible = false; m.frustumCulled = false; scene.add(m);
-      this.sparks.push({ m, v: new THREE.Vector3(), life: 0, max: 1, s: 0.05, g: 9 });
+      this.sparks.push({ m, p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, max: 1, s: 0.05, g: 9 });
     }
     this.si = 0;
     // Grapple rope + hook
@@ -86,29 +86,33 @@ BR.Effects = class Effects {
     t.sl = (opts && opts.streak) || 6;
     t.w = mine ? 0.06 : 0.04;
     const c = color !== undefined ? color : mine ? 0xffe9a8 : 0xff9a6b;
-    t.streak.material.color.setHex(c); t.trail.material.color.setHex(c); t.glow.material.color.setHex(c);
+    t.streak.material.color.setHex(c); t.trail.material.color.setHex(c); t.glow.material.color.setHex(c); t.head.material.color.setHex(c);
     // the core burns hotter (towards white) so colors read as bright light
-    t.streak.material.color.lerp(this._white || (this._white = new THREE.Color(0xffffff)), 0.35);
-    const look = this._look || (this._look = new THREE.Vector3());
-    look.copy(from).add(t.dir);
-    t.streak.position.copy(from); t.streak.lookAt(look);
-    t.trail.position.copy(from); t.trail.lookAt(look);
-    t.glow.position.copy(from); t.glow.lookAt(look);
-    t.streak.visible = t.trail.visible = t.glow.visible = true;
-    // styled tracers: extra additive "beads" (spiral strands, sparks, bolt segments)
+    const W = this._white || (this._white = new THREE.Color(0xffffff));
+    t.streak.material.color.lerp(W, 0.45); t.head.material.color.lerp(W, 0.6);
+    t.streak.visible = t.trail.visible = t.glow.visible = t.head.visible = true;
+    // styled tracers: extra additive pieces (spiral strands, embers, bolt segments, energy rings)
     t.style = opts && opts.style || null;
-    if (t.fx) for (const b of t.fx) b.visible = false;
+    if (t.fx) { for (const b of t.fx) b.visible = false; for (const b of t.seg) b.visible = false; t.sheath.visible = false; }
     if (t.style) {
       if (!t.fx) {
-        t.fx = [];
+        const T = BR.Effects.tex(), geo = BR.Effects.beamGeo();
+        t.fx = []; t.seg = [];
         for (let i = 0; i < 16; i++) {
-          const b = new THREE.Mesh(this._beadGeo || (this._beadGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0, 0.5)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+          const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
           b.frustumCulled = false; b.visible = false; this.scene.add(b); t.fx.push(b);
+          const s = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: T.soft, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+          s.frustumCulled = false; s.visible = false; this.scene.add(s); t.seg.push(s);
         }
+        t.sheath = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: T.soft, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+        t.sheath.frustumCulled = false; t.sheath.visible = false; this.scene.add(t.sheath);
         t.p1 = new THREE.Vector3(); t.p2 = new THREE.Vector3(); t.jit = [];
       }
-      const c2 = opts.color2 !== undefined ? opts.color2 : c;
-      for (const b of t.fx) { b.material.color.setHex(c2); b.visible = true; }
+      const c2 = opts.color2 !== undefined ? opts.color2 : c, T = BR.Effects.tex();
+      const dots = t.style === 'helix' || t.style === 'spark' || t.style === 'comet' || t.style === 'phoenix' || t.style === 'rings';
+      for (const b of t.fx) { b.material.color.setHex(c2); b.material.map = t.style === 'rings' ? T.ring : T.dot; b.visible = dots; }
+      for (const b of t.seg) { b.material.color.setHex(c2); b.visible = t.style === 'lightning'; }
+      t.sheath.material.color.setHex(c2); t.sheath.visible = t.style === 'dual';
       if (t.style === 'dual') t.glow.material.color.setHex(c2);
       t.p1.crossVectors(t.dir, Math.abs(t.dir.y) > 0.9 ? this._ax || (this._ax = new THREE.Vector3(1, 0, 0)) : this._ay || (this._ay = new THREE.Vector3(0, 1, 0))).normalize();
       t.p2.crossVectors(t.dir, t.p1).normalize();
@@ -119,20 +123,34 @@ BR.Effects = class Effects {
     this.placeTracer(t);
   }
 
+  // Point a beam quad from `a` along unit `dir` for `len`, `w` wide, turned around its own axis to face the camera
+  beam(m, a, dir, len, w) {
+    const X = this._bX || (this._bX = new THREE.Vector3()), Y = this._bY || (this._bY = new THREE.Vector3()), V = this._bV || (this._bV = new THREE.Vector3());
+    if (this.cam) V.copy(this.cam.position).sub(a).addScaledVector(dir, -len * 0.5); else V.set(0, 1, 0);
+    X.crossVectors(dir, V); if (X.lengthSq() < 1e-8) X.set(1, 0, 0).cross(dir); X.normalize();
+    Y.crossVectors(dir, X);
+    m.quaternion.setFromRotationMatrix((this._bM || (this._bM = new THREE.Matrix4())).makeBasis(X, Y, dir));
+    m.position.copy(a); m.scale.set(w, 1, Math.max(0.01, len));
+  }
+
   placeTracer(t) {
     const k = Math.min(1, t.t / t.dur);
     const head = t.len * k, sl = Math.min(t.len, t.sl);
     const tail = Math.max(0, head - sl);
-    t.streak.position.copy(t.from).addScaledVector(t.dir, tail);
-    t.streak.scale.set(t.w, t.w, Math.max(0.01, head - tail));
-    t.trail.position.copy(t.from);
-    t.trail.scale.set(t.w * 0.45, t.w * 0.45, Math.max(0.01, head));
-    const fade = t.t > t.dur ? 1 - (t.t - t.dur) / 0.12 : 1;
-    t.streak.material.opacity = t.t > t.dur ? 0 : 1;
-    t.trail.material.opacity = 0.4 * Math.max(0, fade);
-    t.glow.position.copy(t.streak.position);
-    t.glow.scale.set(t.w * 4, t.w * 4, t.streak.scale.z);
-    t.glow.material.opacity = t.t > t.dur ? 0 : t.style === 'dual' ? 0.5 : 0.28;
+    const A = this._tA || (this._tA = new THREE.Vector3());
+    const fade = t.t > t.dur ? 1 - (t.t - t.dur) / 0.14 : 1, live = t.t <= t.dur;
+    A.copy(t.from).addScaledVector(t.dir, tail);
+    // close to the lens a world-width beam fills the screen: thin it while it's near the camera
+    const near = this.cam ? Math.min(1, 0.15 + this.cam.position.distanceTo(A) / 14) : 1;
+    this.beam(t.streak, A, t.dir, head - tail, t.w * 2.6 * near);
+    this.beam(t.glow, A, t.dir, head - tail, t.w * 8 * near);
+    this.beam(t.trail, t.from, t.dir, head, t.w * 1.1 * (this.cam ? Math.min(1, 0.3 + this.cam.position.distanceTo(t.from) / 6) : 1));
+    t.streak.material.opacity = live ? 1 : 0;
+    t.trail.material.opacity = 0.32 * Math.max(0, fade);
+    t.glow.material.opacity = live ? (t.style === 'dual' ? 0.42 : 0.24) : 0;
+    t.head.position.copy(t.from).addScaledVector(t.dir, head);
+    t.head.scale.setScalar(t.w * (live ? 7 : 4));
+    t.head.material.opacity = live ? 1 : 0;
     if (t.style) this.placeStyled(t, head, tail, fade);
   }
 
@@ -141,9 +159,8 @@ BR.Effects = class Effects {
     const alive = t.t <= t.dur + 0.12;
     if (t.style === 'dual') {
       // a pulsing outer sheath in the second colour
-      const b = fx[0]; for (let i = 1; i < n; i++) fx[i].visible = false;
-      b.position.copy(t.trail.position); b.quaternion.copy(t.trail.quaternion);
-      b.scale.set(t.w * 2.2, t.w * 2.2, Math.max(0.01, head)); b.material.opacity = 0.28 * Math.max(0, fade);
+      this.beam(t.sheath, t.from, t.dir, head, t.w * (4.5 + Math.sin(t.t * 50)));
+      t.sheath.material.opacity = 0.3 * Math.max(0, fade);
       return;
     }
     if (t.style === 'helix') {
@@ -153,8 +170,8 @@ BR.Effects = class Effects {
         const strand = i & 1, u = (i >> 1) / (n / 2 - 1), s = s0 + u * len;
         const a = s * 2.4 + t.phase + strand * Math.PI;
         P.copy(t.from).addScaledVector(t.dir, s).addScaledVector(t.p1, Math.cos(a) * 0.11).addScaledVector(t.p2, Math.sin(a) * 0.11);
-        fx[i].position.copy(P); fx[i].quaternion.copy(t.streak.quaternion);
-        fx[i].scale.set(0.05, 0.05, 0.22);
+        fx[i].position.copy(P);
+        fx[i].scale.setScalar(0.1 + 0.08 * u);
         fx[i].material.opacity = alive ? Math.max(0, fade) * (0.4 + 0.6 * u) : 0;
       }
       return;
@@ -165,9 +182,8 @@ BR.Effects = class Effects {
         const u = i / n, s = Math.max(0, head - u * Math.min(head, 7));
         const drift = (t.t * 1.6 + u) * 0.25;
         P.copy(t.from).addScaledVector(t.dir, s).addScaledVector(t.p1, t.jit[i * 3] * drift).addScaledVector(t.p2, t.jit[i * 3 + 1] * drift - drift * 0.4);
-        fx[i].position.copy(P); fx[i].quaternion.copy(t.streak.quaternion);
-        const sz = 0.07 * (1 - u * 0.6);
-        fx[i].scale.set(sz, sz, sz);
+        fx[i].position.copy(P);
+        fx[i].scale.setScalar(0.15 * (1 - u * 0.6));
         fx[i].material.opacity = alive ? Math.max(0, fade) * (1 - u * 0.7) * (0.6 + 0.4 * Math.sin(t.t * 40 + i)) : 0;
       }
       return;
@@ -179,17 +195,15 @@ BR.Effects = class Effects {
         const b = fx[i];
         if (i === 0) {
           P.copy(t.from).addScaledVector(t.dir, Math.max(0, head - 0.25));
-          b.position.copy(P); b.quaternion.copy(t.streak.quaternion);
-          const pulse = 0.22 + 0.06 * Math.sin(t.t * 60);
-          b.scale.set(pulse, pulse, 0.5); b.material.opacity = t.t <= t.dur ? 1 : 0; continue;
+          b.position.copy(P);
+          b.scale.setScalar(0.5 + 0.12 * Math.sin(t.t * 60)); b.material.opacity = t.t <= t.dur ? 1 : 0; continue;
         }
         const u = i / n, back = u * Math.min(head, wings ? 4 : 6);
         P.copy(t.from).addScaledVector(t.dir, Math.max(0, head - back));
         if (wings && i % 2) { const w = Math.sin(t.t * 30 + i) * 0.12 + 0.18; P.addScaledVector(t.p1, (i % 4 === 1 ? 1 : -1) * w * (1 - u) * 1.6); }
         else P.addScaledVector(t.p1, t.jit[i * 3] * 0.06 * u).addScaledVector(t.p2, t.jit[i * 3 + 1] * 0.06 * u);
-        b.position.copy(P); b.quaternion.copy(t.streak.quaternion);
-        const sz = (wings ? 0.14 : 0.12) * (1 - u * 0.85);
-        b.scale.set(sz, sz, sz * 1.6);
+        b.position.copy(P);
+        b.scale.setScalar((wings ? 0.32 : 0.28) * (1 - u * 0.8));
         b.material.opacity = alive ? Math.max(0, fade) * (1 - u) : 0;
       }
       return;
@@ -200,10 +214,9 @@ BR.Effects = class Effects {
       for (let i = 0; i < n; i++) {
         const u = i / (n - 1), s = s0 + u * len, b = fx[i];
         P.copy(t.from).addScaledVector(t.dir, s);
-        b.position.copy(P); b.quaternion.copy(t.streak.quaternion);
-        b.rotateZ(t.t * 8 + i);
-        const age = 1 - u, sz = 0.12 + age * 0.22 * Math.min(1, t.t * 6);
-        b.scale.set(sz, sz, 0.008);
+        b.position.copy(P); b.material.rotation = t.t * 8 + i;
+        const age = 1 - u, sz = 0.24 + age * 0.4 * Math.min(1, t.t * 6);
+        b.scale.setScalar(sz);
         b.material.opacity = alive ? Math.max(0, fade) * (0.25 + 0.6 * u) : 0;
       }
       return;
@@ -215,9 +228,9 @@ BR.Effects = class Effects {
       for (let i = 0; i < n; i++) {
         const s1 = (i + 1) * seg, j = i === n - 1 ? 0 : 0.16;
         Q.copy(t.from).addScaledVector(t.dir, s1).addScaledVector(t.p1, (Math.random() * 2 - 1) * j).addScaledVector(t.p2, (Math.random() * 2 - 1) * j);
-        const b = fx[i];
-        b.position.copy(P); b.lookAt(Q);
-        b.scale.set(0.035, 0.035, P.distanceTo(Q));
+        const b = t.seg[i], d = this._sd || (this._sd = new THREE.Vector3()), L = P.distanceTo(Q);
+        d.subVectors(Q, P).divideScalar(Math.max(L, 1e-4));
+        this.beam(b, P, d, L, 0.09);
         b.material.opacity = alive ? Math.max(0, fade) : 0;
         P.copy(Q);
       }
@@ -227,18 +240,19 @@ BR.Effects = class Effects {
   impact(p, blood) {
     const f = this.puffs[this.pi++ % this.puffs.length];
     f.mesh.position.copy(p);
-    f.mesh.material.color.setHex(blood ? 0xff4a5a : 0xd9d2c0);
-    f.mesh.material.opacity = 0.9;
+    f.mesh.material.color.setHex(blood ? 0xd8283c : 0xcfc6b2);
+    f.mesh.material.opacity = 0.85; f.mesh.material.blending = THREE.NormalBlending; f.mesh.material.rotation = Math.random() * 6;
     f.mesh.visible = true;
-    f.mesh.scale.setScalar(1);
-    f.life = f.max = 0.25;
+    f.s0 = blood ? 0.32 : 0.26; f.grow = blood ? 1.4 : 2.2;
+    f.mesh.scale.setScalar(f.s0);
+    f.life = f.max = blood ? 0.3 : 0.4;
   }
 
   // Burst of n sparks from p: color, speed, size, life, gravity
   burst(p, color, n, speed, size, life, grav) {
     for (let i = 0; i < n; i++) {
       const s = this.sparks[this.si++ % this.sparks.length];
-      s.m.position.copy(p);
+      s.p.copy(p); s.m.position.copy(p);
       s.v.set(Math.random() * 2 - 1, Math.random() * 1.6 - 0.3, Math.random() * 2 - 1).normalize().multiplyScalar(speed * (0.4 + Math.random() * 0.8));
       s.m.material.color.setHex(Array.isArray(color) ? color[i % color.length] : color);
       s.s = (size || 0.05) * (0.6 + Math.random() * 0.8);
@@ -252,10 +266,11 @@ BR.Effects = class Effects {
     const f = this.puffs[this.pi++ % this.puffs.length];
     f.mesh.position.copy(p);
     f.mesh.material.color.setHex(0xffd27a);
-    f.mesh.material.opacity = 1;
+    f.mesh.material.opacity = 1; f.mesh.material.blending = THREE.AdditiveBlending; f.mesh.material.rotation = Math.random() * 6;
     f.mesh.visible = true;
-    f.mesh.scale.setScalar(1.6);
-    f.life = f.max = 0.05;
+    f.s0 = 0.55; f.grow = 3;
+    f.mesh.scale.setScalar(f.s0);
+    f.life = f.max = 0.06;
   }
 
   // ---- bullet holes: small dark quads on the wall face that was hit (pooled, oldest reused)
@@ -320,6 +335,30 @@ BR.Effects = class Effects {
     }
   }
 
+  // Default kill reward on the victim: a glowing ground shockwave, a short light pillar, a rising
+  // soul orb that pops into sparks, and a spark burst (gold on headshots, magenta/cyan on streaks)
+  killBurst(p, head, streak, light) {
+    const sc = this.scene, fins = this.fins || (this.fins = []), T = BR.Effects.tex();
+    const col = streak >= 4 ? 0x1de9ff : streak >= 2 ? 0xff3df2 : head ? 0xffc93a : 0xff3b4e;
+    const add = (mesh, life, upd) => { mesh.frustumCulled = false; sc.add(mesh); fins.push({ mesh, life, upd, t: 0 }); return mesh; };
+    const mat = (c, op, map) => new THREE.MeshBasicMaterial({ color: c, map: map || null, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const c = p.clone(), chest = c.clone().setY(c.y + 1.0);
+    this.burst(chest, [col, 0xffffff, col], light ? 12 : 26, head ? 9 : 7, 0.08, 0.7, 6);
+    const ring = add(new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 48), mat(col, 1)), 0.6, (t, m) => { m.scale.setScalar(1 + t * 11); m.material.opacity = Math.pow(1 - t / 0.6, 1.5); });
+    ring.position.copy(c).setY(c.y + 0.08); ring.rotation.x = -Math.PI / 2;
+    if (light) return;
+    const ring2 = add(new THREE.Mesh(new THREE.RingGeometry(0.7, 0.78, 48), mat(0xffffff, 0.8)), 0.45, (t, m) => { m.scale.setScalar(1 + t * 7); m.material.opacity = 0.8 * (1 - t / 0.45); m.lookAt(this.cam ? this.cam.position : m.position.clone().setZ(m.position.z + 1)); });
+    ring2.position.copy(chest);
+    const pillar = add(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.5, 9, 20, 1, true), mat(col, 0)), 0.55, (t, m) => { m.material.opacity = Math.min(0.5, t * 6) * (1 - t / 0.55); m.scale.x = m.scale.z = 1 - t * 0.9; m.scale.y = 0.5 + t * 1.6; });
+    pillar.position.copy(c).setY(c.y + 4.5);
+    const orb = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    add(orb, 0.75, (t, m, done) => { m.position.set(c.x + Math.sin(t * 9) * 0.08, c.y + 1.1 + t * 2.4, c.z); m.scale.setScalar(0.5 + 0.25 * Math.sin(t * 30) + t * 0.4); m.material.opacity = 1;
+      if (done) this.burst(m.position, [col, 0xffffff], 18, 5, 0.06, 0.6, -1); });
+    orb.position.copy(chest);
+    if (head) { const flare = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xfff0b0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+      add(flare, 0.3, (t, m) => { m.scale.setScalar(0.6 + t * 9); m.material.opacity = 1 - t / 0.3; }); flare.position.copy(c).setY(c.y + 1.65); }
+  }
+
   update(dt) {
     if (this.fins) for (let i = this.fins.length - 1; i >= 0; i--) {
       const f = this.fins[i]; f.t += dt; const done = f.t >= f.life;
@@ -331,10 +370,11 @@ BR.Effects = class Effects {
       s.life -= dt;
       if (s.life <= 0) { s.m.visible = false; continue; }
       s.v.y -= s.g * dt; s.v.multiplyScalar(1 - dt * 2.5);
-      s.m.position.addScaledVector(s.v, dt);
-      const k = s.life / s.max;
-      s.m.scale.set(s.s, s.s, s.s * (1 + s.v.length() * 0.08));
-      s.m.lookAt(s.m.position.x + s.v.x, s.m.position.y + s.v.y, s.m.position.z + s.v.z);
+      s.p.addScaledVector(s.v, dt);
+      const k = s.life / s.max, sp = s.v.length(), D = this._spd || (this._spd = new THREE.Vector3()), A = this._spa || (this._spa = new THREE.Vector3());
+      if (sp > 1e-4) D.copy(s.v).divideScalar(sp); else D.set(0, 1, 0);
+      const L = s.s * (1.6 + sp * 0.1);
+      this.beam(s.m, A.copy(s.p).addScaledVector(D, -L * 0.5), D, L, s.s * 1.6);      // streak centred on the spark, along its motion
       s.m.material.opacity = Math.min(1, k * 1.6);
     }
     for (const r of this.rings) {
@@ -348,16 +388,38 @@ BR.Effects = class Effects {
     for (const t of this.tracers) {
       if (!t.trail.visible) continue;
       t.t += dt;
-      if (t.t >= t.life) { t.streak.visible = t.trail.visible = t.glow.visible = false; if (t.fx) for (const b of t.fx) b.visible = false; continue; }
+      if (t.t >= t.life) { t.streak.visible = t.trail.visible = t.glow.visible = t.head.visible = false; if (t.fx) { for (const b of t.fx) b.visible = false; for (const b of t.seg) b.visible = false; t.sheath.visible = false; } continue; }
       this.placeTracer(t);
     }
     for (const f of this.puffs) {
       if (!f.mesh.visible) continue;
       f.life -= dt;
       const k = Math.max(0, f.life / f.max);
-      f.mesh.material.opacity = k;
-      f.mesh.scale.setScalar(f.mesh.scale.x + dt * 4);
+      f.mesh.material.opacity = k * k * 0.9;
+      f.mesh.scale.setScalar(f.mesh.scale.x + dt * (f.grow || 3) * (0.4 + k));
       if (f.life <= 0) f.mesh.visible = false;
     }
   }
+};
+
+// Shared soft textures (grayscale; tinted by material colour) + the beam quad (x = width, z = 0..1 length)
+BR.Effects.beamGeo = () => BR.Effects._geo || (BR.Effects._geo = new THREE.PlaneGeometry(1, 1).rotateX(Math.PI / 2).translate(0, 0, 0.5));
+BR.Effects.tex = () => {
+  if (BR.Effects._tex) return BR.Effects._tex;
+  const mk = (w, h, fn) => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'), img = x.createImageData(w, h);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const v = Math.max(0, Math.min(1, fn((i + 0.5) / w, 1 - (j + 0.5) / h))), o = (j * w + i) * 4; img.data[o] = img.data[o + 1] = img.data[o + 2] = 255; img.data[o + 3] = Math.round(v * 255); }
+    x.putImageData(img, 0, 0); const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; return t;
+  };
+  const across = u => { const d = Math.abs(u * 2 - 1); return Math.pow(1 - d, 1.8) * 0.7 + Math.pow(Math.max(0, 1 - d * 2.2), 2) * 0.6; };
+  BR.Effects._tex = {
+    // u across the beam, v along it (0 = tail, 1 = head): bright core, soft edges, tapered tail, rounded head
+    streak: mk(32, 128, (u, v) => across(u) * Math.pow(v, 0.7) * Math.min(1, (1 - v) * 14 + 0.25) * (1 - Math.abs(u * 2 - 1) * (1 - v) * 0.6)),
+    soft: mk(32, 64, (u, v) => across(u) * Math.min(1, v * 6) * Math.min(1, (1 - v) * 6)),
+    spark: mk(16, 64, (u, v) => across(u) * Math.sin(v * Math.PI) * (0.4 + 0.6 * v)),
+    dot: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return Math.pow(Math.max(0, 1 - r), 2.2) + Math.max(0, 1 - r * 3.5) * 0.8; }),
+    ring: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return Math.exp(-Math.pow((r - 0.75) / 0.09, 2)) + Math.max(0, 1 - r) * 0.15; }),
+    smoke: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; const n = 0.75 + 0.25 * Math.sin(u * 23 + v * 9) * Math.sin(v * 19 - u * 7); return Math.pow(Math.max(0, 1 - r), 1.5) * n; }),
+  };
+  return BR.Effects._tex;
 };

@@ -91,11 +91,14 @@ BR.Audio = {
     if (head) { this.tone(2637, 2600, 0.32, 0.2, 'sine'); this.tone(3951, 3900, 0.22, 0.1, 'sine'); this.tone(5274, 5200, 0.12, 0.05, 'sine'); }
   },
   // Kills: punchy thump + rising two-note chime (bigger on a headshot kill)
-  kill(head) {
-    this.tone(140, 45, 0.22, 0.35, 'sine'); this.burst(900, 0.8, 0.12, 0.2);
-    this.tone(880, 880, 0.09, 0.16, 'triangle');
-    setTimeout(() => this.tone(1320, 1320, 0.16, 0.16, 'triangle'), 70);
-    if (head) setTimeout(() => { this.tone(1760, 1760, 0.24, 0.14, 'triangle'); this.tone(3520, 3500, 0.3, 0.08, 'sine'); }, 140);
+  // streak raises the chime a step per kill in the streak
+  kill(head, streak) {
+    const st = Math.pow(1.122, Math.min((streak || 1) - 1, 5));
+    this.tone(150, 38, 0.32, 0.42, 'sine'); this.burst(900, 0.8, 0.12, 0.22); this.burst(5200, 1.6, 0.06, 0.08, 0, 'bandpass');
+    this.tone(880 * st, 880 * st, 0.09, 0.16, 'triangle');
+    setTimeout(() => { this.tone(1320 * st, 1320 * st, 0.18, 0.16, 'triangle'); this.tone(2640 * st, 2630 * st, 0.12, 0.05, 'sine'); }, 70);
+    if (head) setTimeout(() => { this.tone(1760 * st, 1760 * st, 0.26, 0.14, 'triangle'); this.tone(3520, 3500, 0.34, 0.08, 'sine'); }, 140);
+    if (streak >= 2) setTimeout(() => { this.tone(1980 * st, 1990 * st, 0.3, 0.12, 'square'); this.tone(990 * st, 995 * st, 0.3, 0.1, 'triangle'); }, 200);
   },
   hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },
   pickup() { this.tone(660, 990, 0.09, 0.12, 'sine'); },
