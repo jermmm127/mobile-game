@@ -54,7 +54,7 @@
       this.ropeFrom = new THREE.Vector3(); this.ropeValid = false;
       for (const k of ['_sx', '_sv', '_sy', '_sz', '_sp0', '_sp1', '_sp2', '_spo']) this[k] = new THREE.Vector3();
       this._sq1 = new THREE.Quaternion(); this._sq2 = new THREE.Quaternion(); this._sm = new THREE.Matrix4();
-      this._v = new THREE.Vector3(); this._v2 = new THREE.Vector3(); this._q = new THREE.Quaternion(); this._e = new THREE.Euler();
+      this._v = new THREE.Vector3(); this._v2 = new THREE.Vector3(); this._pumpFore = new THREE.Vector3(); this._q = new THREE.Quaternion(); this._e = new THREE.Euler();
       this.rebuild();
     }
 
@@ -169,6 +169,8 @@
       if (d.revolver) this.cylTarget = (this.cylTarget || 0) + Math.PI / 3;          // index one chamber
       // Bolt action: cycle the bolt after every shot (unless that was the last round)
       if (d.bolt && w.mag > 0) { this.boltDelay = 0.12; this.boltDur = Math.min(0.9, 60 / d.rpm * 0.72); this.boltT = 0; }
+      // Pump action: rack the forend back and forward after every shot
+      if (d.pump && w.mag > 0) { this.pumpDelay = 0.1; this.pumpDur = Math.min(0.5, 60 / d.rpm * 0.62); this.pumpT = 0; }
     }
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
@@ -185,6 +187,9 @@
       if (this.boltDelay > 0) { this.boltDelay -= dt; if (this.boltDelay <= 0) this.boltT = this.boltDur; }
       else if (this.boltT > 0) this.boltT = Math.max(0, this.boltT - dt);
       if (!w || !w.def.bolt) { this.boltT = 0; this.boltDelay = 0; }
+      if (this.pumpDelay > 0) { this.pumpDelay -= dt; if (this.pumpDelay <= 0) this.pumpT = this.pumpDur; }
+      else if (this.pumpT > 0) this.pumpT = Math.max(0, this.pumpT - dt);
+      if (!w || !w.def.pump) { this.pumpT = 0; this.pumpDelay = 0; }
       if (!w || m.dropping || (p.ads && w.def.scope)) { this.hide(); return; }
       this.root.visible = true;
       const holder = this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
@@ -194,7 +199,7 @@
       if (w !== this.lastWeapon) {
         this.lastWeapon = w;
         this.drawDur = this.drawT = def.melee ? 1.05 : 0.55;
-        this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0;
+        this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0; this.pumpT = 0; this.pumpDelay = 0;
         if (def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
       }
       this.drawT = Math.max(0, this.drawT - dt);
@@ -342,6 +347,19 @@
         this.lastBoltK = k;
       } else this.lastBoltK = 0;
       if (ud.bolt) { ud.bolt.rotation.z = boltLift * 1.05; ud.bolt.position.z = ud.boltZ0 + boltBack * 0.075; }
+      // pump: forend snaps back (spent shell out), then forward; the gun dips and rolls a touch
+      let pumpBack = 0;
+      if (this.pumpT > 0 && ud.pump && !reloading) {
+        const k = 1 - this.pumpT / this.pumpDur;
+        pumpBack = smooth(k / 0.35) * (1 - smooth((k - 0.5) / 0.35));
+        const tilt = win(k, 0, 0.2, 0.7, 1) * (1 - A * 0.5);
+        orz += 0.12 * tilt; orx -= 0.05 * tilt; oy -= 0.008 * tilt; oz += pumpBack * 0.012;
+        const passed = x => this.lastPumpK < x && k >= x;
+        if (passed(0.3)) BR.Audio.click();
+        if (passed(0.75)) { BR.Audio.reload(); this.pos.z.vel -= 0.2; }
+        this.lastPumpK = k;
+      } else this.lastPumpK = 0;
+      if (ud.pump) ud.pump.position.z = pumpBack * 0.07;
 
       // Signature reloads (Legendary / Mythic / Exotic blueprints): a flashy move + glow VFX
       this.reloadEl = reloading ? (this.reloadEl || 0) + dt : 0;
@@ -557,7 +575,7 @@
       const elbowR = spin ? this._v2.set(0.5 * s, -0.68, -0.3) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
       this.limb(R.fore, H.localToWorld(new THREE.Vector3(0, 0, spin ? 0.075 : 0.05)), elbowR, spin ? 0.72 : 1);
       // left hand on the foregrip / mag / charging handle
-      const lt = leftTarget || ud.fore;
+      const lt = leftTarget || (ud.pump && ud.fore ? this._pumpFore.copy(ud.fore).setZ(ud.fore.z + ud.pump.position.z) : ud.fore);
       const special = this.specialLeft();          // grapple / stim pose (or null)
       this.launcher.visible = false; this.injector.visible = false; this.vmNade.visible = false;
       if (spin && !(special && special.w > 0.05)) {

@@ -434,6 +434,11 @@ const server = http.createServer((req, res) => {
     let crane = 0, cyl0 = null, cyl = 0;
     if (w && w.id === 'revolver') { for (let i = 0; i < 60; i++) vm.update(1 / 60, 0, 0); w.mag = 0; BR.Weapons.startReload(w, p); for (let i = 0; i < 200 && w.reloadT > 0; i++) { BR.Weapons.update(w, 1 / 60, p); vm.update(1 / 60, 0, 0); const ud = vm.models.revolver.userData.model.userData; crane = Math.max(crane, ud.crane.rotation.z); if (cyl0 === null) cyl0 = ud.cylinder.rotation.z; cyl = Math.max(cyl, Math.abs(ud.cylinder.rotation.z - cyl0)); } }
     out.crane = crane; out.cyl = cyl;
+    // pump shotgun: forend racks back after a shot and returns
+    g.practiceSpawn('weapon', 'shotgun'); const sg = p.weapon; let pumpMax = 0, pumpEnd = 1;
+    for (let i = 0; i < 40; i++) vm.update(1 / 60, 0, 0);
+    vm.onFire(sg); for (let i = 0; i < 50; i++) { vm.update(1 / 60, 0, 0); pumpMax = Math.max(pumpMax, vm.models.shotgun.userData.model.userData.pump.position.z); }
+    pumpEnd = vm.models.shotgun.userData.model.userData.pump.position.z; out.pump = [pumpMax, pumpEnd];
     P.setEquip('blueprints', 'butterfly:default'); P.data.equip.melee = 'knife';
     // weapon-slot opacity in the HUD editor
     const sa = document.getElementById('ed-slot-alpha'); sa.value = 0.3; sa.dispatchEvent(new Event('input'));
@@ -521,6 +526,7 @@ const server = http.createServer((req, res) => {
     ['butterfly + revolver skins in the shop and the Release Case', v15.bflySkins >= 8 && v15.rvSkins >= 5 && v15.inCase >= 6 && v15.inShop >= 6],
     ['butterfly equips as your melee and flips open on draw', v15.melee === 'butterfly' && v15.bflyFlip > 1],
     ['revolver reload swings the cylinder out and spins it', v15.rv === 'revolver' && v15.crane > 0.8 && v15.cyl > 0.5],
+    ['pump shotgun racks its forend after a shot', v15.pump[0] > 0.05 && v15.pump[1] < 0.005],
     ['weapon buttons opacity can be lowered (saved)', Math.abs(v15.slotAlpha - 0.3) < 0.02 && v15.saved === 0.3],
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],

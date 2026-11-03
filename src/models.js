@@ -471,21 +471,67 @@ BR.Models = (function () {
       hands(g, [0, -0.07, Z(336)], [0, -0.04, Z(175)], [-0.034, Y(92), Z(240)]);
       anchors(g, Z(35) - 0.006, BY, [-0.03, -0.02, 0.12]);
     },
+    // Shotgun: a classic pump-action. Blued receiver and barrel with a vent rib and a green
+    // fibre front bead, magazine tube with a barrel clamp, ribbed wood forend on action
+    // bars (userData.pump slides back after each shot), wood stock with a pistol-grip
+    // wrist and a black recoil pad. Camos / blueprints recolour the wood too.
     shotgun(g, S, M) {
-      const k = kit(g);
-      k.box(0.075, 0.1, 0.32, 0, 0.03, -0.06, S);                 // chunky receiver
-      k.box(0.1, 0.045, 0.34, 0, 0.055, -0.38, M.dark);           // wide flat barrel housing (horizontal pattern)
-      for (let i = 0; i < 4; i++) k.box(0.102, 0.006, 0.05, 0, 0.08, -0.24 - i * 0.07, M.metal); // vents
-      k.box(0.11, 0.05, 0.03, 0, 0.055, -0.56, M.metal);          // muzzle brake
-      k.box(0.07, 0.06, 0.16, 0, -0.01, -0.33, M.grip);           // pump
-      for (let i = 0; i < 5; i++) k.box(0.072, 0.008, 0.012, 0, -0.01, -0.27 - i * 0.03, M.dark);
-      k.box(0.045, 0.12, 0.055, 0, -0.07, 0.04, M.grip, 0.25);    // grip
-      k.box(0.06, 0.08, 0.22, 0, 0.0, 0.2, S);                    // stock
-      for (let i = 0; i < 3; i++) k.cyl(0.011, 0.05, 0.042, 0.02 - i * 0.026, -0.02, M.shell, 'z', 8); // side-saddle shells
-      hands(g, [0, -0.075, 0.04], [0, -0.045, -0.33], null);
-      g.userData.port = new THREE.Vector3(0, -0.03, -0.06);       // shells go in here
-      irons(g, M, 0.1, 0.0, -0.52, false);
-      anchors(g, -0.58, 0.055, [-0.05, -0.02, 0.06]);
+      const k = kit(g), I = v => v, prof = profiler(g, I, I);
+      const def = BR.CONFIG.weapons.shotgun;
+      const wood = S === cache.mat['default|' + def.color]
+        ? (cache.mat.sgWood || (cache.mat.sgWood = new THREE.MeshPhongMaterial({ specular: 0x3a2414, shininess: 26, map: canvasTex('wood', (c, sz) => {
+            c.fillStyle = '#6b3a1c'; c.fillRect(0, 0, sz, sz);
+            for (let i = 0; i < 70; i++) {
+              const y = Math.random() * sz, h = 1 + Math.random() * 3, l = 40 + Math.random() * 30;
+              c.fillStyle = `hsla(${22 + Math.random() * 8},${45 + Math.random() * 20}%,${l * 0.45}%,${0.25 + Math.random() * 0.35})`;
+              c.beginPath(); c.moveTo(0, y);
+              for (let x = 0; x <= sz; x += 8) c.lineTo(x, y + Math.sin(x * 0.05 + i) * 2.5);
+              c.lineTo(sz, y + h); c.lineTo(0, y + h); c.closePath(); c.fill();
+            }
+          }, 256) })))
+        : S;
+      const BY = 0.05;
+      // receiver: rounded top, slopes into the wrist; ejection + loading ports, pins
+      prof([[-0.2, -0.006], [-0.2, 0.068], [-0.19, 0.08], [0.02, 0.08], [0.05, 0.068], [0.064, 0.04], [0.064, -0.006]], 0.05, S, 0.006);
+      k.box(0.002, 0.024, 0.075, 0.0255, 0.046, -0.08, M.grip);
+      k.box(0.003, 0.016, 0.06, 0.0255, 0.046, -0.08, M.metal);                // bolt face in the port
+      k.box(0.03, 0.003, 0.08, 0, -0.0075, -0.07, M.grip);                       // loading port
+      for (const z of [-0.02, 0.035]) k.cyl(0.0035, 0.052, 0, 0.012, z, M.metal, 'x', 8);
+      k.box(0.004, 0.006, 0.016, -0.026, 0.004, 0.045, M.metal);                 // slide release
+      // barrel, crown, vent rib with posts, green front bead, rear notch
+      k.cyl(0.0145, 0.47, 0, BY, -0.435, S, 'z', 18);
+      k.cyl(0.0158, 0.012, 0, BY, -0.666, M.dark, 'z', 18);
+      k.box(0.009, 0.004, 0.45, 0, 0.0705, -0.43, S);
+      for (let i = 0; i < 9; i++) k.box(0.004, 0.006, 0.006, 0, 0.0665, -0.22 - i * 0.05, M.dark);
+      const bead = new THREE.Mesh(new THREE.SphereGeometry(0.0042, 10, 8), cache.mat.sgBead || (cache.mat.sgBead = new THREE.MeshBasicMaterial({ color: 0x5dff6a })));
+      bead.position.set(0, 0.0745, -0.648); g.add(bead);
+      // magazine tube + cap, barrel clamp
+      k.cyl(0.0118, 0.4, 0, 0.016, -0.4, M.dark, 'z', 14);
+      k.cyl(0.0128, 0.022, 0, 0.016, -0.606, M.metal, 'z', 14);
+      k.box(0.03, 0.05, 0.016, 0, 0.033, -0.585, M.dark);
+      // pump: ribbed wood forend on two action bars, in a group that slides
+      const pump = new THREE.Group(); g.add(pump);
+      const fe = profiler(pump, I, I);
+      fe([[-0.44, 0.0], [-0.43, -0.014], [-0.24, -0.016], [-0.226, -0.004], [-0.226, 0.03], [-0.24, 0.038], [-0.43, 0.038], [-0.44, 0.03]], 0.05, wood, 0.009);
+      for (let i = 0; i < 8; i++) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.0505, 0.004, 0.006), M.grip); r.position.set(0, -0.014, -0.415 + i * 0.024); pump.add(r);
+        for (const sx of [-1, 1]) { const sr = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.03, 0.006), M.grip); sr.position.set(sx * 0.0255, 0.01, -0.415 + i * 0.024); pump.add(sr); } }
+      for (const sx of [-1, 1]) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.008, 0.2), M.metal); bar.position.set(sx * 0.016, 0.004, -0.15); pump.add(bar); }
+      g.userData.pump = pump;
+      // trigger guard + trigger
+      prof([[-0.002, -0.006], [0.006, -0.006], [0.008, -0.03], [0.05, -0.032], [0.052, -0.006], [0.06, -0.006], [0.058, -0.04], [0.002, -0.038]], 0.012, M.dark, 0.0015);
+      prof([[0.022, -0.004], [0.028, -0.004], [0.03, -0.016], [0.026, -0.028], [0.022, -0.026], [0.024, -0.016]], 0.006, M.metal, 0.001);
+      // stock: wrist with a pistol-grip curve, straight comb, deep butt; black recoil pad
+      prof([[0.056, 0.058], [0.12, 0.04], [0.352, 0.014], [0.356, -0.124], [0.31, -0.126], [0.17, -0.046], [0.128, -0.078], [0.098, -0.082], [0.086, -0.068], [0.074, -0.012], [0.056, -0.006]], 0.044, wood, 0.008);
+      prof([[0.35, 0.02], [0.37, 0.02], [0.372, -0.128], [0.352, -0.128]], 0.047, M.grip, 0.004);
+      k.box(0.048, 0.003, 0.003, 0, -0.054, 0.351, M.metal);                     // pad spacer line
+      hands(g, [0, -0.06, 0.088], [0, -0.03, -0.33], null);
+      g.userData.port = new THREE.Vector3(0, -0.02, -0.07);
+      // raised ghost-ring rear on the receiver + tall front post on the rib, so the sight line clears the stock
+      k.box(0.03, 0.022, 0.024, 0, 0.09, 0.008, M.dark);
+      k.box(0.006, 0.03, 0.008, 0, 0.088, -0.645, M.dark);
+      irons(g, M, 0.108, 0.008, -0.645, true);
+      g.userData.sightDist = 0.26;
+      anchors(g, -0.676, BY, [-0.03, -0.02, 0.1]);
     },
     // Rifle: an AK-pattern battle rifle in black polymer. Long flat-topped handguard
     // with window slots, thin barrel with a slotted brake and a fin front sight,
@@ -996,17 +1042,17 @@ BR.Models = (function () {
       dragon: { name: "Dragon's Breath", rarity: 'Legendary', price: 950, body: 0x2a0d0a, accent: 0x5a1712, glow: 0xff5a1f,
         mod(g, k, P) {
           for (let i = 0; i < 5; i++) { const f = k.box(0.006, 0.05, 0.05, 0, 0.1, -0.24 - i * 0.065, P.A); f.rotation.x = -0.6; } // spine fins
-          for (let i = 0; i < 4; i++) k.box(0.104, 0.008, 0.04, 0, 0.081, -0.24 - i * 0.07, P.G);         // glowing vents
-          k.box(0.12, 0.07, 0.05, 0, 0.055, -0.585, P.A);                                                 // dragon head brake
-          for (const x of [-0.035, 0.035]) k.box(0.012, 0.01, 0.004, x, 0.075, -0.611, P.G);             // eyes
-          for (const x of [-0.04, 0.04]) glowStrip(k, P.G, 0.28, x, 0.02, -0.06);
+          for (let i = 0; i < 4; i++) k.box(0.012, 0.005, 0.04, 0, 0.074, -0.26 - i * 0.07, P.G);         // glowing vents
+          k.box(0.05, 0.045, 0.04, 0, 0.05, -0.66, P.A);                                                  // dragon head brake
+          for (const x of [-0.014, 0.014]) k.box(0.01, 0.008, 0.004, x, 0.062, -0.681, P.G);             // eyes
+          for (const x of [-0.026, 0.026]) glowStrip(k, P.G, 0.24, x, 0.03, -0.07);
         } },
       riot: { name: 'Riot Control', rarity: 'Epic', price: 500, body: 0x1b2a4a, accent: 0xe9eef4, glow: 0x7fd0ff,
         mod(g, k, P) {
-          for (const x of [-0.039, 0.039]) k.box(0.003, 0.03, 0.26, x, 0.04, -0.07, P.A);   // white side panels
-          k.cyl(0.02, 0.09, 0, -0.015, -0.48, P.A, 'z', 12);                                 // flashlight
-          k.cyl(0.018, 0.004, 0, -0.015, -0.527, P.G, 'z', 12);
-          k.box(0.07, 0.1, 0.03, 0, -0.005, 0.32, P.A);                                     // stock pad
+          for (const x of [-0.0265, 0.0265]) k.box(0.003, 0.03, 0.24, x, 0.04, -0.07, P.A); // white side panels
+          k.cyl(0.014, 0.08, 0.03, 0.016, -0.5, P.A, 'z', 12);                               // flashlight
+          k.cyl(0.012, 0.004, 0.03, 0.016, -0.542, P.G, 'z', 12);
+          k.box(0.05, 0.15, 0.012, 0, -0.054, 0.376, P.A);                                 // stock pad
         } },
     },
     rifle: {
@@ -1119,9 +1165,9 @@ BR.Models = (function () {
           const G = liveGlow(0x6ff0ff); hueCycle(g, G, 0.5, 0.58, 2.5, 0.65);
           const ice = crystal(0x8fe8ff);
           for (let i = 0; i < 7; i++) { const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.02 + (i % 3) * 0.008, 0), ice); c.scale.y = 2.2; c.position.set((i % 2 ? 0.02 : -0.02), 0.1 + (i % 3) * 0.01, -0.12 - i * 0.06); c.rotation.z = (i % 2 ? -0.4 : 0.4); g.add(c); }
-          for (let i = 0; i < 4; i++) k.box(0.106, 0.008, 0.03, 0, 0.082, -0.24 - i * 0.07, G);
-          orbiters(g, 6, new THREE.OctahedronGeometry(0.008, 0), G, 0, 0.04, -0.6, 0.07, 2.5, 'z');      // snow swirling round the muzzle
-          k.box(0.12, 0.075, 0.05, 0, 0.055, -0.585, ice);
+          for (let i = 0; i < 4; i++) k.box(0.012, 0.005, 0.03, 0, 0.074, -0.26 - i * 0.07, G);
+          orbiters(g, 6, new THREE.OctahedronGeometry(0.008, 0), G, 0, 0.05, -0.68, 0.06, 2.5, 'z');      // snow swirling round the muzzle
+          k.box(0.05, 0.05, 0.04, 0, 0.05, -0.66, ice);
         } },
     },
     sniper: {
@@ -1216,13 +1262,13 @@ BR.Models = (function () {
       volcano: { name: 'Volcano', rarity: 'Mythic', price: 2300, body: 0x1a0a06, bodyGloss: 1, accent: 0x2a1208, glow: 0xff5a00,
         mod(g, k, P) {
           const lava = new THREE.MeshPhongMaterial({ map: TEX.molten(), emissive: 0xffffff, emissiveMap: TEX.molten(), emissiveIntensity: 1 });
-          k.box(0.112, 0.05, 0.36, 0, 0.06, -0.38, lava); k.box(0.082, 0.105, 0.33, 0, 0.03, -0.06, lava);
+          k.box(0.036, 0.036, 0.34, 0, 0.05, -0.42, lava); k.box(0.053, 0.09, 0.27, 0, 0.037, -0.068, lava);
           const G = liveGlow(0xff7a00); hueCycle(g, G, 0.02, 0.1, 5, 0.55);
           const drops = [];
-          for (let i = 0; i < 6; i++) { const d = k.box(0.01, 0.016, 0.01, (i % 2 ? 0.03 : -0.03), 0, -0.15 - i * 0.07, G); drops.push({ d, o: Math.random() }); }
+          for (let i = 0; i < 6; i++) { const d = k.box(0.01, 0.016, 0.01, (i % 2 ? 0.02 : -0.02), 0, -0.12 - i * 0.07, G); drops.push({ d, o: Math.random() }); }
           anim(g, t => drops.forEach(({ d, o }) => { const f = (t * 0.7 + o) % 1; d.position.y = -0.005 - f * 0.08; d.scale.setScalar(1 - f * 0.7); }));
           const smoke = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.4, depthWrite: false });
-          orbiters(g, 5, new THREE.IcosahedronGeometry(0.014, 0), smoke, 0, 0.09, -0.6, 0.04, 1.5, 'z');
+          orbiters(g, 5, new THREE.IcosahedronGeometry(0.014, 0), smoke, 0, 0.07, -0.68, 0.04, 1.5, 'z');
         } },
     },
     sniper: {
@@ -1333,13 +1379,13 @@ BR.Models = (function () {
       leviathan: { name: 'Leviathan', rarity: 'Mythic', caseOnly: true, body: 0x0a3a4a, bodyGloss: 2, accent: 0x1de9ff, accentGloss: 2, glow: 0x3affd8,
         mod(g, k, P) {
           const sc = new THREE.MeshPhongMaterial({ map: TEX.scales(), specular: 0x9dffcf, shininess: 120, emissive: 0x04201a });
-          k.box(0.112, 0.052, 0.36, 0, 0.06, -0.38, sc);
+          k.box(0.036, 0.036, 0.34, 0, 0.05, -0.42, sc);
           const G = liveGlow(0x3affd8); hueCycle(g, G, 0.45, 0.55, 2, 0.6);
-          for (let i = 0; i < 6; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.05, 4), chrome(0x1de9ff)); f.position.set(0, 0.1, -0.15 - i * 0.07); f.rotation.x = -0.5; g.add(f); }
+          for (let i = 0; i < 6; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.05, 4), chrome(0x1de9ff)); f.position.set(0, 0.088, -0.15 - i * 0.07); f.rotation.x = -0.5; g.add(f); }
           const bub = new THREE.MeshBasicMaterial({ color: 0xbff8ff, transparent: true, opacity: 0.6 });
           const bubbles = []; for (let i = 0; i < 6; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6), bub); g.add(b); bubbles.push({ b, o: Math.random() }); }
-          anim(g, t => bubbles.forEach(({ b, o }, i) => { const f = (t * 0.6 + o) % 1; b.position.set(Math.sin(t * 2 + i) * 0.03, 0.08 + f * 0.12, -0.55 - (i % 3) * 0.04); b.scale.setScalar(0.6 + f); }));
-          for (const x of [-0.045, 0.045]) k.box(0.004, 0.012, 0.3, x, 0.02, -0.06, G);
+          anim(g, t => bubbles.forEach(({ b, o }, i) => { const f = (t * 0.6 + o) % 1; b.position.set(Math.sin(t * 2 + i) * 0.03, 0.07 + f * 0.12, -0.64 - (i % 3) * 0.04); b.scale.setScalar(0.6 + f); }));
+          for (const x of [-0.0265, 0.0265]) k.box(0.004, 0.01, 0.24, x, 0.03, -0.07, G);
         }, tracer: { name: 'Leviathan Signature', style: 'helix', color: 0x3affd8, color2: 0x1d4aff }, reload: { style: 'flip', fx: 0x3affd8 } },
     },
     pistol: {
