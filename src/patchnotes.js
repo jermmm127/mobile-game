@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.8.0', date: '2026-11-03', title: 'Vibrant knives + new finishers', notes: [
+    '9 new knife blueprints with glowing colour auras, orbiting sparkles and two-colour or rainbow blade trails: Hyperwave, Solar Flare, Spectrum (butterfly); Supernova Claw, Abyssal Bloom, Frost Reaper (karambit); Plasma Edge, Toxic Rush, Prism Storm (bayonet).',
+    '5 new kill finishers: Supernova, Prism Burst, Sakura Storm (shop) and Thunderstrike, Dragon Soul (Nova Case).',
+    'M9 Bayonet idle grip now matches its CS2 look: big fist right behind the guard with the back of the hand to you, the blade angled up to the left with its flat facing you and the saw teeth underneath.',
+    'More realistic weapons: reflective steel and scopes, brushed-metal barrels, stippled grips and a satin finish on bodies.',
+  ] },
   { v: '1.7.9', date: '2026-11-03', title: 'M9 rework, smoother guns, LMG ACOG', notes: [
     'M9 Bayonet animations rebuilt to match its CS2 look: angled forward-grip idle, a draw that flips the knife over in the palm from blade-down to blade-up, and a long inspect that shows one face, twists to the other face, and twists back.',
     'Every weapon model is less blocky: rounder bevelled edges with smooth shading, smoother barrels and rounder moulded receivers and stocks.',

@@ -114,7 +114,8 @@
           // SHOW2 the wrist twisted to show the other face, tilted to the left (spine on the right)
           const basis = (y, z) => { const Y = new THREE.Vector3(...y).normalize(), X = new THREE.Vector3().crossVectors(Y, new THREE.Vector3(...z)).normalize();
             return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, new THREE.Vector3().crossVectors(X, Y))); };
-          m.userData.qIdle = basis([-0.82, 0.48, -0.42], [0.1, 1, 0.25]);
+          m.userData.qIdle = basis([-0.86, 0.52, -0.2], [0.1, -1, -0.1]);       // saw teeth on the bottom edge, flat to the camera
+          m.userData.wristRoll = Math.PI; m.userData.gripY = -0.05; m.userData.armVec = new THREE.Vector3(0.22, -0.42, 0.42); m.userData.armVecUp = new THREE.Vector3(0.44, -0.55, 0.0);                // forearm comes up from below, toward you (back of the hand faces the camera)
           m.userData.qUp = basis([-0.06, 1, -0.12], [-1, 0, -0.1]);
           m.userData.qUp2 = basis([-0.4, 1, -0.1], [1, 0.1, 0.1]);
           m.quaternion.copy(m.userData.qIdle); m.scale.setScalar(1.08);
@@ -165,7 +166,7 @@
           geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
           const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
           mesh.frustumCulled = false; mesh.visible = false; this.scene.add(mesh);
-          this.bfTrail = { mesh, N, tips: [], mids: [], color: new THREE.Color(B.trail), on: 0, id: mel };
+          this.bfTrail = { mesh, N, tips: [], mids: [], color: new THREE.Color(B.trail < 0 ? 0xffffff : B.trail), color2: new THREE.Color(B.trail2 !== undefined ? B.trail2 : B.trail < 0 ? 0xffffff : B.trail), rainbow: B.trail < 0, on: 0, id: mel };
         } }
       // Wrist grapple launcher (child of the left hand: aims where the fingers point)
       const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d33 }), steel = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
@@ -269,7 +270,7 @@
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
-      if (w.id === 'bayonet') { hx = 0.17 * s; hy = -0.175; hz = -0.42; }
+      if (w.id === 'bayonet') { hx = -0.005 * s; hy = -0.115; hz = -0.33; }
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
@@ -528,6 +529,7 @@
         if (!bfly) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.035 * Math.sin(q * 1.1); orx += 0.025 * Math.sin(q * 0.8 + 1); ory += 0.03 * Math.sin(q * 0.6); }
       }
       if (w.id === 'bayonet' && !bay && this.inspectT <= 0) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.03 * Math.sin(q * 1.1); orx += 0.02 * Math.sin(q * 0.8 + 1); ory += 0.025 * Math.sin(q * 0.6); }
+      this._bUpNow = bUp;
       // melee blade trail: sample after the pose is applied (see end of update)
       this._trailFrame = this.bfTrail && this.bfTrail.id === w.id ? { model } : null;
       // Reloads
@@ -693,13 +695,17 @@
         // forearm (wrist straight, pointing back toward a relaxed elbow) instead of being bent to
         // match the knife's tilt
         const hc = this._bh1 || (this._bh1 = new THREE.Vector3()), ht = this._bh2 || (this._bh2 = new THREE.Vector3());
-        model.localToWorld(hc.set(0, -0.07, 0)); model.localToWorld(ht.set(0, -0.01, 0));
-        const X = (this._bhx || (this._bhx = new THREE.Vector3())).subVectors(ht, hc).normalize().multiplyScalar(BF_THUMB);
-        const Z = (this._bhz || (this._bhz = new THREE.Vector3())).set(BF_ARM.x * s, BF_ARM.y, BF_ARM.z);
+        model.localToWorld(hc.set(0, model.userData.gripY || -0.07, 0)); model.localToWorld(ht.set(0, -0.01, 0));
+        const X = (this._bhx || (this._bhx = new THREE.Vector3())).subVectors(ht, hc).normalize().multiplyScalar(model.userData.thumbSign || BF_THUMB);
+        let AV = model.userData.armVec || BF_ARM;
+        if (model.userData.armVecUp) AV = (this._avb || (this._avb = new THREE.Vector3())).copy(AV).lerp(model.userData.armVecUp, this._bUpNow || 0);
+        const Z = (this._bhz || (this._bhz = new THREE.Vector3())).set(AV.x * s, AV.y, AV.z);
         this._bfElbow = (this._bfElbow || new THREE.Vector3()).copy(hc).add(Z);
         Z.addScaledVector(X, -Z.dot(X)).normalize();
         const Y = (this._bhy || (this._bhy = new THREE.Vector3())).crossVectors(Z, X);
         H.quaternion.setFromRotationMatrix((this._bhm || (this._bhm = new THREE.Matrix4())).makeBasis(X, Y, Z));
+        // bayonet: the forearm rolls the fist over (back of the hand up) for the flat idle, back for upright poses
+        if (model.userData.wristRoll) H.quaternion.multiply((this._wrq || (this._wrq = new THREE.Quaternion())).setFromAxisAngle(this._zAx || (this._zAx = new THREE.Vector3(0, 0, 1)), model.userData.wristRoll * (1 - (this._bUpNow || 0))));
         H.position.copy(hc).sub(this._v2.set(0, -0.014, -0.029).multiplyScalar(1.3).applyQuaternion(H.quaternion));
       } else if (spin) {
         // Karambit: a backhand fist round the handle, index finger by the ring. The hand
@@ -920,7 +926,11 @@
       for (let i = 0; i < T.N; i++) {
         const a = T.tips[Math.min(i, n - 1)], b = T.mids[Math.min(i, n - 1)], f1 = Math.max(0, 1 - i / (T.N - 1)), k = f1 * f1 * T.on;
         pos.set([a.x, a.y, a.z, b.x, b.y, b.z], i * 6);
-        col.set([T.color.r * k * 0.75, T.color.g * k * 0.75, T.color.b * k * 0.75, 0, 0, 0], i * 6);
+        // head colour -> tail colour along the ribbon (or a rainbow that cycles over time)
+        const C = this._tc || (this._tc = new THREE.Color()), u = i / (T.N - 1);
+        if (T.rainbow) C.setHSL((performance.now() / 1400 + u * 0.8) % 1, 1, 0.6); else C.copy(T.color).lerp(T.color2, u);
+        const g2 = k * 0.85;
+        col.set([C.r * g2, C.g * g2, C.b * g2, C.r * g2 * 0.25, C.g * g2 * 0.25, C.b * g2 * 0.25], i * 6);
       }
       m.geometry.attributes.position.needsUpdate = true; m.geometry.attributes.color.needsUpdate = true;
       m.visible = T.on > 0.02 && n > 2;

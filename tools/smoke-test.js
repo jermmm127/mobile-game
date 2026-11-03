@@ -666,6 +666,28 @@ const server = http.createServer((req, res) => {
       g.input.ads = false; for (let i = 0; i < 20; i++) g.update(1 / 60); out.acog.off = !s3.classList.contains('on');
       const rb = BR.roundedBox(0.1, 0.05, 0.2), nn = rb.attributes.normal; let diag = 0; for (let i = 0; i < nn.count; i++) { const ax = Math.max(Math.abs(nn.getX(i)), Math.abs(nn.getY(i)), Math.abs(nn.getZ(i))); if (ax < 0.95) diag++; }
       out.smooth = diag; }
+    // v1.8.0: vibrant knife blueprints (auras + gradient/rainbow trails), new finishers, realistic materials, bayonet grip
+    { const VB = [['butterfly', 'hyperwave'], ['butterfly', 'solarflare'], ['butterfly', 'spectrum'], ['knife', 'supernovaclaw'], ['knife', 'abyssalbloom'], ['knife', 'frostreaper'], ['bayonet', 'plasmaedge'], ['bayonet', 'toxicrush'], ['bayonet', 'prismstorm']];
+      let auraOk = 0; for (const [w, id] of VB) { const B = BR.Models.BLUEPRINTS[w][id]; const m = BR.Models.weapon(w, 'default', 'none', id); BR.Models.animate(m, 1.2);
+        let add = 0, spr = 0; m.traverse(o => { if (o.isSprite) spr++; else if (o.material && o.material.blending === THREE.AdditiveBlending) add++; }); if (B && B.trail && add >= 3 && spr >= 10) auraOk++; }
+      const trails = {};
+      for (const [w, id] of [['bayonet', 'plasmaedge'], ['knife', 'supernovaclaw'], ['butterfly', 'spectrum']]) {
+        g.startMatch({ practice: true }); P.data.equip.melee = w; P.data.equip.blueprints = Object.assign({}, P.data.equip.blueprints, { [w]: id }); g.refreshCosmetics();
+        const pp = g.player; pp.mover.dropping = false; pp.cur = 2; g.vmr.lastWeapon = null; let seen = false;
+        for (let i = 0; i < 70; i++) { g.vmr.update(1 / 60, 0, 0); if (g.vmr.bfTrail && g.vmr.bfTrail.mesh.visible) seen = true; }
+        const T = g.vmr.bfTrail; trails[id] = { built: !!T, seen, grad: !!T && (T.rainbow || !T.color.equals(T.color2)) };
+        P.data.equip.blueprints[w] = null; }
+      P.data.equip.melee = 'knife'; g.refreshCosmetics();
+      // finishers: each plays, then cleans itself up
+      g.startMatch({ practice: true }); const fx = g.fx, base = (fx.fins || []).length, fins = {};
+      for (const f of ['supernova', 'prismburst', 'thunderstrike', 'sakura', 'dragonsoul']) { const dummy = { mesh: new THREE.Group(), pos: g.player.pos.clone() }; g.scene.add(dummy.mesh);
+        fx.finisher(f, dummy.pos.clone(), dummy); const peak = fx.fins.length; fins[f] = { peak: peak - base }; }
+      await new Promise(r => setTimeout(r, 1300));
+      for (let i = 0; i < 60 * 3; i++) fx.update(1 / 60);
+      const left = fx.fins.length - base;
+      const M = BR.Models.weapon('rifle', 'default', 'none'); let env = 0, bump = 0; M.traverse(o => { if (o.material && o.material.envMap) env++; if (o.material && o.material.bumpMap) bump++; });
+      const bm = g.vmr.models.bayonet.userData.model.userData;
+      out.v180 = { auraOk, trails, fins, left, env, bump, grip: !!(bm.armVec && bm.armVecUp && bm.wristRoll && bm.gripY), shop: ['sakura', 'prismburst', 'supernova'].every(k => BR.FINISHERS[k] && BR.FINISHERS[k].price), nova: ['thunderstrike', 'dragonsoul'].every(k => BR.FINISHERS[k].caseOnly && BR.FINISHERS[k].case === 'nova') }; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -795,6 +817,9 @@ const server = http.createServer((req, res) => {
     ['K/D ratio: deaths tracked, kills / deaths', v17.kd === 3 && v17.kdDeath],
     ['DMR prism optic: own overlay, zooms, hides the gun, turns off', v17.dmr.optic && !v17.dmr.sniperScope && v17.dmr.zoomed && v17.dmr.gunHidden && v17.dmr.off],
     ['karambit spins on a straight finger through the ring', v17.ringFinger],
+    ['vibrant knife blueprints: 9 with glow auras + sparkles and colour trails', v17.v180.auraOk === 9 && Object.values(v17.v180.trails).every(t => t.built && t.seen && t.grad)],
+    ['new finishers (Supernova, Prism Burst, Thunderstrike, Sakura, Dragon Soul) play and clean up', Object.values(v17.v180.fins).every(f => f.peak > 3) && v17.v180.left === 0 && v17.v180.shop && v17.v180.nova],
+    ['weapons use reflective, detailed materials; bayonet CS-style grip', v17.v180.env > 10 && v17.v180.bump > 0 && v17.v180.grip],
     ['LMG ACOG: round eyepiece on aim, zooms, hides the gun, turns off', v17.acog.on && v17.acog.prismOff && v17.acog.sniperOff && v17.acog.zoomed && v17.acog.gunHidden && v17.acog.off && v17.acog.model],
     ['weapon boxes have smooth rounded bevels (curved edge normals)', v17.smooth > 50],
     ['two-floor buildings: nothing covers the stair hole', v17.v178.buildings2 > 0 && v17.v178.covered === 0],

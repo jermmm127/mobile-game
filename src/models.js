@@ -337,15 +337,35 @@ BR.Models = (function () {
         m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: 0.85, specular: 0x888888, shininess: 60 }); break;
       case 'liquidgold': m = new THREE.MeshPhongMaterial({ map: TEX.liquidgold(), specular: 0xfff4c0, shininess: 180, emissive: 0x4a3000, emissiveMap: TEX.liquidgold(), emissiveIntensity: 0.4 }); break;
       case 'prism': m = new THREE.MeshPhongMaterial({ map: TEX.prism(), emissive: 0xffffff, emissiveMap: TEX.prism(), emissiveIntensity: 0.35, specular: 0xffffff, shininess: 150 }); break;
-      default: m = new THREE.MeshLambertMaterial({ color: base });
+      default: m = new THREE.MeshPhongMaterial({ color: base, specular: 0x30353c, shininess: 22, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.04 });
     }
     return (cache.mat[key] = m);
   }
+  // ---- realism: procedural surface detail (bump) + a small studio environment for reflections
+  const DETAIL = {
+    // fine speckled grain like a cerakote / parkerized finish
+    finish: () => { const t = canvasTex('d-finish', (c, s) => { const im = c.createImageData(s, s); for (let i = 0; i < s * s; i++) { const v = 128 + Math.random() * 26 + (Math.random() < 0.03 ? 30 : 0); im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; } c.putImageData(im, 0, 0); }, 128); t.repeat.set(1, 1); return t; },
+    // brushed metal: long streaks along one axis
+    brushed: () => { const t = canvasTex('d-brushed', (c, s) => { c.fillStyle = '#888'; c.fillRect(0, 0, s, s); for (let i = 0; i < 260; i++) { const y = Math.random() * s, l = 20 + Math.random() * 90; c.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${0.05 + Math.random() * 0.12})`; c.fillRect(Math.random() * s, y, l, 1); } }, 128); t.repeat.set(1, 1); return t; },
+    // stippled polymer grip texture
+    stipple: () => { const t = canvasTex('d-stipple', (c, s) => { c.fillStyle = '#808080'; c.fillRect(0, 0, s, s); for (let i = 0; i < 900; i++) { const r = 0.6 + Math.random() * 1.3; c.fillStyle = Math.random() < 0.5 ? '#b0b0b0' : '#4a4a4a'; c.beginPath(); c.arc(Math.random() * s, Math.random() * s, r, 0, 7); c.fill(); } }, 128); t.repeat.set(1.5, 1.5); return t; },
+  };
+  // studio environment: soft bright top, a hot horizon band (where reflections "catch"), dark floor
+  const envCube = () => cache.env || (cache.env = (() => {
+    const face = (top) => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+      if (top === 1) { const g = x.createRadialGradient(32, 32, 4, 32, 32, 46); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#9aa6b4'); x.fillStyle = g; }
+      else if (top === -1) { x.fillStyle = '#1c1e22'; }
+      else { const g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, '#a9b6c6'); g.addColorStop(0.42, '#e8eef6'); g.addColorStop(0.5, '#ffffff'); g.addColorStop(0.56, '#5a5e64'); g.addColorStop(1, '#202226'); x.fillStyle = g; }
+      x.fillRect(0, 0, 64, 64);
+      if (top === 0) { x.fillStyle = 'rgba(255,255,255,0.75)'; x.fillRect(18, 10, 14, 18); }      // a softbox highlight
+      return c; };
+    const t = new THREE.CubeTexture([face(0), face(0), face(1), face(-1), face(0), face(0)]); t.needsUpdate = true; return t; })());
+  BR.weaponEnv = envCube;
   const MAT = () => cache.common || (cache.common = {
-    dark: new THREE.MeshLambertMaterial({ color: 0x24282e }),
-    metal: new THREE.MeshPhongMaterial({ color: 0x5b636d, specular: 0x9aa3ad, shininess: 50 }),
-    grip: new THREE.MeshLambertMaterial({ color: 0x1a1c1f }),
-    blade: new THREE.MeshPhongMaterial({ color: 0xc8d0d8, specular: 0xffffff, shininess: 120, side: THREE.DoubleSide }),
+    dark: new THREE.MeshPhongMaterial({ color: 0x272b31, specular: 0x3a4048, shininess: 28, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.05 }),
+    metal: new THREE.MeshPhongMaterial({ color: 0x5f6771, specular: 0xb8c0ca, shininess: 75, bumpMap: DETAIL.brushed(), bumpScale: 0.006, specularMap: DETAIL.brushed(), envMap: envCube(), reflectivity: 0.28 }),
+    grip: new THREE.MeshPhongMaterial({ color: 0x1b1d20, specular: 0x262a2e, shininess: 10, bumpMap: DETAIL.stipple(), bumpScale: 0.01 }),
+    blade: new THREE.MeshPhongMaterial({ color: 0xc8d0d8, specular: 0xffffff, shininess: 120, side: THREE.DoubleSide, envMap: envCube(), reflectivity: 0.4 }),
     lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false }),
     lensDark: new THREE.MeshPhongMaterial({ color: 0x102030, specular: 0x88ccff, shininess: 120 }),
     reticle: new THREE.MeshBasicMaterial({ color: 0xff2236 }),
@@ -357,10 +377,10 @@ BR.Models = (function () {
       g.addColorStop(0, 'rgba(255,220,200,0.03)'); g.addColorStop(0.6, 'rgba(150,170,255,0.10)'); g.addColorStop(0.9, 'rgba(120,90,255,0.32)'); g.addColorStop(1, 'rgba(40,40,80,0.7)');
       c.clearRect(0, 0, s, s); c.fillStyle = g; c.fillRect(0, 0, s, s); }, 64) }),
     dotHalo2: new THREE.MeshBasicMaterial({ color: 0xff2236, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false }),
-    scopeTube: new THREE.MeshPhongMaterial({ color: 0x1d2025, specular: 0x555a60, shininess: 40, side: THREE.DoubleSide }),
+    scopeTube: new THREE.MeshPhongMaterial({ color: 0x1d2025, specular: 0x555a60, shininess: 40, side: THREE.DoubleSide, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.12 }),
     sightDot: new THREE.MeshBasicMaterial({ color: 0xff8a1f }),
     shell: new THREE.MeshLambertMaterial({ color: 0xc8202a }),
-    brass: new THREE.MeshPhongMaterial({ color: 0xc89b3c, specular: 0xffe2a0, shininess: 60 }),
+    brass: new THREE.MeshPhongMaterial({ color: 0xc89b3c, specular: 0xffe2a0, shininess: 80, envMap: envCube(), reflectivity: 0.35 }),
     flash: new THREE.MeshBasicMaterial({ color: 0xffd27a }),
   });
 
@@ -1025,7 +1045,7 @@ BR.Models = (function () {
         const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: size === undefined ? bevel : size, bevelSegments: 2, curveSegments: 24 });
         geo.translate(0, 0, -depth / 2); return geo;
       };
-      bladeG.add(new THREE.Mesh(extS(bl, 0.003, 0.0012), bladeMat));
+      const bladeMesh = new THREE.Mesh(extS(bl, 0.003, 0.0012), bladeMat); bladeG.add(bladeMesh); g.userData.bladeMesh = bladeMesh;
       // Bright edge grind following the cutting edge
       const bev = new THREE.Shape();
       bev.moveTo(0.02, -0.0085);
@@ -1071,6 +1091,7 @@ BR.Models = (function () {
       k.rotation.y = Math.PI / 2;      // +x -> -z
       g.add(k);
       g.userData.blade = k;
+      g.userData.trailTip = new THREE.Vector3(0, -0.1, -0.1775); g.userData.trailMid = new THREE.Vector3(0, -0.015, -0.1);   // hook tip / mid-blade (model space)
       hands(g, [0, 0.02, 0.05], null, null);
       anchors(g, -0.15, 0, [0, -0.02, 0.12]);
       g.userData.flash.visible = false;
@@ -1313,7 +1334,7 @@ BR.Models = (function () {
   // equipped, replaces the body material; blueprint accents and glow stay.
   const glowMat = c => cache.mat['glow' + c] || (cache.mat['glow' + c] = new THREE.MeshBasicMaterial({ color: c }));
   const bpMat = (c, gloss) => cache.mat['bp' + c + gloss] || (cache.mat['bp' + c + gloss] = gloss
-    ? new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: gloss === 2 ? 120 : 60 })
+    ? new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: gloss === 2 ? 120 : 60, envMap: BR.weaponEnv(), reflectivity: gloss === 2 ? 0.22 : 0.1 })
     : new THREE.MeshLambertMaterial({ color: c }));
   const bladeTex = (key, draw) => canvasTex('blade-' + key, draw, 128);
   const BLADES = {
@@ -1979,6 +2000,48 @@ BR.Models = (function () {
   S2BP.butterfly = { nightshade: { name: 'Nightshade', rarity: 'Mythic', price: 2800, body: 0x120a1e, bodyGloss: 2, accent: 0xb04bff, glow: 0xb04bff, blade: 'nightshade', trail: 0xb04bff, mod: nightshadeAura, season: 2 },
     biohazard: { name: 'Biohazard', rarity: 'Mythic', caseOnly: true, case: 'nova', body: 0x041a06, bodyGloss: 2, accent: 0x7dff3a, glow: 0x7dff3a, blade: 'acidblade', season: 2 },
     riftwing: { name: 'Riftwing', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0x07020f, bodyGloss: 2, accent: 0xff3df2, glow: 0xff3df2, blade: 'riftblade', season: 2 } };
+  // ---- Vibrant knife auras (v1.8.0): glowing shells hugging the blade that pulse and shift between two
+  // colours (or the whole rainbow), a soft halo, and sparkles orbiting / drifting off the blade.
+  const vibrantAura = (cA, cB, rainbow) => (g) => {
+    const blade = g.userData.bladeMesh || g.userData.blade; if (!blade || !blade.geometry) return;
+    g.updateMatrixWorld(true);
+    const par = blade.parent, A = new THREE.Color(cA), Bc = new THREE.Color(cB), tmp = new THREE.Color();
+    const shells = [[1.14, 0.6], [1.32, 0.3], [1.6, 0.14]].map(([sc, op]) => {
+      const m = new THREE.Mesh(blade.geometry, new THREE.MeshBasicMaterial({ color: cA, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide }));
+      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.copy(blade.scale).multiply(new THREE.Vector3(sc * 1.25, sc, sc * 3));
+      par.add(m); return { m, op }; });
+    const sp = () => new THREE.SpriteMaterial({ map: BR.Effects ? BR.Effects.tex().dot : null, color: cA, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+    const box = new THREE.Box3().setFromObject(blade), ctr = blade.parent.worldToLocal(box.getCenter(new THREE.Vector3())), size = box.getSize(new THREE.Vector3()), len = Math.max(size.x, size.y, size.z);
+    const halo = new THREE.Sprite(sp()); halo.position.copy(ctr); halo.scale.setScalar(len * 1.4); par.add(halo);
+    const motes = []; for (let i = 0; i < 14; i++) { const s = new THREE.Sprite(sp()); par.add(s); motes.push({ s, o: Math.random(), a: Math.random() * 6.28 }); }
+    anim(g, t => {
+      const k = 0.5 + 0.5 * Math.sin(t * 3);
+      if (rainbow) tmp.setHSL((t * 0.35) % 1, 1, 0.6); else tmp.copy(A).lerp(Bc, k);
+      shells.forEach(({ m, op }, i) => { m.material.color.copy(tmp); if (rainbow) m.material.color.setHSL((t * 0.35 + i * 0.12) % 1, 1, 0.6); m.material.opacity = op * (0.7 + 0.45 * Math.sin(t * 4 + i * 1.3)); });
+      halo.material.color.copy(tmp); halo.material.opacity = 0.35 + 0.2 * k;
+      motes.forEach(({ s, o, a }, i) => { const f = (t * 0.55 + o) % 1, ang = a + t * 2.5;
+        s.position.set(ctr.x + Math.cos(ang) * len * 0.22, ctr.y + (f - 0.5) * len * 1.1, ctr.z + Math.sin(ang) * len * 0.22);
+        s.scale.setScalar(len * 0.09 * (1 - f * 0.6)); s.material.opacity = 1 - f;
+        if (rainbow) s.material.color.setHSL((t * 0.4 + i / 14) % 1, 1, 0.65); else s.material.color.copy(i % 2 ? A : Bc); });
+    });
+  };
+  const KNIFE_VIBRANT = {
+    butterfly: {
+      hyperwave: { name: 'Hyperwave', rarity: 'Mythic', price: 3000, body: 0x14061e, bodyGloss: 2, accent: 0xff2fa8, glow: 0x1de9ff, blade: 'hyperblade', trail: 0xff2fa8, trail2: 0x1de9ff, mod: vibrantAura(0xff2fa8, 0x1de9ff) },
+      solarflare: { name: 'Solar Flare', rarity: 'Mythic', caseOnly: true, case: 'nova', body: 0x2a0e02, bodyGloss: 2, accent: 0xff7a00, glow: 0xffd24a, blade: 'molten', trail: 0xffd24a, trail2: 0xff3a00, mod: vibrantAura(0xff7a00, 0xffe14d) },
+      spectrum: { name: 'Spectrum', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0xf4f4ff, bodyGloss: 2, accent: 0xffffff, glow: 0xffffff, blade: 'prismblade', trail: -1, mod: vibrantAura(0xff3df2, 0x1de9ff, true) },
+    },
+    knife: {
+      supernovaclaw: { name: 'Supernova Claw', rarity: 'Mythic', price: 3000, body: 0x2a1a02, bodyGloss: 2, accent: 0xffc93a, glow: 0xfff0b0, blade: 'goldrush', trail: 0xfff3b0, trail2: 0xffb000, mod: vibrantAura(0xffd24a, 0xffffff) },
+      abyssalbloom: { name: 'Abyssal Bloom', rarity: 'Mythic', caseOnly: true, body: 0x12041e, bodyGloss: 2, accent: 0xff3df2, glow: 0xb04bff, blade: 'nebula', trail: 0xff3df2, trail2: 0x7b2cff, mod: vibrantAura(0xff3df2, 0x7b2cff) },
+      frostreaper: { name: 'Frost Reaper', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0xdff4ff, bodyGloss: 2, accent: 0x6fc8ff, glow: 0xdff8ff, blade: 'glacier', trail: 0xffffff, trail2: 0x1de9ff, mod: vibrantAura(0x6fe8ff, 0xffffff) },
+    },
+    bayonet: {
+      plasmaedge: { name: 'Plasma Edge', rarity: 'Mythic', price: 3000, body: 0x060a1e, bodyGloss: 2, accent: 0x1de9ff, glow: 0xff3df2, blade: 'storm', trail: 0x1de9ff, trail2: 0xff3df2, mod: vibrantAura(0x1de9ff, 0xff3df2) },
+      toxicrush: { name: 'Toxic Rush', rarity: 'Mythic', caseOnly: true, body: 0x061a04, bodyGloss: 2, accent: 0x7dff3a, glow: 0xe8ff3a, blade: 'acidblade', trail: 0xe8ff3a, trail2: 0x1fdc3c, mod: vibrantAura(0x7dff3a, 0xe8ff3a) },
+      prismstorm: { name: 'Prism Storm', rarity: 'Exotic', caseOnly: true, case: 'nova', body: 0xf4f4ff, bodyGloss: 2, accent: 0xffffff, glow: 0xffffff, blade: 'prismblade', trail: -1, mod: vibrantAura(0xff3df2, 0x1de9ff, true) },
+    },
+  };
   // ---- M9-style bayonet blueprints (shop, Release Case, Nova Case). Blades are animated where it
   // counts; `trail` adds the glowing blade trail in first person (same as Nightshade).
   BLADES.tideblade = animBlade('tidewater', 0.7);
@@ -2023,6 +2086,7 @@ BR.Models = (function () {
         anim(g, t => { disk.rotation.z = t * 2.5; disk.material.opacity = 0.55 + 0.3 * Math.sin(t * 4); }); } },
   };
   S2BP.bayonet = BAYBP;
+  for (const w in KNIFE_VIBRANT) S2BP[w] = Object.assign(S2BP[w] || {}, KNIFE_VIBRANT[w]);
   for (const w in S2BP) MYTHIC[w] = Object.assign(MYTHIC[w] || {}, S2BP[w]);
   for (const w in MYTHIC) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, MYTHIC[w]);
   // Signature tracers: every Legendary / Mythic blueprint fires its own tracer (used when that

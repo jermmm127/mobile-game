@@ -85,6 +85,12 @@ BR.FINISHERS = {
   voidpop:   { name: 'Void Pop', price: 1600, rarity: 'Mythic', c1: '#b04bff', c2: '#050008' },
   glitchout: { name: 'Glitch Out', caseOnly: true, case: 'nova', rarity: 'Mythic', c1: '#ff2244', c2: '#2266ff' },
   starfall:  { name: 'Starfall', caseOnly: true, case: 'nova', rarity: 'Exotic', c1: '#ffd24a', c2: '#ff5a00' },
+  // v1.8.0
+  sakura:        { name: 'Sakura Storm', price: 1400, rarity: 'Legendary', c1: '#ff8ac8', c2: '#ffe6f2' },
+  prismburst:    { name: 'Prism Burst', price: 2000, rarity: 'Mythic', c1: '#39ff88', c2: '#ff3df2' },
+  supernova:     { name: 'Supernova', price: 2400, rarity: 'Mythic', c1: '#ffd24a', c2: '#ffffff' },
+  thunderstrike: { name: 'Thunderstrike', caseOnly: true, case: 'nova', rarity: 'Legendary', c1: '#6fc8ff', c2: '#ffffff' },
+  dragonsoul:    { name: 'Dragon Soul', caseOnly: true, case: 'nova', rarity: 'Exotic', c1: '#ff7a00', c2: '#ffe14d' },
 };
 // ---- Cases: exclusive items you can only get by opening one. Rarer = flashier.
 BR.CASES = {

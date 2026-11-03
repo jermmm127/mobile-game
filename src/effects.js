@@ -325,6 +325,68 @@ BR.Effects = class Effects {
       const cols = [0xff2244, 0x22ff66, 0x2266ff];
       const cubes = []; for (let i = 0; i < 18; i++) { const m = add(new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), mat(cols[i % 3], 0.9)), 1.0, (t, mm) => { const f = Math.floor(t * 18 + i); mm.visible = (f % 3) !== 0; mm.position.x += (Math.random() - 0.5) * 0.08; mm.position.y += t * 0.04; mm.material.opacity = 0.9 * (1 - t); }); m.position.set(c.x + (Math.random() - 0.5) * 0.7, c.y + Math.random() * 1.8, c.z + (Math.random() - 0.5) * 0.7); cubes.push(m); }
       fins.push({ mesh: null, life: 0.5, t: 0, upd: (t) => { if (victim && victim.mesh) { victim.mesh.visible = Math.floor(t * 30) % 2 === 0 && t < 0.45; victim.mesh.position.x += (Math.random() - 0.5) * 0.06; } } });
+    } else if (style === 'supernova') {
+      // collapse into a blazing core, then a blinding flash: light rays, shockwave sphere, ground rings, sparks
+      const T = BR.Effects.tex(), mid = c.clone().setY(c.y + 1);
+      fins.push({ mesh: null, life: 0.4, t: 0, upd: (t, m, d) => { if (victim && victim.mesh) { victim.mesh.scale.setScalar(Math.max(0.05, 1 - t * 2.2)); if (d) victim.mesh.visible = false; } } });
+      const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xfff0b0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+      core.position.copy(mid); add(core, 0.45, (t, m) => { m.scale.setScalar(0.4 + t * 3 + Math.sin(t * 60) * 0.2); });
+      setTimeout(() => {
+        const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        fl.position.copy(mid); add(fl, 0.5, (t, m) => { m.scale.setScalar(4 + t * 30); m.material.opacity = Math.pow(1 - t / 0.5, 2); });
+        const sph = add(new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), mat(0xffd24a, 0.6)), 0.7, (t, m) => { m.scale.setScalar(0.5 + t * 11); m.material.opacity = 0.6 * (1 - t / 0.7); }); sph.position.copy(mid);
+        for (let i = 0; i < 3; i++) { const r = add(new THREE.Mesh(new THREE.RingGeometry(0.5, 0.7, 64), mat(i ? 0xffffff : 0xffb000, 1)), 0.9, (t, m) => { const k = Math.max(0, t - i * 0.08); m.scale.setScalar(1 + k * (18 - i * 4)); m.material.opacity = Math.max(0, 1 - k / 0.8); }); r.position.copy(c).setY(c.y + 0.06 + i * 0.03); r.rotation.x = -Math.PI / 2; }
+        for (let i = 0; i < 12; i++) { const ray = add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.12, 1, 6, 1, true).translate(0, 0.5, 0), mat(i % 2 ? 0xffffff : 0xffd24a, 0.9)), 0.6, (t, m) => { m.scale.set(1, 1 + t * 26, 1); m.material.opacity = 0.9 * (1 - t / 0.6); });
+          ray.position.copy(mid); ray.rotation.set(Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28); }
+        this.burst(mid, [0xffd24a, 0xffffff, 0xff9a1f], 80, 16, 0.12, 1.1, 3);
+      }, 380);
+    } else if (style === 'prismburst') {
+      // rainbow orbs spiral up around the body, gather overhead and burst into rainbow rings
+      const T = BR.Effects.tex(), orbs = [];
+      hideBody(0.5);
+      fins.push({ mesh: null, life: 0.5, t: 0, upd: (t) => { if (victim && victim.mesh) victim.mesh.scale.y = Math.max(0.05, 1 - t * 1.8); } });
+      for (let i = 0; i < 24; i++) { const o = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: new THREE.Color().setHSL(i / 24, 1, 0.6), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        o.position.copy(c); add(o, 0.9, (t, m) => { const a = i / 24 * Math.PI * 2 + t * 9, r = 0.9 * (1 - Math.max(0, t - 0.55) / 0.35), h = 0.2 + (i / 24) * 1.4 + t * 2.4;
+          m.position.set(c.x + Math.cos(a) * r, c.y + Math.min(h, 3.2), c.z + Math.sin(a) * r); m.scale.setScalar(0.35 + 0.15 * Math.sin(t * 20 + i)); m.material.color.setHSL((i / 24 + t * 0.8) % 1, 1, 0.6); }); orbs.push(o); }
+      setTimeout(() => { const at = c.clone().setY(c.y + 3.2);
+        this.burst(at, [0xff3df2, 0x1de9ff, 0xffe14d, 0x39ff88, 0xff5a3a, 0xb48cff], 90, 13, 0.1, 1.3, 2);
+        for (let i = 0; i < 4; i++) { const rg = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.ring, color: new THREE.Color().setHSL(i / 4, 1, 0.6), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+          rg.position.copy(at); add(rg, 0.8, (t, m) => { const k = Math.max(0, t - i * 0.07); m.scale.setScalar(1 + k * (26 - i * 4)); m.material.opacity = Math.max(0, 1 - k / 0.7); }); } }, 880);
+    } else if (style === 'thunderstrike') {
+      // a lightning bolt from the sky (flickers 3x), white flash, scorch mark, electric shockwave and sparks
+      const T = BR.Effects.tex(), geo = BR.Effects.beamGeo().clone(), segs = [], N = 14;   // own copy: finisher cleanup disposes it
+      for (let i = 0; i < N; i++) { const b = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: T.soft, color: i % 3 ? 0xdff4ff : 0x6fc8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); segs.push(b); add(b, 0.75, () => {}); b.visible = false; }
+      const P = new THREE.Vector3(), Q = new THREE.Vector3(), D = new THREE.Vector3();
+      fins.push({ mesh: null, life: 0.75, t: 0, upd: (t) => { const on = t > 0.12 && (Math.floor(t * 22) % 3 !== 1) && t < 0.6;
+        P.set(c.x, c.y + 30, c.z);
+        for (let i = 0; i < N; i++) { const k = (i + 1) / N; Q.set(c.x + (i === N - 1 ? 0 : (Math.random() - 0.5) * 1.6 * (1 - k * 0.5)), c.y + 30 * (1 - k) + 0.6, c.z + (i === N - 1 ? 0 : (Math.random() - 0.5) * 1.6));
+          const L = P.distanceTo(Q); D.subVectors(Q, P).divideScalar(L); this.beam(segs[i], P, D, L, 0.5 + Math.random() * 0.3); segs[i].visible = on; P.copy(Q); } } });
+      setTimeout(() => { if (victim && victim.mesh) victim.mesh.visible = false;
+        const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xdff4ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); fl.position.copy(c).setY(c.y + 1); add(fl, 0.4, (t, m) => { m.scale.setScalar(6 + t * 20); m.material.opacity = 1 - t / 0.4; });
+        const sc2 = add(new THREE.Mesh(new THREE.CircleGeometry(1.4, 32), new THREE.MeshBasicMaterial({ color: 0x050505, transparent: true, opacity: 0.7, depthWrite: false })), 2.5, (t, m) => { m.material.opacity = 0.7 * (1 - t / 2.5); }); sc2.position.copy(c).setY(c.y + 0.04); sc2.rotation.x = -Math.PI / 2;
+        const sw = add(new THREE.Mesh(new THREE.RingGeometry(0.4, 0.6, 48), mat(0x6fc8ff, 1)), 0.6, (t, m) => { m.scale.setScalar(1 + t * 16); m.material.opacity = 1 - t / 0.6; }); sw.position.copy(c).setY(c.y + 0.07); sw.rotation.x = -Math.PI / 2;
+        this.burst(c.clone().setY(c.y + 0.6), [0xdff4ff, 0x6fc8ff, 0xffffff], 60, 12, 0.08, 0.8, 9); }, 150);
+    } else if (style === 'sakura') {
+      // a rising vortex of pink petals, the body dissolving into it, then a petal burst
+      const pm = c2 => new THREE.MeshBasicMaterial({ color: c2, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false });
+      const pg = new THREE.CircleGeometry(0.09, 5); pg.scale(1, 0.55, 1);
+      fins.push({ mesh: null, life: 0.9, t: 0, upd: (t, m, d) => { if (victim && victim.mesh) { victim.mesh.scale.setScalar(Math.max(0.05, 1 - t * 1.05)); victim.mesh.position.y += 0.01; if (d) victim.mesh.visible = false; } } });
+      for (let i = 0; i < 46; i++) { const col = [0xff8ac8, 0xffb3dd, 0xffe6f2, 0xff5fae][i % 4], p0 = Math.random() * 6.28, h0 = Math.random() * 0.6, sp = 4 + Math.random() * 3;
+        const pt = add(new THREE.Mesh(pg.clone(), pm(col)), 1.8, (t, m) => { const a = p0 + t * sp, r = 0.5 + t * 1.3, h = h0 + t * 2.2; m.position.set(c.x + Math.cos(a) * r, c.y + h, c.z + Math.sin(a) * r); m.rotation.set(t * 7 + i, t * 5, t * 3); m.material.opacity = 0.95 * Math.min(1, (1.8 - t) * 2); }); pt.position.copy(c); }
+      setTimeout(() => this.burst(c.clone().setY(c.y + 1.2), [0xff8ac8, 0xffe6f2, 0xffffff], 40, 6, 0.08, 1.2, 1), 650);
+    } else if (style === 'dragonsoul') {
+      // a fire serpent coils up around the body (glowing head + segmented tail shedding embers),
+      // rears up overhead and explodes; the body burns away in an ember column
+      const T = BR.Effects.tex(), N = 22;
+      fins.push({ mesh: null, life: 1.0, t: 0, upd: (t, m, d) => { if (victim && victim.mesh) { victim.mesh.scale.y = Math.max(0.05, 1 - t * 0.9); if (d) victim.mesh.visible = false; } if (Math.random() < 0.5) this.burst(c.clone().setY(c.y + Math.random() * 1.6), [0xff7a00, 0xffd24a], 1, 1.4, 0.06, 0.6, -2); } });
+      const path = (u, out) => { const a = u * Math.PI * 5, r = 1.0 - u * 0.4; return out.set(c.x + Math.cos(a) * r, c.y + u * 3.6, c.z + Math.sin(a) * r); };
+      for (let i = 0; i < N; i++) { const head = i === 0, s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: head ? 0xfff0b0 : new THREE.Color().setHSL(0.02 + 0.1 * (1 - i / N), 1, 0.55), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        s.position.copy(c); add(s, 1.25, (t, m) => { const u = Math.max(0, Math.min(1, t / 1.0 - i * 0.022)); path(u, m.position); m.scale.setScalar((head ? 0.9 : 0.62 * (1 - i / N * 0.7)) * (0.9 + 0.2 * Math.sin(t * 40 + i))); m.material.opacity = u > 0 ? (t > 1.05 ? Math.max(0, 1 - (t - 1.05) / 0.2) : 1) : 0;
+          if (head && Math.random() < 0.7) this.burst(m.position, [0xff7a00, 0xffd24a, 0xff3a00], 2, 1.6, 0.07, 0.5, -1); }); }
+      setTimeout(() => { const at = c.clone().setY(c.y + 3.6);
+        this.burst(at, [0xff7a00, 0xffd24a, 0xff3a00, 0xffffff], 90, 14, 0.12, 1.2, 4);
+        const r = add(new THREE.Mesh(new THREE.RingGeometry(0.5, 0.7, 48), mat(0xffb000, 1)), 0.7, (t, m) => { m.scale.setScalar(1 + t * 16); m.material.opacity = 1 - t / 0.7; m.lookAt(this.cam ? this.cam.position : m.position.clone().setZ(m.position.z + 1)); }); r.position.copy(at);
+        const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: 0xffd24a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); fl.position.copy(at); add(fl, 0.45, (t, m) => { m.scale.setScalar(3 + t * 18); m.material.opacity = 1 - t / 0.45; }); }, 1000);
     } else if (style === 'starfall') {
       const met = add(new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10), mat(0xffd24a)), 0.5, (t, m) => { m.position.set(c.x + 14 * (1 - t / 0.5), c.y + 1 + 26 * (1 - t / 0.5), c.z); if (Math.random() < 0.9) this.burst(m.position, [0xffb547, 0xff5a00, 0xffffff], 3, 1.2, 0.09, 0.5, 0); });
       met.position.copy(c);
