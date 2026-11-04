@@ -38,7 +38,7 @@
       this.P = Object.assign({}, BR.ARENA_PRESETS[c.preset || 'duel']); this.preset = c.preset || 'duel';
       this.size = c.size || this.P.sizes[0]; this.diffId = c.diff || 'normal';
       this.net = c.net || null; this.host = !this.net || this.net.isHost; this.me = this.net ? this.net.pid : 'H';
-      this.rosterIn = c.roster || null;
+      this.rosterIn = c.roster || null; this.ranked = !!c.ranked; this.mapId = c.map || 'yard';
       this.byId = new Map(); this.stats = {}; this.phase = 'countdown'; this.t = 3; this.round = 0; this.score = [0, 0]; this.time = 0;
       this.respawnQ = []; this.fxQ = []; this.sendT = 0; this.matchT = 0; this.ended = false;
     }
@@ -46,7 +46,7 @@
     // ------------------------------------------------------------------ setup
     start() {
       const g = this.g, W = g.world;
-      g.diff = BR.CONFIG.difficulty[this.diffId] || BR.CONFIG.difficulty.normal;
+      g.diff = BR.CONFIG.difficulty[this.diffId] || BR.CONFIG.difficulty.normal; g.ranked = this.ranked;
       g.zone.mesh.visible = false;
       // roster: [{ id, pid (owner), name, team, bot }]
       let roster = this.rosterIn;
@@ -81,6 +81,7 @@
       if (this.host) this.beginRound(); else this.waitT = 0;
     }
     get duel() { return this.P.kind === 'duel'; }
+    get picksLoadout() { return this.P.guns === 'duel'; }        // Duels 1v1/2v2: pick your guns before every round
     get teams() { return this.P.kind !== 'ffa'; }
     gunsFor(a) {
       const set = this.P.guns;
@@ -111,10 +112,11 @@
     }
     freeSpot(a) {
       let best = null, bd = -1;
-      for (const [x, z] of SPOTS) {
-        let md = 1e9; for (const o of this.g.actors) if (o !== a && o.alive && o.team !== a.team) md = Math.min(md, Math.hypot(o.pos.x - x * K, o.pos.z - z * K));
+      const spots = this.g.world.ffaSpots || SPOTS.map(([x, z]) => [x * K, z * K]);      // v1.15: each map has its own
+      for (const [x, z] of spots) {
+        let md = 1e9; for (const o of this.g.actors) if (o !== a && o.alive && o.team !== a.team) md = Math.min(md, Math.hypot(o.pos.x - x, o.pos.z - z));
         md += Math.random() * 6;
-        if (md > bd) { bd = md; best = [x * K, z * K]; }
+        if (md > bd) { bd = md; best = [x, z]; }
       }
       const s = this.safe(best[0], best[1]);
       return Object.assign(s, { yaw: Math.atan2(s.x, s.z) });
@@ -131,7 +133,7 @@
         a.mesh = a.buildMesh(); g.scene.add(a.mesh); g.highlightActor(a);
         if (a.brain) { a.brain.target = null; a.brain.landedT = 99; }
       }
-      if (a.local) { this.arm(a); this.placeAt(a, s); }
+      if (a.local) { this.arm(a); this.placeAt(a, s); a.spawnLock = { x: a.mover.pos.x, y: a.mover.pos.y, z: a.mover.pos.z }; }
       if (a.netProxy) { a.netProxy.seen = false; a.mover.pos.set(s.x, 0, s.z); }
     }
 
@@ -151,7 +153,7 @@
     applyRound(m) {
       this.round = m.round;
       for (const [id, x, z, yaw] of m.spawns) { const a = this.byId.get(id); if (a) this.revive(a, { x, z, yaw }); }
-      this.phase = 'countdown'; this.t = 3; this.lastN = 0; this.frozen = true;
+      this.phase = 'countdown'; this.t = this.picksLoadout && m.round === 1 ? 6 : 3; this.lastN = 0; this.frozen = true;
       const title = this.duel ? 'ROUND ' + this.round : this.P.title;
       const sub = this.duel ? (this.teams ? `${TEAM_NAME[0]} ${this.score[0]} – ${this.score[1]} ${TEAM_NAME[1]}` : '') : this.P.kind === 'tdm' ? `First team to ${this.P.target} kills` : `First to ${this.P.target} kills`;
       this.g.hud.duelBanner(title, sub, 'info');
@@ -174,7 +176,7 @@
         let w = null;
         if (!alive[0] && !alive[1]) w = -1; else if (!alive[0]) w = 1; else if (!alive[1]) w = 0;
         else if (this.t <= 0) { const hp = [0, 1].map(t => this.g.actors.filter(a => a.alive && a.team === t).reduce((s, a) => s + a.health + a.shield, 0)); w = hp[0] > hp[1] + 0.5 ? 0 : hp[1] > hp[0] + 0.5 ? 1 : -1; }
-        if (w !== null) { if (w >= 0) this.score[w]++; this.phase = 'roundEnd'; this.t = 2.6; this.lastWinner = w; this.pushMatch(true); }
+        if (w !== null) { if (w >= 0) this.score[w]++; this.phase = 'roundEnd'; this.t = this.picksLoadout && Math.max(...this.score) < P.target ? 7 : 2.6; this.lastWinner = w; this.pushMatch(true); }
       } else if (this.phase === 'fight') {
         const best = P.kind === 'tdm' ? Math.max(...this.score) : Math.max(...Object.values(this.stats).map(s => s.kills));
         if (best >= P.target || this.t <= 0) this.finish();
@@ -225,7 +227,12 @@
         else if (this.phase === 'fight') this.t -= dt;
       }
       // hold everyone at their spawn during the countdown
-      if (this.frozen) for (const a of g.actors) if (a.local !== false && a.alive && (a.isPlayer || a.brain)) { a.mover.vel.set(0, 0, 0); a.fireHeld = false; }
+      if (this.frozen) for (const a of g.actors) if (a.local !== false && a.alive && (a.isPlayer || a.brain)) {
+        const m = a.mover; m.vel.set(0, 0, 0); a.fireHeld = false; a.lunge = null;
+        if (m.grapple) m.releaseGrapple();
+        if (a.spawnLock) { m.pos.x = a.spawnLock.x; m.pos.z = a.spawnLock.z; if (m.pos.y > a.spawnLock.y) m.pos.y = a.spawnLock.y; }
+      }
+      this.loadoutPicker();
       // your own respawn countdown (TDM / FFA)
       const p = g.player;
       if (!p.alive && !this.duel) { this.deadT = (this.deadT || 0) + dt; g.hud.resurgence && g.hud.resurgence(false, Math.max(0, 3 - this.deadT)); } else if (this.deadT) { this.deadT = 0; g.hud.resurgence && g.hud.resurgence(false, null); }
@@ -295,7 +302,7 @@
       const win = m.winTeam === myT;
       const rank = Object.values(st).sort((a, b) => b.kills - a.kills).findIndex(s => s === st[g.player.rosterId]) + 1;
       g.result = { arena: true, preset: this.preset, title: this.P.title + (this.duel ? ` ${this.size}V${this.size}` : ''), win, draw: m.winTeam === -1, kills: me.kills, deaths: me.deaths, damage: g.player.damageDealt, time: this.time,
-        score: m.score, ffa: this.P.kind === 'ffa', rank, total: Object.keys(st).length, online: !!this.net, place: win ? 1 : 2,
+        score: m.score, ffa: this.P.kind === 'ffa', ranked: this.ranked, map: this.mapId, rank, total: Object.keys(st).length, online: !!this.net, place: win ? 1 : 2,
         by: this.P.kind === 'ffa' ? `#${rank} of ${Object.keys(st).length} · ${me.kills} kills` : `${TEAM_NAME[0]} ${m.score[0]} – ${m.score[1]} ${TEAM_NAME[1]}` };
       g.state = 'dead'; g.endT = 2.4;
       g.hud.duelBanner(m.winTeam === -1 ? 'DRAW' : win ? 'VICTORY' : 'DEFEAT', g.result.by, win ? 'win' : m.winTeam === -1 ? 'info' : 'lose');
@@ -319,6 +326,31 @@
       }
       if (html !== this._hud) { this._hud = html; $('ar-score').innerHTML = html; }
     }
+    // ---- v1.15 per-round loadout picker (Duels): open between rounds and before round 1
+    loadoutPicker() {
+      const g = this.g, want = this.picksLoadout && !this.ended && (this.phase === 'roundEnd' || this.phase === 'countdown');
+      let el = $('ar-lo');
+      if (!want) { if (el && !el.classList.contains('hidden')) el.classList.add('hidden'); return; }
+      if (!el) {
+        el = document.createElement('div'); el.id = 'ar-lo'; el.className = 'ar-lo';
+        el.addEventListener('mousedown', e => e.stopPropagation()); el.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+        el.addEventListener('click', e => {
+          const b = e.target.closest('[data-slot]'); if (!b) return;
+          const gg = BR.game, D = gg.settings.duel = gg.settings.duel || {}; const L = (D.loadout || ['rifle', 'shotgun']).slice();
+          L[+b.dataset.slot] = b.dataset.g; D.loadout = L; if (BR.saveSettings) BR.saveSettings();
+          const M = BR.game.mode; if (!M || !M.arena) return;           // (the element outlives a match: always act on the current one)
+          BR.Audio.pickup(); M._loHtml = null;
+          const p = BR.game.player; if (M.phase === 'countdown' && p.alive) { const cur = p.cur; M.arm(p); p.cur = Math.min(cur, 1); if (!p.slots[p.cur]) p.cur = 2; }   // re-arm right away before the fight
+        });
+        $('play').appendChild(el);
+      }
+      if (el.classList.contains('hidden')) { el.classList.remove('hidden'); this._loHtml = null; if (this.phase === 'roundEnd') g.input.unlock(); }
+      const L = (g.settings.duel || {}).loadout || ['rifle', 'shotgun'], P1 = ['rifle', 'holoar', 'smg', 'lmg', 'dmr', 'shotgun', 'hunter', 'sniper'], P2 = ['pistol', 'revolver', 'smg', 'shotgun'];
+      const W = BR.CONFIG.weapons, pic = BR.WeaponIcons && BR.WeaponIcons.pic || {};
+      const row = (ids, slot) => ids.map(id => `<button class="${L[slot] === id ? 'sel' : ''}" data-slot="${slot}" data-g="${id}">${pic[id] ? `<img src="${pic[id]}" alt="">` : ''}<span>${W[id].name}</span></button>`).join('');
+      const html = `<div class="ar-lo-h"><b>CHOOSE YOUR LOADOUT</b><span>${this.phase === 'roundEnd' ? 'Next round in ' + Math.ceil(Math.max(0, this.t)) + 's' : 'Round starts in ' + Math.ceil(Math.max(0, this.t)) + 's'}</span></div><div class="ar-lo-l">PRIMARY</div><div class="ar-lo-r">${row(P1, 0)}</div><div class="ar-lo-l">SECONDARY</div><div class="ar-lo-r">${row(P2, 1)}</div>`;
+      if (html !== this._loHtml) { this._loHtml = html; el.innerHTML = html; }
+    }
     // teammate markers (names over allies, through walls)
     markers() {
       const box = $('ar-marks'), g = this.g, pool = this._mk || (this._mk = []);
@@ -331,6 +363,7 @@
     }
     dispose() {
       const h = $('ar-hud'); if (h) h.classList.add('hidden');
+      const lo = $('ar-lo'); if (lo) lo.classList.add('hidden');
       if (this._mk) for (const el of this._mk) el.style.display = 'none';
       this.g.hud.resurgence && this.g.hud.resurgence(false, null);
       if (this.net) { BR.Net.leave(); this.net = null; }

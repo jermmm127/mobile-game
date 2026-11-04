@@ -302,7 +302,7 @@ const server = http.createServer((req, res) => {
       r.cases = { items: BR.CaseItems.all().length, rareShare: tally.Rare / 2000, exotic: tally.Exotic || 0, paid: P.data.coins <= 5000 - 600 + (got.dup ? 210 : 0), owned: P.owns(got.cat, got.id), notInShop: !BR.Shop.catalog('skins').liquidgold || P.owns('skins', 'liquidgold') };
       P.data.coins = before; P.data.dev = wasDev;
       // ranks: RP from a win unlocks rank rewards
-      const rp0 = P.data.rp; P.data.rp = 4400; const res = P.award({ win: true, place: 1, kills: 3, damage: 100 });
+      const rp0 = P.data.rp; P.data.rp = 4400; const res = P.award({ win: true, place: 1, kills: 3, damage: 100, ranked: true });
       r.ranks = { rp: res.rp > 0, tier: BR.Ranks.tiers[BR.Ranks.of(P.data.rp)].name, diamondFeed: P.owns('feeds', 'rk_diamond'), board: BR.Ranks.board().some(x => x.me) };
       P.data.rp = rp0;
       // karambit flip: mid-deploy the ring axis lines up with the finger (flip over it, not a fan)
@@ -927,7 +927,7 @@ const server = http.createServer((req, res) => {
       P.data.equip.melee = 'bayonet'; g.refreshCosmetics();
       // Discover browser + lobby PLAY
       g.toMenu(); document.getElementById('mode-cur').click();
-      v.discover = !document.getElementById('discover').classList.contains('hidden') && document.querySelectorAll('#dc-rows .dc-tile').length === 12;
+      v.discover = !document.getElementById('discover').classList.contains('hidden') && document.querySelectorAll('#dc-rows .dc-tile').length === 11;
       document.querySelector('#discover [data-m="aim"]').click();
       v.selected = g.settings.mode === 'aim' && /AIM TRAINER/.test(document.getElementById('mc-name').textContent);
       document.getElementById('btn-go').click(); v.goAim = g.mode instanceof BR.AimTrainer;
@@ -954,9 +954,9 @@ const server = http.createServer((req, res) => {
       out.v1111 = v; }
     // v1.12: arena formats offline (duels 1v1/2v2, shotgun, sniper, TDM, FFA), shield cell, Overdrive humanoids
     { const v = {}, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
-      const play = (preset, size) => { BR.Lobby.preset = preset; BR.Lobby.size = size; BR.Lobby.play(); return g.mode; };
+      const play = (preset, size) => { BR.Lobby.skipRoll = true; BR.Lobby.preset = preset; BR.Lobby.size = size; BR.Lobby.play(); return g.mode; };
       let M = play('duel', 2); v.duel2 = g.actors.length === 4 && g.actors.filter(a => a.team === g.player.team).length === 2 && M.arena;
-      run(120); v.duelFight = M.phase === 'fight';
+      run(220); v.duelFight = M.phase === 'fight';
       // a kill on the enemy team scores; no friendly fire
       const mate = g.actors.find(a => !a.isPlayer && a.team === g.player.team), foe = g.actors.find(a => a.team !== g.player.team);
       const hp0 = mate.health; g.applyDamage(mate, g.player, 50, false, mate.pos, 'rifle'); v.noFF = mate.health === hp0;
@@ -1007,6 +1007,90 @@ const server = http.createServer((req, res) => {
       document.getElementById('lvl-chip').click(); v.panel = document.querySelectorAll('#lv-track .lv-k').length === 4; document.getElementById('lv-x').click();
       P.data = JSON.parse(keep); P.save(); g.refreshCosmetics(); BR.updateCoins();
       out.v114 = v; }
+    // v1.15: new arena maps + map roll, freeze before the round, no shooting through walls, per-round duel loadouts,
+    // Ranked vs Casual, casual kills count for challenges, account IDs + support panel
+    { const v = {}, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); }, L = BR.Lobby, keepProfile = JSON.stringify(BR.Profile.data);
+      const play = (preset, size, map) => { L.skipRoll = true; L.preset = preset; L.size = size; L.play({ map }); return g.mode; };
+      // maps: each builds, every spawn / FFA spot is clear of walls, bots fight there without errors
+      v.maps = {};
+      for (const id of ['yard', 'killhouse', 'cargo']) {
+        const M = play(id === 'cargo' ? 'ffa' : 'tdm', id === 'cargo' ? 6 : 4, id), W = g.world, tmp = [];
+        const clear = (x, z) => { W.query(x - 0.4, 0.3, z - 0.4, x + 0.4, 1.7, z + 0.4, tmp); return !tmp.some(b => !b.ground); };
+        const spots = (W.ffaSpots || []).concat(W.spawns.map(s => [s.x, s.z]));
+        const allClear = spots.every(([x, z]) => { const s = M.safe(x, z); return clear(s.x, s.z); });
+        run(200);
+        const inside = g.actors.every(a => Math.abs(a.pos.x) < W.size / 2 && Math.abs(a.pos.z) < W.size / 2 && a.pos.y > -1);
+        v.maps[id] = W.mapId === id && allClear && inside && (id === 'yard' || W.ffaSpots.length >= 12);
+        g.toMenu();
+      }
+      // fair odds: every map rolls about a third of the time
+      const tally = {}; for (let i = 0; i < 30000; i++) { const m = L.rollMap(); tally[m] = (tally[m] || 0) + 1; }
+      v.fair = Object.keys(tally).length === 3 && Object.values(tally).every(n => Math.abs(n / 30000 - 1 / 3) < 0.02);
+      // the roll overlay lands on the chosen map
+      L.skipRoll = false; let rolled = false; L.showRoll('cargo', () => { rolled = true; });
+      const cards = document.querySelectorAll('#mr-strip .mr-card');
+      v.roll = !document.getElementById('maproll').classList.contains('hidden') && cards.length === 34 && cards[29].querySelector('b').textContent === 'CARGO' && !rolled;
+      document.getElementById('maproll').classList.add('hidden'); L.skipRoll = true;
+      // freeze: during the countdown nobody moves or fires
+      let M = play('duel', 1, 'killhouse'); const p = g.player, lock = { x: p.pos.x, z: p.pos.z };
+      p.mover.vel.set(8, 0, 8); run(10);
+      v.frozenPos = M.frozen && Math.hypot(p.pos.x - lock.x, p.pos.z - lock.z) < 0.05;
+      const mag0 = p.weapon.mag; v.noFire = BR.Weapons.tryFire(g, p) === false && p.weapon.mag === mag0;
+      // per-round loadout picker (Duels): shown during the countdown, a pick re-arms you right away
+      const lo = document.getElementById('ar-lo'), pick = lo && lo.querySelector('[data-slot="0"][data-g="smg"]');
+      v.picker = !!lo && !lo.classList.contains('hidden') && !!pick;
+      const keepLo = (g.settings.duel.loadout || []).slice(); if (pick) pick.click();
+      v.picked = g.settings.duel.loadout[0] === 'smg' && p.slots[0].id === 'smg';
+      g.settings.duel.loadout = keepLo;
+      run(200); v.unfrozen = M.phase === 'fight' && !M.frozen && document.getElementById('ar-lo').classList.contains('hidden');
+      // walls stop bullets: the house's west wall (solid at z = 2.2) blocks a shot at a bot behind it
+      const W = g.world, h = W.raycast(-13, 1.5, 2.2, 1, 0, 0, 60);
+      const foe = g.actors.find(a => a.team !== p.team);
+      foe.mover.pos.set(-7, 0, 2.2); foe.health = 100; foe.shield = 0; if (foe.brain) foe.alive = true;
+      p.mover.pos.set(-13, 0, 2.2); p.yaw = -Math.PI / 2; p.pitch = 0; p.cur = 0; p.weapon.cool = 0; p.weapon.reloadT = 0; p.weapon.mag = 30; p.ads = false;
+      let shots = 0; for (let i = 0; i < 6; i++) { p.weapon.cool = 0; if (BR.Weapons.tryFire(g, p)) shots++; }
+      v.walls = h.t > 2.5 && h.t < 3.5 && shots > 0 && foe.health === 100;
+      // casual kills count toward challenges (grind) + mastery
+      const G0 = BR.Profile.grind().kills || 0; foe.mover.pos.set(-15, 0, 2.2); g.kill(foe, p, 'rifle', false);
+      v.casualGrind = (BR.Profile.grind().kills || 0) === G0 + 1;
+      g.toMenu();
+      // ranked vs casual
+      const P = BR.Profile, rp0 = P.data.rp || 0;
+      const cas = P.award({ arena: true, preset: 'tdm', win: true, kills: 6, ranked: false });
+      v.casual = cas.rp === undefined && (P.data.rp || 0) === rp0 && cas.xp && cas.xp.total > 0 && cas.total > 0;
+      const rk = P.award({ arena: true, preset: 'tdm', win: true, kills: 6, ranked: true });
+      v.ranked = rk.rp > 0 && P.data.rp === rp0 + rk.rp;
+      const brc = P.award({ win: false, place: 4, kills: 2, damage: 300, time: 200, ranked: false }); v.brCasual = brc.rp === undefined && P.data.rp === rp0 + rk.rp;
+      P.data.rp = rp0; P.save();
+      // Discover: classic duel is gone, Ranked/Casual toggle tags the modes, zombies has no queue
+      document.getElementById('mode-cur').click();
+      v.noClassic = !document.querySelector('#discover [data-m="duel"]') && !!document.querySelector('#discover [data-m="duels"]');
+      const qb = document.querySelector('#dc-queue [data-q="ranked"]'); qb.click();
+      const tagsOf = id => Array.from(document.querySelectorAll(`#dc-rows [data-m="${id}"] .dt-tags u`)).map(u => u.textContent);
+      v.queue = g.settings.ranked === true && tagsOf('tdm').includes('RANKED') && tagsOf('br').includes('RANKED') && !tagsOf('zombies').includes('RANKED') && BR.rankedNow() === (g.settings.mode !== 'zombies' && g.settings.mode !== 'overdrive' && g.settings.mode !== 'practice' && g.settings.mode !== 'aim');
+      document.querySelector('#dc-queue [data-q="casual"]').click(); v.queueOff = g.settings.ranked === false && tagsOf('tdm').includes('CASUAL');
+      document.getElementById('discover').classList.add('hidden');
+      // account IDs + the support panel
+      const A = BR.Accounts, keepDb = JSON.stringify(A.db), keepSeeded = A.isSeededDev, keepKey = P.KEY;
+      try {
+        const r1 = await A.signUp('idtest_' + (Date.now() % 1e6), 'hunter22'); const me = A.current();
+        v.idFormat = r1.ok && /^SRG-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(A.accountId());
+        const seed = (BR.CONFIG.seedAccounts || [])[0]; v.seedId = !seed || (A.seedId(seed.name) === A.seedId(seed.name) && A.accountId(seed.name) === A.seedId(seed.name));
+        const ids = Object.values(A.db.users).map(u => u.id); v.unique = new Set(ids).size === ids.length;
+        v.lockedOut = A.adminList() === null && !(await A.adminUnlock('hunter22')).ok;                 // not the dev account: no list
+        A.isSeededDev = () => true;
+        v.badPw = !(await A.adminUnlock('nope')).ok && A.adminList() === null;
+        v.unlock = (await A.adminUnlock('hunter22')).ok;
+        const rows = A.adminList(A.accountId(me)); v.list = rows.length === 1 && rows[0].name === me && !('hash' in rows[0]) && !('salt' in rows[0]);
+        const csv = A.adminExport(); v.csv = csv.startsWith('account_id,username') && !/[0-9a-f]{64}/.test(csv);
+        const rs = await A.adminResetPassword(me); A.logOut(); const li = await A.logIn(me, rs.temp);
+        v.reset = rs.ok && li.ok && li.mustChange && (await A.changePassword(rs.temp, 'newpass9')).ok && !(await A.logIn(me, 'hunter22')).ok && (await A.logIn(me, 'newpass9')).ok;
+        renderOk: { BR.Accounts.isSeededDev = () => true; document.getElementById('acct-chip').click(); v.panel = /^SRG-/.test(document.getElementById('acct-id').textContent) && !document.getElementById('acct-admin').classList.contains('hidden'); document.getElementById('acct-close').click(); }
+        A.isSeededDev = keepSeeded; A.adminLock();
+        document.getElementById('acct-chip').click(); v.hiddenForOthers = document.getElementById('acct-admin').classList.contains('hidden'); document.getElementById('acct-close').click();
+        localStorage.removeItem('velocity-royale.profile.u:' + me.toLowerCase());
+      } finally { A.isSeededDev = keepSeeded; A.db = JSON.parse(keepDb); A.save(); P.KEY = keepKey; P.data = JSON.parse(keepProfile); P.save(); g.refreshCosmetics(); BR.updateCoins(); }
+      out.v115 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1168,6 +1252,12 @@ const server = http.createServer((req, res) => {
     ['v1.12 arena modes: 2v2 duels, shotgun + sniper duels, TDM (score, respawns, end), FFA; no friendly fire', v17.v112.duel2 && v17.v112.duelFight && v17.v112.noFF && v17.v112.duelKill && v17.v112.shotgun && v17.v112.sniper && v17.v112.tdm && v17.v112.tdmScore && v17.v112.respawn && v17.v112.tdmEnd && v17.v112.tdmResult && v17.v112.ffa],
     ['v1.12 shield cell model + Overdrive humanoids (husk, gunner, warden) with head hitboxes', v17.v112.shieldModel && v17.v112.humanoid],
     ['v1.13 Tracker knife: model, blueprints, melee picker, held in the fist in first person', v17.v113.model && v17.v113.bps && v17.v113.vm && v17.v113.picker],
+    ['v1.15 arena maps: The Yard, Killhouse + Cargo build with clear spawns and bots fight on them', v17.v115.maps.yard && v17.v115.maps.killhouse && v17.v115.maps.cargo],
+    ['v1.15 map roll: fair odds (each map ~1/3) and the case strip lands on the rolled map', v17.v115.fair && v17.v115.roll],
+    ['v1.15 no moving or shooting before the round starts; walls stop bullets', v17.v115.frozenPos && v17.v115.noFire && v17.v115.unfrozen && v17.v115.walls],
+    ['v1.15 Duels: pick your loadout before every round (re-arms you during the countdown)', v17.v115.picker && v17.v115.picked],
+    ['v1.15 Ranked vs Casual: casual gives XP + coins + challenges but no RP, ranked gives RP; Discover queue toggle; classic 1v1 Duel removed', v17.v115.casual && v17.v115.ranked && v17.v115.brCasual && v17.v115.casualGrind && v17.v115.noClassic && v17.v115.queue && v17.v115.queueOff],
+    ['v1.15 account IDs (unique SRG-XXXX-XXXX) + support panel: dev-only, password re-entry, no hashes shown, one-time reset', v17.v115.idFormat && v17.v115.seedId && v17.v115.unique && v17.v115.lockedOut && v17.v115.badPw && v17.v115.unlock && v17.v115.list && v17.v115.csv && v17.v115.reset && v17.v115.panel && v17.v115.hiddenForOthers],
     ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
     ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],

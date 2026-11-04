@@ -1353,19 +1353,21 @@ BR.Models = (function () {
         const m = new THREE.Mesh(geo, null); m.rotation.y = -Math.PI / 2; return m;     // shape x -> model +Z (spine), y -> up
       };
       // blade: straight spine, tip a touch below the spine line, angled tanto front, straight edge
-      const blade = ext([[0.0165, 0.0], [0.0165, 0.148], [0.0105, 0.181], [-0.0052, 0.168], [-0.0168, 0.152], [-0.0172, 0.014], [-0.012, 0.0]], 0.0042, 0.0007, null, 7);
+      const blade = ext([[0.0201, 0.0], [0.0201, 0.148], [0.0128, 0.181], [-0.0063, 0.168], [-0.0205, 0.152], [-0.021, 0.014], [-0.0146, 0.0]], 0.0042, 0.0007, null, 7);
       blade.material = bladeMat; inner.add(blade);
       // bright sharpened bevels along the edge and the tanto front
       const edgeM = (opts && (opts.blade || camo)) ? bladeMat : (cache.mat.trkEdge || (cache.mat.trkEdge = new THREE.MeshPhongMaterial({ color: 0xf4f7fa, specular: 0xffffff, shininess: 220, envMap: envCube(), reflectivity: 0.45 })));
-      const grind = ext([[-0.0172, 0.016], [-0.0168, 0.151], [-0.005, 0.167], [0.0098, 0.178], [0.0085, 0.171], [-0.0045, 0.161], [-0.0128, 0.147], [-0.013, 0.018]], 0.0052, 0); grind.material = edgeM; inner.add(grind);
+      const grind = ext([[-0.021, 0.016], [-0.0205, 0.151], [-0.0061, 0.167], [0.012, 0.178], [0.0104, 0.171], [-0.0055, 0.161], [-0.0156, 0.147], [-0.0159, 0.018]], 0.0052, 0); grind.material = edgeM; inner.add(grind);
       // tanto ridge line between the front facet and the flat
-      const ridge = ext([[-0.0128, 0.147], [0.0108, 0.152], [0.0108, 0.155], [-0.0128, 0.15]], 0.0051, 0); ridge.material = M.metal; inner.add(ridge);
+      const ridge = ext([[-0.0156, 0.147], [0.0132, 0.152], [0.0132, 0.155], [-0.0156, 0.15]], 0.0051, 0); ridge.material = M.metal; inner.add(ridge);
       // long fuller near the spine
-      const fuller = ext([[0.0062, 0.026], [0.0098, 0.028], [0.0098, 0.132], [0.0076, 0.136], [0.0062, 0.13]], 0.005, 0); fuller.material = M.dark; inner.add(fuller);
+      const fuller = ext([[0.0076, 0.026], [0.012, 0.028], [0.012, 0.132], [0.0093, 0.136], [0.0076, 0.13]], 0.005, 0); fuller.material = M.dark; inner.add(fuller);
       // saw-back teeth on the spine toward the tip
-      for (let i = 0; i < 9; i++) { const t = new THREE.Mesh(new THREE.ConeGeometry(0.0026, 0.0058, 4), bladeMat); t.position.set(0, 0.078 + i * 0.0072, 0.0175); t.rotation.set(Math.PI / 2 - 0.5, 0, 0); inner.add(t); }
+      // (v1.15) bigger, hooked saw teeth like the reference video, raked back toward the handle
+      for (let i = 0; i < 8; i++) { const t = new THREE.Mesh(new THREE.ConeGeometry(0.0034, 0.0085, 4), bladeMat); t.scale.z = 0.55; t.position.set(0, 0.074 + i * 0.0086, 0.0222); t.rotation.set(Math.PI / 2 - 0.62, 0, 0); inner.add(t); }
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(0.0052, 0.105, 0.0009), M.dark); fl.position.set(0, 0.084, 0.0045); inner.add(fl);      // thin fuller line
       // integral guard: a plate across the ricasso, the lower quillon hooking forward round the finger, a pin hole
-      const guard = ext([[0.0175, 0.007], [0.0175, -0.004], [0.004, -0.007], [-0.02, -0.008], [-0.034, -0.026], [-0.038, -0.035, -0.045, -0.03], [-0.046, -0.022], [-0.034, -0.004], [-0.024, 0.006], [-0.018, 0.009]], 0.0058, 0.0007, [[0.0095, 0.001, 0.0024, 0.0024], [-0.041, -0.027, 0.0022, 0.0022]], 7);
+      const guard = ext([[0.0212, 0.007], [0.0212, -0.004], [0.004, -0.007], [-0.022, -0.008], [-0.034, -0.026], [-0.038, -0.035, -0.045, -0.03], [-0.046, -0.022], [-0.034, -0.004], [-0.024, 0.006], [-0.018, 0.009]], 0.0058, 0.0007, [[0.0095, 0.001, 0.0024, 0.0024], [-0.041, -0.027, 0.0022, 0.0022]], 7);
       guard.material = bladeMat; inner.add(guard);
       const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0021, 0.0021, 0.0074, 10), M.dark); pin.rotation.z = Math.PI / 2; pin.position.set(0, 0.001, 0.0095); inner.add(pin);
       // handle: thick rubber slab with finger grooves on the edge side, a hump for the palm on the spine side,

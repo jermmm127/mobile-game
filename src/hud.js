@@ -489,14 +489,35 @@ BR.HUD = class HUD {
     </div>
     <div id="acct-in" class="hidden">
       <div class="acct-me"><span id="acct-me"></span><span id="acct-dev" class="dev-badge hidden">DEV</span></div>
+      <div class="acct-row"><span>Account ID</span><b class="acct-idb"><span id="acct-id"></span><button id="acct-copy" class="mbtn sm" type="button">COPY</button></b></div>
       <div class="acct-row"><span>Coins</span><b><i class="coin"></i><span id="acct-coins"></span></b></div>
       <div class="acct-row"><span>Record</span><b id="acct-stats"></b></div>
       <label for="acct-code">Redeem a code</label>
       <div class="code-row"><input id="acct-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XX-XXX-XXXX"><button id="acct-redeem" class="mbtn sm">REDEEM</button></div>
+      <button id="acct-admin" class="mbtn hidden" type="button">SUPPORT · ACCOUNTS</button>
       <button id="acct-logout" class="mbtn">LOG OUT</button>
     </div>
     <div id="acct-msg" class="acct-msg" role="status"></div>
     <button id="acct-close" class="mbtn">CLOSE</button>
+  </div>
+</div>
+<div id="maproll" class="overlay hidden">
+  <div class="mr-box"><div class="mr-top"><em id="mr-title">ARENA</em><b>ROLLING THE MAP</b></div>
+    <div class="mr-win"><div class="mr-strip" id="mr-strip"></div><i class="mr-mark"></i></div>
+    <div class="mr-res" id="mr-res"></div><small class="mr-fine">Every map has the same odds</small></div>
+</div>
+<div id="admin" class="overlay hidden">
+  <div class="panel metal acct admin">
+    <div class="ptitle">SUPPORT · ACCOUNTS</div>
+    <p class="adm-note">Accounts saved on this device. Passwords are one-way hashed and can never be shown: use RESET to issue a one-time temporary password.</p>
+    <form id="adm-gate"><label for="adm-pass">Re-enter your password</label>
+      <input id="adm-pass" type="password" autocomplete="current-password" maxlength="64"><button class="mbtn hot" type="submit">UNLOCK</button></form>
+    <div id="adm-body" class="hidden">
+      <div class="code-row"><input id="adm-q" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Search ID or username"><button id="adm-export" class="mbtn sm" type="button">COPY CSV</button></div>
+      <div id="adm-list" class="adm-list"></div>
+    </div>
+    <div id="adm-msg" class="acct-msg" role="status"></div>
+    <button id="adm-close" class="mbtn">CLOSE</button>
   </div>
 </div>
 
@@ -548,7 +569,7 @@ BR.HUD = class HUD {
 </div>
 
 <div id="discover" class="overlay hidden discover">
-  <div class="dc-top"><div class="dc-title"><b>DISCOVER</b><span>Pick a mode, then hit PLAY</span></div><button id="dc-x" class="xbtn" aria-label="Close">✕</button></div>
+  <div class="dc-top"><div class="dc-title"><b>DISCOVER</b><span>Pick a mode, then hit PLAY</span></div><div class="seg dc-queue" id="dc-queue"><button data-q="casual">CASUAL</button><button data-q="ranked">RANKED</button></div><button id="dc-x" class="xbtn" aria-label="Close">✕</button></div>
   <div class="dc-feat" id="dc-feat"></div>
   <div id="dc-rows"></div>
 </div>
@@ -1240,6 +1261,7 @@ BR.HUD = class HUD {
       if (r.coins.rp !== undefined) ec.innerHTML += `<div class="rprow"><span>${BR.Ranks.badge(BR.Profile.data.rp || 0)} Ranked</span><b class="${r.coins.rp < 0 ? 'neg' : ''}">${r.coins.rp >= 0 ? '+' : ''}${r.coins.rp} RP</b></div>`
         + (r.coins.rankUp ? `<div class="rprow up"><span>RANK UP!</span><b>${r.coins.rankUp}</b></div>` : '')
         + (r.coins.unlocked && r.coins.unlocked.length ? `<div class="rprow up"><span>Unlocked</span><b>${r.coins.unlocked.join(', ')}</b></div>` : '');
+      else if (r.ranked === false && !r.zombies && !r.overdrive) ec.innerHTML += `<div class="rprow casual"><span>Casual match</span><b>No RP · play Ranked to climb</b></div>`;
       const X = r.coins.xp;
       if (X) ec.innerHTML += `<div class="xprow"><span>+${X.total.toLocaleString()} XP</span><b>${X.after > X.before ? `LEVEL ${X.before} → <em>${X.after}</em>` : 'LEVEL ' + X.after}</b><u><s style="width:${(X.into / X.need * 100).toFixed(1)}%"></s></u></div>`
         + (X.unlocked.length ? `<div class="rprow up"><span>Unlocked</span><b>${X.unlocked.join(', ')}</b></div>` : '');

@@ -11,6 +11,7 @@
   settings.xh = Object.assign({}, DEFAULTS.xh, stored.xh || {});
   settings.duel = Object.assign({}, DEFAULTS.duel, stored.duel || {});
   const save = () => BR.util.save('velocity-royale.settings', settings);
+  BR.saveSettings = save;
   BR.Accounts.load();
   BR.Profile.load();
   setTimeout(() => daily(), 0);
@@ -222,8 +223,32 @@
       $('acct-coins').textContent = BR.Profile.coinsLabel();
       $('acct-stats').textContent = `${P.stats.matches} matches · ${P.stats.wins} wins · ${P.stats.kills} kills · K/D ${BR.Profile.kd().toFixed(2)}`;
       $('acct-dev').classList.toggle('hidden', !BR.Profile.infinite());
+      $('acct-id').textContent = BR.Accounts.accountId() || '—';
+      $('acct-admin').classList.toggle('hidden', !BR.Accounts.isSeededDev());
     }
   };
+  const copyText = t => { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
+  $('acct-copy').addEventListener('click', () => { const id = BR.Accounts.accountId(); if (id && copyText(id)) $('acct-msg').textContent = 'Account ID copied'; });
+  // ---- support panel: only the built-in dev account, password re-entry required
+  const esc = v => String(v).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+  const day = t => t ? new Date(t).toLocaleDateString() : '—';
+  const renderAdmin = () => {
+    const open = BR.Accounts.adminOpen();
+    $('adm-gate').classList.toggle('hidden', open); $('adm-body').classList.toggle('hidden', !open);
+    if (!open) return;
+    const rows = BR.Accounts.adminList($('adm-q').value) || [];
+    $('adm-list').innerHTML = rows.length ? rows.map(r => `<div class="adm-row"><div><b>${esc(r.name)}</b>${r.builtIn ? ' <i class="dev-badge">BUILT-IN</i>' : ''}${r.temp ? ' <i class="dev-badge">TEMP PW</i>' : ''}<code>${esc(r.id)}</code></div>` +
+      `<small>Lv ${r.level} · ${r.coins} coins · ${r.rp} RP · ${r.matches} matches · joined ${day(r.created)} · last ${day(r.last)}</small>` +
+      (r.builtIn ? '' : `<button class="mbtn sm" data-reset="${esc(r.name)}">RESET PW</button>`) + '</div>').join('') : '<p class="fine">No accounts match.</p>';
+  };
+  $('acct-admin').addEventListener('click', () => { if (!BR.Accounts.isSeededDev()) return; $('adm-msg').textContent = ''; $('adm-pass').value = ''; renderAdmin(); $('admin').classList.remove('hidden'); });
+  $('adm-gate').addEventListener('submit', async e => { e.preventDefault(); const r = await BR.Accounts.adminUnlock($('adm-pass').value); $('adm-pass').value = ''; $('adm-msg').textContent = r.ok ? '' : r.msg; renderAdmin(); });
+  $('adm-q').addEventListener('input', renderAdmin);
+  $('adm-list').addEventListener('click', async e => { const b = e.target.closest('[data-reset]'); if (!b) return;
+    if (!confirm('Reset the password for ' + b.dataset.reset + '? Their old password stops working.')) return;
+    const r = await BR.Accounts.adminResetPassword(b.dataset.reset); $('adm-msg').textContent = r.msg; renderAdmin(); });
+  $('adm-export').addEventListener('click', () => { const csv = BR.Accounts.adminExport(); $('adm-msg').textContent = csv && copyText(csv) ? 'Account list copied as CSV (no passwords)' : 'Nothing to copy'; });
+  $('adm-close').addEventListener('click', () => { $('admin').classList.add('hidden'); BR.Accounts.adminLock(); $('adm-list').innerHTML = ''; });
   // daily login reward: streak coins, a Nova Case key every 3rd day
   const daily = () => { const r = BR.Profile.claimDaily(); if (!r) return;
     setTimeout(() => { game.hud.toast(`DAILY REWARD · Day ${r.streak} streak · +${r.coins} coins${r.key ? ' · +1 NOVA CASE KEY' : ''}`, 3200); BR.Audio.coin && BR.Audio.coin(); BR.updateCoins(); }, 700); };
@@ -236,8 +261,13 @@
     const fn = acctMode === 'login' ? 'logIn' : 'signUp';
     const r = await BR.Accounts[fn]($('acct-user').value, $('acct-pass').value);
     if (!r.ok) { $('acct-msg').textContent = r.msg; return; }
-    $('acct-pass').value = '';
+    const used = $('acct-pass').value; $('acct-pass').value = '';
     afterAuth();
+    if (r.mustChange) {      // support issued a temporary password: pick a new one now
+      const np = prompt('You signed in with a temporary password. Choose a new password (4+ characters):');
+      const c = np ? await BR.Accounts.changePassword(used, np) : { msg: 'Remember to set a new password soon' };
+      $('acct-msg').textContent = c.msg;
+    }
   });
   $('acct-logout').addEventListener('click', () => { BR.Accounts.logOut(); afterAuth(); });
   $('acct-redeem').addEventListener('click', async () => {
@@ -531,34 +561,41 @@
     aim: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke-width="2"/>',
   };
   const MODES = {
-    br:         { name: 'BATTLE ROYALE', sub: 'Solo · 30 players · one life', cat: 'BATTLE ROYALE', tags: ['RANKED', '30 PLAYERS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play() },
-    resurgence: { name: 'RESURGENCE', sub: 'Redeploy until the 4th circle', cat: 'BATTLE ROYALE', tags: ['NEW', '24 PLAYERS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true }) },
-    duel:       { name: '1V1 DUEL', sub: 'Classic · pick guns between rounds', cat: 'COMPETITIVE', tags: ['1V1', 'VS AI'], art: 'linear-gradient(120deg,#2f6fd8 0 48%,#d8443a 52% 100%)', glow: '#8ab4ff', go: () => { BR.Audio.init(); BR.openDuelMenu('setup'); } },
-    duels:      { name: 'DUELS 1V1 · 2V2', sub: 'AI teammate or friends online', cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE', '2V2'], art: 'linear-gradient(120deg,#1f4fb8 0 46%,#ffd24a 48% 52%,#b8302a 54% 100%)', glow: '#ffd24a', go: () => BR.Lobby.open('duel') },
-    shotgun:    { name: 'SHOTGUN DUELS', sub: 'Breachers only · 1v1 / 2v2', cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff9a1f,#6a2a10 55%,#1a0a06)', glow: '#ff9a1f', go: () => BR.Lobby.open('shotgun') },
-    sniper:     { name: 'SNIPER DUELS', sub: 'Snipers + hunting rifles · 1v1 / 2v2', cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#9fe8ff,#1a4a6a 55%,#06121c)', glow: '#9fe8ff', go: () => BR.Lobby.open('sniper') },
-    tdm:        { name: 'TEAM DEATHMATCH', sub: '4v4 · first to 30 kills', cat: 'CASUAL', tags: ['NEW', 'ONLINE', '4V4'], art: 'linear-gradient(160deg,#4f8fff,#1a2f6a 50%,#6a1a1a 51%,#ff5a4a)', glow: '#c8a8ff', go: () => BR.Lobby.open('tdm') },
-    ffa:        { name: 'FREE FOR ALL', sub: '6 players · first to 20 kills', cat: 'CASUAL', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ffe14d,#8a3aff 55%,#12061c)', glow: '#ffe14d', go: () => BR.Lobby.open('ffa') },
+    br:         { name: 'BATTLE ROYALE', sub: 'Solo · 30 players · one life', cat: 'BATTLE ROYALE', rk: true, tags: ['30 PLAYERS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play() },
+    resurgence: { name: 'RESURGENCE', sub: 'Redeploy until the 4th circle', rk: true, cat: 'BATTLE ROYALE', tags: ['NEW', '24 PLAYERS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true }) },
+    duels:      { name: 'DUELS 1V1 · 2V2', sub: 'AI teammate or friends online', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE', '2V2'], art: 'linear-gradient(120deg,#1f4fb8 0 46%,#ffd24a 48% 52%,#b8302a 54% 100%)', glow: '#ffd24a', go: () => BR.Lobby.open('duel') },
+    shotgun:    { name: 'SHOTGUN DUELS', sub: 'Breachers only · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff9a1f,#6a2a10 55%,#1a0a06)', glow: '#ff9a1f', go: () => BR.Lobby.open('shotgun') },
+    sniper:     { name: 'SNIPER DUELS', sub: 'Snipers + hunting rifles · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#9fe8ff,#1a4a6a 55%,#06121c)', glow: '#9fe8ff', go: () => BR.Lobby.open('sniper') },
+    tdm:        { name: 'TEAM DEATHMATCH', sub: '4v4 · first to 30 kills', rk: true, cat: 'CASUAL', tags: ['NEW', 'ONLINE', '4V4'], art: 'linear-gradient(160deg,#4f8fff,#1a2f6a 50%,#6a1a1a 51%,#ff5a4a)', glow: '#c8a8ff', go: () => BR.Lobby.open('tdm') },
+    ffa:        { name: 'FREE FOR ALL', sub: '6 players · first to 20 kills', rk: true, cat: 'CASUAL', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ffe14d,#8a3aff 55%,#12061c)', glow: '#ffe14d', go: () => BR.Lobby.open('ffa') },
     zombies:    { name: 'ZOMBIES', sub: 'Hollow Graves · endless rounds', cat: 'SURVIVAL', tags: ['STORY', 'BOSSES'], art: 'radial-gradient(120% 120% at 80% 0%,#ff7a1a,#5a141e 55%,#140818)', glow: '#ff8a2a', go: () => { BR.Audio.init(); game.startZombies(); } },
     overdrive:  { name: 'OVERDRIVE', sub: 'Roguelike swarm survival', cat: 'SURVIVAL', tags: ['NEW', 'ROGUELIKE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff5ec4,#46145a 55%,#12061c)', glow: '#ff5ec4', go: () => overdrive() },
     practice:   { name: 'PRACTICE', sub: 'Spawn anything · no bots', cat: 'TRAINING', tags: ['SOLO'], art: 'linear-gradient(160deg,#4fdc8a,#14583a 55%,#071a12)', glow: '#4fdc8a', go: () => practice() },
     aim:        { name: 'AIM TRAINER', sub: 'Gridshot · Flick · Tracking · Strafe', cat: 'TRAINING', tags: ['NEW', 'SCORES'], art: 'radial-gradient(120% 120% at 80% 0%,#45e0ff,#0b3a56 55%,#050d18)', glow: '#45e0ff', go: () => aimTrainer() },
   };
   const CATS = ['BATTLE ROYALE', 'COMPETITIVE', 'CASUAL', 'SURVIVAL', 'TRAINING'];
-  if (!MODES[settings.mode]) settings.mode = 'br';
+  if (!MODES[settings.mode]) settings.mode = 'br';          // (the classic 1v1 Duel was retired in v1.15: Duels 1v1 · 2v2 replaces it)
+  // v1.15 Ranked / Casual: every mode except Zombies, Overdrive and Training has both queues.
+  // Ranked gives RP; Casual gives XP, coins, challenge + mastery progress only.
+  const rankedNow = id => !!(settings.ranked && MODES[id] && MODES[id].rk);
+  BR.rankedNow = () => rankedNow(settings.mode);
   const art = (id, big) => { const M = MODES[id]; return `<span class="mart${big ? ' big' : ''}" style="background:${M.art};--g:${M.glow}"><i class="mart-grid"></i><svg viewBox="0 0 24 24">${ICO[id]}</svg></span>`; };
-  const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = M.sub; $('mode-cur').style.setProperty('--g', M.glow); };
+  const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = M.sub; $('mode-cur').style.setProperty('--g', M.glow);
+    const q = $('mode-cur').querySelector('.mc-tag'); q.innerHTML = M.rk ? (rankedNow(settings.mode) ? '<em class="q-rk">RANKED</em> GAME MODE' : '<em class="q-cs">CASUAL</em> GAME MODE') : 'GAME MODE'; };
   const renderDiscover = () => {
+    document.querySelectorAll('#dc-queue button').forEach(b => b.classList.toggle('sel', (b.dataset.q === 'ranked') === !!settings.ranked));
+    const qtag = M => M.rk ? [settings.ranked ? 'RANKED' : 'CASUAL'] : [];
     const feat = 'overdrive', F = MODES[feat];
     $('dc-feat').innerHTML = `<button class="dc-tile feat${settings.mode === feat ? ' sel' : ''}" data-m="${feat}" style="--g:${F.glow}">${art(feat, true)}<span class="dt-txt"><em>FEATURED</em><b>${F.name}</b><i>${F.sub}</i><span class="dt-tags">${F.tags.map(t => `<u>${t}</u>`).join('')}</span></span></button>`;
     $('dc-rows').innerHTML = CATS.map(c => `<div class="dc-row"><div class="dc-cat">${c}</div><div class="dc-strip">${Object.entries(MODES).filter(([, M]) => M.cat === c).map(([id, M]) =>
-      `<button class="dc-tile${settings.mode === id ? ' sel' : ''}" data-m="${id}" style="--g:${M.glow}">${art(id)}<span class="dt-txt"><b>${M.name}</b><i>${M.sub}</i><span class="dt-tags">${M.tags.map(t => `<u class="${t === 'NEW' ? 'new' : ''}">${t}</u>`).join('')}</span></span>${settings.mode === id ? '<span class="dt-check">✓</span>' : ''}</button>`).join('')}</div></div>`).join('');
+      `<button class="dc-tile${settings.mode === id ? ' sel' : ''}" data-m="${id}" style="--g:${M.glow}">${art(id)}<span class="dt-txt"><b>${M.name}</b><i>${M.sub}</i><span class="dt-tags">${qtag(M).concat(M.tags).map(t => `<u class="${t === 'NEW' ? 'new' : t === 'RANKED' ? 'rk' : ''}">${t}</u>`).join('')}</span></span>${settings.mode === id ? '<span class="dt-check">✓</span>' : ''}</button>`).join('')}</div></div>`).join('');
   };
   BR.selectMode = id => { if (!MODES[id]) return; settings.mode = id; save(); renderLobby(); };
   $('mode-cur').addEventListener('click', () => { BR.Audio.init(); BR.Audio.click(); renderDiscover(); $('discover').classList.remove('hidden'); });
   $('dc-x').addEventListener('click', () => $('discover').classList.add('hidden'));
+  $('dc-queue').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (!b) return; e.stopPropagation(); settings.ranked = b.dataset.q === 'ranked'; save(); BR.Audio.click(); renderDiscover(); renderLobby(); });
   $('discover').addEventListener('click', e => { const t = e.target.closest('[data-m]'); if (!t) return; BR.selectMode(t.dataset.m); BR.Audio.pickup(); renderDiscover(); setTimeout(() => $('discover').classList.add('hidden'), 160); });
-  $('btn-go').addEventListener('click', () => { BR.Audio.init(); MODES[settings.mode].go(); });
+  $('btn-go').addEventListener('click', () => { BR.Audio.init(); game.ranked = rankedNow(settings.mode); MODES[settings.mode].go(); });
   renderLobby();
 
   // ---- v1.11: loadout editor

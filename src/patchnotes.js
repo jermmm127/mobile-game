@@ -5,6 +5,19 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.15.0', date: '2026-11-04', title: 'Ranked, new maps + account IDs', notes: [
+    'RANKED and CASUAL for every mode except Zombies, Overdrive and Training. Pick the queue at the top of Discover; the lobby shows which one you are in. Ranked matches give Ranked Points (Battle Royale and Resurgence: placement + kills; duels, TDM and FFA: the win or your placing + kills). Casual matches give only XP, coins, challenge progress and weapon mastery, never RP.',
+    'Casual and ranked arena matches (duels, TDM, FFA) now count toward camo and blueprint challenges and weapon mastery.',
+    'Two new arena maps: KILLHOUSE (three lanes: a container yard, an open-top training house with rooms, doorways and windows, and an alley under a raised walkway) and CARGO (a tiny dock packed with a grid of shipping containers). Both are original layouts.',
+    'Map roll: before every arena match the map is rolled on a case-style strip. The Yard, Killhouse and Cargo all have exactly the same odds. Online, the host rolls and everyone plays the same map.',
+    'Duels 1v1 / 2v2: choose your loadout before every round. A picker opens between rounds and before round 1; picking during the countdown re-arms you on the spot.',
+    'No moving, jumping, grappling, shooting, knifing or grenades before the round starts: everyone is held on their spawn until FIGHT.',
+    'Walls block bullets on every arena map (checked by the tests for The Yard, Killhouse and Cargo).',
+    'The classic 1v1 Duel was removed from Discover. DUELS 1V1 · 2V2 replaces it.',
+    'Every account now has a permanent Account ID (like SRG-7K3Q-92XD) shown in the Account panel with a COPY button, for support.',
+    'Support panel for the built-in dev account only: re-enter your password to open it. It lists the accounts saved on this device (ID, username, join date, last login, level, coins, RP), searches by ID or name, copies the list as CSV and can issue a one-time temporary password. Passwords are stored only as one-way hashes, so they can never be shown to anyone. Players who sign in with a temporary password are asked to choose a new one.',
+    'The Tracker was rebuilt to match its reference video: black handle, wider tanto blade, bigger saw-back teeth and a fuller line; a new idle hold with the blade pointing left and the saw-back on top, the off hand resting at the bottom left; and a longer, smoother upright inspect without the bayonet-style flip at the end.',
+  ] },
   { v: '1.14.0', date: '2026-11-04', title: 'Levels + a fresh start', notes: [
     'New accounts start from scratch: only the default skins (no starter camo or tracer), the Tracker as your knife, and level 0. Everything else is earned in matches or bought in the shop.',
     'New LEVEL + XP system. Earn XP in every mode except Practice: kills (100 each), damage, survival time and placement in Battle Royale + Resurgence (a win is 2,000), duels and arena modes, Zombies rounds and bosses, Overdrive survival time and bosses, and Aim Trainer drills. Each level needs a little more XP than the last (1,000 + 75 per level) and pays 150 coins. Max level 100.',

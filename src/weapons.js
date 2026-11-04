@@ -62,6 +62,7 @@ BR.Weapons = {
   tryFire(game, actor) {
     const w = actor.weapon;
     if (!w || w.cool > 0) return false;
+    if (game.mode && game.mode.frozen) return false;          // v1.15: nobody shoots or swings before the round starts
     if (w.def.melee) return this.melee(game, actor, w);
     // Shell-by-shell reloads can be cancelled by shooting
     if (w.reloadT > 0) { if (w.def.shellReload && w.mag > 0) w.reloadT = 0; else return false; }

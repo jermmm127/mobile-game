@@ -832,14 +832,14 @@ BR.Game = class Game {
       }
     }
     // Duel countdown: look around, but no moving or shooting yet
-    if (this.duel && this.duel.phase !== 'fight') { p.input.mx = p.input.mz = 0; p.fireHeld = false; inp.consume('jump'); inp.consume('crouch'); return; }
+    if ((this.duel && this.duel.phase !== 'fight') || (this.mode && this.mode.frozen)) { p.input.mx = p.input.mz = 0; p.fireHeld = false; for (const k of ['jump', 'crouch', 'grenade', 'grapple', 'stim']) inp.consume(k); return; }
 
     p.input.mx = inp.moveX;
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
     p.input.jumpHeld = !!inp.jumpHeld;
     if (inp.consume('crouch')) p.input.crouch = true;
-    if (inp.consume('grenade')) { if (this.shock.throw(p)) { BR.Audio.throwNade(); this.vmr.onThrow(); } else BR.Audio.click(); }
+    if (inp.consume('grenade')) { if (!(this.mode && this.mode.frozen) && this.shock.throw(p)) { BR.Audio.throwNade(); this.vmr.onThrow(); } else BR.Audio.click(); }
     if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.vmr.onStim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
     if (inp.consume('grapple')) { if (p.tryGrapple()) { BR.Audio.grapple(); this.vmr.onGrapple(); this.ropeT = 0; } else BR.Audio.click(); }
     // Reload button: knives and full mags inspect instead
@@ -1039,7 +1039,7 @@ BR.Game = class Game {
     if (victim.mover.grapple) victim.mover.releaseGrapple();
     if (killer) killer.kills++;
     // grind challenges (camos / blueprints): your kills in real matches, zombies included
-    if (killer && killer.isPlayer && victim !== killer && !this.practice && !this.demo && !this.mode && BR.Profile.addGrind) {
+    if (killer && killer.isPlayer && victim !== killer && !this.practice && !this.demo && (!this.mode || this.mode.arena) && BR.Profile.addGrind) {   // v1.15: casual + ranked arena kills count too
       const wd = BR.CONFIG.weapons[weaponId];
       BR.Profile.addGrind('kill', 1, { w: weaponId, head: !!head, melee: !!(wd && wd.melee), zombie: !!victim.zombie });
     }

@@ -23,6 +23,11 @@ BR.Ranks = {
   // RP for a finished match (battle royale placement + kills; duels: win/loss)
   forMatch(r) {
     if (r.duel) return r.win ? 45 : -12;
+    if (r.arena) {         // v1.15 ranked arena: the win (or your FFA placing) + kills
+      if (r.draw) return Math.min(r.kills || 0, 10) * 2;
+      const base = r.ffa ? (r.win ? 60 : r.rank <= 3 ? 20 : -10) : r.win ? (r.online ? 55 : 40) : -15;
+      return base + Math.min(r.kills || 0, r.ffa || r.preset === 'tdm' ? 15 : 8) * 3;
+    }
     const place = r.place || 99;
     const p = r.win ? 140 : place <= 3 ? 85 : place <= 5 ? 60 : place <= 10 ? 32 : place <= 20 ? 10 : -8;
     return p + Math.min(r.kills || 0, 10) * 14;
@@ -361,20 +366,31 @@ BR.Profile = {
   },
 
   // Coins for a finished match. Returns the breakdown so the end screen can show it.
+  // v1.15: Ranked matches give RP; Casual matches give only XP, coins, challenge + mastery progress
   award(r) {
+    if (r.ranked === undefined) r.ranked = !!(BR.game && BR.game.ranked);
     const res = this.awardCoins(r);
     res.xp = this.addXP(this.matchXP(r));
     return res;
   },
   awardCoins(r) {
     const C = BR.CONFIG.coins;
-    if (r.arena) {          // arena modes (duels, TDM, FFA): coins for kills + the win, no Ranked RP
+    if (r.arena) {          // arena modes (duels, TDM, FFA): coins for kills + the win; RP only in Ranked
       const parts = [['Kills ×' + r.kills, r.kills * 15]];
       if (r.win) parts.push([r.ffa ? 'Won the lobby' : 'Victory', r.online ? 200 : 120]);
       else if (r.ffa && r.rank <= 3) parts.push(['Top 3', 50]);
       const total = parts.reduce((s, p) => s + p[1], 0);
-      this.data.coins += total; this.data.stats.kills += r.kills; this.save();
-      return { total, parts, unlocked: [] };
+      this.data.coins += total; this.data.stats.kills += r.kills;
+      if (r.win) this.addGrind('win', 1);
+      const out = { total, parts, unlocked: [] };
+      if (r.ranked) {
+        const rp = BR.Ranks.forMatch(r), before = BR.Ranks.of(this.data.rp || 0);
+        this.data.rp = Math.max(0, (this.data.rp || 0) + rp);
+        const after = BR.Ranks.of(this.data.rp);
+        Object.assign(out, { rp, rankUp: after > before ? BR.Ranks.tiers[after].name : null, unlocked: this.unlockRankRewards() });
+      }
+      this.save();
+      return out;
     }
     if (r.overdrive) {      // Overdrive: coins for time survived, kills, bosses and the win (no Ranked RP)
       const parts = [['Survived ' + BR.fmtTime(r.time), Math.floor(r.time / 10) * 5], ['Kills ×' + r.kills, Math.floor(r.kills * 0.5)]];
@@ -404,9 +420,9 @@ BR.Profile = {
     const total = parts.reduce((s, p) => s + p[1], 0);
     this.data.coins += total;
     this.data.stats.matches++;
-    const rp = BR.Ranks.forMatch(r), before = BR.Ranks.of(this.data.rp || 0);
-    this.data.rp = Math.max(0, (this.data.rp || 0) + rp);
-    const after = BR.Ranks.of(this.data.rp), unlocked = this.unlockRankRewards();
+    const rp = r.ranked ? BR.Ranks.forMatch(r) : undefined, before = BR.Ranks.of(this.data.rp || 0);
+    if (r.ranked) this.data.rp = Math.max(0, (this.data.rp || 0) + rp);
+    const after = BR.Ranks.of(this.data.rp || 0), unlocked = r.ranked ? this.unlockRankRewards() : [];
     this.data.stats.kills += r.kills;
     if (r.win) this.data.stats.wins++;
     else this.data.stats.deaths = (this.data.stats.deaths || 0) + 1;     // one life: a match you didn't win ended in a death

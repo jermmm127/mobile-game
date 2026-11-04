@@ -1493,6 +1493,56 @@ body.arenamode #topbar { display: none !important; }
 .end-coins .xprow { display: grid !important; grid-template-columns: auto 1fr; white-space: nowrap; }
 .end-coins .xprow b { justify-self: end; }
 
+/* v1.15 account ID + support panel */
+.acct-idb { display: flex; align-items: center; gap: 8px; font-family: ui-monospace, monospace; letter-spacing: 0.06em; }
+.acct-idb .mbtn.sm { padding: 4px 8px; font-size: 10px; }
+#acct-admin { margin-top: 10px; border-color: var(--accent); }
+.panel.admin { width: min(560px, 94vw); max-height: 88vh; display: flex; flex-direction: column; }
+.adm-note { font: 500 12px var(--ui); color: var(--muted); margin: 6px 0 10px; }
+#adm-gate { display: flex; flex-direction: column; gap: 6px; }
+.adm-list { overflow-y: auto; max-height: 52vh; margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.adm-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.05); }
+.adm-row div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.adm-row code { font: 600 12px ui-monospace, monospace; color: var(--accent-2); letter-spacing: 0.05em; }
+.adm-row small { grid-column: 1; font: 500 11px var(--ui); color: var(--muted); }
+.adm-row button { grid-row: 1 / span 2; grid-column: 2; }
+.adm-row .dev-badge { font-style: normal; }
+
+/* v1.15 map roll (case-style) */
+#maproll { background: radial-gradient(ellipse at center, rgba(20,12,40,.92), rgba(4,3,10,.97)); z-index: 60; display: grid; place-items: center; }
+#maproll.hidden { display: none; }
+.mr-box { width: min(760px, 96vw); text-align: center; color: #fff; font-family: var(--ui); }
+.mr-top em { display: block; font: 700 12px var(--ui); letter-spacing: .3em; color: var(--accent-2); font-style: normal; }
+.mr-top b { font: 800 26px var(--display, var(--ui)); letter-spacing: .08em; }
+.mr-win { position: relative; margin: 18px 0 12px; height: 150px; overflow: hidden; border-radius: 14px; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); -webkit-mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
+.mr-strip { position: absolute; left: 50%; top: 12px; display: flex; gap: 12px; will-change: transform; }
+.mr-card { flex: 0 0 160px; height: 126px; border-radius: 12px; background: var(--a); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px; text-align: left; box-shadow: 0 6px 18px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.14); }
+.mr-card i { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 16px), repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 16px); }
+.mr-card b { position: relative; font: 800 17px var(--ui); letter-spacing: .04em; text-shadow: 0 2px 6px rgba(0,0,0,.6); }
+.mr-card span { position: relative; font: 500 11px var(--ui); opacity: .85; }
+.mr-mark { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #ffd24a; box-shadow: 0 0 14px #ffd24a; }
+.mr-res { min-height: 34px; font: 800 28px var(--ui); letter-spacing: .1em; color: #ffd24a; text-shadow: 0 0 18px rgba(255,210,74,.6); transform: scale(.6); opacity: 0; transition: transform .35s cubic-bezier(.2,1.6,.4,1), opacity .2s; }
+#maproll.done .mr-res { transform: scale(1); opacity: 1; }
+.mr-fine { color: var(--muted); font: 500 11px var(--ui); }
+/* v1.15 per-round loadout picker (Duels) */
+.ar-lo { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); width: min(720px, 94vw); padding: 12px 14px; border-radius: 16px; background: rgba(10,8,20,.82); box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.1); z-index: 30; color: #fff; font-family: var(--ui); pointer-events: auto; }
+.ar-lo.hidden { display: none; }
+.ar-lo-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.ar-lo-h b { font: 800 15px var(--ui); letter-spacing: .08em; } .ar-lo-h span { font: 600 12px var(--ui); color: #ffd24a; }
+.ar-lo-l { font: 700 10px var(--ui); letter-spacing: .2em; color: var(--muted); margin: 6px 0 4px; }
+.ar-lo-r { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.ar-lo-r button { flex: 0 0 auto; min-width: 74px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 8px; border-radius: 10px; border: 0; background: rgba(255,255,255,.07); color: #fff; font: 600 11px var(--ui); cursor: pointer; }
+.ar-lo-r button img { height: 24px; max-width: 70px; object-fit: contain; }
+.ar-lo-r button.sel { background: linear-gradient(135deg, rgba(192,132,252,.55), rgba(123,44,255,.55)); box-shadow: inset 0 0 0 1px #c084fc; }
+/* v1.15 ranked / casual */
+.dc-queue { margin-left: auto; margin-right: 10px; }
+.dc-queue button.sel[data-q=ranked] { background: linear-gradient(135deg, #ffd24a, #ff8a2a); color: #1a1006; }
+.dt-tags u.rk { background: linear-gradient(135deg, #ffd24a, #ff8a2a); color: #1a1006; }
+.mc-tag em { font-style: normal; padding: 1px 6px; border-radius: 6px; margin-right: 4px; }
+.mc-tag em.q-rk { background: linear-gradient(135deg, #ffd24a, #ff8a2a); color: #1a1006; }
+.mc-tag em.q-cs { background: rgba(255,255,255,.16); color: #fff; }
+.rprow.casual b { color: var(--muted); font-weight: 600; }
+
 </style>
 </head>
 <body>
@@ -1516,7 +1566,7 @@ body.arenamode #topbar { display: none !important; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.14.0',
+  version: '1.15.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1661,7 +1711,7 @@ BR.CONFIG = {
     // Default knife: M9-style bayonet (flipped into the hand on draw)
     bayonet: { name: 'M9 Bayonet', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.5, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1c1e22, speedMult: 1.2 },
     // v1.13: tanto-point survival knife (a touch heavier and slower than the bayonet)
-    tracker: { name: 'Tracker', melee: true, ammo: null, dmg: 50, backstab: 110, pellets: 1, rpm: 130, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.5, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x2c3524, speedMult: 1.2 },
+    tracker: { name: 'Tracker', melee: true, ammo: null, dmg: 50, backstab: 110, pellets: 1, rpm: 130, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.5, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1d1e20, speedMult: 1.2 },
     knife:   { name: 'Karambit', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1b1d21, speedMult: 1.2 },
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x26282c },
     smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 1100, mag: 35, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.0035, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.0095, recoilH: 0.012, zoom: 1.3, tier: 1, color: 0x2f3237 },
@@ -1782,6 +1832,19 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.15.0', date: '2026-11-04', title: 'Ranked, new maps + account IDs', notes: [
+    'RANKED and CASUAL for every mode except Zombies, Overdrive and Training. Pick the queue at the top of Discover; the lobby shows which one you are in. Ranked matches give Ranked Points (Battle Royale and Resurgence: placement + kills; duels, TDM and FFA: the win or your placing + kills). Casual matches give only XP, coins, challenge progress and weapon mastery, never RP.',
+    'Casual and ranked arena matches (duels, TDM, FFA) now count toward camo and blueprint challenges and weapon mastery.',
+    'Two new arena maps: KILLHOUSE (three lanes: a container yard, an open-top training house with rooms, doorways and windows, and an alley under a raised walkway) and CARGO (a tiny dock packed with a grid of shipping containers). Both are original layouts.',
+    'Map roll: before every arena match the map is rolled on a case-style strip. The Yard, Killhouse and Cargo all have exactly the same odds. Online, the host rolls and everyone plays the same map.',
+    'Duels 1v1 / 2v2: choose your loadout before every round. A picker opens between rounds and before round 1; picking during the countdown re-arms you on the spot.',
+    'No moving, jumping, grappling, shooting, knifing or grenades before the round starts: everyone is held on their spawn until FIGHT.',
+    'Walls block bullets on every arena map (checked by the tests for The Yard, Killhouse and Cargo).',
+    'The classic 1v1 Duel was removed from Discover. DUELS 1V1 · 2V2 replaces it.',
+    'Every account now has a permanent Account ID (like SRG-7K3Q-92XD) shown in the Account panel with a COPY button, for support.',
+    'Support panel for the built-in dev account only: re-enter your password to open it. It lists the accounts saved on this device (ID, username, join date, last login, level, coins, RP), searches by ID or name, copies the list as CSV and can issue a one-time temporary password. Passwords are stored only as one-way hashes, so they can never be shown to anyone. Players who sign in with a temporary password are asked to choose a new one.',
+    'The Tracker was rebuilt to match its reference video: black handle, wider tanto blade, bigger saw-back teeth and a fuller line; a new idle hold with the blade pointing left and the saw-back on top, the off hand resting at the bottom left; and a longer, smoother upright inspect without the bayonet-style flip at the end.',
+  ] },
   { v: '1.14.0', date: '2026-11-04', title: 'Levels + a fresh start', notes: [
     'New accounts start from scratch: only the default skins (no starter camo or tracer), the Tracker as your knife, and level 0. Everything else is earned in matches or bought in the shop.',
     'New LEVEL + XP system. Earn XP in every mode except Practice: kills (100 each), damage, survival time and placement in Battle Royale + Resurgence (a win is 2,000), duels and arena modes, Zombies rounds and bosses, Overdrive survival time and bosses, and Aim Trainer drills. Each level needs a little more XP than the last (1,000 + 75 per level) and pays 150 coins. Max level 100.',
@@ -2209,6 +2272,7 @@ BR.World = class World {
     this.reef = !!(opts && opts.reef);           // v1.11.1: the small Resurgence island
     this.halloween = !!(opts && opts.halloween);
     this.range = !!(opts && opts.range); this.overdrive = !!(opts && opts.overdrive);
+    this.mapId = (opts && opts.arena && opts.map) || (opts && opts.arena ? 'yard' : null);   // v1.15 arena maps: yard / killhouse / cargo
     if (this.halloween) this.groundCols = [0x2b3820, 0x1f2a17, 0x3a3122];   // dead grass, mud
     this.size = this.reef ? 380 : opts && opts.halloween ? 230 : this.overdrive ? 170 : this.range ? 100 : this.arena ? 92 : M.size;
     this.half = this.reef ? this.size / 2 : M.size / 2;
@@ -2231,7 +2295,7 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [], rockFill: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.arena) this.generateArena(); else this.generate();
+    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.arena) this.generateArena(); else this.generate();
   }
 
   // ------------------------------------------------------------------ zombies: Hollow Graves
@@ -4193,6 +4257,130 @@ BR.skyTint = (g, cols, light) => {
     ca.needsUpdate = true; W.sky.visible = true; }
 };
 
+// =============================================================================
+// v1.15 ARENA MAPS for Duels / TDM / FFA (original layouts; the map is rolled before each match)
+//  * generateKillhouse(): "Killhouse" — three lanes. North: a container yard. Middle: an
+//    open-top training house (rooms, doorways, windows, a straight corridor through the
+//    middle). South: an alley under a raised walkway. Spawns at the west/east ends.
+//  * generateCargo(): "Cargo" — a tiny dockside square packed with a 3x3 grid of shipping
+//    containers and crates. Non-stop close-range fights.
+// Both are mirrored end to end, so the two team spawns are fair. Each lists its own
+// FFA respawn spots (world.ffaSpots) for arena.js.
+// =============================================================================
+Object.assign(BR.World.prototype, {
+  // wall along X at z (thickness t) from x0..x1 with openings: [a, b, 'door'|'window']
+  arenaWallX(x0, x1, z, h, c, gaps, t) {
+    t = t || 0.35; let x = x0;
+    const seg = (a, b, y0, y1) => { if (b - a > 0.01) this.addBox(a, y0, z - t / 2, b, y1, z + t / 2, c); };
+    for (const [a, b, k] of (gaps || []).slice().sort((p, q) => p[0] - q[0])) {
+      seg(x, a, 0, h);
+      if (k === 'window') { seg(a, b, 0, 1.05); seg(a, b, 2.2, h); } else seg(a, b, 2.35, h);
+      x = b;
+    }
+    seg(x, x1, 0, h);
+  },
+  arenaWallZ(z0, z1, x, h, c, gaps, t) {
+    t = t || 0.35; let z = z0;
+    const seg = (a, b, y0, y1) => { if (b - a > 0.01) this.addBox(x - t / 2, y0, a, x + t / 2, y1, b, c); };
+    for (const [a, b, k] of (gaps || []).slice().sort((p, q) => p[0] - q[0])) {
+      seg(z, a, 0, h);
+      if (k === 'window') { seg(a, b, 0, 1.05); seg(a, b, 2.2, h); } else seg(a, b, 2.35, h);
+      z = b;
+    }
+    seg(z, z1, 0, h);
+  },
+  arenaContainer(x, z, along, stack, col) {
+    const L = 6.2, W = 2.5, H = 2.6, P = [0x8a5a3c, 0x45607a, 0x763a35, 0x4d6650, 0x8c784a];
+    for (let k = 0; k < (stack || 1); k++) {
+      const c = col !== undefined ? col : P[(Math.abs(Math.round(x * 7 + z * 3)) + k) % P.length], y = k * H, inset = k * 0.4;
+      const b = along ? this.addBox(x - L / 2 + inset, y, z - W / 2, x + L / 2 - inset, y + H, z + W / 2, c) : this.addBox(x - W / 2, y, z - L / 2 + inset, x + W / 2, y + H, z + L / 2 - inset, c);
+      this.containers.push(b);
+    }
+  },
+  arenaCrate(x, z, h) { this.addBox(x - 0.65, 0, z - 0.65, x + 0.65, h || 1.2, z + 0.65, 0xa77b4f); },
+  arenaShell(X, Z, WH, CON, CON2) {
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    B(-X - 3, 0, -Z - 3, X + 3, WH, -Z, CON, { tag: 'edge' }); B(-X - 3, 0, Z, X + 3, WH, Z + 3, CON, { tag: 'edge' });
+    B(-X - 3, 0, -Z, -X, WH, Z, CON, { tag: 'edge' }); B(X, 0, -Z, X + 3, WH, Z, CON, { tag: 'edge' });
+    for (const z of [-Z, Z]) this.addBox(-X, WH, z - 0.2, X, WH + 0.25, z + 0.2, CON2, { decor: true });
+    for (const x of [-X, X]) this.addBox(x - 0.2, WH, -Z, x + 0.2, WH + 0.25, Z, CON2, { decor: true });
+  },
+
+  generateKillhouse() {
+    const X = 34, Z = 22, WH = 8, HH = 3.4;
+    const CON = 0x77736c, CON2 = 0x625f59, PLA = 0xbdb3a0, TRIM = 0x8f8676, BLUE = 0x2f6fd8, RED = 0xd8443a, STEEL = 0x4a5160, Y = 0xf2b234;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    this.pois = [{ x: 0, z: 0, name: 'Killhouse', type: 'arena' }]; this.towns = [];
+    this.spawns = [{ x: -29, z: 0, yaw: -Math.PI / 2 }, { x: 29, z: 0, yaw: Math.PI / 2 }];
+    this.arenaShell(X, Z, WH, CON, CON2);
+    // ---- the house (open top): outer shell 20 x 14 m with doors + windows on every side
+    this.arenaWallX(-10, 10, 7, HH, PLA, [[-7.2, -5.8, 'door'], [-1.5, 1.5, 'window'], [5.8, 7.2, 'door']]);
+    this.arenaWallX(-10, 10, -7, HH, PLA, [[-7.2, -5.8, 'door'], [-1.5, 1.5, 'window'], [5.8, 7.2, 'door']]);
+    for (const sx of [-1, 1]) {
+      this.arenaWallZ(-7, 7, sx * 10, HH, PLA, [[-5.4, -3.6, 'window'], [-1, 1, 'door'], [3.6, 5.4, 'window']]);
+      // inner rooms: a wall across each half (door in it) + the split walls by the centre corridor
+      this.arenaWallX(Math.min(sx * 10, sx * 4.2), Math.max(sx * 10, sx * 4.2), 3, HH, PLA, [[sx > 0 ? 6.4 : -7.8, sx > 0 ? 7.8 : -6.4, 'door']]);
+      this.arenaWallX(Math.min(sx * 10, sx * 4.2), Math.max(sx * 10, sx * 4.2), -3, HH, PLA, [[sx > 0 ? 6.4 : -7.8, sx > 0 ? 7.8 : -6.4, 'door']]);
+      this.arenaWallZ(3, 7, sx * 4.2, HH, PLA, [[4.3, 5.7, 'door']]);
+      this.arenaWallZ(-7, -3, sx * 4.2, HH, PLA, [[-5.7, -4.3, 'door']]);
+      // cover inside the rooms
+      this.arenaCrate(sx * 7, 5.2, 1.2); this.arenaCrate(sx * 7.2, -5.2, 1.2);
+      B(sx * 1.6 - 0.9, 0, -0.35, sx * 1.6 + 0.9, 1.1, 0.35, TRIM);              // low table across the corridor
+      // ---- spawn ends: a low wall + two pillars
+      B(sx * 25.5 - 0.35, 0, -3, sx * 25.5 + 0.35, 1.25, 3, CON2); Dc(sx * 25.5 - 0.4, 1.25, -3.05, sx * 25.5 + 0.4, 1.32, 3.05, sx < 0 ? BLUE : RED);
+      for (const zz of [-8, 8]) { B(sx * 22 - 0.8, 0, zz - 0.8, sx * 22 + 0.8, 5, zz + 0.8, CON2); Dc(sx * 22 - 0.82, 4.8, zz - 0.82, sx * 22 + 0.82, 5, zz + 0.82, sx < 0 ? BLUE : RED); }
+      for (const [a, b, c, d] of [[27, 33, -3.4, -3.1], [27, 33, 3.1, 3.4], [27, 27.3, -3.4, 3.4]]) Dc(sx * a, 0, c, sx * b, 0.015, d, sx < 0 ? BLUE : RED);
+      Dc(sx * (X - 0.02), 1.0, -Z, sx * (X - 0.12), 2.2, Z, sx < 0 ? BLUE : RED);
+      // ---- lane dividers (3 m) with a gap to rotate through
+      for (const sz of [-1, 1]) { B(sx * 24, 0, sz * 9.5 - 0.3, sx * 19.6, 3, sz * 9.5 + 0.3, CON2); B(sx * 17.4, 0, sz * 9.5 - 0.3, sx * 12.5, 3, sz * 9.5 + 0.3, CON2); Dc(sx * 24, 3, sz * 9.5 - 0.32, sx * 12.5, 3.08, sz * 9.5 + 0.32, Y); }
+      // ---- north lane: container yard
+      this.arenaContainer(sx * 16, 16, true, 1); this.arenaContainer(sx * 6.5, 13.6, false, 1);
+      this.arenaCrate(sx * 11.5, 12.2, 2.4); this.arenaCrate(sx * 10.2, 12.2, 1.2); this.arenaCrate(sx * 25, 17, 1.2);
+      // ---- south lane: walkway stairs at both ends + cover in the alley
+      for (let i = 0; i < 5; i++) { const x0 = sx * (13 + i * 0.9); B(Math.min(x0, x0 + sx * 0.9), 0, -Z, Math.max(x0, x0 + sx * 0.9), 2.2 - i * 0.44, -18.6, CON2); }
+      B(sx * 8.5 - 1.6, 0, -13.6, sx * 8.5 + 1.6, 1.1, -13.0, TRIM); this.arenaCrate(sx * 19, -15.5, 1.2); this.arenaCrate(sx * 19, -14.2, 2.4);
+    }
+    this.arenaContainer(0, 18.4, true, 2);                                        // a double stack up north
+    B(-2, 0, 12.1, 2, 1.15, 12.6, TRIM);
+    B(-13, 2.0, -Z, 13, 2.2, -18.6, STEEL); Dc(-13, 3.1, -18.65, 13, 3.16, -18.55, Y);   // raised walkway (south wall)
+    for (let x = -12; x <= 12; x += 4) B(x - 0.15, 0, -18.9, x + 0.15, 2.0, -18.6, STEEL);
+    this.arenaCrate(-1.2, -14, 2.4); this.arenaCrate(1.2, -14, 1.2);
+    // floor paint + house trim
+    Dc(-0.12, 0, -Z, 0.12, 0.015, -7, 0xe8e4dc); Dc(-0.12, 0, 7, 0.12, 0.015, Z, 0xe8e4dc);
+    Dc(-10.2, HH, -7.2, 10.2, HH + 0.08, -6.8, TRIM); Dc(-10.2, HH, 6.8, 10.2, HH + 0.08, 7.2, TRIM);
+    this.ffaSpots = [[-29, 0], [29, 0], [-29, 15], [29, -15], [-29, -15], [29, 15], [-7, 5], [7, -5], [-7, -5], [7, 5], [-16, -14], [16, 14], [0, 14.5], [0, -16.5], [-16, 12.4], [16, -12.4]];
+    this.groundCols = [0x7d7b75, 0x75736d, 0x8a857a];
+  },
+
+  generateCargo() {
+    const X = 21, Z = 21, WH = 7;
+    const CON = 0x5d6670, CON2 = 0x4b535c, BLUE = 0x2f6fd8, RED = 0xd8443a, Y = 0xf2b234;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    this.pois = [{ x: 0, z: 0, name: 'Cargo', type: 'arena' }]; this.towns = [];
+    this.spawns = [{ x: -17.5, z: 0, yaw: -Math.PI / 2 }, { x: 17.5, z: 0, yaw: Math.PI / 2 }];
+    this.arenaShell(X, Z, WH, CON, CON2);
+    this.arenaContainer(0, 0, false, 2);                                           // centre: double stack
+    for (const sx of [-1, 1]) {
+      const tc = sx < 0 ? BLUE : RED;
+      this.arenaContainer(sx * 9, 0, true, 1);
+      this.arenaContainer(sx * 9, sx * -9.5, false, 1); this.arenaContainer(sx * 9, sx * 9.5, false, sx > 0 ? 2 : 1);
+      this.arenaContainer(sx * 0.5, sx * 10.5, true, 1);
+      this.arenaCrate(sx * 4.6, sx * 4.6, 1.2); this.arenaCrate(sx * 4.6, sx * -4.8, 2.4);
+      this.arenaCrate(sx * 15.5, sx * 12.5, 1.2); this.arenaCrate(sx * 15.5, sx * -12.5, 2.4); this.arenaCrate(sx * 14.2, sx * -12.5, 1.2);
+      B(sx * 14.6 - 0.3, 0, -2.2, sx * 14.6 + 0.3, 1.2, 2.2, CON2); Dc(sx * 14.6 - 0.35, 1.2, -2.25, sx * 14.6 + 0.35, 1.27, 2.25, tc);
+      for (const [a, b, c, d] of [[16, 20.6, -3, -2.7], [16, 20.6, 2.7, 3], [16, 16.3, -3, 3]]) Dc(sx * a, 0, c, sx * b, 0.015, d, tc);
+      Dc(sx * (X - 0.02), 1.0, -Z, sx * (X - 0.12), 2.2, Z, tc);
+      // dock bollards + hazard stripes along the walls
+      for (const zz of [-17, 17]) { B(sx * 18 - 0.3, 0, zz - 0.3, sx * 18 + 0.3, 0.8, zz + 0.3, 0x2a2d33); }
+    }
+    for (let x = -X; x < X; x += 1.6) for (const z of [-Z, Z]) Dc(x, 0, z - (z > 0 ? 0.6 : -0.3), x + 0.8, 0.015, z - (z > 0 ? 0.3 : -0.6), Y);
+    this.ffaSpots = [[-17.5, 0], [17.5, 0], [-17.5, -16], [17.5, 16], [-17.5, 16], [17.5, -16], [0, -16.5], [0, 16.5], [-4.5, 0], [4.5, 0], [-9, -4.5], [9, 4.5], [-4, 15], [4, -15]];
+    this.groundCols = [0x6d6e6c, 0x626361, 0x77756f];
+  },
+});
+
 </script>
 <script>
 'use strict';
@@ -4713,6 +4901,7 @@ BR.Weapons = {
   tryFire(game, actor) {
     const w = actor.weapon;
     if (!w || w.cool > 0) return false;
+    if (game.mode && game.mode.frozen) return false;          // v1.15: nobody shoots or swings before the round starts
     if (w.def.melee) return this.melee(game, actor, w);
     // Shell-by-shell reloads can be cancelled by shooting
     if (w.reloadT > 0) { if (w.def.shellReload && w.mag > 0) w.reloadT = 0; else return false; }
@@ -6247,19 +6436,21 @@ BR.Models = (function () {
         const m = new THREE.Mesh(geo, null); m.rotation.y = -Math.PI / 2; return m;     // shape x -> model +Z (spine), y -> up
       };
       // blade: straight spine, tip a touch below the spine line, angled tanto front, straight edge
-      const blade = ext([[0.0165, 0.0], [0.0165, 0.148], [0.0105, 0.181], [-0.0052, 0.168], [-0.0168, 0.152], [-0.0172, 0.014], [-0.012, 0.0]], 0.0042, 0.0007, null, 7);
+      const blade = ext([[0.0201, 0.0], [0.0201, 0.148], [0.0128, 0.181], [-0.0063, 0.168], [-0.0205, 0.152], [-0.021, 0.014], [-0.0146, 0.0]], 0.0042, 0.0007, null, 7);
       blade.material = bladeMat; inner.add(blade);
       // bright sharpened bevels along the edge and the tanto front
       const edgeM = (opts && (opts.blade || camo)) ? bladeMat : (cache.mat.trkEdge || (cache.mat.trkEdge = new THREE.MeshPhongMaterial({ color: 0xf4f7fa, specular: 0xffffff, shininess: 220, envMap: envCube(), reflectivity: 0.45 })));
-      const grind = ext([[-0.0172, 0.016], [-0.0168, 0.151], [-0.005, 0.167], [0.0098, 0.178], [0.0085, 0.171], [-0.0045, 0.161], [-0.0128, 0.147], [-0.013, 0.018]], 0.0052, 0); grind.material = edgeM; inner.add(grind);
+      const grind = ext([[-0.021, 0.016], [-0.0205, 0.151], [-0.0061, 0.167], [0.012, 0.178], [0.0104, 0.171], [-0.0055, 0.161], [-0.0156, 0.147], [-0.0159, 0.018]], 0.0052, 0); grind.material = edgeM; inner.add(grind);
       // tanto ridge line between the front facet and the flat
-      const ridge = ext([[-0.0128, 0.147], [0.0108, 0.152], [0.0108, 0.155], [-0.0128, 0.15]], 0.0051, 0); ridge.material = M.metal; inner.add(ridge);
+      const ridge = ext([[-0.0156, 0.147], [0.0132, 0.152], [0.0132, 0.155], [-0.0156, 0.15]], 0.0051, 0); ridge.material = M.metal; inner.add(ridge);
       // long fuller near the spine
-      const fuller = ext([[0.0062, 0.026], [0.0098, 0.028], [0.0098, 0.132], [0.0076, 0.136], [0.0062, 0.13]], 0.005, 0); fuller.material = M.dark; inner.add(fuller);
+      const fuller = ext([[0.0076, 0.026], [0.012, 0.028], [0.012, 0.132], [0.0093, 0.136], [0.0076, 0.13]], 0.005, 0); fuller.material = M.dark; inner.add(fuller);
       // saw-back teeth on the spine toward the tip
-      for (let i = 0; i < 9; i++) { const t = new THREE.Mesh(new THREE.ConeGeometry(0.0026, 0.0058, 4), bladeMat); t.position.set(0, 0.078 + i * 0.0072, 0.0175); t.rotation.set(Math.PI / 2 - 0.5, 0, 0); inner.add(t); }
+      // (v1.15) bigger, hooked saw teeth like the reference video, raked back toward the handle
+      for (let i = 0; i < 8; i++) { const t = new THREE.Mesh(new THREE.ConeGeometry(0.0034, 0.0085, 4), bladeMat); t.scale.z = 0.55; t.position.set(0, 0.074 + i * 0.0086, 0.0222); t.rotation.set(Math.PI / 2 - 0.62, 0, 0); inner.add(t); }
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(0.0052, 0.105, 0.0009), M.dark); fl.position.set(0, 0.084, 0.0045); inner.add(fl);      // thin fuller line
       // integral guard: a plate across the ricasso, the lower quillon hooking forward round the finger, a pin hole
-      const guard = ext([[0.0175, 0.007], [0.0175, -0.004], [0.004, -0.007], [-0.02, -0.008], [-0.034, -0.026], [-0.038, -0.035, -0.045, -0.03], [-0.046, -0.022], [-0.034, -0.004], [-0.024, 0.006], [-0.018, 0.009]], 0.0058, 0.0007, [[0.0095, 0.001, 0.0024, 0.0024], [-0.041, -0.027, 0.0022, 0.0022]], 7);
+      const guard = ext([[0.0212, 0.007], [0.0212, -0.004], [0.004, -0.007], [-0.022, -0.008], [-0.034, -0.026], [-0.038, -0.035, -0.045, -0.03], [-0.046, -0.022], [-0.034, -0.004], [-0.024, 0.006], [-0.018, 0.009]], 0.0058, 0.0007, [[0.0095, 0.001, 0.0024, 0.0024], [-0.041, -0.027, 0.0022, 0.0022]], 7);
       guard.material = bladeMat; inner.add(guard);
       const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0021, 0.0021, 0.0074, 10), M.dark); pin.rotation.z = Math.PI / 2; pin.position.set(0, 0.001, 0.0095); inner.add(pin);
       // handle: thick rubber slab with finger grooves on the edge side, a hump for the palm on the spine side,
@@ -7636,6 +7827,14 @@ BR.Models = (function () {
           m.userData.wristRoll = Math.PI; m.userData.gripY = -0.05; m.userData.armVec = new THREE.Vector3(0.22, -0.42, 0.42); m.userData.armVecUp = new THREE.Vector3(0.42, -0.62, 0.3);    // upright: forearm comes up from the lower right, slightly toward you (reference clip)                // forearm comes up from below, toward you (back of the hand faces the camera)
           m.userData.qUp = basis([-0.06, 1, -0.12], [-1, 0, -0.1]);
           m.userData.qUp2 = basis([-0.4, 1, -0.1], [1, 0.1, 0.1]);
+          if (id === 'tracker') {
+            // v1.15 Tracker (reference video): IDLE flatter, blade pointing left + a little up with the
+            // saw-back on TOP; SHOW A upright with the spine to the right; SHOW B tilted left, spine left
+            m.userData.qIdle = basis([-0.93, 0.33, -0.18], [0.12, 1, 0.05]);
+            m.userData.qUp = basis([0.12, 1, -0.1], [1, -0.05, 0.12]);
+            m.userData.qUp2 = basis([-0.36, 1, -0.08], [-1, -0.2, 0.15]);
+            m.userData.armVec = new THREE.Vector3(0.34, -0.36, 0.42); m.userData.armVecUp = new THREE.Vector3(0.3, -0.85, 0.32);
+          }
           m.quaternion.copy(m.userData.qIdle); m.scale.setScalar(1.08);
           m.userData.pivot = new THREE.Vector3(0, -0.065, 0);      // the draw flip turns the knife about the middle of the handle (in the palm)
           holder.add(m);
@@ -7742,7 +7941,7 @@ BR.Models = (function () {
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : BAYLIKE(w.id) ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.id === 'tracker' ? 5.0 : BAYLIKE(w.id) ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
     hide() { if (this.sparks) { for (const q of this.sparks) { q.life = 0; q.m.visible = false; } for (const q of this.rings) { q.life = 0; q.m.visible = false; } }      // v1.11.1: no frozen white spark boxes while skydiving
       if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
@@ -7799,7 +7998,7 @@ BR.Models = (function () {
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
-      if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
+      if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; } if (w.id === 'tracker') { hx = 0.075 * s; hy = -0.118; hz = -0.43; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
@@ -7907,14 +8106,15 @@ BR.Models = (function () {
           // Bayonet inspect (reference clip): bring it up upright close to the centre showing one face,
           // a slow look with small wobbles, twist the wrist to show the other face tilted left, twist
           // back to the first face, then drop back into the angled idle. No tosses.
+          const trk = w.id === 'tracker';
           const up = win(t, 0, 0.08, 0.88, 0.97);
-          bUp = up; bUp2 = win(t, 0.26, 0.34, 0.54, 0.62);
+          bUp = up; bUp2 = trk ? win(t, 0.3, 0.4, 0.6, 0.7) : win(t, 0.26, 0.34, 0.54, 0.62);     // Tracker: slow turn through edge-on to the other face and back
           ox -= 0.1 * up + 0.015 * bUp2; oy += 0.11 * up; oz -= 0.06 * up;
           const hold = up * (1 - 0.6 * win(t, 0.28, 0.32, 0.36, 0.4) - 0.6 * win(t, 0.6, 0.64, 0.68, 0.72));
           orz += 0.035 * Math.sin(t * Math.PI * 5) * hold; ory += 0.06 * Math.sin(t * Math.PI * 3.4 + 1) * hold; orx += 0.025 * Math.sin(t * Math.PI * 4.2) * hold;
           // v1.11: finish with a flip-and-catch before it drops back into the idle
           const fa = easeInOut((t - 0.68) / 0.16);
-          bay = fa > 0 && fa < 1 ? { lift: Math.sin(fa * Math.PI) * 0.06, flip: -Math.PI * 2 * fa, roll: 0 } : null;
+          bay = !trk && fa > 0 && fa < 1 ? { lift: Math.sin(fa * Math.PI) * 0.06, flip: -Math.PI * 2 * fa, roll: 0 } : null;     // (the Tracker inspect has no flip)
           if (t > 0.26 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
           if (t > 0.54 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
           if (t > 0.69 && !(this.spinSwish & 4)) { this.spinSwish |= 4; BR.Audio.swish(false); }
@@ -8244,7 +8444,7 @@ BR.Models = (function () {
         // v1.12.1: the forearm leaves the wrist along the fist's own axis, cocked at most ~32° toward the
         // natural arm direction (like a real hammer grip). It used to aim straight at the raw arm vector,
         // which bent the wrist ~90° in the upright bayonet pose.
-        const ang = Math.acos(BR.util.clamp(Z.dot(Zr), -1, 1)), tk = ang > 0.56 ? 0.56 / ang : 1;
+        const ang = Math.acos(BR.util.clamp(Z.dot(Zr), -1, 1)), lim = model.userData.tracker ? 1.05 : 0.56, tk = ang > lim ? lim / ang : 1;     // Tracker: the wrist cocks hard in the upright show (reference video)
         const F = (this._bzf || (this._bzf = new THREE.Vector3())).copy(Z).multiplyScalar(1 - tk).addScaledVector(Zr, tk).normalize();
         this._bfElbow = (this._bfElbow || new THREE.Vector3()).copy(hc).addScaledVector(F, armLen);
         const Y = (this._bhy || (this._bhy = new THREE.Vector3())).crossVectors(Z, X);
@@ -8325,6 +8525,20 @@ BR.Models = (function () {
         KH.L.visible = false;                  // v1.11: like CS, the off hand stays out of view with the karambit
         KH.L.updateMatrixWorld(true);
         L.fore.visible = false;
+        return;
+      }
+      if (model.userData.tracker && !(special && special.w > 0.05)) {
+        // v1.15 Tracker: the off hand rests at the bottom left (relaxed, palm in) during idle + draw; it
+        // drops out of view for the inspect, like the reference video
+        const P = this.pos, out = BR.util.clamp(this.inspectT > 0 ? 1 - Math.min(this.inspectT, this.inspectDur - this.inspectT) / 0.35 : 0, 0, 1);
+        const hide = this.inspectT > 0 ? 1 - out : 0;
+        L.hand.position.set(-0.17 * s - P.x.v * 0.3, -0.2 - hide * 0.25 + (P.y.v + 0.118) * 0.5, -0.36);
+        const Zh = this._lhz || (this._lhz = new THREE.Vector3()); Zh.set(-0.35, -0.72, 0.6).normalize();
+        const Yh = this._lhy || (this._lhy = new THREE.Vector3()); Yh.set(-1, 0.25, 0.1); Yh.addScaledVector(Zh, -Yh.dot(Zh)).normalize();
+        const Xh = this._lhx || (this._lhx = new THREE.Vector3()); Xh.crossVectors(Yh, Zh);
+        L.hand.quaternion.setFromRotationMatrix(this._sm.makeBasis(Xh, Yh, Zh));
+        L.hand.visible = hide < 0.98; L.hand.updateMatrixWorld(true);
+        if (L.hand.visible) this.limb(L.fore, L.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), this._sv.copy(L.hand.position).addScaledVector(Zh, 0.6), 1); else L.fore.visible = false;
         return;
       }
       if ((!lt || leftHidden) && !special) { L.hand.visible = L.fore.visible = false; return; }
@@ -11664,7 +11878,7 @@ BR.BotBrain = class BotBrain {
       this.P = Object.assign({}, BR.ARENA_PRESETS[c.preset || 'duel']); this.preset = c.preset || 'duel';
       this.size = c.size || this.P.sizes[0]; this.diffId = c.diff || 'normal';
       this.net = c.net || null; this.host = !this.net || this.net.isHost; this.me = this.net ? this.net.pid : 'H';
-      this.rosterIn = c.roster || null;
+      this.rosterIn = c.roster || null; this.ranked = !!c.ranked; this.mapId = c.map || 'yard';
       this.byId = new Map(); this.stats = {}; this.phase = 'countdown'; this.t = 3; this.round = 0; this.score = [0, 0]; this.time = 0;
       this.respawnQ = []; this.fxQ = []; this.sendT = 0; this.matchT = 0; this.ended = false;
     }
@@ -11672,7 +11886,7 @@ BR.BotBrain = class BotBrain {
     // ------------------------------------------------------------------ setup
     start() {
       const g = this.g, W = g.world;
-      g.diff = BR.CONFIG.difficulty[this.diffId] || BR.CONFIG.difficulty.normal;
+      g.diff = BR.CONFIG.difficulty[this.diffId] || BR.CONFIG.difficulty.normal; g.ranked = this.ranked;
       g.zone.mesh.visible = false;
       // roster: [{ id, pid (owner), name, team, bot }]
       let roster = this.rosterIn;
@@ -11707,6 +11921,7 @@ BR.BotBrain = class BotBrain {
       if (this.host) this.beginRound(); else this.waitT = 0;
     }
     get duel() { return this.P.kind === 'duel'; }
+    get picksLoadout() { return this.P.guns === 'duel'; }        // Duels 1v1/2v2: pick your guns before every round
     get teams() { return this.P.kind !== 'ffa'; }
     gunsFor(a) {
       const set = this.P.guns;
@@ -11737,10 +11952,11 @@ BR.BotBrain = class BotBrain {
     }
     freeSpot(a) {
       let best = null, bd = -1;
-      for (const [x, z] of SPOTS) {
-        let md = 1e9; for (const o of this.g.actors) if (o !== a && o.alive && o.team !== a.team) md = Math.min(md, Math.hypot(o.pos.x - x * K, o.pos.z - z * K));
+      const spots = this.g.world.ffaSpots || SPOTS.map(([x, z]) => [x * K, z * K]);      // v1.15: each map has its own
+      for (const [x, z] of spots) {
+        let md = 1e9; for (const o of this.g.actors) if (o !== a && o.alive && o.team !== a.team) md = Math.min(md, Math.hypot(o.pos.x - x, o.pos.z - z));
         md += Math.random() * 6;
-        if (md > bd) { bd = md; best = [x * K, z * K]; }
+        if (md > bd) { bd = md; best = [x, z]; }
       }
       const s = this.safe(best[0], best[1]);
       return Object.assign(s, { yaw: Math.atan2(s.x, s.z) });
@@ -11757,7 +11973,7 @@ BR.BotBrain = class BotBrain {
         a.mesh = a.buildMesh(); g.scene.add(a.mesh); g.highlightActor(a);
         if (a.brain) { a.brain.target = null; a.brain.landedT = 99; }
       }
-      if (a.local) { this.arm(a); this.placeAt(a, s); }
+      if (a.local) { this.arm(a); this.placeAt(a, s); a.spawnLock = { x: a.mover.pos.x, y: a.mover.pos.y, z: a.mover.pos.z }; }
       if (a.netProxy) { a.netProxy.seen = false; a.mover.pos.set(s.x, 0, s.z); }
     }
 
@@ -11777,7 +11993,7 @@ BR.BotBrain = class BotBrain {
     applyRound(m) {
       this.round = m.round;
       for (const [id, x, z, yaw] of m.spawns) { const a = this.byId.get(id); if (a) this.revive(a, { x, z, yaw }); }
-      this.phase = 'countdown'; this.t = 3; this.lastN = 0; this.frozen = true;
+      this.phase = 'countdown'; this.t = this.picksLoadout && m.round === 1 ? 6 : 3; this.lastN = 0; this.frozen = true;
       const title = this.duel ? 'ROUND ' + this.round : this.P.title;
       const sub = this.duel ? (this.teams ? `${TEAM_NAME[0]} ${this.score[0]} – ${this.score[1]} ${TEAM_NAME[1]}` : '') : this.P.kind === 'tdm' ? `First team to ${this.P.target} kills` : `First to ${this.P.target} kills`;
       this.g.hud.duelBanner(title, sub, 'info');
@@ -11800,7 +12016,7 @@ BR.BotBrain = class BotBrain {
         let w = null;
         if (!alive[0] && !alive[1]) w = -1; else if (!alive[0]) w = 1; else if (!alive[1]) w = 0;
         else if (this.t <= 0) { const hp = [0, 1].map(t => this.g.actors.filter(a => a.alive && a.team === t).reduce((s, a) => s + a.health + a.shield, 0)); w = hp[0] > hp[1] + 0.5 ? 0 : hp[1] > hp[0] + 0.5 ? 1 : -1; }
-        if (w !== null) { if (w >= 0) this.score[w]++; this.phase = 'roundEnd'; this.t = 2.6; this.lastWinner = w; this.pushMatch(true); }
+        if (w !== null) { if (w >= 0) this.score[w]++; this.phase = 'roundEnd'; this.t = this.picksLoadout && Math.max(...this.score) < P.target ? 7 : 2.6; this.lastWinner = w; this.pushMatch(true); }
       } else if (this.phase === 'fight') {
         const best = P.kind === 'tdm' ? Math.max(...this.score) : Math.max(...Object.values(this.stats).map(s => s.kills));
         if (best >= P.target || this.t <= 0) this.finish();
@@ -11851,7 +12067,12 @@ BR.BotBrain = class BotBrain {
         else if (this.phase === 'fight') this.t -= dt;
       }
       // hold everyone at their spawn during the countdown
-      if (this.frozen) for (const a of g.actors) if (a.local !== false && a.alive && (a.isPlayer || a.brain)) { a.mover.vel.set(0, 0, 0); a.fireHeld = false; }
+      if (this.frozen) for (const a of g.actors) if (a.local !== false && a.alive && (a.isPlayer || a.brain)) {
+        const m = a.mover; m.vel.set(0, 0, 0); a.fireHeld = false; a.lunge = null;
+        if (m.grapple) m.releaseGrapple();
+        if (a.spawnLock) { m.pos.x = a.spawnLock.x; m.pos.z = a.spawnLock.z; if (m.pos.y > a.spawnLock.y) m.pos.y = a.spawnLock.y; }
+      }
+      this.loadoutPicker();
       // your own respawn countdown (TDM / FFA)
       const p = g.player;
       if (!p.alive && !this.duel) { this.deadT = (this.deadT || 0) + dt; g.hud.resurgence && g.hud.resurgence(false, Math.max(0, 3 - this.deadT)); } else if (this.deadT) { this.deadT = 0; g.hud.resurgence && g.hud.resurgence(false, null); }
@@ -11921,7 +12142,7 @@ BR.BotBrain = class BotBrain {
       const win = m.winTeam === myT;
       const rank = Object.values(st).sort((a, b) => b.kills - a.kills).findIndex(s => s === st[g.player.rosterId]) + 1;
       g.result = { arena: true, preset: this.preset, title: this.P.title + (this.duel ? ` ${this.size}V${this.size}` : ''), win, draw: m.winTeam === -1, kills: me.kills, deaths: me.deaths, damage: g.player.damageDealt, time: this.time,
-        score: m.score, ffa: this.P.kind === 'ffa', rank, total: Object.keys(st).length, online: !!this.net, place: win ? 1 : 2,
+        score: m.score, ffa: this.P.kind === 'ffa', ranked: this.ranked, map: this.mapId, rank, total: Object.keys(st).length, online: !!this.net, place: win ? 1 : 2,
         by: this.P.kind === 'ffa' ? `#${rank} of ${Object.keys(st).length} · ${me.kills} kills` : `${TEAM_NAME[0]} ${m.score[0]} – ${m.score[1]} ${TEAM_NAME[1]}` };
       g.state = 'dead'; g.endT = 2.4;
       g.hud.duelBanner(m.winTeam === -1 ? 'DRAW' : win ? 'VICTORY' : 'DEFEAT', g.result.by, win ? 'win' : m.winTeam === -1 ? 'info' : 'lose');
@@ -11945,6 +12166,31 @@ BR.BotBrain = class BotBrain {
       }
       if (html !== this._hud) { this._hud = html; $('ar-score').innerHTML = html; }
     }
+    // ---- v1.15 per-round loadout picker (Duels): open between rounds and before round 1
+    loadoutPicker() {
+      const g = this.g, want = this.picksLoadout && !this.ended && (this.phase === 'roundEnd' || this.phase === 'countdown');
+      let el = $('ar-lo');
+      if (!want) { if (el && !el.classList.contains('hidden')) el.classList.add('hidden'); return; }
+      if (!el) {
+        el = document.createElement('div'); el.id = 'ar-lo'; el.className = 'ar-lo';
+        el.addEventListener('mousedown', e => e.stopPropagation()); el.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+        el.addEventListener('click', e => {
+          const b = e.target.closest('[data-slot]'); if (!b) return;
+          const gg = BR.game, D = gg.settings.duel = gg.settings.duel || {}; const L = (D.loadout || ['rifle', 'shotgun']).slice();
+          L[+b.dataset.slot] = b.dataset.g; D.loadout = L; if (BR.saveSettings) BR.saveSettings();
+          const M = BR.game.mode; if (!M || !M.arena) return;           // (the element outlives a match: always act on the current one)
+          BR.Audio.pickup(); M._loHtml = null;
+          const p = BR.game.player; if (M.phase === 'countdown' && p.alive) { const cur = p.cur; M.arm(p); p.cur = Math.min(cur, 1); if (!p.slots[p.cur]) p.cur = 2; }   // re-arm right away before the fight
+        });
+        $('play').appendChild(el);
+      }
+      if (el.classList.contains('hidden')) { el.classList.remove('hidden'); this._loHtml = null; if (this.phase === 'roundEnd') g.input.unlock(); }
+      const L = (g.settings.duel || {}).loadout || ['rifle', 'shotgun'], P1 = ['rifle', 'holoar', 'smg', 'lmg', 'dmr', 'shotgun', 'hunter', 'sniper'], P2 = ['pistol', 'revolver', 'smg', 'shotgun'];
+      const W = BR.CONFIG.weapons, pic = BR.WeaponIcons && BR.WeaponIcons.pic || {};
+      const row = (ids, slot) => ids.map(id => `<button class="${L[slot] === id ? 'sel' : ''}" data-slot="${slot}" data-g="${id}">${pic[id] ? `<img src="${pic[id]}" alt="">` : ''}<span>${W[id].name}</span></button>`).join('');
+      const html = `<div class="ar-lo-h"><b>CHOOSE YOUR LOADOUT</b><span>${this.phase === 'roundEnd' ? 'Next round in ' + Math.ceil(Math.max(0, this.t)) + 's' : 'Round starts in ' + Math.ceil(Math.max(0, this.t)) + 's'}</span></div><div class="ar-lo-l">PRIMARY</div><div class="ar-lo-r">${row(P1, 0)}</div><div class="ar-lo-l">SECONDARY</div><div class="ar-lo-r">${row(P2, 1)}</div>`;
+      if (html !== this._loHtml) { this._loHtml = html; el.innerHTML = html; }
+    }
     // teammate markers (names over allies, through walls)
     markers() {
       const box = $('ar-marks'), g = this.g, pool = this._mk || (this._mk = []);
@@ -11957,6 +12203,7 @@ BR.BotBrain = class BotBrain {
     }
     dispose() {
       const h = $('ar-hud'); if (h) h.classList.add('hidden');
+      const lo = $('ar-lo'); if (lo) lo.classList.add('hidden');
       if (this._mk) for (const el of this._mk) el.style.display = 'none';
       this.g.hud.resurgence && this.g.hud.resurgence(false, null);
       if (this.net) { BR.Net.leave(); this.net = null; }
@@ -13607,11 +13854,37 @@ BR.Accounts = {
     // Built-in accounts (CONFIG.seedAccounts) exist everywhere; local ones can't replace them
     for (const s of BR.CONFIG.seedAccounts || []) {
       for (const k of Object.keys(this.db.users)) if (k.toLowerCase() === s.name.toLowerCase() && k !== s.name) delete this.db.users[k];
-      this.db.users[s.name] = { salt: s.salt, hash: s.hash, seeded: true };
+      const old = this.db.users[s.name] || {};
+      this.db.users[s.name] = { salt: s.salt, hash: s.hash, seeded: true, id: this.seedId(s.name), created: old.created || 0, last: old.last || 0, };
     }
+    // v1.15: every account gets a permanent, unique Account ID (for support lookups)
+    let dirty = false;
+    const taken = new Set(Object.values(this.db.users).map(u => u.id).filter(Boolean));
+    for (const u of Object.values(this.db.users)) if (!u.id) { u.id = this.newId(taken); taken.add(u.id); dirty = true; }
     if (d.current && this.db.users[d.current]) this.db.current = d.current;
+    if (dirty) this.save();
     return this;
   },
+
+  // Account IDs look like SRG-7K3Q-92XD (no 0/O/1/I so they're easy to read out loud)
+  ID_CH: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+  newId(taken) {
+    let id;
+    do {
+      const r = BR.sha256.randomHex(8), c = [];
+      for (let i = 0; i < 8; i++) c.push(this.ID_CH[parseInt(r.substr(i * 2, 2), 16) % 32]);
+      id = 'SRG-' + c.slice(0, 4).join('') + '-' + c.slice(4).join('');
+    } while (taken && taken.has(id));
+    return id;
+  },
+  // built-in accounts get the same ID on every device (derived from the name)
+  seedId(name) {
+    let h = 2166136261; const c = [];
+    for (const ch of 'surge:' + name.toLowerCase()) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+    for (let i = 0; i < 8; i++) { h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0; c.push(this.ID_CH[h % 32]); }
+    return 'SRG-' + c.slice(0, 4).join('') + '-' + c.slice(4).join('');
+  },
+  accountId(name) { const n = name === undefined ? this.db.current : name; const u = n && this.db.users[n]; return u ? u.id : null; },
   save() { BR.util.save(this.KEY, this.db); },
 
   current() { return this.db.current; },
@@ -13626,7 +13899,8 @@ BR.Accounts = {
     if (!pass || pass.length < 4) return { ok: false, msg: 'Password: at least 4 characters' };
     if (Object.keys(this.db.users).some(u => u.toLowerCase() === name.toLowerCase())) return { ok: false, msg: 'That username is taken on this device' };
     const salt = BR.sha256.randomHex(16);
-    this.db.users[name] = { salt, hash: await BR.sha256.hex(salt + ':' + pass), created: Date.now() };
+    const id = this.newId(new Set(Object.values(this.db.users).map(u => u.id)));
+    this.db.users[name] = { salt, hash: await BR.sha256.hex(salt + ':' + pass), id, created: Date.now(), last: Date.now() };
     this.db.current = name;
     this.save();
     return { ok: true };
@@ -13638,11 +13912,60 @@ BR.Accounts = {
     const u = key && this.db.users[key];
     if (!u || (await BR.sha256.hex(u.salt + ':' + (pass || ''))) !== u.hash) return { ok: false, msg: 'Wrong username or password' };
     this.db.current = key;
+    u.last = Date.now();
     this.save();
-    return { ok: true };
+    return { ok: true, mustChange: !!u.mustChange };
   },
 
-  logOut() { this.db.current = null; this.save(); },
+  async checkPassword(pass) {
+    const u = this.db.current && this.db.users[this.db.current];
+    return !!u && (await BR.sha256.hex(u.salt + ':' + (pass || ''))) === u.hash;
+  },
+  async changePassword(oldPass, newPass) {
+    if (!(await this.checkPassword(oldPass))) return { ok: false, msg: 'Current password is wrong' };
+    if (!newPass || newPass.length < 4) return { ok: false, msg: 'Password: at least 4 characters' };
+    const u = this.db.users[this.db.current]; if (u.seeded) return { ok: false, msg: 'Built-in accounts keep their password' };
+    u.salt = BR.sha256.randomHex(16); u.hash = await BR.sha256.hex(u.salt + ':' + newPass); delete u.mustChange; this.save();
+    return { ok: true, msg: 'Password changed' };
+  },
+
+  // ---- Support panel (built-in dev account only, unlocked by re-typing its password) ----------
+  // Lists every account stored on THIS device. Passwords are one-way hashes: nobody can read
+  // them, not even the admin. Support can only issue a one-time temporary password.
+  adminUntil: 0,
+  adminOpen() { return this.isSeededDev() && performance.now() < this.adminUntil; },
+  async adminUnlock(pass) {
+    if (!this.isSeededDev()) return { ok: false, msg: 'Not available on this account' };
+    if (!(await this.checkPassword(pass))) { this.adminUntil = 0; return { ok: false, msg: 'Wrong password' }; }
+    this.adminUntil = performance.now() + 10 * 60 * 1000;       // stays open 10 minutes
+    return { ok: true };
+  },
+  adminLock() { this.adminUntil = 0; },
+  adminList(query) {
+    if (!this.adminOpen()) return null;
+    const q = String(query || '').trim().toUpperCase();
+    return Object.keys(this.db.users).map(name => {
+      const u = this.db.users[name], p = BR.util.load('velocity-royale.profile.u:' + name.toLowerCase(), null) || {};
+      const st = p.stats || {}; let lv = 0, left = p.xp || 0;
+      if (p.dev) lv = BR.LEVELS.max; else while (lv < BR.LEVELS.max && left >= BR.LEVELS.need(lv)) { left -= BR.LEVELS.need(lv); lv++; }
+      return { name, id: u.id, created: u.created || 0, last: u.last || 0, builtIn: !!u.seeded, dev: !!p.dev, level: lv, coins: p.coins || 0, rp: p.rp || 0, matches: st.matches || 0, wins: st.wins || 0, temp: !!u.mustChange };
+    }).filter(r => !q || r.id.includes(q) || r.name.toUpperCase().includes(q)).sort((a, b) => (b.last || b.created) - (a.last || a.created));
+  },
+  async adminResetPassword(name) {
+    if (!this.adminOpen()) return { ok: false, msg: 'Support panel is locked' };
+    const u = this.db.users[name];
+    if (!u || u.seeded) return { ok: false, msg: 'Can’t reset that account' };
+    const temp = Array.from({ length: 8 }, () => this.ID_CH[Math.random() * 32 | 0]).join('');
+    u.salt = BR.sha256.randomHex(16); u.hash = await BR.sha256.hex(u.salt + ':' + temp); u.mustChange = true; this.save();
+    return { ok: true, temp, msg: 'Temporary password for ' + name + ': ' + temp + ' (shown once)' };
+  },
+  adminExport() {
+    const rows = this.adminList(); if (!rows) return '';
+    const d = t => t ? new Date(t).toISOString().slice(0, 10) : '';
+    return ['account_id,username,created,last_login,level,coins,rp,matches,wins'].concat(rows.map(r => [r.id, r.name, d(r.created), d(r.last), r.level, r.coins, r.rp, r.matches, r.wins].join(','))).join('\n');
+  },
+
+  logOut() { this.db.current = null; this.adminUntil = 0; this.save(); },
 
   // Is the signed-in account a built-in dev account?
   isSeededDev() {
@@ -13737,6 +14060,11 @@ BR.Ranks = {
   // RP for a finished match (battle royale placement + kills; duels: win/loss)
   forMatch(r) {
     if (r.duel) return r.win ? 45 : -12;
+    if (r.arena) {         // v1.15 ranked arena: the win (or your FFA placing) + kills
+      if (r.draw) return Math.min(r.kills || 0, 10) * 2;
+      const base = r.ffa ? (r.win ? 60 : r.rank <= 3 ? 20 : -10) : r.win ? (r.online ? 55 : 40) : -15;
+      return base + Math.min(r.kills || 0, r.ffa || r.preset === 'tdm' ? 15 : 8) * 3;
+    }
     const place = r.place || 99;
     const p = r.win ? 140 : place <= 3 ? 85 : place <= 5 ? 60 : place <= 10 ? 32 : place <= 20 ? 10 : -8;
     return p + Math.min(r.kills || 0, 10) * 14;
@@ -14075,20 +14403,31 @@ BR.Profile = {
   },
 
   // Coins for a finished match. Returns the breakdown so the end screen can show it.
+  // v1.15: Ranked matches give RP; Casual matches give only XP, coins, challenge + mastery progress
   award(r) {
+    if (r.ranked === undefined) r.ranked = !!(BR.game && BR.game.ranked);
     const res = this.awardCoins(r);
     res.xp = this.addXP(this.matchXP(r));
     return res;
   },
   awardCoins(r) {
     const C = BR.CONFIG.coins;
-    if (r.arena) {          // arena modes (duels, TDM, FFA): coins for kills + the win, no Ranked RP
+    if (r.arena) {          // arena modes (duels, TDM, FFA): coins for kills + the win; RP only in Ranked
       const parts = [['Kills ×' + r.kills, r.kills * 15]];
       if (r.win) parts.push([r.ffa ? 'Won the lobby' : 'Victory', r.online ? 200 : 120]);
       else if (r.ffa && r.rank <= 3) parts.push(['Top 3', 50]);
       const total = parts.reduce((s, p) => s + p[1], 0);
-      this.data.coins += total; this.data.stats.kills += r.kills; this.save();
-      return { total, parts, unlocked: [] };
+      this.data.coins += total; this.data.stats.kills += r.kills;
+      if (r.win) this.addGrind('win', 1);
+      const out = { total, parts, unlocked: [] };
+      if (r.ranked) {
+        const rp = BR.Ranks.forMatch(r), before = BR.Ranks.of(this.data.rp || 0);
+        this.data.rp = Math.max(0, (this.data.rp || 0) + rp);
+        const after = BR.Ranks.of(this.data.rp);
+        Object.assign(out, { rp, rankUp: after > before ? BR.Ranks.tiers[after].name : null, unlocked: this.unlockRankRewards() });
+      }
+      this.save();
+      return out;
     }
     if (r.overdrive) {      // Overdrive: coins for time survived, kills, bosses and the win (no Ranked RP)
       const parts = [['Survived ' + BR.fmtTime(r.time), Math.floor(r.time / 10) * 5], ['Kills ×' + r.kills, Math.floor(r.kills * 0.5)]];
@@ -14118,9 +14457,9 @@ BR.Profile = {
     const total = parts.reduce((s, p) => s + p[1], 0);
     this.data.coins += total;
     this.data.stats.matches++;
-    const rp = BR.Ranks.forMatch(r), before = BR.Ranks.of(this.data.rp || 0);
-    this.data.rp = Math.max(0, (this.data.rp || 0) + rp);
-    const after = BR.Ranks.of(this.data.rp), unlocked = this.unlockRankRewards();
+    const rp = r.ranked ? BR.Ranks.forMatch(r) : undefined, before = BR.Ranks.of(this.data.rp || 0);
+    if (r.ranked) this.data.rp = Math.max(0, (this.data.rp || 0) + rp);
+    const after = BR.Ranks.of(this.data.rp || 0), unlocked = r.ranked ? this.unlockRankRewards() : [];
     this.data.stats.kills += r.kills;
     if (r.win) this.data.stats.wins++;
     else this.data.stats.deaths = (this.data.stats.deaths || 0) + 1;     // one life: a match you didn't win ended in a death
@@ -14933,14 +15272,35 @@ BR.HUD = class HUD {
     </div>
     <div id="acct-in" class="hidden">
       <div class="acct-me"><span id="acct-me"></span><span id="acct-dev" class="dev-badge hidden">DEV</span></div>
+      <div class="acct-row"><span>Account ID</span><b class="acct-idb"><span id="acct-id"></span><button id="acct-copy" class="mbtn sm" type="button">COPY</button></b></div>
       <div class="acct-row"><span>Coins</span><b><i class="coin"></i><span id="acct-coins"></span></b></div>
       <div class="acct-row"><span>Record</span><b id="acct-stats"></b></div>
       <label for="acct-code">Redeem a code</label>
       <div class="code-row"><input id="acct-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XX-XXX-XXXX"><button id="acct-redeem" class="mbtn sm">REDEEM</button></div>
+      <button id="acct-admin" class="mbtn hidden" type="button">SUPPORT · ACCOUNTS</button>
       <button id="acct-logout" class="mbtn">LOG OUT</button>
     </div>
     <div id="acct-msg" class="acct-msg" role="status"></div>
     <button id="acct-close" class="mbtn">CLOSE</button>
+  </div>
+</div>
+<div id="maproll" class="overlay hidden">
+  <div class="mr-box"><div class="mr-top"><em id="mr-title">ARENA</em><b>ROLLING THE MAP</b></div>
+    <div class="mr-win"><div class="mr-strip" id="mr-strip"></div><i class="mr-mark"></i></div>
+    <div class="mr-res" id="mr-res"></div><small class="mr-fine">Every map has the same odds</small></div>
+</div>
+<div id="admin" class="overlay hidden">
+  <div class="panel metal acct admin">
+    <div class="ptitle">SUPPORT · ACCOUNTS</div>
+    <p class="adm-note">Accounts saved on this device. Passwords are one-way hashed and can never be shown: use RESET to issue a one-time temporary password.</p>
+    <form id="adm-gate"><label for="adm-pass">Re-enter your password</label>
+      <input id="adm-pass" type="password" autocomplete="current-password" maxlength="64"><button class="mbtn hot" type="submit">UNLOCK</button></form>
+    <div id="adm-body" class="hidden">
+      <div class="code-row"><input id="adm-q" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Search ID or username"><button id="adm-export" class="mbtn sm" type="button">COPY CSV</button></div>
+      <div id="adm-list" class="adm-list"></div>
+    </div>
+    <div id="adm-msg" class="acct-msg" role="status"></div>
+    <button id="adm-close" class="mbtn">CLOSE</button>
   </div>
 </div>
 
@@ -14992,7 +15352,7 @@ BR.HUD = class HUD {
 </div>
 
 <div id="discover" class="overlay hidden discover">
-  <div class="dc-top"><div class="dc-title"><b>DISCOVER</b><span>Pick a mode, then hit PLAY</span></div><button id="dc-x" class="xbtn" aria-label="Close">✕</button></div>
+  <div class="dc-top"><div class="dc-title"><b>DISCOVER</b><span>Pick a mode, then hit PLAY</span></div><div class="seg dc-queue" id="dc-queue"><button data-q="casual">CASUAL</button><button data-q="ranked">RANKED</button></div><button id="dc-x" class="xbtn" aria-label="Close">✕</button></div>
   <div class="dc-feat" id="dc-feat"></div>
   <div id="dc-rows"></div>
 </div>
@@ -15684,6 +16044,7 @@ BR.HUD = class HUD {
       if (r.coins.rp !== undefined) ec.innerHTML += `<div class="rprow"><span>${BR.Ranks.badge(BR.Profile.data.rp || 0)} Ranked</span><b class="${r.coins.rp < 0 ? 'neg' : ''}">${r.coins.rp >= 0 ? '+' : ''}${r.coins.rp} RP</b></div>`
         + (r.coins.rankUp ? `<div class="rprow up"><span>RANK UP!</span><b>${r.coins.rankUp}</b></div>` : '')
         + (r.coins.unlocked && r.coins.unlocked.length ? `<div class="rprow up"><span>Unlocked</span><b>${r.coins.unlocked.join(', ')}</b></div>` : '');
+      else if (r.ranked === false && !r.zombies && !r.overdrive) ec.innerHTML += `<div class="rprow casual"><span>Casual match</span><b>No RP · play Ranked to climb</b></div>`;
       const X = r.coins.xp;
       if (X) ec.innerHTML += `<div class="xprow"><span>+${X.total.toLocaleString()} XP</span><b>${X.after > X.before ? `LEVEL ${X.before} → <em>${X.after}</em>` : 'LEVEL ' + X.after}</b><u><s style="width:${(X.into / X.need * 100).toFixed(1)}%"></s></u></div>`
         + (X.unlocked.length ? `<div class="rprow up"><span>Unlocked</span><b>${X.unlocked.join(', ')}</b></div>` : '');
@@ -16534,14 +16895,14 @@ BR.Game = class Game {
       }
     }
     // Duel countdown: look around, but no moving or shooting yet
-    if (this.duel && this.duel.phase !== 'fight') { p.input.mx = p.input.mz = 0; p.fireHeld = false; inp.consume('jump'); inp.consume('crouch'); return; }
+    if ((this.duel && this.duel.phase !== 'fight') || (this.mode && this.mode.frozen)) { p.input.mx = p.input.mz = 0; p.fireHeld = false; for (const k of ['jump', 'crouch', 'grenade', 'grapple', 'stim']) inp.consume(k); return; }
 
     p.input.mx = inp.moveX;
     p.input.mz = inp.moveY;
     if (inp.consume('jump')) p.input.jump = true;
     p.input.jumpHeld = !!inp.jumpHeld;
     if (inp.consume('crouch')) p.input.crouch = true;
-    if (inp.consume('grenade')) { if (this.shock.throw(p)) { BR.Audio.throwNade(); this.vmr.onThrow(); } else BR.Audio.click(); }
+    if (inp.consume('grenade')) { if (!(this.mode && this.mode.frozen) && this.shock.throw(p)) { BR.Audio.throwNade(); this.vmr.onThrow(); } else BR.Audio.click(); }
     if (inp.consume('stim')) { if (p.tryStim()) { BR.Audio.stim(); this.vmr.onStim(); this.hud.toast('STIM', 600); } else BR.Audio.click(); }
     if (inp.consume('grapple')) { if (p.tryGrapple()) { BR.Audio.grapple(); this.vmr.onGrapple(); this.ropeT = 0; } else BR.Audio.click(); }
     // Reload button: knives and full mags inspect instead
@@ -16741,7 +17102,7 @@ BR.Game = class Game {
     if (victim.mover.grapple) victim.mover.releaseGrapple();
     if (killer) killer.kills++;
     // grind challenges (camos / blueprints): your kills in real matches, zombies included
-    if (killer && killer.isPlayer && victim !== killer && !this.practice && !this.demo && !this.mode && BR.Profile.addGrind) {
+    if (killer && killer.isPlayer && victim !== killer && !this.practice && !this.demo && (!this.mode || this.mode.arena) && BR.Profile.addGrind) {   // v1.15: casual + ranked arena kills count too
       const wd = BR.CONFIG.weapons[weaponId];
       BR.Profile.addGrind('kill', 1, { w: weaponId, head: !!head, melee: !!(wd && wd.melee), zombie: !!victim.zombie });
     }
@@ -17081,6 +17442,7 @@ BR.Game = class Game {
   settings.xh = Object.assign({}, DEFAULTS.xh, stored.xh || {});
   settings.duel = Object.assign({}, DEFAULTS.duel, stored.duel || {});
   const save = () => BR.util.save('velocity-royale.settings', settings);
+  BR.saveSettings = save;
   BR.Accounts.load();
   BR.Profile.load();
   setTimeout(() => daily(), 0);
@@ -17292,8 +17654,32 @@ BR.Game = class Game {
       $('acct-coins').textContent = BR.Profile.coinsLabel();
       $('acct-stats').textContent = `${P.stats.matches} matches · ${P.stats.wins} wins · ${P.stats.kills} kills · K/D ${BR.Profile.kd().toFixed(2)}`;
       $('acct-dev').classList.toggle('hidden', !BR.Profile.infinite());
+      $('acct-id').textContent = BR.Accounts.accountId() || '—';
+      $('acct-admin').classList.toggle('hidden', !BR.Accounts.isSeededDev());
     }
   };
+  const copyText = t => { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
+  $('acct-copy').addEventListener('click', () => { const id = BR.Accounts.accountId(); if (id && copyText(id)) $('acct-msg').textContent = 'Account ID copied'; });
+  // ---- support panel: only the built-in dev account, password re-entry required
+  const esc = v => String(v).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+  const day = t => t ? new Date(t).toLocaleDateString() : '—';
+  const renderAdmin = () => {
+    const open = BR.Accounts.adminOpen();
+    $('adm-gate').classList.toggle('hidden', open); $('adm-body').classList.toggle('hidden', !open);
+    if (!open) return;
+    const rows = BR.Accounts.adminList($('adm-q').value) || [];
+    $('adm-list').innerHTML = rows.length ? rows.map(r => `<div class="adm-row"><div><b>${esc(r.name)}</b>${r.builtIn ? ' <i class="dev-badge">BUILT-IN</i>' : ''}${r.temp ? ' <i class="dev-badge">TEMP PW</i>' : ''}<code>${esc(r.id)}</code></div>` +
+      `<small>Lv ${r.level} · ${r.coins} coins · ${r.rp} RP · ${r.matches} matches · joined ${day(r.created)} · last ${day(r.last)}</small>` +
+      (r.builtIn ? '' : `<button class="mbtn sm" data-reset="${esc(r.name)}">RESET PW</button>`) + '</div>').join('') : '<p class="fine">No accounts match.</p>';
+  };
+  $('acct-admin').addEventListener('click', () => { if (!BR.Accounts.isSeededDev()) return; $('adm-msg').textContent = ''; $('adm-pass').value = ''; renderAdmin(); $('admin').classList.remove('hidden'); });
+  $('adm-gate').addEventListener('submit', async e => { e.preventDefault(); const r = await BR.Accounts.adminUnlock($('adm-pass').value); $('adm-pass').value = ''; $('adm-msg').textContent = r.ok ? '' : r.msg; renderAdmin(); });
+  $('adm-q').addEventListener('input', renderAdmin);
+  $('adm-list').addEventListener('click', async e => { const b = e.target.closest('[data-reset]'); if (!b) return;
+    if (!confirm('Reset the password for ' + b.dataset.reset + '? Their old password stops working.')) return;
+    const r = await BR.Accounts.adminResetPassword(b.dataset.reset); $('adm-msg').textContent = r.msg; renderAdmin(); });
+  $('adm-export').addEventListener('click', () => { const csv = BR.Accounts.adminExport(); $('adm-msg').textContent = csv && copyText(csv) ? 'Account list copied as CSV (no passwords)' : 'Nothing to copy'; });
+  $('adm-close').addEventListener('click', () => { $('admin').classList.add('hidden'); BR.Accounts.adminLock(); $('adm-list').innerHTML = ''; });
   // daily login reward: streak coins, a Nova Case key every 3rd day
   const daily = () => { const r = BR.Profile.claimDaily(); if (!r) return;
     setTimeout(() => { game.hud.toast(`DAILY REWARD · Day ${r.streak} streak · +${r.coins} coins${r.key ? ' · +1 NOVA CASE KEY' : ''}`, 3200); BR.Audio.coin && BR.Audio.coin(); BR.updateCoins(); }, 700); };
@@ -17306,8 +17692,13 @@ BR.Game = class Game {
     const fn = acctMode === 'login' ? 'logIn' : 'signUp';
     const r = await BR.Accounts[fn]($('acct-user').value, $('acct-pass').value);
     if (!r.ok) { $('acct-msg').textContent = r.msg; return; }
-    $('acct-pass').value = '';
+    const used = $('acct-pass').value; $('acct-pass').value = '';
     afterAuth();
+    if (r.mustChange) {      // support issued a temporary password: pick a new one now
+      const np = prompt('You signed in with a temporary password. Choose a new password (4+ characters):');
+      const c = np ? await BR.Accounts.changePassword(used, np) : { msg: 'Remember to set a new password soon' };
+      $('acct-msg').textContent = c.msg;
+    }
   });
   $('acct-logout').addEventListener('click', () => { BR.Accounts.logOut(); afterAuth(); });
   $('acct-redeem').addEventListener('click', async () => {
@@ -17601,34 +17992,41 @@ BR.Game = class Game {
     aim: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke-width="2"/>',
   };
   const MODES = {
-    br:         { name: 'BATTLE ROYALE', sub: 'Solo · 30 players · one life', cat: 'BATTLE ROYALE', tags: ['RANKED', '30 PLAYERS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play() },
-    resurgence: { name: 'RESURGENCE', sub: 'Redeploy until the 4th circle', cat: 'BATTLE ROYALE', tags: ['NEW', '24 PLAYERS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true }) },
-    duel:       { name: '1V1 DUEL', sub: 'Classic · pick guns between rounds', cat: 'COMPETITIVE', tags: ['1V1', 'VS AI'], art: 'linear-gradient(120deg,#2f6fd8 0 48%,#d8443a 52% 100%)', glow: '#8ab4ff', go: () => { BR.Audio.init(); BR.openDuelMenu('setup'); } },
-    duels:      { name: 'DUELS 1V1 · 2V2', sub: 'AI teammate or friends online', cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE', '2V2'], art: 'linear-gradient(120deg,#1f4fb8 0 46%,#ffd24a 48% 52%,#b8302a 54% 100%)', glow: '#ffd24a', go: () => BR.Lobby.open('duel') },
-    shotgun:    { name: 'SHOTGUN DUELS', sub: 'Breachers only · 1v1 / 2v2', cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff9a1f,#6a2a10 55%,#1a0a06)', glow: '#ff9a1f', go: () => BR.Lobby.open('shotgun') },
-    sniper:     { name: 'SNIPER DUELS', sub: 'Snipers + hunting rifles · 1v1 / 2v2', cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#9fe8ff,#1a4a6a 55%,#06121c)', glow: '#9fe8ff', go: () => BR.Lobby.open('sniper') },
-    tdm:        { name: 'TEAM DEATHMATCH', sub: '4v4 · first to 30 kills', cat: 'CASUAL', tags: ['NEW', 'ONLINE', '4V4'], art: 'linear-gradient(160deg,#4f8fff,#1a2f6a 50%,#6a1a1a 51%,#ff5a4a)', glow: '#c8a8ff', go: () => BR.Lobby.open('tdm') },
-    ffa:        { name: 'FREE FOR ALL', sub: '6 players · first to 20 kills', cat: 'CASUAL', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ffe14d,#8a3aff 55%,#12061c)', glow: '#ffe14d', go: () => BR.Lobby.open('ffa') },
+    br:         { name: 'BATTLE ROYALE', sub: 'Solo · 30 players · one life', cat: 'BATTLE ROYALE', rk: true, tags: ['30 PLAYERS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play() },
+    resurgence: { name: 'RESURGENCE', sub: 'Redeploy until the 4th circle', rk: true, cat: 'BATTLE ROYALE', tags: ['NEW', '24 PLAYERS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true }) },
+    duels:      { name: 'DUELS 1V1 · 2V2', sub: 'AI teammate or friends online', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE', '2V2'], art: 'linear-gradient(120deg,#1f4fb8 0 46%,#ffd24a 48% 52%,#b8302a 54% 100%)', glow: '#ffd24a', go: () => BR.Lobby.open('duel') },
+    shotgun:    { name: 'SHOTGUN DUELS', sub: 'Breachers only · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff9a1f,#6a2a10 55%,#1a0a06)', glow: '#ff9a1f', go: () => BR.Lobby.open('shotgun') },
+    sniper:     { name: 'SNIPER DUELS', sub: 'Snipers + hunting rifles · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#9fe8ff,#1a4a6a 55%,#06121c)', glow: '#9fe8ff', go: () => BR.Lobby.open('sniper') },
+    tdm:        { name: 'TEAM DEATHMATCH', sub: '4v4 · first to 30 kills', rk: true, cat: 'CASUAL', tags: ['NEW', 'ONLINE', '4V4'], art: 'linear-gradient(160deg,#4f8fff,#1a2f6a 50%,#6a1a1a 51%,#ff5a4a)', glow: '#c8a8ff', go: () => BR.Lobby.open('tdm') },
+    ffa:        { name: 'FREE FOR ALL', sub: '6 players · first to 20 kills', rk: true, cat: 'CASUAL', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ffe14d,#8a3aff 55%,#12061c)', glow: '#ffe14d', go: () => BR.Lobby.open('ffa') },
     zombies:    { name: 'ZOMBIES', sub: 'Hollow Graves · endless rounds', cat: 'SURVIVAL', tags: ['STORY', 'BOSSES'], art: 'radial-gradient(120% 120% at 80% 0%,#ff7a1a,#5a141e 55%,#140818)', glow: '#ff8a2a', go: () => { BR.Audio.init(); game.startZombies(); } },
     overdrive:  { name: 'OVERDRIVE', sub: 'Roguelike swarm survival', cat: 'SURVIVAL', tags: ['NEW', 'ROGUELIKE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff5ec4,#46145a 55%,#12061c)', glow: '#ff5ec4', go: () => overdrive() },
     practice:   { name: 'PRACTICE', sub: 'Spawn anything · no bots', cat: 'TRAINING', tags: ['SOLO'], art: 'linear-gradient(160deg,#4fdc8a,#14583a 55%,#071a12)', glow: '#4fdc8a', go: () => practice() },
     aim:        { name: 'AIM TRAINER', sub: 'Gridshot · Flick · Tracking · Strafe', cat: 'TRAINING', tags: ['NEW', 'SCORES'], art: 'radial-gradient(120% 120% at 80% 0%,#45e0ff,#0b3a56 55%,#050d18)', glow: '#45e0ff', go: () => aimTrainer() },
   };
   const CATS = ['BATTLE ROYALE', 'COMPETITIVE', 'CASUAL', 'SURVIVAL', 'TRAINING'];
-  if (!MODES[settings.mode]) settings.mode = 'br';
+  if (!MODES[settings.mode]) settings.mode = 'br';          // (the classic 1v1 Duel was retired in v1.15: Duels 1v1 · 2v2 replaces it)
+  // v1.15 Ranked / Casual: every mode except Zombies, Overdrive and Training has both queues.
+  // Ranked gives RP; Casual gives XP, coins, challenge + mastery progress only.
+  const rankedNow = id => !!(settings.ranked && MODES[id] && MODES[id].rk);
+  BR.rankedNow = () => rankedNow(settings.mode);
   const art = (id, big) => { const M = MODES[id]; return `<span class="mart${big ? ' big' : ''}" style="background:${M.art};--g:${M.glow}"><i class="mart-grid"></i><svg viewBox="0 0 24 24">${ICO[id]}</svg></span>`; };
-  const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = M.sub; $('mode-cur').style.setProperty('--g', M.glow); };
+  const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = M.sub; $('mode-cur').style.setProperty('--g', M.glow);
+    const q = $('mode-cur').querySelector('.mc-tag'); q.innerHTML = M.rk ? (rankedNow(settings.mode) ? '<em class="q-rk">RANKED</em> GAME MODE' : '<em class="q-cs">CASUAL</em> GAME MODE') : 'GAME MODE'; };
   const renderDiscover = () => {
+    document.querySelectorAll('#dc-queue button').forEach(b => b.classList.toggle('sel', (b.dataset.q === 'ranked') === !!settings.ranked));
+    const qtag = M => M.rk ? [settings.ranked ? 'RANKED' : 'CASUAL'] : [];
     const feat = 'overdrive', F = MODES[feat];
     $('dc-feat').innerHTML = `<button class="dc-tile feat${settings.mode === feat ? ' sel' : ''}" data-m="${feat}" style="--g:${F.glow}">${art(feat, true)}<span class="dt-txt"><em>FEATURED</em><b>${F.name}</b><i>${F.sub}</i><span class="dt-tags">${F.tags.map(t => `<u>${t}</u>`).join('')}</span></span></button>`;
     $('dc-rows').innerHTML = CATS.map(c => `<div class="dc-row"><div class="dc-cat">${c}</div><div class="dc-strip">${Object.entries(MODES).filter(([, M]) => M.cat === c).map(([id, M]) =>
-      `<button class="dc-tile${settings.mode === id ? ' sel' : ''}" data-m="${id}" style="--g:${M.glow}">${art(id)}<span class="dt-txt"><b>${M.name}</b><i>${M.sub}</i><span class="dt-tags">${M.tags.map(t => `<u class="${t === 'NEW' ? 'new' : ''}">${t}</u>`).join('')}</span></span>${settings.mode === id ? '<span class="dt-check">✓</span>' : ''}</button>`).join('')}</div></div>`).join('');
+      `<button class="dc-tile${settings.mode === id ? ' sel' : ''}" data-m="${id}" style="--g:${M.glow}">${art(id)}<span class="dt-txt"><b>${M.name}</b><i>${M.sub}</i><span class="dt-tags">${qtag(M).concat(M.tags).map(t => `<u class="${t === 'NEW' ? 'new' : t === 'RANKED' ? 'rk' : ''}">${t}</u>`).join('')}</span></span>${settings.mode === id ? '<span class="dt-check">✓</span>' : ''}</button>`).join('')}</div></div>`).join('');
   };
   BR.selectMode = id => { if (!MODES[id]) return; settings.mode = id; save(); renderLobby(); };
   $('mode-cur').addEventListener('click', () => { BR.Audio.init(); BR.Audio.click(); renderDiscover(); $('discover').classList.remove('hidden'); });
   $('dc-x').addEventListener('click', () => $('discover').classList.add('hidden'));
+  $('dc-queue').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (!b) return; e.stopPropagation(); settings.ranked = b.dataset.q === 'ranked'; save(); BR.Audio.click(); renderDiscover(); renderLobby(); });
   $('discover').addEventListener('click', e => { const t = e.target.closest('[data-m]'); if (!t) return; BR.selectMode(t.dataset.m); BR.Audio.pickup(); renderDiscover(); setTimeout(() => $('discover').classList.add('hidden'), 160); });
-  $('btn-go').addEventListener('click', () => { BR.Audio.init(); MODES[settings.mode].go(); });
+  $('btn-go').addEventListener('click', () => { BR.Audio.init(); game.ranked = rankedNow(settings.mode); MODES[settings.mode].go(); });
   renderLobby();
 
   // ---- v1.11: loadout editor
@@ -17677,7 +18075,7 @@ BR.Game = class Game {
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const DESC = {
-    duel: 'Round-based duels on The Yard with your duel loadout. No respawns: last team standing takes the round. First to 5.',
+    duel: 'Round-based duels: pick your guns before every round. No respawns: last team standing takes the round. First to 5. The map is rolled at the start.',
     shotgun: 'Breacher shotguns only. Close, fast, brutal. First to 5 rounds.',
     sniper: 'Sniper and Hunting Rifle only. Hold angles, land the headshot. First to 5 rounds.',
     tdm: 'Team Deathmatch, 4v4. Respawn after 3 seconds with your loadout. First team to 30 kills.',
@@ -17696,16 +18094,47 @@ BR.Game = class Game {
     $('am-diff').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === L.diff));
     msg(''); $('arenamenu').classList.remove('hidden');
   };
+  // v1.15: every arena match rolls its map first (equal odds for each map), case-opening style
+  L.MAPS = [
+    { id: 'yard', name: 'THE YARD', sub: 'Concrete yard · centre tower', art: 'linear-gradient(150deg,#9aa0a8,#4a5160 55%,#1d2128)' },
+    { id: 'killhouse', name: 'KILLHOUSE', sub: '3 lanes · training house', art: 'linear-gradient(150deg,#e3d6bc,#8f8676 50%,#2c2823)' },
+    { id: 'cargo', name: 'CARGO', sub: 'Tiny container grid', art: 'linear-gradient(150deg,#4f8fc8,#763a35 50%,#1a1d22)' },
+  ];
+  L.rollMap = () => L.MAPS[Math.floor(Math.random() * L.MAPS.length)].id;
   L.play = (opts) => {
     const g = BR.game; BR.Audio.init();
-    BR.ArenaMatch.next = Object.assign({ preset: L.preset, size: L.size, diff: L.diff }, opts || {});
+    const o = Object.assign({ preset: L.preset, size: L.size, diff: L.diff, ranked: !!g.ranked }, opts || {});
+    if (!o.map) o.map = L.rollMap();
     for (const id of ['arenamenu', 'lobby', 'discover']) $(id).classList.add('hidden');
-    g.startMode(BR.ArenaMatch, { arena: true });
+    L.showRoll(o.map, () => { BR.ArenaMatch.next = o; g.startMode(BR.ArenaMatch, { arena: true, map: o.map }); });
+  };
+  L.showRoll = (target, done) => {
+    const el = $('maproll'); if (!el || L.skipRoll) { done(); return; }
+    const N = 34, at = 29, cards = [];
+    for (let i = 0; i < N; i++) cards.push(i === at ? L.MAPS.find(m => m.id === target) : L.MAPS[Math.floor(Math.random() * L.MAPS.length)]);
+    const strip = $('mr-strip');
+    strip.innerHTML = cards.map(m => `<div class="mr-card" style="--a:${m.art}"><i></i><b>${m.name}</b><span>${m.sub}</span></div>`).join('');
+    $('mr-title').textContent = (BR.ARENA_PRESETS[L.preset] || {}).title || 'ARENA';
+    $('mr-res').textContent = ''; el.classList.remove('hidden', 'done');
+    const cw = 172, t0 = performance.now(), dur = 3600, jitter = (Math.random() - 0.5) * cw * 0.6;
+    const end = at * cw + 80 + jitter;     // card 160 px + 12 px gap; land somewhere on the target card
+    let lastI = -1;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4), x = end * e;
+      strip.style.transform = `translateX(${(-x).toFixed(1)}px)`;
+      const i = Math.floor(x / cw); if (i !== lastI) { lastI = i; BR.Audio.click && BR.Audio.click(); }
+      if (k < 1) { requestAnimationFrame(step); return; }
+      strip.style.transform = `translateX(${-(at * cw + 80)}px)`; strip.style.transition = 'transform .25s ease-out';
+      setTimeout(() => { strip.style.transition = ''; }, 260);
+      el.classList.add('done'); const m = cards[at]; $('mr-res').textContent = m.name; BR.Audio.coin && BR.Audio.coin();
+      setTimeout(() => { el.classList.add('hidden'); done(); }, 1100);
+    };
+    requestAnimationFrame(step);
   };
   // ---- online lobby
   const render = () => {
     const P = BR.ARENA_PRESETS[L.preset], S = L.sess, host = S && S.isHost;
-    $('lb-title').textContent = P.title + (P.kind === 'duel' ? ` ${L.size}V${L.size}` : '') + ' · ONLINE';
+    $('lb-title').textContent = P.title + (P.kind === 'duel' ? ` ${L.size}V${L.size}` : '') + ' · ONLINE · ' + ((S && !S.isHost ? L.ranked : BR.game.ranked) ? 'RANKED' : 'CASUAL');
     $('lb-code').textContent = S ? S.code : '------';
     const teams = P.kind === 'ffa' ? [{ n: 'PLAYERS', c: '#c8a8ff', list: L.players }] : [0, 1].map(t => ({ n: t ? 'RED' : 'BLUE', c: t ? '#ff5a4a' : '#4f8fff', t, list: L.players.filter(p => p.team === t) }));
     const per = P.kind === 'ffa' ? L.size : L.size;
@@ -17713,9 +18142,9 @@ BR.Game = class Game {
     $('lb-start').style.display = host ? '' : 'none';
     $('lb-info').textContent = host ? 'Send the code to your friends. Empty slots are filled with AI. Tap a player to switch their team.' : 'Waiting for the host to start…';
   };
-  const broadcast = () => { if (L.sess && L.sess.isHost) L.sess.send('lobby', { players: L.players, preset: L.preset, size: L.size, diff: L.diff }); render(); };
+  const broadcast = () => { if (L.sess && L.sess.isHost) L.sess.send('lobby', { players: L.players, preset: L.preset, size: L.size, diff: L.diff, ranked: !!BR.game.ranked }); render(); };
   const showLobby = () => { $('arenamenu').classList.add('hidden'); $('lobby').classList.remove('hidden'); render(); };
-  const onStart = m => { L.preset = m.preset; L.size = m.size; L.diff = m.diff; L.play({ roster: m.roster, net: L.sess }); };
+  const onStart = m => { L.preset = m.preset; L.size = m.size; L.diff = m.diff; L.play({ roster: m.roster, net: L.sess, map: m.map, ranked: !!m.ranked }); };
   L.host = async (local) => {
     msg('Creating lobby…');
     try {
@@ -17736,7 +18165,7 @@ BR.Game = class Game {
     msg('Joining…');
     try {
       const S = L.sess = await BR.Net.join(code, name(), local);
-      S.on('lobby', m => { L.players = m.players; L.preset = m.preset; L.size = m.size; L.diff = m.diff; if ($('lobby').classList.contains('hidden') && !BR.game.mode) showLobby(); else render(); });
+      S.on('lobby', m => { L.players = m.players; L.ranked = !!m.ranked; L.preset = m.preset; L.size = m.size; L.diff = m.diff; if ($('lobby').classList.contains('hidden') && !BR.game.mode) showLobby(); else render(); });
       S.on('full', () => { msg('That lobby is full'); BR.Net.leave(); L.sess = null; $('lobby').classList.add('hidden'); $('arenamenu').classList.remove('hidden'); });
       S.on('start', onStart);
       S.on('closed', () => { if (!BR.game.mode) { $('lobby').classList.add('hidden'); msg('The host closed the lobby'); $('arenamenu').classList.remove('hidden'); } });
@@ -17749,8 +18178,9 @@ BR.Game = class Game {
     const nm = ['Viper', 'Nova', 'Echo', 'Rook', 'Blaze', 'Ghost', 'Talon', 'Jinx', 'Onyx', 'Volt', 'Sable', 'Rift'].sort(() => Math.random() - 0.5);
     if (P.kind === 'ffa') { for (const p of L.players) roster.push({ id: id++, pid: p.pid, name: p.name, team: 0, bot: false }); while (roster.length < L.size) roster.push({ id: id++, pid: null, name: nm.pop(), team: 0, bot: true }); }
     else for (const t of [0, 1]) { const hs = L.players.filter(p => p.team === t); for (const p of hs) roster.push({ id: id++, pid: p.pid, name: p.name, team: t, bot: false }); for (let i = hs.length; i < L.size; i++) roster.push({ id: id++, pid: null, name: nm.pop(), team: t, bot: true }); }
-    S.send('start', { preset: L.preset, size: L.size, diff: L.diff, roster });
-    onStart({ preset: L.preset, size: L.size, diff: L.diff, roster });
+    const st = { preset: L.preset, size: L.size, diff: L.diff, roster, map: L.rollMap(), ranked: !!BR.game.ranked };      // the host rolls; everyone watches the same roll
+    S.send('start', st);
+    onStart(st);
   };
 
   // ---- wiring

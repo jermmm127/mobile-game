@@ -10,13 +10,14 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
   await new Promise(r => server.listen(0, r)); const url = `http://localhost:${server.address().port}/index.html`;
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const ctx = await b.newContext({ viewport: { width: 640, height: 320 } }), A = await ctx.newPage(), B = await ctx.newPage(), errors = [];
-  for (const p of [A, B]) { p.on('pageerror', e => errors.push(e.message)); await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 }); await p.waitForFunction(() => window.BR && BR.game, null, { timeout: 60000 }); await p.evaluate(() => { BR.Net.forceLocal = true; }); }
+  for (const p of [A, B]) { p.on('pageerror', e => errors.push(e.message)); await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 }); await p.waitForFunction(() => window.BR && BR.game, null, { timeout: 60000 }); await p.evaluate(() => { BR.Net.forceLocal = true; BR.Lobby.skipRoll = true; }); }
   const code = await A.evaluate(async () => { BR.Lobby.open('tdm'); await BR.Lobby.host(); return BR.Lobby.sess.code; });
   await B.evaluate(async c => { BR.Lobby.open('tdm'); await BR.Lobby.join(c); }, code);
   await A.waitForTimeout(800);
   const lobby = await A.evaluate(() => BR.Lobby.players.length), lobbyB = await B.evaluate(() => BR.Lobby.players.length);
   await A.evaluate(() => BR.Lobby.start()); await A.waitForTimeout(4000);
-  const sA = await A.evaluate(() => { const g = BR.game; return { n: g.actors.length, proxies: g.actors.filter(a => a.netProxy).length }; });
+  const sA = await A.evaluate(() => { const g = BR.game; return { n: g.actors.length, proxies: g.actors.filter(a => a.netProxy).length, map: g.world.mapId, ranked: g.mode.ranked }; });
+  const mapB = await B.evaluate(() => ({ map: BR.game.world.mapId, ranked: BR.game.mode.ranked }));
   const sB = await B.evaluate(() => { const g = BR.game; return { n: g.actors.length, proxies: g.actors.filter(a => a.netProxy).length, seen: g.actors.filter(a => a.netProxy && a.netProxy.seen).length }; });
   const hit = await B.evaluate(() => { const g = BR.game, t = g.actors.find(a => a.owner === 'H' && a.team !== g.player.team && a.alive); g.applyDamage(t, g.player, 999, true, { x: t.pos.x, y: t.pos.y + 1.5, z: t.pos.z }, 'rifle'); return t.rosterId; });
   await A.waitForTimeout(1500);
@@ -25,6 +26,7 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
   const checks = [
     ['lobby: guest joins with the code, both see 2 players', lobby === 2 && lobbyB === 2],
     ['match starts on both with the same 8-player roster (2 humans + 6 AI)', sA.n === 8 && sB.n === 8 && sA.proxies === 1 && sB.proxies === 7],
+    ['host rolls the map + queue; the guest plays the same map', !!sA.map && sA.map === mapB.map && sA.ranked === mapB.ranked],
     ['guest receives snapshots for the host + every host bot', sB.seen === 7],
     ['guest hit on a host-owned player/bot kills it on both screens', kA.dead && kB.dead],
     ['kill credited to the guest, team score synced to the guest', kA.kills === 1 && kA.score.join() === kB.score.join() && Math.max(...kA.score) === 1],

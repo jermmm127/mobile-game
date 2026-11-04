@@ -146,6 +146,14 @@
           m.userData.wristRoll = Math.PI; m.userData.gripY = -0.05; m.userData.armVec = new THREE.Vector3(0.22, -0.42, 0.42); m.userData.armVecUp = new THREE.Vector3(0.42, -0.62, 0.3);    // upright: forearm comes up from the lower right, slightly toward you (reference clip)                // forearm comes up from below, toward you (back of the hand faces the camera)
           m.userData.qUp = basis([-0.06, 1, -0.12], [-1, 0, -0.1]);
           m.userData.qUp2 = basis([-0.4, 1, -0.1], [1, 0.1, 0.1]);
+          if (id === 'tracker') {
+            // v1.15 Tracker (reference video): IDLE flatter, blade pointing left + a little up with the
+            // saw-back on TOP; SHOW A upright with the spine to the right; SHOW B tilted left, spine left
+            m.userData.qIdle = basis([-0.93, 0.33, -0.18], [0.12, 1, 0.05]);
+            m.userData.qUp = basis([0.12, 1, -0.1], [1, -0.05, 0.12]);
+            m.userData.qUp2 = basis([-0.36, 1, -0.08], [-1, -0.2, 0.15]);
+            m.userData.armVec = new THREE.Vector3(0.34, -0.36, 0.42); m.userData.armVecUp = new THREE.Vector3(0.3, -0.85, 0.32);
+          }
           m.quaternion.copy(m.userData.qIdle); m.scale.setScalar(1.08);
           m.userData.pivot = new THREE.Vector3(0, -0.065, 0);      // the draw flip turns the knife about the middle of the handle (in the palm)
           holder.add(m);
@@ -252,7 +260,7 @@
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : BAYLIKE(w.id) ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.id === 'tracker' ? 5.0 : BAYLIKE(w.id) ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
     hide() { if (this.sparks) { for (const q of this.sparks) { q.life = 0; q.m.visible = false; } for (const q of this.rings) { q.life = 0; q.m.visible = false; } }      // v1.11.1: no frozen white spark boxes while skydiving
       if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
@@ -309,7 +317,7 @@
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
-      if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
+      if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; } if (w.id === 'tracker') { hx = 0.075 * s; hy = -0.118; hz = -0.43; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
@@ -417,14 +425,15 @@
           // Bayonet inspect (reference clip): bring it up upright close to the centre showing one face,
           // a slow look with small wobbles, twist the wrist to show the other face tilted left, twist
           // back to the first face, then drop back into the angled idle. No tosses.
+          const trk = w.id === 'tracker';
           const up = win(t, 0, 0.08, 0.88, 0.97);
-          bUp = up; bUp2 = win(t, 0.26, 0.34, 0.54, 0.62);
+          bUp = up; bUp2 = trk ? win(t, 0.3, 0.4, 0.6, 0.7) : win(t, 0.26, 0.34, 0.54, 0.62);     // Tracker: slow turn through edge-on to the other face and back
           ox -= 0.1 * up + 0.015 * bUp2; oy += 0.11 * up; oz -= 0.06 * up;
           const hold = up * (1 - 0.6 * win(t, 0.28, 0.32, 0.36, 0.4) - 0.6 * win(t, 0.6, 0.64, 0.68, 0.72));
           orz += 0.035 * Math.sin(t * Math.PI * 5) * hold; ory += 0.06 * Math.sin(t * Math.PI * 3.4 + 1) * hold; orx += 0.025 * Math.sin(t * Math.PI * 4.2) * hold;
           // v1.11: finish with a flip-and-catch before it drops back into the idle
           const fa = easeInOut((t - 0.68) / 0.16);
-          bay = fa > 0 && fa < 1 ? { lift: Math.sin(fa * Math.PI) * 0.06, flip: -Math.PI * 2 * fa, roll: 0 } : null;
+          bay = !trk && fa > 0 && fa < 1 ? { lift: Math.sin(fa * Math.PI) * 0.06, flip: -Math.PI * 2 * fa, roll: 0 } : null;     // (the Tracker inspect has no flip)
           if (t > 0.26 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
           if (t > 0.54 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
           if (t > 0.69 && !(this.spinSwish & 4)) { this.spinSwish |= 4; BR.Audio.swish(false); }
@@ -754,7 +763,7 @@
         // v1.12.1: the forearm leaves the wrist along the fist's own axis, cocked at most ~32° toward the
         // natural arm direction (like a real hammer grip). It used to aim straight at the raw arm vector,
         // which bent the wrist ~90° in the upright bayonet pose.
-        const ang = Math.acos(BR.util.clamp(Z.dot(Zr), -1, 1)), tk = ang > 0.56 ? 0.56 / ang : 1;
+        const ang = Math.acos(BR.util.clamp(Z.dot(Zr), -1, 1)), lim = model.userData.tracker ? 1.05 : 0.56, tk = ang > lim ? lim / ang : 1;     // Tracker: the wrist cocks hard in the upright show (reference video)
         const F = (this._bzf || (this._bzf = new THREE.Vector3())).copy(Z).multiplyScalar(1 - tk).addScaledVector(Zr, tk).normalize();
         this._bfElbow = (this._bfElbow || new THREE.Vector3()).copy(hc).addScaledVector(F, armLen);
         const Y = (this._bhy || (this._bhy = new THREE.Vector3())).crossVectors(Z, X);
@@ -835,6 +844,20 @@
         KH.L.visible = false;                  // v1.11: like CS, the off hand stays out of view with the karambit
         KH.L.updateMatrixWorld(true);
         L.fore.visible = false;
+        return;
+      }
+      if (model.userData.tracker && !(special && special.w > 0.05)) {
+        // v1.15 Tracker: the off hand rests at the bottom left (relaxed, palm in) during idle + draw; it
+        // drops out of view for the inspect, like the reference video
+        const P = this.pos, out = BR.util.clamp(this.inspectT > 0 ? 1 - Math.min(this.inspectT, this.inspectDur - this.inspectT) / 0.35 : 0, 0, 1);
+        const hide = this.inspectT > 0 ? 1 - out : 0;
+        L.hand.position.set(-0.17 * s - P.x.v * 0.3, -0.2 - hide * 0.25 + (P.y.v + 0.118) * 0.5, -0.36);
+        const Zh = this._lhz || (this._lhz = new THREE.Vector3()); Zh.set(-0.35, -0.72, 0.6).normalize();
+        const Yh = this._lhy || (this._lhy = new THREE.Vector3()); Yh.set(-1, 0.25, 0.1); Yh.addScaledVector(Zh, -Yh.dot(Zh)).normalize();
+        const Xh = this._lhx || (this._lhx = new THREE.Vector3()); Xh.crossVectors(Yh, Zh);
+        L.hand.quaternion.setFromRotationMatrix(this._sm.makeBasis(Xh, Yh, Zh));
+        L.hand.visible = hide < 0.98; L.hand.updateMatrixWorld(true);
+        if (L.hand.visible) this.limb(L.fore, L.hand.localToWorld(new THREE.Vector3(0, 0, 0.05)), this._sv.copy(L.hand.position).addScaledVector(Zh, 0.6), 1); else L.fore.visible = false;
         return;
       }
       if ((!lt || leftHidden) && !special) { L.hand.visible = L.fore.visible = false; return; }

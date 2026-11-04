@@ -23,6 +23,7 @@ BR.World = class World {
     this.reef = !!(opts && opts.reef);           // v1.11.1: the small Resurgence island
     this.halloween = !!(opts && opts.halloween);
     this.range = !!(opts && opts.range); this.overdrive = !!(opts && opts.overdrive);
+    this.mapId = (opts && opts.arena && opts.map) || (opts && opts.arena ? 'yard' : null);   // v1.15 arena maps: yard / killhouse / cargo
     if (this.halloween) this.groundCols = [0x2b3820, 0x1f2a17, 0x3a3122];   // dead grass, mud
     this.size = this.reef ? 380 : opts && opts.halloween ? 230 : this.overdrive ? 170 : this.range ? 100 : this.arena ? 92 : M.size;
     this.half = this.reef ? this.size / 2 : M.size / 2;
@@ -45,7 +46,7 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [], rockFill: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.arena) this.generateArena(); else this.generate();
+    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.arena) this.generateArena(); else this.generate();
   }
 
   // ------------------------------------------------------------------ zombies: Hollow Graves
