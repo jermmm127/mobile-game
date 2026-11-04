@@ -25,7 +25,11 @@ const WICON_PATHS = {
 BR.WeaponIcons = {
   sil: {}, pic: {}, cpic: {},
   build() {
-    if (this.done) return; this.done = true;
+    if (this.done) return;
+    // imported models (v1.16.3): wait for their textures so the icons aren't drawn blank
+    if (!this.waited && BR.Models.importsReady) { this.waited = true; BR.Models.importsReady().then(() => this.build()); return; }
+    this.done = true;
+    setTimeout(() => { if (this.onBuilt) this.onBuilt(); }, 0);
     let r;
     try {
       const W = 320, H = 120;
@@ -43,6 +47,7 @@ BR.WeaponIcons = {
       // frame a model side-on (muzzle to the left) and grab a lit picture (+ optional silhouette)
       const shoot = (m, sil) => {
         if (m.userData.flash) m.userData.flash.visible = false;
+        if (m.userData.laser) m.userData.laser.visible = false;         // (the laser beam would shrink the framing)
         const g = new THREE.Group(); g.add(m); sc.add(g);
         if (BR.Models.animate) BR.Models.animate(m, 1.2);
         g.updateMatrixWorld(true);

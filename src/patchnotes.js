@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.16.3', date: '2026-11-04', title: 'Imported Rifle model', notes: [
+    'The Rifle is now a fully textured imported 3D model: an ornate AK-style rifle in green, rust and gold with a glowing engraved handguard and a carved magazine.',
+    'It fits the game like every other gun: the hands, iron sights, muzzle flash and tracers line up, the magazine comes out on reloads, and camos and blueprints still apply.',
+    'Under the hood: the game can now take .glb models (tools/import_model.py shrinks the textures, the import here went from 18 MB to 0.8 MB, and src/imported.js holds each model\'s placement).',
+  ] },
   { v: '1.16.2', date: '2026-11-04', title: 'Hunting Rifle rebuilt', notes: [
     'The Hunting Rifle is now a detailed Mauser-pattern bolt action. It has a full-length stock running almost to the muzzle with a top handguard, two barrel bands and a nose cap with the cleaning rod and bayonet lug. It also gets a hooded front post, a stepped tangent rear sight, a receiver with a stripper-clip bridge, the turned-down bolt with a round knob, the safety flag, a flush floorplate, a steel buttplate, the disassembly disc and sling slot, and sling swivels.',
     'New laser module under the muzzle with a visible red beam, for those no-scope shots.',

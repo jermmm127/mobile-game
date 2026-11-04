@@ -1506,6 +1506,102 @@ BR.Models = (function () {
     },
   };
 
+  // ------------------------------------------------------------------ imported models (v1.16.3)
+  // A .glb dropped in with tools/import_model.py lands in BR.MODEL_DATA[id] (base64). It's parsed here
+  // synchronously (tiny built-in glTF reader: positions, normals, UVs, indices; textures decode in the
+  // background), turned so the barrel points down -Z, scaled and moved so its grip / foregrip / sights /
+  // muzzle sit where the game's hands, ADS and effects expect, and the magazine triangles are split off
+  // into their own part so reloads still animate. If the data is missing the procedural model is used.
+  // Per-model placement lives in BR.IMPORTED (src/imported.js).
+  const IMPORT_CACHE = {}, IMPORT_LOADS = [];
+  function parseGLB(b64) {
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0)), dv = new DataView(bytes.buffer);
+    let off = 12, js = null, bin = null;
+    while (off < bytes.length) {
+      const len = dv.getUint32(off, true), type = dv.getUint32(off + 4, true), start = off + 8;
+      if (type === 0x4E4F534A) js = JSON.parse(new TextDecoder().decode(bytes.subarray(start, start + len)));
+      else if (type === 0x004E4942) bin = bytes.subarray(start, start + len);
+      off = start + len;
+    }
+    const acc = i => {
+      const a = js.accessors[i], bv = js.bufferViews[a.bufferView], n = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[a.type];
+      const o = (bv.byteOffset || 0) + (a.byteOffset || 0), T = { 5126: Float32Array, 5125: Uint32Array, 5123: Uint16Array, 5121: Uint8Array }[a.componentType];
+      const stride = bv.byteStride || n * T.BYTES_PER_ELEMENT, out = new T(a.count * n), src = new DataView(bin.buffer, bin.byteOffset + o);
+      for (let k = 0; k < a.count; k++) for (let c = 0; c < n; c++) {
+        const at = k * stride + c * T.BYTES_PER_ELEMENT;
+        out[k * n + c] = T === Float32Array ? src.getFloat32(at, true) : T === Uint32Array ? src.getUint32(at, true) : T === Uint16Array ? src.getUint16(at, true) : src.getUint8(at);
+      }
+      return out;
+    };
+    const img = i => { const im = js.images[js.textures[i].source], bv = js.bufferViews[im.bufferView];
+      const url = URL.createObjectURL(new Blob([bin.subarray(bv.byteOffset || 0, (bv.byteOffset || 0) + bv.byteLength)], { type: im.mimeType }));
+      let done; IMPORT_LOADS.push(new Promise(r => { done = r; }));
+      const t = new THREE.TextureLoader().load(url, done, undefined, done); t.flipY = false; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+    const prims = [];
+    for (const m of js.meshes) for (const p of m.primitives) {
+      const mat = js.materials && js.materials[p.material] || {}, pbr = mat.pbrMetallicRoughness || {};
+      prims.push({ pos: acc(p.attributes.POSITION), nor: p.attributes.NORMAL !== undefined ? acc(p.attributes.NORMAL) : null, uv: p.attributes.TEXCOORD_0 !== undefined ? acc(p.attributes.TEXCOORD_0) : null,
+        idx: p.indices !== undefined ? acc(p.indices) : null, map: pbr.baseColorTexture ? img(pbr.baseColorTexture.index) : null, normalMap: mat.normalTexture ? img(mat.normalTexture.index) : null,
+        color: pbr.baseColorFactor ? new THREE.Color(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2]) : null });
+    }
+    return prims;
+  }
+  function importedParts(id) {
+    if (IMPORT_CACHE[id] !== undefined) return IMPORT_CACHE[id];
+    const C = BR.IMPORTED && BR.IMPORTED[id], data = BR.MODEL_DATA && BR.MODEL_DATA[id];
+    if (!C || !data) return (IMPORT_CACHE[id] = null);
+    try {
+      const s = C.scale, [dx, dy, dz] = C.offset, out = [];
+      const tp = (x, y, z) => [-z * s + dx, y * s + dy, x * s + dz];      // model -X (muzzle) -> game -Z, model +Z (left side) -> game -X
+      for (const P of parseGLB(data)) {
+        const mat = new THREE.MeshPhongMaterial({ map: P.map, normalMap: P.normalMap, color: P.map ? 0xffffff : (P.color || 0x888888), specular: 0x6a6a6a, shininess: C.shininess || 45, envMap: BR.weaponEnv(), reflectivity: C.reflect || 0.12, side: THREE.DoubleSide });
+        if (P.normalMap) mat.normalScale.set(1, -1);
+        const parts = { body: [], mag: [] }, n = P.idx ? P.idx.length : P.pos.length / 3;
+        const vi = k => P.idx ? P.idx[k] : k;
+        for (let t = 0; t < n; t += 3) {
+          const a = vi(t), b = vi(t + 1), c = vi(t + 2), cx = (P.pos[a * 3] + P.pos[b * 3] + P.pos[c * 3]) / 3, cy = (P.pos[a * 3 + 1] + P.pos[b * 3 + 1] + P.pos[c * 3 + 1]) / 3;
+          const M = C.magBox, isMag = M && cx >= M.x[0] && cx <= M.x[1] && cy >= M.y[0] && cy <= M.y[1];
+          (isMag ? parts.mag : parts.body).push(a, b, c);
+        }
+        for (const key of ['body', 'mag']) {
+          const ids = parts[key]; if (!ids.length) continue;
+          const pos = new Float32Array(ids.length * 3), nor = new Float32Array(ids.length * 3), uv = new Float32Array(ids.length * 2);
+          ids.forEach((v, i) => {
+            const q = tp(P.pos[v * 3], P.pos[v * 3 + 1], P.pos[v * 3 + 2]); pos.set(q, i * 3);
+            if (P.nor) nor.set([-P.nor[v * 3 + 2], P.nor[v * 3 + 1], P.nor[v * 3]], i * 3);
+            if (P.uv) uv.set([P.uv[v * 2], P.uv[v * 2 + 1]], i * 2);
+          });
+          const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+          if (P.nor) geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); else geo.computeVertexNormals();
+          geo.computeBoundingSphere(); out.push({ key, geo, mat });
+        }
+      }
+      return (IMPORT_CACHE[id] = out);
+    } catch (e) { console.warn('imported model failed', id, e); return (IMPORT_CACHE[id] = null); }
+  }
+  function importedBuild(id, g, S, M, opts) {
+    const parts = importedParts(id); if (!parts) return false;
+    const C = BR.IMPORTED[id], def = BR.CONFIG.weapons[id], std = S === cache.mat['default|' + def.color];
+    const magMeshes = [];
+    for (const p of parts) {
+      const m = new THREE.Mesh(p.geo, std ? p.mat : S);       // a camo / blueprint body replaces the model's own texture
+      g.add(m); if (p.key === 'mag') magMeshes.push(m);
+    }
+    if (magMeshes.length) magGroup(g, magMeshes);
+    // aim point: the model's own iron sights; a small dot on the front post helps line it up
+    const sg = new THREE.Object3D(); sg.position.set(0, C.sight.y, C.sight.rearZ); g.add(sg);
+    g.userData.sight = sg; g.userData.sightDist = C.sight.dist;
+    if (C.sight.frontZ !== undefined) { const dot = new THREE.Mesh(new THREE.BoxGeometry(0.0035, 0.0035, 0.0035), M.sightDot); dot.position.set(0, C.sight.y - 0.0035, C.sight.frontZ); g.add(dot); }
+    hands(g, C.grip, C.fore, C.charge);
+    anchors(g, C.muzzle[1], C.muzzle[0], C.charm);
+    g.userData.imported = id;
+    return true;
+  }
+  for (const id of Object.keys(BR.IMPORTED || {})) {
+    const proc = BUILD[id]; if (!proc) continue;
+    BUILD[id] = (g, S, M, opts) => importedBuild(id, g, S, M, opts) || proc(g, S, M, opts);
+  }
+
   // ------------------------------------------------------------------ charms
   function charm(id) {
     const g = new THREE.Group();
@@ -2740,6 +2836,8 @@ BR.Models = (function () {
 
   return {
     SKINS, TRACERS, CHARMS, BLUEPRINTS, GLOVES,
+    // v1.16.3: parse every imported model now; resolves when their textures have decoded
+    importsReady() { for (const id of Object.keys(BR.IMPORTED || {})) importedParts(id); return Promise.all(IMPORT_LOADS); },
     parachute,
     hand, gloveMats,
     merged,

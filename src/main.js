@@ -415,8 +415,10 @@
   BR.WeaponIcons.build();
   const gcard = (id, attrs, sel) => { const d = BR.CONFIG.weapons[id], pic = BR.WeaponIcons.pic[id];
     return `<button class="gcard${sel ? ' sel' : ''}" ${attrs}>${pic ? `<img src="${pic}" alt="">` : ''}<span>${d.name.toUpperCase()}</span></button>`; };
-  $('sp-weapons').innerHTML = Object.keys(BR.CONFIG.weapons).filter(id => !BR.CONFIG.weapons[id].melee)
-    .map(id => gcard(id, `data-sp="weapon" data-arg="${id}"`)).join('');
+  const renderSpCards = () => { $('sp-weapons').innerHTML = Object.keys(BR.CONFIG.weapons).filter(id => !BR.CONFIG.weapons[id].melee)
+    .map(id => gcard(id, `data-sp="weapon" data-arg="${id}"`)).join(''); };
+  renderSpCards();
+  BR.WeaponIcons.onBuilt = renderSpCards;          // v1.16.3: icons finish after imported models' textures load
   // two-gun loadout: pick the slot, then tap a weapon card to put it there
   let spSlot = 0;
   BR.renderSpawnSlots = fresh => {
