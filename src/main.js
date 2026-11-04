@@ -589,11 +589,12 @@
     const pct = N ? Math.round(((P.rp || 0) - T.rp) / (N.rp - T.rp) * 100) : 100;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     $('rk-me').innerHTML = `${R.badge(P.rp || 0, true)}<div class="rk-info"><b>${T.name.toUpperCase()}</b><span>${P.rp || 0} RP${N ? ' · ' + (N.rp - (P.rp || 0)) + ' to ' + N.name : ' · top tier'} · K/D ${BR.Profile.kd().toFixed(2)}</span><div class="rk-prog"><i style="width:${pct}%;background:linear-gradient(90deg,${T.c2},${T.c1})"></i></div></div>`;
-    const rows = R.board(), meIdx = rows.findIndex(r => r.me);
-    const shown = rows.slice(0, 25);
-    if (meIdx >= 25) shown.push(rows[meIdx]);
-    $('rk-board').innerHTML = shown.map(r => { const i = rows.indexOf(r);
-      return `<div class="rk-row${r.me ? ' me' : ''}${i < 3 ? ' top top' + (i + 1) : ''}"><span class="pos">${i + 1}</span>${R.badge(r.rp)}<span class="nm">${esc(r.name)}${r.local ? ' <small>local</small>' : ''}</span><span class="rp">${r.rp.toLocaleString()} RP</span></div>`; }).join('');
+    // v1.16.1: real players only; open spots carry the owner's name until someone takes them
+    const B = BR.Board.rows(), rows = B.rows.slice();
+    if (B.mine >= BR.Board.SIZE) rows.push(Object.assign({ pos: B.mine }, B.mineRow));
+    $('rk-board').innerHTML = rows.map((r, i) => { const pos = r.pos !== undefined ? r.pos : i;
+      return `<div class="rk-row${r.me ? ' me' : ''}${r.holder ? ' holder' : ''}${pos < 3 ? ' top top' + (pos + 1) : ''}"><span class="pos">${pos + 1}</span>${r.holder ? '<i class="rk rk-open"><b>·</b></i>' : R.badge(r.rp)}<span class="nm">${esc(r.name)}${r.me ? ' <small>you</small>' : ''}</span><span class="rp">${r.holder ? 'open spot' : r.rp.toLocaleString() + ' RP'}</span></div>`; }).join('')
+      + `<p class="rk-foot">${B.total ? B.total + ' ranked player' + (B.total === 1 ? '' : 's') + ' known' : 'No ranked players yet'} · play a Ranked match (level ${BR.LEVELS.ranked}+, signed in) to take a spot · boards sync when you meet players in online lobbies</p>`;
     game.hud.show('ranks', true);
   };
   $('btn-ranks').addEventListener('click', () => { BR.Audio.init(); openRanks(); });

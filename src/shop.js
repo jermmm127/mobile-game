@@ -32,32 +32,8 @@ BR.Ranks = {
     const p = r.win ? 140 : place <= 3 ? 85 : place <= 5 ? 60 : place <= 10 ? 32 : place <= 20 ? 10 : -8;
     return p + Math.min(r.kills || 0, 10) * 14;
   },
-  // Rival field: stable per device, spread from Bronze to Predator
-  rivals() {
-    if (this._rivals) return this._rivals;
-    const R = BR.util.rng(4242), names = BR.CONFIG.botNames, tags = ['', 'TTV', 'xX', 'GG', 'YT', '_', 'Pro', 'OG'];
-    const out = [];
-    for (let i = 0; i < 60; i++) {
-      const n = names[Math.floor(R() * names.length)], t = tags[Math.floor(R() * tags.length)];
-      const name = (t === 'xX' ? 'xX' + n + 'Xx' : t ? n + (t === '_' ? '_' + Math.floor(R() * 99) : t) : n + Math.floor(R() * 999)).slice(0, 16);
-      out.push({ name, rp: Math.round(14000 * Math.pow(R(), 2.2)) });
-    }
-    return (this._rivals = out);
-  },
-  board() {
-    const rows = this.rivals().map(r => Object.assign({}, r));
-    const me = BR.Accounts ? BR.Accounts.displayName() : 'You';
-    try {   // other accounts on this device
-      for (const u of Object.keys((BR.Accounts && BR.Accounts.db.users) || {})) {
-        if (u === me) continue;
-        const d = BR.util.load('velocity-royale.profile.u:' + u.toLowerCase(), null);
-        if (d) rows.push({ name: u, rp: d.rp || 0, local: true });
-      }
-    } catch (e) { /* storage may be blocked */ }
-    rows.push({ name: me, rp: BR.Profile.data.rp || 0, me: true });
-    rows.sort((a, b) => b.rp - a.rp);
-    return rows;
-  },
+  // v1.16.1: the leaderboard is real players only (see leaderboard.js); this keeps the old call working
+  board() { return BR.Board ? BR.Board.rows().rows : []; },
 };
 
 // Kill feed banners: how YOUR kills look in the kill feed. Some are rank rewards (unlock by
@@ -182,10 +158,9 @@ BR.Profile = {
     // Dev accounts: infinite coins and everything unlocked (including items added later)
     if (BR.Accounts && BR.Accounts.isSeededDev()) this.data.dev = true;
     if (this.data.dev) this.grantAll();
-    // the built-in dev account sits at #1 on the leaderboard (Predator)
+    // the built-in dev account has the top rank (Predator) for its rewards; it isn't listed on the leaderboard
     if (BR.Accounts && BR.Accounts.isSeededDev()) {
-      const top = Math.max(...BR.Ranks.rivals().map(r => r.rp));
-      this.data.rp = Math.max(this.data.rp || 0, top + 2500);
+      this.data.rp = Math.max(this.data.rp || 0, BR.Ranks.tiers[BR.Ranks.tiers.length - 1].rp + 2500);
       this.unlockRankRewards();
     }
     return this.data;
@@ -372,6 +347,7 @@ BR.Profile = {
     if (BR.AntiCheat && !BR.AntiCheat.checkResult(r)) { r.ranked = false; return { total: 0, parts: [['Result rejected by anti-cheat', 0]], unlocked: [], rejected: true }; }
     if (r.ranked && (this.level() < BR.LEVELS.ranked || (BR.AntiCheat && BR.AntiCheat.rankedBlocked()))) r.ranked = false;    // v1.16: Ranked needs level 20 (and a clean record)
     const res = this.awardCoins(r);
+    if (r.ranked) { this.data.stats.rm = (this.data.stats.rm || 0) + 1; this.save(); if (BR.Board) BR.Board.updateSelf().catch(() => {}); }    // v1.16.1: post to the leaderboard
     res.xp = this.addXP(this.matchXP(r));
     return res;
   },

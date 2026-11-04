@@ -303,7 +303,7 @@ const server = http.createServer((req, res) => {
       P.data.coins = before; P.data.dev = wasDev;
       // ranks: RP from a win unlocks rank rewards
       const rp0 = P.data.rp; P.data.rp = 4400; const res = P.award({ win: true, place: 1, kills: 3, damage: 100, ranked: true });
-      r.ranks = { rp: res.rp > 0, tier: BR.Ranks.tiers[BR.Ranks.of(P.data.rp)].name, diamondFeed: P.owns('feeds', 'rk_diamond'), board: BR.Ranks.board().some(x => x.me) };
+      r.ranks = { rp: res.rp > 0, tier: BR.Ranks.tiers[BR.Ranks.of(P.data.rp)].name, diamondFeed: P.owns('feeds', 'rk_diamond'), board: BR.Ranks.board().length === 50 };
       P.data.rp = rp0;
       // karambit flip: mid-deploy the ring axis lines up with the finger (flip over it, not a fan)
       const v = g.vmr, P4 = g.player; P4.switchTo(2); v.lastWeapon = P4.weapon; v.drawDur = 1.05;
@@ -1161,6 +1161,36 @@ const server = http.createServer((req, res) => {
       v.finishes = fin === n && edges === n; v.bpCount = n; v.noFinish = bad.slice(0, 5);
       v.worldOne = BR.Models.worldWeapon('rifle', Object.keys(BR.Models.BLUEPRINTS.rifle).find(k => k !== 'default')).isMesh;
       out.v116 = v; }
+    // v1.16.1: real leaderboard (owner's name in open spots; signed entries replace them; forgeries rejected)
+    { const v = {}, B = BR.Board, A = BR.Accounts, P = BR.Profile, keepBoard = localStorage.getItem('surge.board'), keepDb = JSON.stringify(A.db), keepP = JSON.stringify(P.data), keepKey = P.KEY;
+      try {
+        localStorage.removeItem('surge.board');
+        let R = B.rows(); v.empty = R.rows.length === 50 && R.rows.every(r => r.holder && r.name === B.owner()) && B.owner() === 'jermmm';
+        await A.signUp('lb_' + (Date.now() % 1e6), 'pw1234'); P.load(); P.data.xp = 5e6; P.data.rp = 0;
+        const res = P.award({ arena: true, preset: 'tdm', win: true, kills: 6, time: 300, ranked: true }); await new Promise(r => setTimeout(r, 400));
+        R = B.rows(); v.took = res.rp > 0 && R.rows[0].me && R.rows[0].rp === P.data.rp && R.rows.filter(r => r.holder).length === 49 && R.total === 1;
+        const mine = B.top(5)[0];
+        // a forged copy (higher RP, same key) fails the signature
+        const forged = Object.assign({}, mine, { rp: mine.rp + 500, ts: mine.ts + 10 }); v.forged = (await B.merge([forged])) === 0 && B.top(5)[0].rp === mine.rp;
+        // someone else's key can't post under this ID
+        const kp = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']), jw = await crypto.subtle.exportKey('jwk', kp.publicKey);
+        const fake = { id: mine.id, name: 'Imposter', rp: 100, rm: 3, ts: Date.now() + 1000, pk: { x: jw.x, y: jw.y } };
+        const canon = e => JSON.stringify([e.id, e.name, e.rp, e.rm, e.ts, e.pk.x, e.pk.y]), b64 = a => btoa(String.fromCharCode(...new Uint8Array(a)));
+        fake.sig = b64(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, kp.privateKey, new TextEncoder().encode(canon(fake))));
+        v.pinned = (await B.merge([fake])) === 0;
+        // a genuine new player arriving from a lobby takes the next spot; impossible RP for their match count is refused
+        const other = { id: 'SRG-ZZZZ-2222', name: 'RealRival', rp: 90, rm: 2, ts: Date.now(), pk: { x: jw.x, y: jw.y } }; other.sig = b64(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, kp.privateKey, new TextEncoder().encode(canon(other))));
+        const greedy = { id: 'SRG-YYYY-3333', name: 'Greedy', rp: 9000, rm: 1, ts: Date.now(), pk: { x: jw.x, y: jw.y } }; greedy.sig = b64(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, kp.privateKey, new TextEncoder().encode(canon(greedy))));
+        v.newcomer = (await B.merge([other, greedy])) === 1 && B.rows().rows.filter(r => r.holder).length === 48 && B.rows().rows.some(r => r.name === 'RealRival');
+        // banned accounts drop off the board
+        BR.Bans.add({ cmd: { c: 'ban', target: 'SRG-ZZZZ-2222', ts: Date.now(), n: 'x' }, sig: 'test' }); v.bannedHidden = !B.rows().rows.some(r => r.name === 'RealRival'); BR.Bans.remove('SRG-ZZZZ-2222');
+        // UI
+        g.toMenu(); document.getElementById('btn-ranks').click();
+        const ui = document.querySelectorAll('#rk-board .rk-row'); v.ui = ui.length === 50 && document.querySelectorAll('#rk-board .rk-row.holder').length === 48 && /jermmm/.test(document.querySelector('#rk-board .rk-row.holder').textContent);
+        document.getElementById('rk-x').click();
+        localStorage.removeItem(P.KEY); localStorage.removeItem(P.KEY + '.sig');
+      } finally { if (keepBoard) localStorage.setItem('surge.board', keepBoard); else localStorage.removeItem('surge.board'); A.db = JSON.parse(keepDb); A.save(); P.KEY = keepKey; P.data = JSON.parse(keepP); P.save(); BR.updateCoins(); }
+      out.v1161 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1332,6 +1362,7 @@ const server = http.createServer((req, res) => {
     ['v1.16 anti-cheat: frozen stats, damage / health / ammo / teleport checks, impossible results paid nothing, host kicks bad hits, edited saves rolled back', v17.v116.frozen && v17.v116.dmgClamp && v17.v116.hpClamp && v17.v116.magClamp && v17.v116.teleport && v17.v116.badResult && v17.v116.fastWin && v17.v116.hostKick && v17.v116.saveEdit && v17.v116.sigStrip && v17.v116.logged],
     ['v1.16 dev menu: dev-only, unlocks with the dev code, signed gift codes (once, right account), forged + mis-targeted commands ignored, ban/unban', v17.v116.notDev && v17.v116.wrongCode && v17.v116.unlock && v17.v116.gift && v17.v116.forged && v17.v116.wrongTarget && v17.v116.ban && v17.v116.banBlocksPlay && v17.v116.unban && v17.v116.lockedSign && v17.v116.menuBtn && v17.v116.menuHidden],
     ['v1.16 every gun + knife blueprint has a textured finish and edge lines; world models stay one mesh', v17.v116.finishes && v17.v116.worldOne],
+    ['v1.16.1 leaderboard: 50 spots filled with the owner\'s name, real ranked players replace them, forged / impersonated / impossible entries refused, bans hidden', v17.v1161.empty && v17.v1161.took && v17.v1161.forged && v17.v1161.pinned && v17.v1161.newcomer && v17.v1161.bannedHidden && v17.v1161.ui],
     ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
     ['v1.15.1 level 20 takes about 30 average Battle Royale matches; each level needs more XP than the last', v17.v114.pace],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],

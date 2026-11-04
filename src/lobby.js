@@ -84,10 +84,12 @@
       const S = L.sess = await BR.Net.host(name(), local);
       L.players = [{ pid: 'H', acct: (BR.Accounts && BR.Accounts.accountId()) || '', name: name(), team: 0 }];
       S.on('dev', m => BR.Dev && BR.Dev.receive(m.sc));
+      S.on('board', m => BR.Board && BR.Board.merge(m.list));
       S.on('join', m => {
         if (BR.Bans && BR.Bans.has(m.acct)) { S.send('kicked', { reason: 'banned' }, m.from); setTimeout(() => S.drop(m.from), 150); return; }     // v1.16 banned accounts can't join
         if (L.players.length >= cap()) { S.send('full', {}, m.from); return; }
         if (BR.Bans) { const recs = BR.Bans.records(); if (recs.length) S.send('bans', { list: recs }, m.from); }                                  // share the ban list
+        if (BR.Board) S.send('board', { list: BR.Board.top(100) }, m.from);                                                                      // and the leaderboard
         const P = BR.ARENA_PRESETS[L.preset], c0 = L.players.filter(p => p.team === 0).length, c1 = L.players.filter(p => p.team === 1).length;
         L.players.push({ pid: m.from, acct: String(m.acct || '').slice(0, 14), name: String(m.name || 'Player').slice(0, 16), team: P.kind === 'ffa' ? L.players.length : c0 <= c1 ? 0 : 1 });
         BR.Audio.pickup(); broadcast();
@@ -107,6 +109,8 @@
       S.on('start', onStart);
       S.on('dev', m => BR.Dev && BR.Dev.receive(m.sc));                               // signed dev commands (kick / ban / coins)
       S.on('bans', m => BR.Bans && BR.Bans.merge(m.list));
+      S.on('board', m => BR.Board && BR.Board.merge(m.list));
+      if (BR.Board) S.send('board', { list: BR.Board.top(100) });                       // give the host (and everyone) our board
       S.on('kicked', m => { if (BR.Dev) BR.Dev.kickedOut(m.reason === 'banned' ? 'You are banned from online play' : m.reason === 'cheat' ? 'Removed from the lobby by anti-cheat' : 'You were removed from the lobby'); });
       S.on('closed', () => { if (!BR.game.mode) { $('lobby').classList.add('hidden'); msg('The host closed the lobby'); $('arenamenu').classList.remove('hidden'); } });
       setTimeout(() => { if (L.sess === S && !L.players.length) msg('Connected, waiting for the lobby…'); }, 1500);

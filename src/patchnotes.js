@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.16.1', date: '2026-11-04', title: 'Real Ranked leaderboard', notes: [
+    'The Ranked leaderboard is now real players only: all the generated names are gone. It has 50 spots; open spots show the owner\'s name until a real player takes them.',
+    'Play a Ranked match (level 20+, signed in) and you take a spot, sorted by Ranked Points. One of the placeholder rows drops off for every real player.',
+    'Boards sync peer-to-peer: whenever you meet players in an online lobby you swap leaderboards, and your entry updates after every Ranked match.',
+    'Entries are signed with each account\'s own key and pinned to its Account ID, so nobody can post scores under someone else\'s name. RP that\'s impossible for the number of Ranked matches played is refused. Dev and banned accounts aren\'t listed.',
+  ] },
   { v: '1.16.0', date: '2026-11-04', title: 'Anti-cheat, dev tools + blueprint finishes', notes: [
     'Ranked now unlocks at level 20. Below that the RANKED queue is locked (it shows the level you need) and matches pay no Ranked Points.',
     'New anti-cheat. Saves are signed, so coins, XP or unlocks edited outside the game are rolled back to the last good copy. Weapon, movement, health and reward tables are locked and can\'t be changed from the browser console. Live checks catch impossible damage, health or shield above max, ammo above the magazine, fire rate faster than the gun, and teleporting. Impossible match results pay nothing. Enough strikes turn Ranked off for the account.',

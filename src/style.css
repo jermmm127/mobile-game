@@ -1542,3 +1542,9 @@ body.arenamode #topbar { display: none !important; }
 .panel.devm .adm-list { max-height: none; overflow: visible; }
 .panel.devm .adm-row { grid-template-columns: 1fr auto; }
 @media (max-width: 560px) { .panel.devm .adm-row { grid-template-columns: 1fr; } .panel.devm .dv-btns { grid-row: auto; grid-column: 1; } .panel.devm .code-row { flex-wrap: wrap; } }
+
+/* v1.16.1 leaderboard */
+.rk-row.holder { opacity: .62; }
+.rk-row.holder .rp { font-style: italic; color: var(--muted); }
+.rk.rk-open { --r1: #3a3f4a; --r2: #23262d; }
+.rk-foot { font: 500 11px var(--ui); color: var(--muted); text-align: center; margin: 10px 4px 2px; }

@@ -1559,6 +1559,12 @@ body.arenamode #topbar { display: none !important; }
 .panel.devm .adm-row { grid-template-columns: 1fr auto; }
 @media (max-width: 560px) { .panel.devm .adm-row { grid-template-columns: 1fr; } .panel.devm .dv-btns { grid-row: auto; grid-column: 1; } .panel.devm .code-row { flex-wrap: wrap; } }
 
+/* v1.16.1 leaderboard */
+.rk-row.holder { opacity: .62; }
+.rk-row.holder .rp { font-style: italic; color: var(--muted); }
+.rk.rk-open { --r1: #3a3f4a; --r2: #23262d; }
+.rk-foot { font: 500 11px var(--ui); color: var(--muted); text-align: center; margin: 10px 4px 2px; }
+
 </style>
 </head>
 <body>
@@ -1582,7 +1588,7 @@ body.arenamode #topbar { display: none !important; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.16.0',
+  version: '1.16.1',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1855,6 +1861,12 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.16.1', date: '2026-11-04', title: 'Real Ranked leaderboard', notes: [
+    'The Ranked leaderboard is now real players only: all the generated names are gone. It has 50 spots; open spots show the owner\'s name until a real player takes them.',
+    'Play a Ranked match (level 20+, signed in) and you take a spot, sorted by Ranked Points. One of the placeholder rows drops off for every real player.',
+    'Boards sync peer-to-peer: whenever you meet players in an online lobby you swap leaderboards, and your entry updates after every Ranked match.',
+    'Entries are signed with each account\'s own key and pinned to its Account ID, so nobody can post scores under someone else\'s name. RP that\'s impossible for the number of Ranked matches played is refused. Dev and banned accounts aren\'t listed.',
+  ] },
   { v: '1.16.0', date: '2026-11-04', title: 'Anti-cheat, dev tools + blueprint finishes', notes: [
     'Ranked now unlocks at level 20. Below that the RANKED queue is locked (it shows the level you need) and matches pay no Ranked Points.',
     'New anti-cheat. Saves are signed, so coins, XP or unlocks edited outside the game are rolled back to the last good copy. Weapon, movement, health and reward tables are locked and can\'t be changed from the browser console. Live checks catch impossible damage, health or shield above max, ammo above the magazine, fire rate faster than the gun, and teleporting. Impossible match results pay nothing. Enough strikes turn Ranked off for the account.',
@@ -14494,6 +14506,108 @@ BR.AntiCheat = {
 <script>
 'use strict';
 // =============================================================================
+// RANKED LEADERBOARD (v1.16.1). Real players only, no generated rivals.
+//
+//  * The board has 50 spots. Until real players earn them, every open spot shows the owner's name
+//    (the first built-in dev account). As soon as someone plays Ranked they take a spot (sorted by
+//    RP), and one of those placeholder rows drops off.
+//  * There is no game server, so the board spreads peer-to-peer: whenever players meet in an online
+//    lobby they swap boards (the host passes everyone's entries on), and each player's entry updates
+//    after every Ranked match. Accounts on this device are always included.
+//  * Each entry is signed with its own account's key (ECDSA P-256, made when the account first
+//    plays Ranked, kept with the account on its device). The first key seen for an Account ID is
+//    pinned, so nobody can post scores under someone else's ID, and RP can't exceed what the number
+//    of Ranked matches allows. Dev accounts and banned accounts are never listed.
+// =============================================================================
+(function () {
+  const SIZE = 50, KEY = 'surge.board', MAX_PER_MATCH = 300;
+  const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const subtle = () => (window.crypto && crypto.subtle) || null;
+  const canon = e => JSON.stringify([e.id, e.name, e.rp, e.rm, e.ts, e.pk.x, e.pk.y]);
+  const ID_RE = /^SRG-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
+
+  BR.Board = {
+    SIZE,
+    owner() { const s = (BR.CONFIG.seedAccounts || []).find(a => a.dev); return s ? s.name : 'surge'; },
+    store() { const d = BR.util.load(KEY, null); return d && d.e ? d : { e: {}, pins: {} }; },
+    save(d) {
+      const ids = Object.keys(d.e);
+      if (ids.length > 600) { ids.sort((a, b) => d.e[b].rp - d.e[a].rp); for (const id of ids.slice(600)) delete d.e[id]; }
+      BR.util.save(KEY, d);
+    },
+    // a structurally valid, believable entry?
+    sane(e) {
+      return e && ID_RE.test(e.id) && /^[A-Za-z0-9_]{3,16}$/.test(e.name) && Number.isInteger(e.rp) && e.rp >= 0 && e.rp <= 50000 &&
+        Number.isInteger(e.rm) && e.rm >= 1 && e.rp <= e.rm * MAX_PER_MATCH && typeof e.ts === 'number' && e.ts <= Date.now() + 864e5 &&
+        e.pk && typeof e.pk.x === 'string' && typeof e.pk.y === 'string' && typeof e.sig === 'string';
+    },
+    async verify(e) {
+      try {
+        const k = await subtle().importKey('jwk', { kty: 'EC', crv: 'P-256', x: e.pk.x, y: e.pk.y, ext: true }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+        return await subtle().verify({ name: 'ECDSA', hash: 'SHA-256' }, k, unb64(e.sig), new TextEncoder().encode(canon(e)));
+      } catch (err) { return false; }
+    },
+    // merge entries from another player; returns how many were taken
+    async merge(list) {
+      if (!Array.isArray(list) || !subtle()) return 0;
+      const d = this.store(); let n = 0;
+      for (const e of list.slice(0, 200)) {
+        if (!this.sane(e)) continue;
+        const pin = d.pins[e.id];
+        if (pin && (pin.x !== e.pk.x || pin.y !== e.pk.y)) continue;            // not that account's key
+        const cur = d.e[e.id]; if (cur && cur.ts >= e.ts) continue;
+        if (!(await this.verify(e))) continue;
+        d.pins[e.id] = { x: e.pk.x, y: e.pk.y }; d.e[e.id] = { id: e.id, name: e.name, rp: e.rp, rm: e.rm, ts: e.ts, pk: e.pk, sig: e.sig }; n++;
+      }
+      if (n) this.save(d);
+      return n;
+    },
+    // the signed-in account's key pair (made on first use, stored with the account)
+    async keys() {
+      const A = BR.Accounts, name = A && A.current(); if (!name || !subtle()) return null;
+      const u = A.db.users[name];
+      if (u.lbk && u.lbk.d) {
+        const priv = await subtle().importKey('jwk', u.lbk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+        return { priv, pk: { x: u.lbk.x, y: u.lbk.y } };
+      }
+      const kp = await subtle().generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+      const jwk = await subtle().exportKey('jwk', kp.privateKey);
+      u.lbk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, d: jwk.d }; A.save();
+      return { priv: kp.privateKey, pk: { x: jwk.x, y: jwk.y } };
+    },
+    // publish this account's entry (after a Ranked match). Returns the entry or null.
+    async updateSelf() {
+      const A = BR.Accounts, P = BR.Profile.data; if (!A || !A.current() || A.isSeededDev() || P.dev) return null;
+      const rm = (P.stats && P.stats.rm) || 0; if (rm < 1) return null;
+      const k = await this.keys(); if (!k) return null;
+      const e = { id: A.accountId(), name: A.current(), rp: Math.max(0, Math.round(P.rp || 0)), rm, ts: Date.now(), pk: k.pk };
+      e.rp = Math.min(e.rp, rm * MAX_PER_MATCH);
+      e.sig = b64(await subtle().sign({ name: 'ECDSA', hash: 'SHA-256' }, k.priv, new TextEncoder().encode(canon(e))));
+      const d = this.store(), pin = d.pins[e.id];
+      if (!pin || (pin.x === e.pk.x && pin.y === e.pk.y)) { d.pins[e.id] = e.pk; d.e[e.id] = e; this.save(d); }
+      const S = BR.Net && BR.Net.session; if (S) S.send('board', { list: [e] });
+      return e;
+    },
+    // the best entries this device knows (what gets shared with other players)
+    top(n) { return Object.values(this.store().e).sort((a, b) => b.rp - a.rp).slice(0, n || 100); },
+    // 50 rows: real ranked players first (by RP), the rest filled with the owner's name
+    rows() {
+      const me = BR.Accounts && BR.Accounts.accountId(), devIds = new Set(Object.values((BR.Accounts && BR.Accounts.db.users) || {}).filter(u => u.seeded).map(u => u.id));
+      const real = Object.values(this.store().e).filter(e => !devIds.has(e.id) && !(BR.Bans && BR.Bans.has(e.id)))
+        .sort((a, b) => b.rp - a.rp || a.ts - b.ts).map(e => ({ id: e.id, name: e.name, rp: e.rp, me: e.id === me }));
+      const rows = real.slice(0, SIZE), owner = this.owner();
+      while (rows.length < SIZE) rows.push({ name: owner, rp: null, holder: true });
+      const mine = real.findIndex(r => r.me);
+      return { rows, mine, mineRow: mine >= 0 ? real[mine] : null, total: real.length };
+    },
+  };
+})();
+
+</script>
+<script>
+'use strict';
+// =============================================================================
 // PROFILE + SHOP — coins earned in matches, spent on cosmetics. Saved per
 // device in localStorage. The shop shows a live 3D preview (Game.renderShop).
 // =============================================================================
@@ -14526,32 +14640,8 @@ BR.Ranks = {
     const p = r.win ? 140 : place <= 3 ? 85 : place <= 5 ? 60 : place <= 10 ? 32 : place <= 20 ? 10 : -8;
     return p + Math.min(r.kills || 0, 10) * 14;
   },
-  // Rival field: stable per device, spread from Bronze to Predator
-  rivals() {
-    if (this._rivals) return this._rivals;
-    const R = BR.util.rng(4242), names = BR.CONFIG.botNames, tags = ['', 'TTV', 'xX', 'GG', 'YT', '_', 'Pro', 'OG'];
-    const out = [];
-    for (let i = 0; i < 60; i++) {
-      const n = names[Math.floor(R() * names.length)], t = tags[Math.floor(R() * tags.length)];
-      const name = (t === 'xX' ? 'xX' + n + 'Xx' : t ? n + (t === '_' ? '_' + Math.floor(R() * 99) : t) : n + Math.floor(R() * 999)).slice(0, 16);
-      out.push({ name, rp: Math.round(14000 * Math.pow(R(), 2.2)) });
-    }
-    return (this._rivals = out);
-  },
-  board() {
-    const rows = this.rivals().map(r => Object.assign({}, r));
-    const me = BR.Accounts ? BR.Accounts.displayName() : 'You';
-    try {   // other accounts on this device
-      for (const u of Object.keys((BR.Accounts && BR.Accounts.db.users) || {})) {
-        if (u === me) continue;
-        const d = BR.util.load('velocity-royale.profile.u:' + u.toLowerCase(), null);
-        if (d) rows.push({ name: u, rp: d.rp || 0, local: true });
-      }
-    } catch (e) { /* storage may be blocked */ }
-    rows.push({ name: me, rp: BR.Profile.data.rp || 0, me: true });
-    rows.sort((a, b) => b.rp - a.rp);
-    return rows;
-  },
+  // v1.16.1: the leaderboard is real players only (see leaderboard.js); this keeps the old call working
+  board() { return BR.Board ? BR.Board.rows().rows : []; },
 };
 
 // Kill feed banners: how YOUR kills look in the kill feed. Some are rank rewards (unlock by
@@ -14676,10 +14766,9 @@ BR.Profile = {
     // Dev accounts: infinite coins and everything unlocked (including items added later)
     if (BR.Accounts && BR.Accounts.isSeededDev()) this.data.dev = true;
     if (this.data.dev) this.grantAll();
-    // the built-in dev account sits at #1 on the leaderboard (Predator)
+    // the built-in dev account has the top rank (Predator) for its rewards; it isn't listed on the leaderboard
     if (BR.Accounts && BR.Accounts.isSeededDev()) {
-      const top = Math.max(...BR.Ranks.rivals().map(r => r.rp));
-      this.data.rp = Math.max(this.data.rp || 0, top + 2500);
+      this.data.rp = Math.max(this.data.rp || 0, BR.Ranks.tiers[BR.Ranks.tiers.length - 1].rp + 2500);
       this.unlockRankRewards();
     }
     return this.data;
@@ -14866,6 +14955,7 @@ BR.Profile = {
     if (BR.AntiCheat && !BR.AntiCheat.checkResult(r)) { r.ranked = false; return { total: 0, parts: [['Result rejected by anti-cheat', 0]], unlocked: [], rejected: true }; }
     if (r.ranked && (this.level() < BR.LEVELS.ranked || (BR.AntiCheat && BR.AntiCheat.rankedBlocked()))) r.ranked = false;    // v1.16: Ranked needs level 20 (and a clean record)
     const res = this.awardCoins(r);
+    if (r.ranked) { this.data.stats.rm = (this.data.stats.rm || 0) + 1; this.save(); if (BR.Board) BR.Board.updateSelf().catch(() => {}); }    // v1.16.1: post to the leaderboard
     res.xp = this.addXP(this.matchXP(r));
     return res;
   },
@@ -18503,11 +18593,12 @@ BR.Game = class Game {
     const pct = N ? Math.round(((P.rp || 0) - T.rp) / (N.rp - T.rp) * 100) : 100;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     $('rk-me').innerHTML = `${R.badge(P.rp || 0, true)}<div class="rk-info"><b>${T.name.toUpperCase()}</b><span>${P.rp || 0} RP${N ? ' · ' + (N.rp - (P.rp || 0)) + ' to ' + N.name : ' · top tier'} · K/D ${BR.Profile.kd().toFixed(2)}</span><div class="rk-prog"><i style="width:${pct}%;background:linear-gradient(90deg,${T.c2},${T.c1})"></i></div></div>`;
-    const rows = R.board(), meIdx = rows.findIndex(r => r.me);
-    const shown = rows.slice(0, 25);
-    if (meIdx >= 25) shown.push(rows[meIdx]);
-    $('rk-board').innerHTML = shown.map(r => { const i = rows.indexOf(r);
-      return `<div class="rk-row${r.me ? ' me' : ''}${i < 3 ? ' top top' + (i + 1) : ''}"><span class="pos">${i + 1}</span>${R.badge(r.rp)}<span class="nm">${esc(r.name)}${r.local ? ' <small>local</small>' : ''}</span><span class="rp">${r.rp.toLocaleString()} RP</span></div>`; }).join('');
+    // v1.16.1: real players only; open spots carry the owner's name until someone takes them
+    const B = BR.Board.rows(), rows = B.rows.slice();
+    if (B.mine >= BR.Board.SIZE) rows.push(Object.assign({ pos: B.mine }, B.mineRow));
+    $('rk-board').innerHTML = rows.map((r, i) => { const pos = r.pos !== undefined ? r.pos : i;
+      return `<div class="rk-row${r.me ? ' me' : ''}${r.holder ? ' holder' : ''}${pos < 3 ? ' top top' + (pos + 1) : ''}"><span class="pos">${pos + 1}</span>${r.holder ? '<i class="rk rk-open"><b>·</b></i>' : R.badge(r.rp)}<span class="nm">${esc(r.name)}${r.me ? ' <small>you</small>' : ''}</span><span class="rp">${r.holder ? 'open spot' : r.rp.toLocaleString() + ' RP'}</span></div>`; }).join('')
+      + `<p class="rk-foot">${B.total ? B.total + ' ranked player' + (B.total === 1 ? '' : 's') + ' known' : 'No ranked players yet'} · play a Ranked match (level ${BR.LEVELS.ranked}+, signed in) to take a spot · boards sync when you meet players in online lobbies</p>`;
     game.hud.show('ranks', true);
   };
   $('btn-ranks').addEventListener('click', () => { BR.Audio.init(); openRanks(); });
@@ -18700,10 +18791,12 @@ BR.Game = class Game {
       const S = L.sess = await BR.Net.host(name(), local);
       L.players = [{ pid: 'H', acct: (BR.Accounts && BR.Accounts.accountId()) || '', name: name(), team: 0 }];
       S.on('dev', m => BR.Dev && BR.Dev.receive(m.sc));
+      S.on('board', m => BR.Board && BR.Board.merge(m.list));
       S.on('join', m => {
         if (BR.Bans && BR.Bans.has(m.acct)) { S.send('kicked', { reason: 'banned' }, m.from); setTimeout(() => S.drop(m.from), 150); return; }     // v1.16 banned accounts can't join
         if (L.players.length >= cap()) { S.send('full', {}, m.from); return; }
         if (BR.Bans) { const recs = BR.Bans.records(); if (recs.length) S.send('bans', { list: recs }, m.from); }                                  // share the ban list
+        if (BR.Board) S.send('board', { list: BR.Board.top(100) }, m.from);                                                                      // and the leaderboard
         const P = BR.ARENA_PRESETS[L.preset], c0 = L.players.filter(p => p.team === 0).length, c1 = L.players.filter(p => p.team === 1).length;
         L.players.push({ pid: m.from, acct: String(m.acct || '').slice(0, 14), name: String(m.name || 'Player').slice(0, 16), team: P.kind === 'ffa' ? L.players.length : c0 <= c1 ? 0 : 1 });
         BR.Audio.pickup(); broadcast();
@@ -18723,6 +18816,8 @@ BR.Game = class Game {
       S.on('start', onStart);
       S.on('dev', m => BR.Dev && BR.Dev.receive(m.sc));                               // signed dev commands (kick / ban / coins)
       S.on('bans', m => BR.Bans && BR.Bans.merge(m.list));
+      S.on('board', m => BR.Board && BR.Board.merge(m.list));
+      if (BR.Board) S.send('board', { list: BR.Board.top(100) });                       // give the host (and everyone) our board
       S.on('kicked', m => { if (BR.Dev) BR.Dev.kickedOut(m.reason === 'banned' ? 'You are banned from online play' : m.reason === 'cheat' ? 'Removed from the lobby by anti-cheat' : 'You were removed from the lobby'); });
       S.on('closed', () => { if (!BR.game.mode) { $('lobby').classList.add('hidden'); msg('The host closed the lobby'); $('arenamenu').classList.remove('hidden'); } });
       setTimeout(() => { if (L.sess === S && !L.players.length) msg('Connected, waiting for the lobby…'); }, 1500);
