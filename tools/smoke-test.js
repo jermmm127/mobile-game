@@ -980,7 +980,7 @@ const server = http.createServer((req, res) => {
     // v1.13: the Tracker knife + its blueprints
     { const v = {}, P = BR.Profile, run = n => { for (let i = 0; i < n; i++) g.update(1 / 30); };
       const m = BR.Models.weapon('tracker', 'default', 'none', 'goldrune'); let n = 0; m.traverse(o => { if (o.isMesh) n++; });
-      v.model = !!m.userData.tracker && !!m.userData.inner && n > 18;
+      v.model = !!m.userData.tracker && !!m.userData.inner && n > 12;
       v.bps = Object.keys(BR.Models.BLUEPRINTS.tracker).length >= 7 && BR.MELEE.tracker && !!BR.CONFIG.weapons.tracker.melee;
       const was = P.data.equip.melee; P.data.equip.melee = 'tracker'; g.refreshCosmetics();
       document.getElementById('btn-practice').click(); const pl = g.player; pl.slots[2] = BR.Weapons.create('tracker'); pl.cur = 2; g.vmr.lastWeapon = null; run(40);

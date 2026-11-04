@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.15.3', date: '2026-11-04', title: 'Tracker: hunting blade', notes: [
+    'The Tracker\'s blade was rebuilt as a sharp hunting drop point instead of the flat tanto: the spine drops in a long curve to a needle tip, and a full belly sweeps up to meet it.',
+    'New detail: a flat grind with a visible grind line running into the tip, a bright sharpened edge bevel, a swedge along the top of the point, a sharpening choil, jimping on the spine, a thumb stud on both sides, a small maker\'s etch, and turned pivot-style rings at the top of the grip. The saw-back teeth and fuller were removed.',
+    'All Tracker skins and blueprints use the new blade. The small parts are merged, so the knife draws in fewer passes than before.',
+  ] },
   { v: '1.15.2', date: '2026-11-04', title: 'Sharper Karambit', notes: [
     'The Karambit blade was rebuilt as a slender claw instead of a wide sickle: it tapers steadily from the bolster to a needle-sharp point and curves harder toward the tip, with a thin bright edge grind along the inside curve and jimping on the spine by your thumb. All Karambit skins and blueprints use the new blade.',
   ] },
