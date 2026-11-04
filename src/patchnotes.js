@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.15.2', date: '2026-11-04', title: 'Sharper Karambit', notes: [
+    'The Karambit blade was rebuilt as a slender claw instead of a wide sickle: it tapers steadily from the bolster to a needle-sharp point and curves harder toward the tip, with a thin bright edge grind along the inside curve and jimping on the spine by your thumb. All Karambit skins and blueprints use the new blade.',
+  ] },
   { v: '1.15.1', date: '2026-11-04', title: 'Level pacing', notes: [
     'Levels take longer: level 20 (the M9 Bayonet) now takes about 30 Battle Royale matches for an average player (around 1,500 XP a match).',
     'Every level costs more XP than the one before it: 1,250 XP for level 1, then 110 more for each level after (level 50 to 51 is 6,750 XP, 99 to 100 is 12,140). Each level still pays 150 coins.',

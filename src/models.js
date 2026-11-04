@@ -1127,36 +1127,47 @@ BR.Models = (function () {
         geo.translate(0, 0, -depth / 2);
         return geo;
       };
-      // Blade: hooked claw with a thumb ramp, convex spine, needle tip, concave edge
-      const bl = new THREE.Shape();
-      bl.moveTo(0, 0.014);
-      bl.quadraticCurveTo(0.018, 0.027, 0.034, 0.026);               // thumb ramp
-      bl.bezierCurveTo(0.075, 0.026, 0.118, 0.012, 0.14, -0.026);    // spine
-      bl.bezierCurveTo(0.152, -0.048, 0.15, -0.066, 0.142, -0.08);   // hook to the tip
-      bl.bezierCurveTo(0.13, -0.044, 0.094, -0.012, 0.046, -0.008);  // edge
-      bl.quadraticCurveTo(0.018, -0.008, 0.0, -0.014);
-      bl.closePath();
+      // Blade (v1.15.2): a slender CS-style claw. Built along a centre line that keeps curving
+      // harder toward the tip (about 105 degrees in all), tapering steadily from the bolster to a
+      // needle point: convex spine outside, concave cutting edge inside, a thin bright grind along
+      // the edge and jimping on the spine by the thumb.
       const bladeMat = (opts && opts.blade) || M.blade;
       const bladeG = new THREE.Group(); bladeG.scale.setScalar(1.25); k.add(bladeG);   // 25% bigger blade
       const extS = (shape, depth, bevel, size) => {
         const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: size === undefined ? bevel : size, bevelSegments: 2, curveSegments: 24 });
         geo.translate(0, 0, -depth / 2); return geo;
       };
-      const bladeMesh = new THREE.Mesh(extS(bl, 0.003, 0.0012), bladeMat); bladeG.add(bladeMesh); g.userData.bladeMesh = bladeMesh;
-      // Bright edge grind following the cutting edge
-      const bev = new THREE.Shape();
-      bev.moveTo(0.02, -0.0085);
-      bev.quadraticCurveTo(0.03, -0.0082, 0.046, -0.0085);
-      bev.bezierCurveTo(0.094, -0.0125, 0.13, -0.0445, 0.1415, -0.0795);
-      bev.bezierCurveTo(0.133, -0.04, 0.098, -0.0015, 0.046, 0.0005);
-      bev.lineTo(0.02, -0.0002);
+      const N = 48, LEN = 0.168, cl = [];
+      { let x = 0, y = 0; const ds = LEN / N;
+        for (let i = 0; i <= N; i++) {
+          const t = i / N, th = 0.2 - 2.05 * Math.pow(t, 1.6);              // heading: slightly up, then curling down
+          const w = 0.0285 * Math.pow(1 - t, 0.8) * (1 + 0.2 * t) + (i === N ? 0 : 0.0004);   // taper to a needle
+          const nx = -Math.sin(th), ny = Math.cos(th);                          // outer (spine) side
+          const off = 0.08 * w;                                                 // a touch more steel on the spine side
+          cl.push({ x, y, nx, ny, w, sp: [x + nx * (w / 2 + off), y + ny * (w / 2 + off)], ed: [x - nx * (w / 2 - off), y - ny * (w / 2 - off)] });
+          x += Math.cos(th) * ds; y += Math.sin(th) * ds;
+        } }
+      const tip = cl[N];
+      const bl = new THREE.Shape();
+      bl.moveTo(cl[0].ed[0], cl[0].ed[1]); bl.lineTo(cl[0].sp[0], cl[0].sp[1]);
+      for (let i = 1; i < N; i++) bl.lineTo(cl[i].sp[0], cl[i].sp[1]);
+      bl.lineTo(tip.x, tip.y);
+      for (let i = N - 1; i >= 1; i--) bl.lineTo(cl[i].ed[0], cl[i].ed[1]);
+      bl.closePath();
+      const bladeMesh = new THREE.Mesh(extS(bl, 0.0028, 0.0011, 0.0006), bladeMat); bladeG.add(bladeMesh); g.userData.bladeMesh = bladeMesh;
+      // Bright edge grind: a band along the inner edge, about a third of the blade width, to the tip
+      const bev = new THREE.Shape(), g0 = 4;
+      bev.moveTo(cl[g0].ed[0], cl[g0].ed[1]);
+      for (let i = g0 + 1; i < N; i++) bev.lineTo(cl[i].ed[0], cl[i].ed[1]);
+      bev.lineTo(tip.x, tip.y);
+      for (let i = N - 1; i >= g0; i--) { const c = cl[i], f = 0.36 * c.w; bev.lineTo(c.ed[0] + c.nx * f, c.ed[1] + c.ny * f); }
       bev.closePath();
       const edgeMat = (opts && opts.blade) ? bladeMat : (cache.mat.kEdge || (cache.mat.kEdge = new THREE.MeshPhongMaterial({ color: 0xf2f6fa, specular: 0xffffff, shininess: 180, side: THREE.DoubleSide })));
-      bladeG.add(new THREE.Mesh(extS(bev, 0.0046, 0.0005), edgeMat));
-      // Jimping cut into the thumb ramp
-      for (let i = 0; i < 5; i++) {
-        const x = 0.011 + i * 0.0055, t = x / 0.034, y = (1 - t) * (1 - t) * 0.014 + 2 * (1 - t) * t * 0.027 + t * t * 0.026;
-        const j = new THREE.Mesh(new THREE.BoxGeometry(0.0016, 0.0034, 0.0062), M.dark); j.position.set(x, y - 0.0006, 0); j.rotation.z = 0.5 - i * 0.12; bladeG.add(j);
+      bladeG.add(new THREE.Mesh(extS(bev, 0.0042, 0.0004), edgeMat));
+      // Jimping notches on the spine near the bolster
+      for (let i = 0; i < 6; i++) {
+        const c = cl[3 + i * 2], j = new THREE.Mesh(new THREE.BoxGeometry(0.0014, 0.003, 0.0058), M.dark);
+        j.position.set(c.sp[0] - c.nx * 0.0008, c.sp[1] - c.ny * 0.0008, 0); j.rotation.z = Math.atan2(c.ny, c.nx) - Math.PI / 2; bladeG.add(j);
       }
       // Curved handle with finger grooves and a guard hook (skin material = scales)
       const hd = new THREE.Shape();
@@ -1188,7 +1199,7 @@ BR.Models = (function () {
       k.rotation.y = Math.PI / 2;      // +x -> -z
       g.add(k);
       g.userData.blade = k;
-      g.userData.trailTip = new THREE.Vector3(0, -0.1, -0.1775); g.userData.trailMid = new THREE.Vector3(0, -0.015, -0.1);   // hook tip / mid-blade (model space)
+      const mid = cl[N >> 1]; g.userData.trailTip = new THREE.Vector3(0, tip.y * 1.25, -tip.x * 1.25); g.userData.trailMid = new THREE.Vector3(0, mid.y * 1.25, -mid.x * 1.25);   // claw tip / mid-blade (model space)
       hands(g, [0, 0.02, 0.05], null, null);
       anchors(g, -0.15, 0, [0, -0.02, 0.12]);
       g.userData.flash.visible = false;
