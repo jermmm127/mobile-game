@@ -90,7 +90,7 @@ BR.Actor = class Actor {
     this.shield = 0;
     this.alive = true;
     // 2 guns + the knife you always carry (yours: bayonet, karambit or butterfly, whichever you equipped)
-    this.slots = [null, null, BR.Weapons.create(opts && opts.isPlayer && BR.Profile && BR.Profile.data ? (BR.Profile.data.equip.melee || 'bayonet') : 'bayonet')];
+    this.slots = [null, null, BR.Weapons.create(opts && opts.isPlayer && BR.Profile && BR.Profile.data ? BR.Profile.melee() : 'bayonet')];
     this.cur = 2;
     this.grappleCd = 0;
     this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0;

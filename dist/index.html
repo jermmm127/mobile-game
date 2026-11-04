@@ -1471,6 +1471,28 @@ body.arenamode #topbar { display: none !important; }
 .am-join input { flex: 1 1 auto; width: 100%; height: 44px; box-sizing: border-box; }
 .am-join .mbtn { flex: 0 0 auto; width: auto; min-width: 110px; }
 
+/* ---- v1.14 levels */
+.lvl-chip { position: absolute; z-index: 2; top: calc(62px + var(--st)); right: max(16px, calc(var(--sr) + 12px)); display: flex; align-items: center; gap: 9px; padding: 5px 12px 5px 5px; border-radius: 999px; cursor: pointer; color: var(--text); text-align: left; }
+.lvl-chip > b { min-width: 30px; height: 30px; padding: 0 4px; box-sizing: border-box; border-radius: 50%; display: grid; place-items: center; font: 800 14px var(--ui); color: #1c1206; background: radial-gradient(circle at 35% 30%, #fff3b0, #ffc93a 55%, #c98a00); box-shadow: 0 0 12px rgba(255, 201, 58, .5); }
+.lvl-txt { display: flex; flex-direction: column; gap: 2px; } .lvl-txt i { font-style: normal; font: 700 9px var(--ui); letter-spacing: .22em; opacity: .7; }
+.lvl-bar, .lv-bar, .xprow u { display: block; width: 110px; height: 5px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden; }
+.lvl-bar s, .lv-bar u, .xprow s { display: block; height: 100%; background: linear-gradient(90deg, #ffc93a, #ff5ec4); text-decoration: none; }
+.lvl-txt small { font: 600 9.5px var(--ui); opacity: .75; font-variant-numeric: tabular-nums; }
+.lvpanel { position: relative; } .lv-bar { width: 100%; height: 10px; } .lv-sub { font-size: 12px; opacity: .75; margin-top: -2px; }
+.lv-track { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.lv-k { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 8px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); text-align: center; opacity: .65; }
+.lv-k.ok { opacity: 1; border-color: rgba(255, 201, 58, .55); background: linear-gradient(170deg, rgba(255,201,58,.14), rgba(255,255,255,.03)); }
+.lv-k em { font-style: normal; font: 800 10px var(--ui); letter-spacing: .18em; color: #ffc93a; } .lv-k img { width: 100%; max-height: 46px; object-fit: contain; } .lv-k b { font-size: 13px; } .lv-k i { font-style: normal; font-size: 10px; opacity: .75; }
+.xprow { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; padding: 6px 0 2px; } .xprow span { font-weight: 800; color: #ffc93a; } .xprow b em { font-style: normal; color: #ffc93a; } .xprow u { grid-column: 1 / -1; width: 100%; }
+/* locked knives */
+#inv-melee button.locked, .lo-grid .gcard.locked { opacity: .5; position: relative; }
+#inv-melee button.locked::after, .lo-grid .gcard.locked::after { content: '🔒 ' attr(data-lv); position: absolute; right: 6px; top: 4px; font: 800 9px var(--ui); letter-spacing: .08em; color: #ffc93a; }
+@media (max-height: 430px) { .lvl-chip { top: calc(56px + var(--st)); } }
+#inv-melee button.locked::after { content: none; }
+#inv-melee button.locked { color: #ffc93a; }
+.end-coins .xprow { display: grid !important; grid-template-columns: auto 1fr; white-space: nowrap; }
+.end-coins .xprow b { justify-self: end; }
+
 </style>
 </head>
 <body>
@@ -1494,7 +1516,7 @@ body.arenamode #topbar { display: none !important; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.13.0',
+  version: '1.14.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1747,6 +1769,10 @@ BR.RARITY_ODDS = [
 BR.rollRarity = (tier, R) => { const o = BR.RARITY_ODDS[Math.max(0, Math.min(3, tier | 0))], tot = o.reduce((a, b) => a + b, 0); let r = (R || Math.random)() * tot; for (let i = 0; i < o.length; i++) { r -= o[i]; if (r < 0) return i; } return 0; };
 BR.weaponScore = w => (w ? (w.def.tier || 0) + (w.rar || 0) * 0.7 : -1);
 
+// v1.14 levels + knife unlocks (the Tracker is everyone's starting knife)
+BR.LEVELS = { max: 100, coins: 150, need: L => 1000 + 75 * L };
+BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
+
 </script>
 <script>
 'use strict';
@@ -1756,6 +1782,13 @@ BR.weaponScore = w => (w ? (w.def.tier || 0) + (w.rar || 0) * 0.7 : -1);
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.14.0', date: '2026-11-04', title: 'Levels + a fresh start', notes: [
+    'New accounts start from scratch: only the default skins (no starter camo or tracer), the Tracker as your knife, and level 0. Everything else is earned in matches or bought in the shop.',
+    'New LEVEL + XP system. Earn XP in every mode except Practice: kills (100 each), damage, survival time and placement in Battle Royale + Resurgence (a win is 2,000), duels and arena modes, Zombies rounds and bosses, Overdrive survival time and bosses, and Aim Trainer drills. Each level needs a little more XP than the last (1,000 + 75 per level) and pays 150 coins. Max level 100.',
+    'Knives unlock by level: the Tracker is everyone\'s starting knife (level 0), the M9 Bayonet unlocks at level 20, the Karambit at 40 and the Butterfly Knife at 60. Locked knives show their level in the Inventory and Loadout screens.',
+    'Your level and XP bar sit under your coins on the menu. Tap them to see the knife unlock track and how to earn XP. The results screen shows the XP you earned and any level-ups.',
+    'Existing players get XP credited for what they already did (kills, wins, matches and zombie kills), so nobody starts over.',
+  ] },
   { v: '1.13.0', date: '2026-11-04', title: 'The Tracker', notes: [
     'New knife: the TRACKER, a tanto-point survival knife. Straight spine with a saw-back near the tip, an angled tanto front, a long fuller, an integral guard with a hooked finger quillon, and a thick finger-grooved olive rubber grip with screws, a tang strip and a lanyard hole. It hits a bit harder than the bayonet but swings a little slower. Equip it from the Inventory melee picker or the Loadout screen.',
     'It is held, flipped on draw and inspected like the M9 Bayonet (same fist grip and animations).',
@@ -7643,7 +7676,7 @@ BR.Models = (function () {
       // Glowing blade trail (butterfly blueprints with a .trail colour): a ribbon between the blade
       // tip and mid-blade over the last frames, drawn additively and fading toward the tail
       if (this.bfTrail) { this.scene.remove(this.bfTrail.mesh); this.bfTrail.mesh.geometry.dispose(); this.bfTrail = null; }
-      { const mel = eq.melee || 'bayonet', bpId = (eq.blueprints || {})[mel], B = bpId && BR.Models.BLUEPRINTS[mel] && BR.Models.BLUEPRINTS[mel][bpId];
+      { const mel = BR.Profile.melee(), bpId = (eq.blueprints || {})[mel], B = bpId && BR.Models.BLUEPRINTS[mel] && BR.Models.BLUEPRINTS[mel][bpId];
         if (B && B.trail && this.models[mel] && this.models[mel].userData.model.userData.trailTip) {
           const N = 11, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), idx = [];
           for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
@@ -8577,7 +8610,7 @@ BR.Actor = class Actor {
     this.shield = 0;
     this.alive = true;
     // 2 guns + the knife you always carry (yours: bayonet, karambit or butterfly, whichever you equipped)
-    this.slots = [null, null, BR.Weapons.create(opts && opts.isPlayer && BR.Profile && BR.Profile.data ? (BR.Profile.data.equip.melee || 'bayonet') : 'bayonet')];
+    this.slots = [null, null, BR.Weapons.create(opts && opts.isPlayer && BR.Profile && BR.Profile.data ? BR.Profile.melee() : 'bayonet')];
     this.cur = 2;
     this.grappleCd = 0;
     this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0;
@@ -9723,7 +9756,7 @@ BR.BotBrain = class BotBrain {
       const p = g.player = new BR.Actor(g, { id: 0, name: 'You', isPlayer: true });
       const sp = W.spawns[0];
       p.mover.dropping = false; p.mover.pos.set(sp.x, 0, sp.z); p.yaw = sp.yaw; p.pitch = 0;
-      p.slots = [BR.Weapons.create('pistol'), null, BR.Weapons.create(BR.Profile.data.equip.melee || 'bayonet')]; p.cur = 0;
+      p.slots = [BR.Weapons.create('pistol'), null, BR.Weapons.create(BR.Profile.melee())]; p.cur = 0;
       p.ammo.light = 96; p.health = C.actor.maxHealth; p.shield = 0;
       g.actors.push(p);
       this.wallBuys();
@@ -10799,6 +10832,7 @@ BR.BotBrain = class BotBrain {
       const prev = this.data.best[R.id] || 0, pb = R.score > prev;
       if (pb) { this.data.best[R.id] = R.score; save(this.data); }
       if (BR.Profile.addGrind) BR.Profile.addGrind('aim', R.score, R.id);
+      if (BR.Profile.addXP && R.score > 0) BR.Profile.addXP([['Aim drill', Math.min(600, Math.round(R.score / 15))]]);
       $('atr-title').textContent = R.d.name; $('atr-score').textContent = R.score.toLocaleString();
       $('atr-pb').textContent = pb ? 'NEW PERSONAL BEST!' : 'BEST ' + prev.toLocaleString();
       $('atr-pb').classList.toggle('pb', pb);
@@ -11682,7 +11716,7 @@ BR.BotBrain = class BotBrain {
     }
     arm(a) {
       const C = BR.CONFIG, gs = this.gunsFor(a);
-      a.slots = [gs[0] ? BR.Weapons.create(gs[0]) : null, gs[1] ? BR.Weapons.create(gs[1]) : null, BR.Weapons.create(a.isPlayer ? (BR.Profile.data.equip.melee || 'bayonet') : 'bayonet')];
+      a.slots = [gs[0] ? BR.Weapons.create(gs[0]) : null, gs[1] ? BR.Weapons.create(gs[1]) : null, BR.Weapons.create(a.isPlayer ? BR.Profile.melee() : 'bayonet')];
       a.cur = a.slots[0] ? 0 : 2;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = this.duel ? 50 : 0; a.nades = this.P.guns === 'duel' || this.P.guns === 'loadout' ? 1 : 0;
@@ -13818,16 +13852,17 @@ BR.Profile = {
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
       owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', melee: 'bayonet' }, d.equip || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', melee: 'tracker' }, d.equip || {}),
       rp: typeof d.rp === 'number' ? d.rp : 0,
       cases: Object.assign({ opened: 0 }, d.cases || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0, deaths: 0 }, d.stats || {}),
       dev: !!d.dev,
-      meleeV: d.meleeV || 0,
+      meleeV: d.meleeV || (d.owned ? 0 : 3),          // brand-new accounts skip the old 'bayonet is the default' migration
       // v1.11: default loadout (used where a mode hands you guns: Practice, Overdrive, Aim Trainer, Resurgence redeploys)
       loadout: Object.assign({ primary: 'rifle', secondary: 'pistol' }, d.loadout || {}),
       starter: !!d.starter,
       fresh: !d.owned,
+      xp: typeof d.xp === 'number' ? d.xp : null,
     };
     // v1.7.5: the M9 bayonet is the new default knife (one-time switch for older saves)
     if (this.data.meleeV < 2) { this.data.equip.melee = 'bayonet'; this.data.meleeV = 2; }
@@ -13845,12 +13880,11 @@ BR.Profile = {
     if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
     if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
-    // v1.11: new accounts start with a Recruit kit equipped (rifle camo + tracer) on top of the default loadout
-    if (this.data.fresh && !this.data.starter) {
-      const o = this.data.owned, e = this.data.equip;
-      for (const [k, id] of [['skins', 'carbon'], ['tracers', 'cyan']]) if (!o[k].includes(id)) o[k].push(id);
-      e.skinByGun.rifle = 'carbon'; e.tracerByGun.rifle = 'cyan';
-      this.data.starter = true;
+    // v1.14: new accounts start from scratch — default skins only, the Tracker knife, level 0.
+    // Older saves get XP credited for what they already did (kills, wins, matches, zombies).
+    if (this.data.xp === null) {
+      const st = this.data.stats;
+      this.data.xp = this.data.fresh ? 0 : Math.round((st.kills || 0) * 100 + (st.wins || 0) * 1500 + (st.matches || 0) * 250 + (st.zmKills || 0) * 15);
     }
     delete this.data.fresh;
     this.unlockRankRewards();
@@ -13885,15 +13919,50 @@ BR.Profile = {
     return this.data.owned[cat].includes(id);
   },
   isEquipped(cat, id, weapon) {
-    if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b && (!BR.MELEE[w] || (this.data.equip.melee || 'bayonet') === w); }
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b && (!BR.MELEE[w] || this.melee() === w); }
     if (cat === 'tracers') return (this.data.equip.tracerByGun[weapon || 'rifle'] || 'signature') === id;
     if (cat === 'gloves') return this.gloveFor(weapon) === id;
     if (cat === 'skins') return weapon === 'all' ? Object.keys(BR.CONFIG.weapons).every(w => this.skinFor(w) === id) : this.skinFor(weapon || 'rifle') === id;
     return this.data.equip[cat] === id;
   },
   infinite() { return !!this.data.dev; },
+  // ---- v1.14 LEVELS: start at 0; level L -> L+1 costs 1000 + 75·L XP; cap 100. Knives unlock by level.
+  levelInfo(xp) {
+    xp = xp === undefined ? (this.data.xp || 0) : xp;
+    if (this.data && this.data.dev) return { level: BR.LEVELS.max, into: 0, need: 1, xp };
+    let L = 0, left = xp;
+    while (L < BR.LEVELS.max && left >= BR.LEVELS.need(L)) { left -= BR.LEVELS.need(L); L++; }
+    return { level: L, into: left, need: BR.LEVELS.need(L), xp };
+  },
+  level() { return this.levelInfo().level; },
+  meleeUnlocked(id) { return this.infinite() || this.level() >= (BR.KNIFE_LEVEL[id] || 0); },
+  // the knife you actually carry: your pick if you've unlocked it, otherwise the Tracker
+  melee() { const m = this.data.equip.melee; return m && BR.MELEE[m] && this.meleeUnlocked(m) ? m : 'tracker'; },
+  // add XP from a list of [label, xp] parts; pays 150 coins per level gained; reports knife unlocks
+  addXP(parts) {
+    parts = parts.filter(p => p[1] > 0);
+    const total = parts.reduce((s, p) => s + Math.round(p[1]), 0), before = this.levelInfo();
+    this.data.xp = (this.data.xp || 0) + total;
+    const after = this.levelInfo(), gained = Math.max(0, after.level - before.level), unlocked = [];
+    if (gained && !this.infinite()) this.data.coins += gained * BR.LEVELS.coins;
+    for (const id in BR.KNIFE_LEVEL) { const lv = BR.KNIFE_LEVEL[id]; if (lv > before.level && lv <= after.level) unlocked.push(BR.CONFIG.weapons[id].name); }
+    this.save();
+    if (gained && BR.game && BR.game.hud) setTimeout(() => { BR.game.hud.toast(`LEVEL ${after.level}!${unlocked.length ? ' · UNLOCKED ' + unlocked.join(', ').toUpperCase() : ''} · +${gained * BR.LEVELS.coins} coins`, 3200); BR.Audio.coin(); }, 400);
+    if (BR.updateCoins) BR.updateCoins();
+    return { total, parts, before: before.level, after: after.level, into: after.into, need: after.need, unlocked };
+  },
+  // XP for a finished match / run (every mode except Practice)
+  matchXP(r) {
+    const t = Math.round(r.time || 0);
+    if (r.arena) return [['Kills ×' + r.kills, r.kills * 100], [r.win ? 'Victory' : 'Played', r.win ? (r.online ? 900 : 700) : 200]];
+    if (r.overdrive) return [['Survived ' + BR.fmtTime(t), t * 3], ['Kills ×' + r.kills, r.kills * 5], ['Bosses ×' + (r.bosses || 0), (r.bosses || 0) * 300], ['Overlord', r.win ? 1500 : 0]];
+    if (r.zombies) return [['Rounds ×' + Math.max(0, r.round - 1), Math.max(0, r.round - 1) * 120], ['Zombies ×' + r.kills, r.kills * 15], ['Bosses ×' + (r.bosses || 0), (r.bosses || 0) * 400]];
+    if (r.duel) return [['Kills ×' + r.kills, r.kills * 100], [r.win ? 'Duel won' : 'Duel played', r.win ? 700 : 200]];
+    return [['Kills ×' + r.kills, r.kills * 100], ['Damage', Math.round(r.damage || 0)], ['Survived ' + BR.fmtTime(t), Math.min(600, t * 2)],
+      [r.win ? 'Victory' : r.place <= 5 ? 'Top 5' : r.place <= 10 ? 'Top 10' : 'Played', r.win ? 2000 : r.place <= 5 ? 800 : r.place <= 10 ? 400 : 200]];
+  },
   // the guns + knife you start with where a mode arms you (v1.11)
-  loadoutGuns() { const L = this.data.loadout || {}, W = BR.CONFIG.weapons; return { primary: W[L.primary] ? L.primary : 'rifle', secondary: W[L.secondary] ? L.secondary : 'pistol', melee: this.data.equip.melee || 'bayonet' }; },
+  loadoutGuns() { const L = this.data.loadout || {}, W = BR.CONFIG.weapons; return { primary: W[L.primary] ? L.primary : 'rifle', secondary: W[L.secondary] ? L.secondary : 'pistol', melee: this.melee() }; },
   coinsLabel() { return this.infinite() ? '∞' : String(this.data.coins); },
   canAfford(price) { return this.infinite() || this.data.coins >= price; },
   buy(cat, id, weapon) {
@@ -13907,7 +13976,7 @@ BR.Profile = {
   },
   equip(cat, id, weapon) { if (!this.owns(cat, id)) return false; this.setEquip(cat, id, weapon); this.save(); return true; },
   setEquip(cat, id, weapon) {
-    if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; if (BR.MELEE[w]) this.data.equip.melee = w; }   // equipping a knife skin makes it your knife
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; if (BR.MELEE[w] && this.meleeUnlocked(w)) this.data.equip.melee = w; }   // equipping a knife skin makes it your knife
     else if (cat === 'tracers') this.data.equip.tracerByGun[weapon || 'rifle'] = id;
     else if (cat === 'skins' && weapon && weapon !== 'all') this.data.equip.skinByGun[weapon] = id;          // camo on this gun only
     else if (cat === 'skins') { for (const w in BR.CONFIG.weapons) this.data.equip.skinByGun[w] = id; }       // ALL: every gun
@@ -14007,6 +14076,11 @@ BR.Profile = {
 
   // Coins for a finished match. Returns the breakdown so the end screen can show it.
   award(r) {
+    const res = this.awardCoins(r);
+    res.xp = this.addXP(this.matchXP(r));
+    return res;
+  },
+  awardCoins(r) {
     const C = BR.CONFIG.coins;
     if (r.arena) {          // arena modes (duels, TDM, FFA): coins for kills + the win, no Ranked RP
       const parts = [['Kills ×' + r.kills, r.kills * 15]];
@@ -14237,6 +14311,7 @@ BR.Inventory = class Inventory {
     // Melee: carry the bayonet, the karambit or the butterfly knife (one at a time)
     $('inv-melee').addEventListener('click', e => {
       const b = e.target.closest('button[data-m]'); if (!b) return;
+      if (!BR.Profile.meleeUnlocked(b.dataset.m)) { BR.Audio.click(); this.cat = 'blueprints'; this.weapon = b.dataset.m; this.sel = null; this.flash(`${BR.CONFIG.weapons[b.dataset.m].name} unlocks at level ${BR.KNIFE_LEVEL[b.dataset.m]}`); this.render(); return; }
       const P = BR.Profile; P.data.equip.melee = b.dataset.m; P.save(); BR.Audio.pickup();
       this.cat = 'blueprints'; this.weapon = b.dataset.m; this.sel = null;
       this.flash(({ butterfly: 'Butterfly knife', knife: 'Karambit', bayonet: 'M9 Bayonet', tracker: 'Tracker' })[b.dataset.m] + ' equipped');
@@ -14328,8 +14403,8 @@ BR.Inventory = class Inventory {
     if (cat !== 'gloves' && cat !== 'skins' && this.weapon === 'all') this.weapon = 'rifle';
     this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
     this.el.count.textContent = this.total() + ' / ' + this.collectible();
-    const mel = P.data.equip.melee || 'bayonet';
-    document.querySelectorAll('#inv-melee button').forEach(b => b.classList.toggle('sel', b.dataset.m === mel));
+    const mel = P.melee();
+    document.querySelectorAll('#inv-melee button').forEach(b => { b.classList.toggle('sel', b.dataset.m === mel); const lk = !BR.Profile.meleeUnlocked(b.dataset.m); b.classList.toggle('locked', lk); if (!b.dataset.name) b.dataset.name = b.textContent; b.textContent = lk ? '🔒 LV ' + BR.KNIFE_LEVEL[b.dataset.m] : b.dataset.name; });
     document.getElementById('inv-melee').classList.toggle('hidden', cat !== 'blueprints');
     if (!this.sel || !items[this.sel]) this.sel = items[this.equippedId()] ? this.equippedId() : Object.keys(items)[0] || null;
     const html = [];
@@ -14646,6 +14721,7 @@ BR.HUD = class HUD {
   <div class="m-motes">${Array.from({ length: 22 }, (_, i) => `<i style="--x:${(i * 41) % 100};--d:${(i * 7) % 11};--s:${0.6 + (i % 5) * 0.25}"></i>`).join('')}</div>
   <div class="film"><i class="lb top"></i><i class="lb bot"></i><i class="scan"></i><i class="grain"></i><i class="cutflash"></i></div>
   <div class="menu-coins glass"><i class="coin"></i><span id="menu-coins" class="num">0</span></div>
+  <button id="lvl-chip" class="lvl-chip glass" aria-label="Level"><b id="lvl-n">0</b><span class="lvl-txt"><i>LEVEL</i><u class="lvl-bar"><s id="lvl-bar"></s></u><small id="lvl-xp">0 / 1,000 XP</small></span></button>
   <button id="acct-chip" class="acct-chip glass"><span id="acct-avatar" class="avatar">G</span><span class="acct-text"><b id="acct-name">Guest</b><small id="acct-sub">Sign in</small></span></button>
   <div class="menu-main">
     <div class="logo">
@@ -14830,7 +14906,7 @@ BR.HUD = class HUD {
     <div id="inv-tabs" class="seg">
       <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
-    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button><button data-m="tracker">TRACKER</button></div>
+    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="tracker">TRACKER</button><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
     <div id="inv-weps" class="chips"></div>
     <div id="inv-grid"></div>
     <div class="shop-foot">
@@ -14953,6 +15029,17 @@ BR.HUD = class HUD {
     <p class="tip" id="lb-info">Send the code to your friends. Empty slots are filled with AI.</p>
     <div class="lb-teams" id="lb-teams"></div>
     <div class="am-actions"><button class="mbtn hot" id="lb-start">START MATCH</button><button class="mbtn" id="lb-leave">LEAVE</button></div>
+  </div>
+</div>
+
+<div id="levels" class="overlay hidden">
+  <div class="panel metal wide lvpanel">
+    <button id="lv-x" class="xbtn" aria-label="Close levels">✕</button>
+    <div class="ptitle">LEVEL <span id="lv-n">0</span></div>
+    <div class="lv-bar"><u id="lv-bar"></u></div><div class="lv-sub" id="lv-sub"></div>
+    <div class="sp-sec">KNIFE UNLOCKS</div><div class="lv-track" id="lv-track"></div>
+    <div class="sp-sec">EARN XP</div>
+    <p class="tip">Every level pays <b>150 coins</b>. XP comes from every mode except Practice: kills (100 each), damage, survival time and placement in Battle Royale + Resurgence (win 2,000), duels + arena modes (win 700), Zombies rounds (120) and bosses (400), Overdrive survival time (3 per second) and bosses, and Aim Trainer drills.</p>
   </div>
 </div>
 
@@ -15597,6 +15684,9 @@ BR.HUD = class HUD {
       if (r.coins.rp !== undefined) ec.innerHTML += `<div class="rprow"><span>${BR.Ranks.badge(BR.Profile.data.rp || 0)} Ranked</span><b class="${r.coins.rp < 0 ? 'neg' : ''}">${r.coins.rp >= 0 ? '+' : ''}${r.coins.rp} RP</b></div>`
         + (r.coins.rankUp ? `<div class="rprow up"><span>RANK UP!</span><b>${r.coins.rankUp}</b></div>` : '')
         + (r.coins.unlocked && r.coins.unlocked.length ? `<div class="rprow up"><span>Unlocked</span><b>${r.coins.unlocked.join(', ')}</b></div>` : '');
+      const X = r.coins.xp;
+      if (X) ec.innerHTML += `<div class="xprow"><span>+${X.total.toLocaleString()} XP</span><b>${X.after > X.before ? `LEVEL ${X.before} → <em>${X.after}</em>` : 'LEVEL ' + X.after}</b><u><s style="width:${(X.into / X.need * 100).toFixed(1)}%"></s></u></div>`
+        + (X.unlocked.length ? `<div class="rprow up"><span>Unlocked</span><b>${X.unlocked.join(', ')}</b></div>` : '');
     } else ec.innerHTML = '<div class="tot"><span>PRACTICE · NO COINS</span><b></b></div>';
     this.show('end', true);
   }
@@ -16027,7 +16117,7 @@ BR.Game = class Game {
       a.mover.dropping = false; a.mover.vel.set(0, 0, 0);
       a.mover.pos.set(sp.x, 0, sp.z);
       a.yaw = sp.yaw; a.pitch = 0;
-      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create(a.isPlayer ? (BR.Profile.data.equip.melee || 'bayonet') : 'bayonet')];
+      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create(a.isPlayer ? BR.Profile.melee() : 'bayonet')];
       a.cur = 0;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = 50;
@@ -16954,7 +17044,7 @@ BR.Game = class Game {
   refreshCosmetics() {
     this.vmr.rebuild();
     // swapped knives? give the player the newly equipped one
-    const p = this.player, mel = BR.Profile.data.equip.melee || 'bayonet';
+    const p = this.player, mel = BR.Profile.melee();
     if (p && p.slots && p.slots[2] && p.slots[2].id !== mel) { p.slots[2] = BR.Weapons.create(mel); if (p.cur === 2) this.vmr.lastWeapon = null; }
   }
 
@@ -17014,7 +17104,19 @@ BR.Game = class Game {
     $('acct-name').textContent = BR.Accounts.displayName();
     $('acct-sub').textContent = BR.Accounts.current() ? (BR.Profile.infinite() ? 'Dev · infinite coins' : 'Signed in') : 'Sign in';
     $('acct-avatar').textContent = BR.Accounts.displayName()[0].toUpperCase();
+    const L = BR.Profile.levelInfo(), mx = L.level >= BR.LEVELS.max;
+    $('lvl-n').textContent = L.level; $('lvl-bar').style.width = (mx ? 100 : L.into / L.need * 100).toFixed(1) + '%';
+    $('lvl-xp').textContent = mx ? 'MAX LEVEL' : `${L.into.toLocaleString()} / ${L.need.toLocaleString()} XP`;
   };
+  const renderLevels = () => {
+    const P = BR.Profile, L = P.levelInfo(), mx = L.level >= BR.LEVELS.max;
+    $('lv-n').textContent = L.level; $('lv-bar').style.width = (mx ? 100 : L.into / L.need * 100).toFixed(1) + '%';
+    $('lv-sub').textContent = mx ? 'Max level' : `${L.into.toLocaleString()} / ${L.need.toLocaleString()} XP to level ${L.level + 1}`;
+    $('lv-track').innerHTML = Object.entries(BR.KNIFE_LEVEL).map(([id, lv]) => { const ok = P.meleeUnlocked(id), pic = BR.WeaponIcons && BR.WeaponIcons.pic[id];
+      return `<div class="lv-k${ok ? ' ok' : ''}"><em>LV ${lv}</em>${pic ? `<img src="${pic}" alt="">` : ''}<b>${BR.CONFIG.weapons[id].name}</b><i>${ok ? (lv ? 'UNLOCKED' : 'STARTING KNIFE') : `${Math.max(0, lv - L.level)} levels to go`}</i></div>`; }).join('');
+  };
+  $('lvl-chip').addEventListener('click', () => { BR.Audio.init(); renderLevels(); $('levels').classList.remove('hidden'); });
+  $('lv-x').addEventListener('click', () => $('levels').classList.add('hidden'));
   BR.updateCoins();
 
   // ---- settings panel --------------------------------------------------------
@@ -17530,22 +17632,23 @@ BR.Game = class Game {
   renderLobby();
 
   // ---- v1.11: loadout editor
-  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY'], ['tracker', 'TRACKER']];
+  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
   const renderLoadout = () => {
     const L = BR.Profile.loadoutGuns();
     $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');
     $('lo-secondary').innerHTML = LO_S.map(id => gcard(id, `data-lo="secondary" data-g="${id}"`, L.secondary === id)).join('');
-    $('lo-melee').innerHTML = LO_M.map(([id, n]) => `<button class="gcard${L.melee === id ? ' sel' : ''}" data-lo="melee" data-g="${id}">${BR.WeaponIcons.pic[id] ? `<img src="${BR.WeaponIcons.pic[id]}" alt="">` : ''}<span>${n}</span></button>`).join('');
+    $('lo-melee').innerHTML = LO_M.map(([id, n]) => `<button class="gcard${L.melee === id ? ' sel' : ''}${BR.Profile.meleeUnlocked(id) ? '' : ' locked'}" data-lv="LV ${BR.KNIFE_LEVEL[id]}" data-lo="melee" data-g="${id}">${BR.WeaponIcons.pic[id] ? `<img src="${BR.WeaponIcons.pic[id]}" alt="">` : ''}<span>${n}</span></button>`).join('');
   };
   $('btn-loadout').addEventListener('click', () => { BR.Audio.init(); renderLoadout(); $('loadout').classList.remove('hidden'); });
   $('lo-x').addEventListener('click', () => $('loadout').classList.add('hidden'));
   $('loadout').addEventListener('click', e => {
     const b = e.target.closest('[data-lo]'); if (!b) return;
     const P = BR.Profile, k = b.dataset.lo, id = b.dataset.g;
+    if (k === 'melee' && !P.meleeUnlocked(id)) { BR.Audio.click(); game.hud.toast(`${BR.CONFIG.weapons[id].name} unlocks at level ${BR.KNIFE_LEVEL[id]}`, 1600); return; }
     if (k === 'melee') P.data.equip.melee = id; else P.data.loadout[k] = id;
     P.save(); game.refreshCosmetics(); BR.Audio.pickup(); renderLoadout();
   });
-  $('lo-reset').addEventListener('click', () => { const P = BR.Profile; P.data.loadout = { primary: 'rifle', secondary: 'pistol' }; P.data.equip.melee = 'bayonet'; P.save(); game.refreshCosmetics(); BR.Audio.click(); renderLoadout(); });
+  $('lo-reset').addEventListener('click', () => { const P = BR.Profile; P.data.loadout = { primary: 'rifle', secondary: 'pistol' }; P.data.equip.melee = 'tracker'; P.save(); game.refreshCosmetics(); BR.Audio.click(); renderLoadout(); });
   $('dm-go').addEventListener('click', dmGo);
   $('dm-x').addEventListener('click', dmClose);
   $('btn-menu').addEventListener('click', () => game.toMenu());

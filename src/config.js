@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.13.0',
+  version: '1.14.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -259,3 +259,7 @@ BR.RARITY_ODDS = [
 ];
 BR.rollRarity = (tier, R) => { const o = BR.RARITY_ODDS[Math.max(0, Math.min(3, tier | 0))], tot = o.reduce((a, b) => a + b, 0); let r = (R || Math.random)() * tot; for (let i = 0; i < o.length; i++) { r -= o[i]; if (r < 0) return i; } return 0; };
 BR.weaponScore = w => (w ? (w.def.tier || 0) + (w.rar || 0) * 0.7 : -1);
+
+// v1.14 levels + knife unlocks (the Tracker is everyone's starting knife)
+BR.LEVELS = { max: 100, coins: 150, need: L => 1000 + 75 * L };
+BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };

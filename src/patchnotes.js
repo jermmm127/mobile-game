@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.14.0', date: '2026-11-04', title: 'Levels + a fresh start', notes: [
+    'New accounts start from scratch: only the default skins (no starter camo or tracer), the Tracker as your knife, and level 0. Everything else is earned in matches or bought in the shop.',
+    'New LEVEL + XP system. Earn XP in every mode except Practice: kills (100 each), damage, survival time and placement in Battle Royale + Resurgence (a win is 2,000), duels and arena modes, Zombies rounds and bosses, Overdrive survival time and bosses, and Aim Trainer drills. Each level needs a little more XP than the last (1,000 + 75 per level) and pays 150 coins. Max level 100.',
+    'Knives unlock by level: the Tracker is everyone\'s starting knife (level 0), the M9 Bayonet unlocks at level 20, the Karambit at 40 and the Butterfly Knife at 60. Locked knives show their level in the Inventory and Loadout screens.',
+    'Your level and XP bar sit under your coins on the menu. Tap them to see the knife unlock track and how to earn XP. The results screen shows the XP you earned and any level-ups.',
+    'Existing players get XP credited for what they already did (kills, wins, matches and zombie kills), so nobody starts over.',
+  ] },
   { v: '1.13.0', date: '2026-11-04', title: 'The Tracker', notes: [
     'New knife: the TRACKER, a tanto-point survival knife. Straight spine with a saw-back near the tip, an angled tanto front, a long fuller, an integral guard with a hooked finger quillon, and a thick finger-grooved olive rubber grip with screws, a tang strip and a lanyard hole. It hits a bit harder than the bayonet but swings a little slower. Equip it from the Inventory melee picker or the Loadout screen.',
     'It is held, flipped on draw and inspected like the M9 Bayonet (same fist grip and animations).',

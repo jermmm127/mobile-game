@@ -483,7 +483,7 @@
       const p = g.player = new BR.Actor(g, { id: 0, name: 'You', isPlayer: true });
       const sp = W.spawns[0];
       p.mover.dropping = false; p.mover.pos.set(sp.x, 0, sp.z); p.yaw = sp.yaw; p.pitch = 0;
-      p.slots = [BR.Weapons.create('pistol'), null, BR.Weapons.create(BR.Profile.data.equip.melee || 'bayonet')]; p.cur = 0;
+      p.slots = [BR.Weapons.create('pistol'), null, BR.Weapons.create(BR.Profile.melee())]; p.cur = 0;
       p.ammo.light = 96; p.health = C.actor.maxHealth; p.shield = 0;
       g.actors.push(p);
       this.wallBuys();

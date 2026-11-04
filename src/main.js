@@ -34,7 +34,19 @@
     $('acct-name').textContent = BR.Accounts.displayName();
     $('acct-sub').textContent = BR.Accounts.current() ? (BR.Profile.infinite() ? 'Dev · infinite coins' : 'Signed in') : 'Sign in';
     $('acct-avatar').textContent = BR.Accounts.displayName()[0].toUpperCase();
+    const L = BR.Profile.levelInfo(), mx = L.level >= BR.LEVELS.max;
+    $('lvl-n').textContent = L.level; $('lvl-bar').style.width = (mx ? 100 : L.into / L.need * 100).toFixed(1) + '%';
+    $('lvl-xp').textContent = mx ? 'MAX LEVEL' : `${L.into.toLocaleString()} / ${L.need.toLocaleString()} XP`;
   };
+  const renderLevels = () => {
+    const P = BR.Profile, L = P.levelInfo(), mx = L.level >= BR.LEVELS.max;
+    $('lv-n').textContent = L.level; $('lv-bar').style.width = (mx ? 100 : L.into / L.need * 100).toFixed(1) + '%';
+    $('lv-sub').textContent = mx ? 'Max level' : `${L.into.toLocaleString()} / ${L.need.toLocaleString()} XP to level ${L.level + 1}`;
+    $('lv-track').innerHTML = Object.entries(BR.KNIFE_LEVEL).map(([id, lv]) => { const ok = P.meleeUnlocked(id), pic = BR.WeaponIcons && BR.WeaponIcons.pic[id];
+      return `<div class="lv-k${ok ? ' ok' : ''}"><em>LV ${lv}</em>${pic ? `<img src="${pic}" alt="">` : ''}<b>${BR.CONFIG.weapons[id].name}</b><i>${ok ? (lv ? 'UNLOCKED' : 'STARTING KNIFE') : `${Math.max(0, lv - L.level)} levels to go`}</i></div>`; }).join('');
+  };
+  $('lvl-chip').addEventListener('click', () => { BR.Audio.init(); renderLevels(); $('levels').classList.remove('hidden'); });
+  $('lv-x').addEventListener('click', () => $('levels').classList.add('hidden'));
   BR.updateCoins();
 
   // ---- settings panel --------------------------------------------------------
@@ -550,22 +562,23 @@
   renderLobby();
 
   // ---- v1.11: loadout editor
-  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY'], ['tracker', 'TRACKER']];
+  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
   const renderLoadout = () => {
     const L = BR.Profile.loadoutGuns();
     $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');
     $('lo-secondary').innerHTML = LO_S.map(id => gcard(id, `data-lo="secondary" data-g="${id}"`, L.secondary === id)).join('');
-    $('lo-melee').innerHTML = LO_M.map(([id, n]) => `<button class="gcard${L.melee === id ? ' sel' : ''}" data-lo="melee" data-g="${id}">${BR.WeaponIcons.pic[id] ? `<img src="${BR.WeaponIcons.pic[id]}" alt="">` : ''}<span>${n}</span></button>`).join('');
+    $('lo-melee').innerHTML = LO_M.map(([id, n]) => `<button class="gcard${L.melee === id ? ' sel' : ''}${BR.Profile.meleeUnlocked(id) ? '' : ' locked'}" data-lv="LV ${BR.KNIFE_LEVEL[id]}" data-lo="melee" data-g="${id}">${BR.WeaponIcons.pic[id] ? `<img src="${BR.WeaponIcons.pic[id]}" alt="">` : ''}<span>${n}</span></button>`).join('');
   };
   $('btn-loadout').addEventListener('click', () => { BR.Audio.init(); renderLoadout(); $('loadout').classList.remove('hidden'); });
   $('lo-x').addEventListener('click', () => $('loadout').classList.add('hidden'));
   $('loadout').addEventListener('click', e => {
     const b = e.target.closest('[data-lo]'); if (!b) return;
     const P = BR.Profile, k = b.dataset.lo, id = b.dataset.g;
+    if (k === 'melee' && !P.meleeUnlocked(id)) { BR.Audio.click(); game.hud.toast(`${BR.CONFIG.weapons[id].name} unlocks at level ${BR.KNIFE_LEVEL[id]}`, 1600); return; }
     if (k === 'melee') P.data.equip.melee = id; else P.data.loadout[k] = id;
     P.save(); game.refreshCosmetics(); BR.Audio.pickup(); renderLoadout();
   });
-  $('lo-reset').addEventListener('click', () => { const P = BR.Profile; P.data.loadout = { primary: 'rifle', secondary: 'pistol' }; P.data.equip.melee = 'bayonet'; P.save(); game.refreshCosmetics(); BR.Audio.click(); renderLoadout(); });
+  $('lo-reset').addEventListener('click', () => { const P = BR.Profile; P.data.loadout = { primary: 'rifle', secondary: 'pistol' }; P.data.equip.melee = 'tracker'; P.save(); game.refreshCosmetics(); BR.Audio.click(); renderLoadout(); });
   $('dm-go').addEventListener('click', dmGo);
   $('dm-x').addEventListener('click', dmClose);
   $('btn-menu').addEventListener('click', () => game.toMenu());

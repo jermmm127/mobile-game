@@ -138,16 +138,17 @@ BR.Profile = {
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
       owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', melee: 'bayonet' }, d.equip || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', melee: 'tracker' }, d.equip || {}),
       rp: typeof d.rp === 'number' ? d.rp : 0,
       cases: Object.assign({ opened: 0 }, d.cases || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0, deaths: 0 }, d.stats || {}),
       dev: !!d.dev,
-      meleeV: d.meleeV || 0,
+      meleeV: d.meleeV || (d.owned ? 0 : 3),          // brand-new accounts skip the old 'bayonet is the default' migration
       // v1.11: default loadout (used where a mode hands you guns: Practice, Overdrive, Aim Trainer, Resurgence redeploys)
       loadout: Object.assign({ primary: 'rifle', secondary: 'pistol' }, d.loadout || {}),
       starter: !!d.starter,
       fresh: !d.owned,
+      xp: typeof d.xp === 'number' ? d.xp : null,
     };
     // v1.7.5: the M9 bayonet is the new default knife (one-time switch for older saves)
     if (this.data.meleeV < 2) { this.data.equip.melee = 'bayonet'; this.data.meleeV = 2; }
@@ -165,12 +166,11 @@ BR.Profile = {
     if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
     if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
-    // v1.11: new accounts start with a Recruit kit equipped (rifle camo + tracer) on top of the default loadout
-    if (this.data.fresh && !this.data.starter) {
-      const o = this.data.owned, e = this.data.equip;
-      for (const [k, id] of [['skins', 'carbon'], ['tracers', 'cyan']]) if (!o[k].includes(id)) o[k].push(id);
-      e.skinByGun.rifle = 'carbon'; e.tracerByGun.rifle = 'cyan';
-      this.data.starter = true;
+    // v1.14: new accounts start from scratch — default skins only, the Tracker knife, level 0.
+    // Older saves get XP credited for what they already did (kills, wins, matches, zombies).
+    if (this.data.xp === null) {
+      const st = this.data.stats;
+      this.data.xp = this.data.fresh ? 0 : Math.round((st.kills || 0) * 100 + (st.wins || 0) * 1500 + (st.matches || 0) * 250 + (st.zmKills || 0) * 15);
     }
     delete this.data.fresh;
     this.unlockRankRewards();
@@ -205,15 +205,50 @@ BR.Profile = {
     return this.data.owned[cat].includes(id);
   },
   isEquipped(cat, id, weapon) {
-    if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b && (!BR.MELEE[w] || (this.data.equip.melee || 'bayonet') === w); }
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); return (this.data.equip.blueprints[w] || 'default') === b && (!BR.MELEE[w] || this.melee() === w); }
     if (cat === 'tracers') return (this.data.equip.tracerByGun[weapon || 'rifle'] || 'signature') === id;
     if (cat === 'gloves') return this.gloveFor(weapon) === id;
     if (cat === 'skins') return weapon === 'all' ? Object.keys(BR.CONFIG.weapons).every(w => this.skinFor(w) === id) : this.skinFor(weapon || 'rifle') === id;
     return this.data.equip[cat] === id;
   },
   infinite() { return !!this.data.dev; },
+  // ---- v1.14 LEVELS: start at 0; level L -> L+1 costs 1000 + 75·L XP; cap 100. Knives unlock by level.
+  levelInfo(xp) {
+    xp = xp === undefined ? (this.data.xp || 0) : xp;
+    if (this.data && this.data.dev) return { level: BR.LEVELS.max, into: 0, need: 1, xp };
+    let L = 0, left = xp;
+    while (L < BR.LEVELS.max && left >= BR.LEVELS.need(L)) { left -= BR.LEVELS.need(L); L++; }
+    return { level: L, into: left, need: BR.LEVELS.need(L), xp };
+  },
+  level() { return this.levelInfo().level; },
+  meleeUnlocked(id) { return this.infinite() || this.level() >= (BR.KNIFE_LEVEL[id] || 0); },
+  // the knife you actually carry: your pick if you've unlocked it, otherwise the Tracker
+  melee() { const m = this.data.equip.melee; return m && BR.MELEE[m] && this.meleeUnlocked(m) ? m : 'tracker'; },
+  // add XP from a list of [label, xp] parts; pays 150 coins per level gained; reports knife unlocks
+  addXP(parts) {
+    parts = parts.filter(p => p[1] > 0);
+    const total = parts.reduce((s, p) => s + Math.round(p[1]), 0), before = this.levelInfo();
+    this.data.xp = (this.data.xp || 0) + total;
+    const after = this.levelInfo(), gained = Math.max(0, after.level - before.level), unlocked = [];
+    if (gained && !this.infinite()) this.data.coins += gained * BR.LEVELS.coins;
+    for (const id in BR.KNIFE_LEVEL) { const lv = BR.KNIFE_LEVEL[id]; if (lv > before.level && lv <= after.level) unlocked.push(BR.CONFIG.weapons[id].name); }
+    this.save();
+    if (gained && BR.game && BR.game.hud) setTimeout(() => { BR.game.hud.toast(`LEVEL ${after.level}!${unlocked.length ? ' · UNLOCKED ' + unlocked.join(', ').toUpperCase() : ''} · +${gained * BR.LEVELS.coins} coins`, 3200); BR.Audio.coin(); }, 400);
+    if (BR.updateCoins) BR.updateCoins();
+    return { total, parts, before: before.level, after: after.level, into: after.into, need: after.need, unlocked };
+  },
+  // XP for a finished match / run (every mode except Practice)
+  matchXP(r) {
+    const t = Math.round(r.time || 0);
+    if (r.arena) return [['Kills ×' + r.kills, r.kills * 100], [r.win ? 'Victory' : 'Played', r.win ? (r.online ? 900 : 700) : 200]];
+    if (r.overdrive) return [['Survived ' + BR.fmtTime(t), t * 3], ['Kills ×' + r.kills, r.kills * 5], ['Bosses ×' + (r.bosses || 0), (r.bosses || 0) * 300], ['Overlord', r.win ? 1500 : 0]];
+    if (r.zombies) return [['Rounds ×' + Math.max(0, r.round - 1), Math.max(0, r.round - 1) * 120], ['Zombies ×' + r.kills, r.kills * 15], ['Bosses ×' + (r.bosses || 0), (r.bosses || 0) * 400]];
+    if (r.duel) return [['Kills ×' + r.kills, r.kills * 100], [r.win ? 'Duel won' : 'Duel played', r.win ? 700 : 200]];
+    return [['Kills ×' + r.kills, r.kills * 100], ['Damage', Math.round(r.damage || 0)], ['Survived ' + BR.fmtTime(t), Math.min(600, t * 2)],
+      [r.win ? 'Victory' : r.place <= 5 ? 'Top 5' : r.place <= 10 ? 'Top 10' : 'Played', r.win ? 2000 : r.place <= 5 ? 800 : r.place <= 10 ? 400 : 200]];
+  },
   // the guns + knife you start with where a mode arms you (v1.11)
-  loadoutGuns() { const L = this.data.loadout || {}, W = BR.CONFIG.weapons; return { primary: W[L.primary] ? L.primary : 'rifle', secondary: W[L.secondary] ? L.secondary : 'pistol', melee: this.data.equip.melee || 'bayonet' }; },
+  loadoutGuns() { const L = this.data.loadout || {}, W = BR.CONFIG.weapons; return { primary: W[L.primary] ? L.primary : 'rifle', secondary: W[L.secondary] ? L.secondary : 'pistol', melee: this.melee() }; },
   coinsLabel() { return this.infinite() ? '∞' : String(this.data.coins); },
   canAfford(price) { return this.infinite() || this.data.coins >= price; },
   buy(cat, id, weapon) {
@@ -227,7 +262,7 @@ BR.Profile = {
   },
   equip(cat, id, weapon) { if (!this.owns(cat, id)) return false; this.setEquip(cat, id, weapon); this.save(); return true; },
   setEquip(cat, id, weapon) {
-    if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; if (BR.MELEE[w]) this.data.equip.melee = w; }   // equipping a knife skin makes it your knife
+    if (cat === 'blueprints') { const [w, b] = id.split(':'); this.data.equip.blueprints[w] = b; if (BR.MELEE[w] && this.meleeUnlocked(w)) this.data.equip.melee = w; }   // equipping a knife skin makes it your knife
     else if (cat === 'tracers') this.data.equip.tracerByGun[weapon || 'rifle'] = id;
     else if (cat === 'skins' && weapon && weapon !== 'all') this.data.equip.skinByGun[weapon] = id;          // camo on this gun only
     else if (cat === 'skins') { for (const w in BR.CONFIG.weapons) this.data.equip.skinByGun[w] = id; }       // ALL: every gun
@@ -327,6 +362,11 @@ BR.Profile = {
 
   // Coins for a finished match. Returns the breakdown so the end screen can show it.
   award(r) {
+    const res = this.awardCoins(r);
+    res.xp = this.addXP(this.matchXP(r));
+    return res;
+  },
+  awardCoins(r) {
     const C = BR.CONFIG.coins;
     if (r.arena) {          // arena modes (duels, TDM, FFA): coins for kills + the win, no Ranked RP
       const parts = [['Kills ×' + r.kills, r.kills * 15]];
@@ -557,6 +597,7 @@ BR.Inventory = class Inventory {
     // Melee: carry the bayonet, the karambit or the butterfly knife (one at a time)
     $('inv-melee').addEventListener('click', e => {
       const b = e.target.closest('button[data-m]'); if (!b) return;
+      if (!BR.Profile.meleeUnlocked(b.dataset.m)) { BR.Audio.click(); this.cat = 'blueprints'; this.weapon = b.dataset.m; this.sel = null; this.flash(`${BR.CONFIG.weapons[b.dataset.m].name} unlocks at level ${BR.KNIFE_LEVEL[b.dataset.m]}`); this.render(); return; }
       const P = BR.Profile; P.data.equip.melee = b.dataset.m; P.save(); BR.Audio.pickup();
       this.cat = 'blueprints'; this.weapon = b.dataset.m; this.sel = null;
       this.flash(({ butterfly: 'Butterfly knife', knife: 'Karambit', bayonet: 'M9 Bayonet', tracker: 'Tracker' })[b.dataset.m] + ' equipped');
@@ -648,8 +689,8 @@ BR.Inventory = class Inventory {
     if (cat !== 'gloves' && cat !== 'skins' && this.weapon === 'all') this.weapon = 'rifle';
     this.el.weps.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.w === this.weapon));
     this.el.count.textContent = this.total() + ' / ' + this.collectible();
-    const mel = P.data.equip.melee || 'bayonet';
-    document.querySelectorAll('#inv-melee button').forEach(b => b.classList.toggle('sel', b.dataset.m === mel));
+    const mel = P.melee();
+    document.querySelectorAll('#inv-melee button').forEach(b => { b.classList.toggle('sel', b.dataset.m === mel); const lk = !BR.Profile.meleeUnlocked(b.dataset.m); b.classList.toggle('locked', lk); if (!b.dataset.name) b.dataset.name = b.textContent; b.textContent = lk ? '🔒 LV ' + BR.KNIFE_LEVEL[b.dataset.m] : b.dataset.name; });
     document.getElementById('inv-melee').classList.toggle('hidden', cat !== 'blueprints');
     if (!this.sel || !items[this.sel]) this.sel = items[this.equippedId()] ? this.equippedId() : Object.keys(items)[0] || null;
     const html = [];

@@ -415,7 +415,7 @@ BR.Game = class Game {
       a.mover.dropping = false; a.mover.vel.set(0, 0, 0);
       a.mover.pos.set(sp.x, 0, sp.z);
       a.yaw = sp.yaw; a.pitch = 0;
-      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create(a.isPlayer ? (BR.Profile.data.equip.melee || 'bayonet') : 'bayonet')];
+      a.slots = [BR.Weapons.create(guns[0]), BR.Weapons.create(guns[1]), BR.Weapons.create(a.isPlayer ? BR.Profile.melee() : 'bayonet')];
       a.cur = 0;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = 50;
@@ -1342,7 +1342,7 @@ BR.Game = class Game {
   refreshCosmetics() {
     this.vmr.rebuild();
     // swapped knives? give the player the newly equipped one
-    const p = this.player, mel = BR.Profile.data.equip.melee || 'bayonet';
+    const p = this.player, mel = BR.Profile.melee();
     if (p && p.slots && p.slots[2] && p.slots[2].id !== mel) { p.slots[2] = BR.Weapons.create(mel); if (p.cur === 2) this.vmr.lastWeapon = null; }
   }
 

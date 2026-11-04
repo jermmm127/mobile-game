@@ -90,7 +90,7 @@
     }
     arm(a) {
       const C = BR.CONFIG, gs = this.gunsFor(a);
-      a.slots = [gs[0] ? BR.Weapons.create(gs[0]) : null, gs[1] ? BR.Weapons.create(gs[1]) : null, BR.Weapons.create(a.isPlayer ? (BR.Profile.data.equip.melee || 'bayonet') : 'bayonet')];
+      a.slots = [gs[0] ? BR.Weapons.create(gs[0]) : null, gs[1] ? BR.Weapons.create(gs[1]) : null, BR.Weapons.create(a.isPlayer ? BR.Profile.melee() : 'bayonet')];
       a.cur = a.slots[0] ? 0 : 2;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = this.duel ? 50 : 0; a.nades = this.P.guns === 'duel' || this.P.guns === 'loadout' ? 1 : 0;

@@ -26,7 +26,7 @@ const server = http.createServer((req, res) => {
   await page.goto(url);
   await page.waitForFunction(() => window.BR && BR.game);
   // the older checks below cover the karambit, so carry it (the bayonet is the default knife and has its own checks)
-  await page.evaluate(() => { BR.Profile.data.equip.melee = 'knife'; BR.Profile.save(); BR.game.refreshCosmetics(); });
+  await page.evaluate(() => { BR.Profile.data.xp = 5e6; BR.Profile.data.equip.melee = 'knife'; BR.Profile.save(); BR.game.refreshCosmetics(); });     // v1.14: max level so every knife is unlocked for the older checks
 
   const mech = await page.evaluate(() => {
     const dt = 1 / 60, yawFor = (dx, dz) => Math.atan2(-dx, -dz);
@@ -607,7 +607,7 @@ const server = http.createServer((req, res) => {
     // v1.7.5: M9 bayonet = default knife, flipped into the hand on draw; blueprints, camos, case items; speedometer
     { const tryLoad = (d0) => { const k = P.KEY, saved = P.data, ul = BR.util.load, sv = P.save; BR.util.load = () => d0; P.save = () => {};
         try { P.load(); return P.data.equip.melee; } finally { BR.util.load = ul; P.save = sv; P.data = saved; P.KEY = k; } };
-      const fresh = tryLoad(null), migrated = tryLoad({ equip: { melee: 'knife' } }), kept = tryLoad({ equip: { melee: 'butterfly' }, meleeV: 2 });
+      const fresh = tryLoad(null), migrated = tryLoad({ owned: {}, equip: { melee: 'knife' } }), kept = tryLoad({ owned: {}, equip: { melee: 'butterfly' }, meleeV: 2 });
       P.data.equip.melee = 'bayonet'; g.refreshCosmetics(); p.cur = 2; vm.lastWeapon = null; let maxFlip = 0, maxLift = 0;
       const inr = vm.models.bayonet.userData.model.userData.inner;
       const bm = vm.models.bayonet.userData.model; let upBeat = 9, flipMid = 0;
@@ -988,6 +988,25 @@ const server = http.createServer((req, res) => {
       v.picker = !!document.querySelector('#inv-melee [data-m="tracker"]');
       P.data.equip.melee = was; g.refreshCosmetics(); g.toMenu();
       out.v113 = v; }
+    // v1.14: fresh accounts start from scratch, levels + XP, knives locked by level
+    { const v = {}, P = BR.Profile, keep = JSON.stringify(P.data);
+      const tryLoad = (d0) => { const k = P.KEY, saved = P.data, ul = BR.util.load, sv = P.save; BR.util.load = () => d0; P.save = () => {};
+        try { P.load(); return JSON.parse(JSON.stringify(P.data)); } finally { BR.util.load = ul; P.save = sv; P.data = saved; P.KEY = k; } };
+      const f = tryLoad(null);
+      v.fresh = f.owned.skins.join() === 'default' && f.owned.blueprints.length === 0 && f.owned.gloves.join() === 'default' && f.xp === 0 && f.equip.melee === 'tracker' && !f.equip.skinByGun.rifle;
+      const old = tryLoad({ owned: { skins: ['default', 'gold'] }, stats: { kills: 50, wins: 2, matches: 10, deaths: 8 } }); v.migrate = old.xp === 50 * 100 + 2 * 1500 + 10 * 250;
+      P.data.xp = 0; P.data.equip.melee = 'butterfly';
+      v.locked = P.level() === 0 && P.melee() === 'tracker' && !P.meleeUnlocked('bayonet') && !P.meleeUnlocked('knife') && !P.meleeUnlocked('butterfly') && P.meleeUnlocked('tracker');
+      const coins0 = P.data.coins, res = P.award({ kills: 5, damage: 800, place: 1, total: 30, time: 400, win: true });
+      v.matchXP = res.xp && res.xp.total >= 3000 && res.xp.after >= 2 && P.data.coins > coins0;
+      let need = 0; for (let L = 0; L < 20; L++) need += BR.LEVELS.need(L);
+      P.data.xp = need - 1; v.lv19 = P.level() === 19 && !P.meleeUnlocked('bayonet');
+      const up = P.addXP([['t', 1]]); v.lv20 = P.level() === 20 && P.meleeUnlocked('bayonet') && up.unlocked.includes('M9 Bayonet') && !P.meleeUnlocked('knife');
+      P.data.equip.melee = 'bayonet'; v.bayEquip = P.melee() === 'bayonet';
+      g.toMenu(); BR.updateCoins(); v.chip = /^\d+$/.test(document.getElementById('lvl-n').textContent) && /XP/.test(document.getElementById('lvl-xp').textContent);
+      document.getElementById('lvl-chip').click(); v.panel = document.querySelectorAll('#lv-track .lv-k').length === 4; document.getElementById('lv-x').click();
+      P.data = JSON.parse(keep); P.save(); g.refreshCosmetics(); BR.updateCoins();
+      out.v114 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1149,13 +1168,14 @@ const server = http.createServer((req, res) => {
     ['v1.12 arena modes: 2v2 duels, shotgun + sniper duels, TDM (score, respawns, end), FFA; no friendly fire', v17.v112.duel2 && v17.v112.duelFight && v17.v112.noFF && v17.v112.duelKill && v17.v112.shotgun && v17.v112.sniper && v17.v112.tdm && v17.v112.tdmScore && v17.v112.respawn && v17.v112.tdmEnd && v17.v112.tdmResult && v17.v112.ffa],
     ['v1.12 shield cell model + Overdrive humanoids (husk, gunner, warden) with head hitboxes', v17.v112.shieldModel && v17.v112.humanoid],
     ['v1.13 Tracker knife: model, blueprints, melee picker, held in the fist in first person', v17.v113.model && v17.v113.bps && v17.v113.vm && v17.v113.picker],
+    ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
     ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],
     ['victory: orbit cam, celebrating character, overlay, HUD hidden, then results', v17.victory.state === 'won' && v17.victory.active && v17.victory.overlay && v17.victory.hudHidden && v17.victory.body && v17.victory.camOut && v17.victory.armsUp && v17.victory.vmHidden && v17.victory.ended],
     ['tracers are soft camera-facing beams with a glowing head (no boxes)', v17.beams && v17.beamOk],
     ['spray: first shot light, climb ramps up, smooth side sway, view recovers after', v17.spray.ramps && v17.spray.flips <= 4 && v17.spray.recovered],
     ['kill reward: banner + screen flash + hit-stop + on-body burst', v17.killReward.banner && v17.killReward.flash && v17.killReward.hitStop && v17.killReward.fx],
-    ['M9 bayonet: default knife, flips into the hand on draw and settles in the fist', v17.bayonet.fresh === 'bayonet' && v17.bayonet.migrated === 'bayonet' && v17.bayonet.kept === 'butterfly' && v17.bayonet.slot === 'bayonet' && v17.bayonet.maxFlip > 2 && v17.bayonet.upBeat < 0.4 && Math.abs(v17.bayonet.flipMid) > 0.5 && v17.bayonet.idleOk && v17.bayonet.face2 < 0.3 && v17.bayonet.settled && v17.bayonet.fist],
+    ['M9 bayonet: default knife, flips into the hand on draw and settles in the fist', v17.bayonet.fresh === 'tracker' && v17.bayonet.migrated === 'bayonet' && v17.bayonet.kept === 'butterfly' && v17.bayonet.slot === 'bayonet' && v17.bayonet.maxFlip > 2 && v17.bayonet.upBeat < 0.4 && Math.abs(v17.bayonet.flipMid) > 0.5 && v17.bayonet.idleOk && v17.bayonet.face2 < 0.3 && v17.bayonet.settled && v17.bayonet.fist],
     ['bayonet blueprints (shop + both cases), camo on the blade, new camos, trails', v17.bayonet.bps >= 9 && v17.bayonet.caseR >= 2 && v17.bayonet.caseN >= 2 && v17.bayonet.camoBlade && v17.bayonet.trail && v17.bayonet.newCamos],
     ['speedometer shows m/s and can be turned off; movement slowed', v17.bayonet.speedo && v17.bayonet.speedoOff && v17.run < 6],
     ['Nightshade butterfly: purple aura + glowing trail on the flips', v17.nightshade.bp && v17.nightshade.trail && v17.nightshade.trailSeen && v17.nightshade.base && v17.nightshade.aura >= 2 && v17.nightshade.cleared],

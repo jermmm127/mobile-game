@@ -277,6 +277,7 @@ BR.HUD = class HUD {
   <div class="m-motes">${Array.from({ length: 22 }, (_, i) => `<i style="--x:${(i * 41) % 100};--d:${(i * 7) % 11};--s:${0.6 + (i % 5) * 0.25}"></i>`).join('')}</div>
   <div class="film"><i class="lb top"></i><i class="lb bot"></i><i class="scan"></i><i class="grain"></i><i class="cutflash"></i></div>
   <div class="menu-coins glass"><i class="coin"></i><span id="menu-coins" class="num">0</span></div>
+  <button id="lvl-chip" class="lvl-chip glass" aria-label="Level"><b id="lvl-n">0</b><span class="lvl-txt"><i>LEVEL</i><u class="lvl-bar"><s id="lvl-bar"></s></u><small id="lvl-xp">0 / 1,000 XP</small></span></button>
   <button id="acct-chip" class="acct-chip glass"><span id="acct-avatar" class="avatar">G</span><span class="acct-text"><b id="acct-name">Guest</b><small id="acct-sub">Sign in</small></span></button>
   <div class="menu-main">
     <div class="logo">
@@ -461,7 +462,7 @@ BR.HUD = class HUD {
     <div id="inv-tabs" class="seg">
       <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
-    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button><button data-m="tracker">TRACKER</button></div>
+    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="tracker">TRACKER</button><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
     <div id="inv-weps" class="chips"></div>
     <div id="inv-grid"></div>
     <div class="shop-foot">
@@ -584,6 +585,17 @@ BR.HUD = class HUD {
     <p class="tip" id="lb-info">Send the code to your friends. Empty slots are filled with AI.</p>
     <div class="lb-teams" id="lb-teams"></div>
     <div class="am-actions"><button class="mbtn hot" id="lb-start">START MATCH</button><button class="mbtn" id="lb-leave">LEAVE</button></div>
+  </div>
+</div>
+
+<div id="levels" class="overlay hidden">
+  <div class="panel metal wide lvpanel">
+    <button id="lv-x" class="xbtn" aria-label="Close levels">✕</button>
+    <div class="ptitle">LEVEL <span id="lv-n">0</span></div>
+    <div class="lv-bar"><u id="lv-bar"></u></div><div class="lv-sub" id="lv-sub"></div>
+    <div class="sp-sec">KNIFE UNLOCKS</div><div class="lv-track" id="lv-track"></div>
+    <div class="sp-sec">EARN XP</div>
+    <p class="tip">Every level pays <b>150 coins</b>. XP comes from every mode except Practice: kills (100 each), damage, survival time and placement in Battle Royale + Resurgence (win 2,000), duels + arena modes (win 700), Zombies rounds (120) and bosses (400), Overdrive survival time (3 per second) and bosses, and Aim Trainer drills.</p>
   </div>
 </div>
 
@@ -1228,6 +1240,9 @@ BR.HUD = class HUD {
       if (r.coins.rp !== undefined) ec.innerHTML += `<div class="rprow"><span>${BR.Ranks.badge(BR.Profile.data.rp || 0)} Ranked</span><b class="${r.coins.rp < 0 ? 'neg' : ''}">${r.coins.rp >= 0 ? '+' : ''}${r.coins.rp} RP</b></div>`
         + (r.coins.rankUp ? `<div class="rprow up"><span>RANK UP!</span><b>${r.coins.rankUp}</b></div>` : '')
         + (r.coins.unlocked && r.coins.unlocked.length ? `<div class="rprow up"><span>Unlocked</span><b>${r.coins.unlocked.join(', ')}</b></div>` : '');
+      const X = r.coins.xp;
+      if (X) ec.innerHTML += `<div class="xprow"><span>+${X.total.toLocaleString()} XP</span><b>${X.after > X.before ? `LEVEL ${X.before} → <em>${X.after}</em>` : 'LEVEL ' + X.after}</b><u><s style="width:${(X.into / X.need * 100).toFixed(1)}%"></s></u></div>`
+        + (X.unlocked.length ? `<div class="rprow up"><span>Unlocked</span><b>${X.unlocked.join(', ')}</b></div>` : '');
     } else ec.innerHTML = '<div class="tot"><span>PRACTICE · NO COINS</span><b></b></div>';
     this.show('end', true);
   }

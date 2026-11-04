@@ -186,7 +186,7 @@
       // Glowing blade trail (butterfly blueprints with a .trail colour): a ribbon between the blade
       // tip and mid-blade over the last frames, drawn additively and fading toward the tail
       if (this.bfTrail) { this.scene.remove(this.bfTrail.mesh); this.bfTrail.mesh.geometry.dispose(); this.bfTrail = null; }
-      { const mel = eq.melee || 'bayonet', bpId = (eq.blueprints || {})[mel], B = bpId && BR.Models.BLUEPRINTS[mel] && BR.Models.BLUEPRINTS[mel][bpId];
+      { const mel = BR.Profile.melee(), bpId = (eq.blueprints || {})[mel], B = bpId && BR.Models.BLUEPRINTS[mel] && BR.Models.BLUEPRINTS[mel][bpId];
         if (B && B.trail && this.models[mel] && this.models[mel].userData.model.userData.trailTip) {
           const N = 11, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), idx = [];
           for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }

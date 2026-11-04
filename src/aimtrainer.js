@@ -110,6 +110,7 @@
       const prev = this.data.best[R.id] || 0, pb = R.score > prev;
       if (pb) { this.data.best[R.id] = R.score; save(this.data); }
       if (BR.Profile.addGrind) BR.Profile.addGrind('aim', R.score, R.id);
+      if (BR.Profile.addXP && R.score > 0) BR.Profile.addXP([['Aim drill', Math.min(600, Math.round(R.score / 15))]]);
       $('atr-title').textContent = R.d.name; $('atr-score').textContent = R.score.toLocaleString();
       $('atr-pb').textContent = pb ? 'NEW PERSONAL BEST!' : 'BEST ' + prev.toLocaleString();
       $('atr-pb').classList.toggle('pb', pb);
