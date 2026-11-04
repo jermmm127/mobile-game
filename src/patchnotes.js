@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.15.4', date: '2026-11-04', title: 'Tracker draw roll', notes: [
+    'Tracker pull-out redone from the reference clip: the fist sweeps in from the lower right, holds the knife upright near the centre and rolls it a full turn around its own long axis (face, edge-on, the other face, edge-on, back) with a slight lean, then swings it down into the idle hold. It used to flip end over end flat to the screen like the M9 Bayonet.',
+  ] },
   { v: '1.15.3', date: '2026-11-04', title: 'Tracker: hunting blade', notes: [
     'The Tracker\'s blade was rebuilt as a sharp hunting drop point instead of the flat tanto: the spine drops in a long curve to a needle tip, and a full belly sweeps up to meet it.',
     'New detail: a flat grind with a visible grind line running into the tip, a bright sharpened edge bevel, a swedge along the top of the point, a sharpening choil, jimping on the spine, a thumb stud on both sides, a small maker\'s etch, and turned pivot-style rings at the top of the grip. The saw-back teeth and fuller were removed.',

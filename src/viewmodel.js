@@ -296,7 +296,7 @@
       // New weapon in hand: draw animation
       if (w !== this.lastWeapon) {
         this.lastWeapon = w;
-        this.drawDur = this.drawT = def.melee ? 1.05 : 0.55;
+        this.drawDur = this.drawT = w.id === 'tracker' ? 0.9 : def.melee ? 1.05 : 0.55;
         this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0; this.pumpT = 0; this.pumpDelay = 0;
         if (def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
       }
@@ -368,6 +368,24 @@
           const hold = win(t, 0.55, 0.62, 0.72, 0.86);                                   // upright beat
           oy += 0.06 * hold; ox -= 0.03 * hold; orz += 0.1 * hold;
           this.bflySwish(t, [0.2, 0.36, 0.5]);
+        } else if (w.id === 'tracker') {
+          // Tracker deploy (v1.15.4, matched frame by frame to the reference clip): the fist sweeps in
+          // from the lower right with the knife angled, comes up near the centre holding it upright, and
+          // the knife ROLLS a full turn around its own long axis in the fist (face -> edge -> other face ->
+          // edge -> face) while the wrist leans it a little to the right, then the hand swings it down
+          // into the idle hold pointing left
+          const rise = smooth(t / 0.2);
+          oy += -(1 - rise) * 0.24; ox += (1 - rise) * 0.09; orz -= (1 - rise) * 0.55; orx += (1 - rise) * 0.2;
+          const near = 1 - smooth((t - 0.66) / 0.26);
+          ox -= 0.06 * near; oy += 0.06 * near; oz -= 0.02 * near;
+          bUp = near;
+          const rp = clamp01((t - 0.18) / 0.44), a = easeInOut(rp);
+          bay = { lift: Math.sin(rp * Math.PI) * 0.014, flip: 0, roll: Math.PI * 2 * a };
+          orz -= 0.2 * win(t, 0.4, 0.5, 0.56, 0.68);                 // lean to the right mid-roll
+          const settle = win(t, 0.84, 0.9, 0.9, 0.99); orx -= 0.06 * settle; oy -= 0.01 * settle;
+          if (rp > 0.2 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
+          if (rp > 0.7 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.swish(false); }
+          if (t > 0.66 && !(this.spinSwish & 4)) { this.spinSwish |= 4; BR.Audio.click(); }
         } else if (BAYLIKE(w.id)) {
           // Bayonet deploy (reference clip): the hand comes up near the centre holding the knife
           // blade-down, flips it end over end in the palm to blade-up, then rolls the wrist down
