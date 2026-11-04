@@ -316,6 +316,7 @@
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
+      if (w.id === 'hunter') { hx = 0.15 * s; hy = -0.165; hz = -0.47; }     // v1.16.2: closer + bigger at the hip, muzzle toward the centre (reference)
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
       if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; } if (w.id === 'tracker') { hx = 0.075 * s; hy = -0.118; hz = -0.43; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
       let bUp2 = 0;              // bayonet: blend toward the second show face

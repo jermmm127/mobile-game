@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.16.2', date: '2026-11-04', title: 'Hunting Rifle rebuilt', notes: [
+    'The Hunting Rifle is now a detailed Mauser-pattern bolt action. It has a full-length stock running almost to the muzzle with a top handguard, two barrel bands and a nose cap with the cleaning rod and bayonet lug. It also gets a hooded front post, a stepped tangent rear sight, a receiver with a stripper-clip bridge, the turned-down bolt with a round knob, the safety flag, a flush floorplate, a steel buttplate, the disassembly disc and sling slot, and sling swivels.',
+    'New laser module under the muzzle with a visible red beam, for those no-scope shots.',
+    'New standard finish: an original black, chalk-white and mint splatter camo over the whole rifle. Camos and blueprints still replace it.',
+    'It sits a little closer and bigger at the hip, with the muzzle toward the centre of the screen.',
+  ] },
   { v: '1.16.1', date: '2026-11-04', title: 'Real Ranked leaderboard', notes: [
     'The Ranked leaderboard is now real players only: all the generated names are gone. It has 50 spots; open spots show the owner\'s name until a real player takes them.',
     'Play a Ranked match (level 20+, signed in) and you take a spot, sorted by Ranked Points. One of the placeholder rows drops off for every real player.',
