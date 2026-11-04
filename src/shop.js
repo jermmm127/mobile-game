@@ -217,7 +217,7 @@ BR.Profile = {
     return this.data.equip[cat] === id;
   },
   infinite() { return !!this.data.dev; },
-  // ---- v1.14 LEVELS: start at 0; level L -> L+1 costs 1000 + 75·L XP; cap 100. Knives unlock by level.
+  // ---- v1.14 LEVELS: start at 0; level L -> L+1 costs BR.LEVELS.need(L) XP (1250 + 110·L since v1.15.1); cap 100. Knives unlock by level.
   levelInfo(xp) {
     xp = xp === undefined ? (this.data.xp || 0) : xp;
     if (this.data && this.data.dev) return { level: BR.LEVELS.max, into: 0, need: 1, xp };

@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.15.0',
+  version: '1.15.1',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -261,5 +261,8 @@ BR.rollRarity = (tier, R) => { const o = BR.RARITY_ODDS[Math.max(0, Math.min(3, 
 BR.weaponScore = w => (w ? (w.def.tier || 0) + (w.rar || 0) * 0.7 : -1);
 
 // v1.14 levels + knife unlocks (the Tracker is everyone's starting knife)
-BR.LEVELS = { max: 100, coins: 150, need: L => 1000 + 75 * L };
+// v1.15.1: level L -> L+1 costs 1250 + 110·L XP. An average Battle Royale match is ~1,500 XP (a couple of kills,
+// ~400 damage, ~5 min alive, a mid placing), so level 20 (45,900 XP) takes about 30 matches; every level after
+// keeps costing more (level 50 -> 51 is 6,750 XP, 99 -> 100 is 12,140).
+BR.LEVELS = { max: 100, coins: 150, need: L => 1250 + 110 * L };
 BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };

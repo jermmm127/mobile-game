@@ -1006,6 +1006,11 @@ const server = http.createServer((req, res) => {
       g.toMenu(); BR.updateCoins(); v.chip = /^\d+$/.test(document.getElementById('lvl-n').textContent) && /XP/.test(document.getElementById('lvl-xp').textContent);
       document.getElementById('lvl-chip').click(); v.panel = document.querySelectorAll('#lv-track .lv-k').length === 4; document.getElementById('lv-x').click();
       P.data = JSON.parse(keep); P.save(); g.refreshCosmetics(); BR.updateCoins();
+      // v1.15.1 pacing: level 20 ≈ 30 average BR matches; every level costs more than the last
+      const avg = P.matchXP({ kills: 2, damage: 400, time: 300, place: 9, total: 30 }).reduce((a, p) => a + p[1], 0);
+      let to20 = 0; for (let L = 0; L < 20; L++) to20 += BR.LEVELS.need(L);
+      let inc = true; for (let L = 1; L < BR.LEVELS.max; L++) inc = inc && BR.LEVELS.need(L) > BR.LEVELS.need(L - 1);
+      v.pace = to20 / avg >= 27 && to20 / avg <= 33 && inc;
       out.v114 = v; }
     // v1.15: new arena maps + map roll, freeze before the round, no shooting through walls, per-round duel loadouts,
     // Ranked vs Casual, casual kills count for challenges, account IDs + support panel
@@ -1259,6 +1264,7 @@ const server = http.createServer((req, res) => {
     ['v1.15 Ranked vs Casual: casual gives XP + coins + challenges but no RP, ranked gives RP; Discover queue toggle; classic 1v1 Duel removed', v17.v115.casual && v17.v115.ranked && v17.v115.brCasual && v17.v115.casualGrind && v17.v115.noClassic && v17.v115.queue && v17.v115.queueOff],
     ['v1.15 account IDs (unique SRG-XXXX-XXXX) + support panel: dev-only, password re-entry, no hashes shown, one-time reset', v17.v115.idFormat && v17.v115.seedId && v17.v115.unique && v17.v115.lockedOut && v17.v115.badPw && v17.v115.unlock && v17.v115.list && v17.v115.csv && v17.v115.reset && v17.v115.panel && v17.v115.hiddenForOthers],
     ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
+    ['v1.15.1 level 20 takes about 30 average Battle Royale matches; each level needs more XP than the last', v17.v114.pace],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
     ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],
     ['victory: orbit cam, celebrating character, overlay, HUD hidden, then results', v17.victory.state === 'won' && v17.victory.active && v17.victory.overlay && v17.victory.hudHidden && v17.victory.body && v17.victory.camOut && v17.victory.armsUp && v17.victory.vmHidden && v17.victory.ended],

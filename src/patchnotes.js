@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.15.1', date: '2026-11-04', title: 'Level pacing', notes: [
+    'Levels take longer: level 20 (the M9 Bayonet) now takes about 30 Battle Royale matches for an average player (around 1,500 XP a match).',
+    'Every level costs more XP than the one before it: 1,250 XP for level 1, then 110 more for each level after (level 50 to 51 is 6,750 XP, 99 to 100 is 12,140). Each level still pays 150 coins.',
+    'Your total XP is kept; your level is recalculated from it on the new curve.',
+  ] },
   { v: '1.15.0', date: '2026-11-04', title: 'Ranked, new maps + account IDs', notes: [
     'RANKED and CASUAL for every mode except Zombies, Overdrive and Training. Pick the queue at the top of Discover; the lobby shows which one you are in. Ranked matches give Ranked Points (Battle Royale and Resurgence: placement + kills; duels, TDM and FFA: the win or your placing + kills). Casual matches give only XP, coins, challenge progress and weapon mastery, never RP.',
     'Casual and ranked arena matches (duels, TDM, FFA) now count toward camo and blueprint challenges and weapon mastery.',
