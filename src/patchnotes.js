@@ -5,6 +5,15 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.16.0', date: '2026-11-04', title: 'Anti-cheat, dev tools + blueprint finishes', notes: [
+    'Ranked now unlocks at level 20. Below that the RANKED queue is locked (it shows the level you need) and matches pay no Ranked Points.',
+    'New anti-cheat. Saves are signed, so coins, XP or unlocks edited outside the game are rolled back to the last good copy. Weapon, movement, health and reward tables are locked and can\'t be changed from the browser console. Live checks catch impossible damage, health or shield above max, ammo above the magazine, fire rate faster than the gun, and teleporting. Impossible match results pay nothing. Enough strikes turn Ranked off for the account.',
+    'Online: the host checks every hit from other players against that gun\'s maximum damage and fire rate and removes repeat offenders from the lobby. A player can\'t send messages pretending to be someone else.',
+    'Fix: online, hits from another player on a bot (or on you) were wrongly reduced by the bot damage multipliers. Every player now does full damage.',
+    'Dev menu for the built-in dev accounts (Account → DEV MENU, unlocked with the private dev code): kick or ban players in your lobby or match, give them coins, ban, unban or give coins to accounts on this device, and make gift / ban codes for any Account ID. Every command is cryptographically signed, so players\'  games only obey real dev commands. Banned accounts can\'t play, banned devices can\'t go online, and hosts refuse banned players and share the ban list with everyone who joins.',
+    'Gift codes: paste a code from the developers into Account → Redeem a code. Each code works once, only on the account it was made for.',
+    'Every gun and knife blueprint (all 101) got a real surface finish instead of a flat colour: Rare = machined metal with panel lines and screws, Epic = carbon weave or hex armour, Legendary = engraved gold filigree, Mythic and Exotic = an animated prismatic flow. Clean accent lines trace each model\'s edges (glowing and pulsing on Legendary and up, colour-cycling on Exotic), and knife blades get a glowing edge line.',
+  ] },
   { v: '1.15.4', date: '2026-11-04', title: 'Tracker draw roll', notes: [
     'Tracker pull-out redone from the reference clip: the fist sweeps in from the lower right, holds the knife upright near the centre and rolls it a full turn around its own long axis (face, edge-on, the other face, edge-on, back) with a slight lean, then swings it down into the idle hold. It used to flip end over end flat to the screen like the M9 Bayonet.',
   ] },

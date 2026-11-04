@@ -513,7 +513,7 @@ body.practice.touch .practice-only, body.practice .btn.spawnbtn { display: flex 
 .panel.acct { text-align: left; }
 .panel.acct form { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .panel.acct label { font: 600 11px var(--ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
-.panel.acct input[type=text], .panel.acct input[type=password] {
+.panel.acct input[type=text], .panel.acct input[type=password], .panel.acct input[type=number] {
   font: 500 16px var(--ui); color: var(--text); padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line-2); background: rgba(0, 0, 0, 0.35); outline: none;
   -webkit-user-select: text; user-select: text;
 }
@@ -1526,3 +1526,19 @@ body.arenamode #topbar { display: none !important; }
 .mc-tag em.q-rk { background: linear-gradient(135deg, #ffd24a, #ff8a2a); color: #1a1006; }
 .mc-tag em.q-cs { background: rgba(255,255,255,.16); color: #fff; }
 .rprow.casual b { color: var(--muted); font-weight: 600; }
+.dc-queue button.locked { opacity: .55; font-size: 10px; }
+
+/* v1.16 dev menu */
+.devm .dv-h { font: 700 10px var(--ui); letter-spacing: .2em; color: var(--muted); margin: 12px 0 4px; }
+.devm .dv-amt { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+.devm .dv-amt input { min-width: 0; }
+.devm .dv-btns { display: flex; gap: 4px; grid-row: 1 / span 2; grid-column: 2; }
+.devm .adm-list { max-height: 26vh; }
+.dv-out { width: 100%; min-height: 64px; margin-top: 6px; font: 500 11px ui-monospace, monospace; background: rgba(0,0,0,.35); color: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px; word-break: break-all; }
+.dv-out.hidden { display: none; }
+.dev-badge.ban { background: #c8102e; }
+.acct-banned { margin-top: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(200,16,46,.25); color: #ff8a9a; font: 700 12px var(--ui); letter-spacing: .1em; text-align: center; }
+.panel.devm { display: block; overflow-y: auto; max-height: 92vh; }
+.panel.devm .adm-list { max-height: none; overflow: visible; }
+.panel.devm .adm-row { grid-template-columns: 1fr auto; }
+@media (max-width: 560px) { .panel.devm .adm-row { grid-template-columns: 1fr; } .panel.devm .dv-btns { grid-row: auto; grid-column: 1; } .panel.devm .code-row { flex-wrap: wrap; } }

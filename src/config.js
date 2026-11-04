@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.15.4',
+  version: '1.16.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -193,6 +193,10 @@ BR.CONFIG = {
     { name: 'jermdev', salt: 'b1856c19fee53b96456b60e0eee75144', hash: '3997a0cb437595b13d9062c6035befab837e373d2914115d644a6d3fa74f7a32', dev: true },
   ],
   devCodeHash: '89799be69c532868209a761cbdcfbb642286502c419d77f5583bb8fd46e5db2a',
+  // v1.16 dev commands (kick / ban / coins) are signed with an ECDSA P-256 key. Only the public half is
+  // usable as-is; the private half is AES-GCM encrypted with a key derived (PBKDF2) from the private dev code,
+  // so only someone who knows that code can sign. Every player's game verifies with `pub`.
+  devSign: {"pub": {"x": "51uRU0R9Jk4JH2fqFoYXt-PoxT3AylBHhk_ZV6-MitA", "y": "JI6mQ9mknGMAFEeYPoY6KQRKLaW4hvi1ePkjkGhGMS0"}, "salt": "pXlMZ12kreiimORG2pmQPw==", "iv": "c9ee1JIGazfbHE+v", "ct": "u2dSD62ynBBJh6aafCPtup4gF1twIZ1Ov2WrLL/G2qJSDtuOF5HWq9jJSggUMHceUY8C27p2STIu6y6y9dWkSdoqP1MqIQhkwBLFB+JPujR0Cy8QMUnUY74FBjZwZWg5jZu7oFyI2FPOJFT8h2ceSxJwTpK2WxaW0MsYryrKeqd6bc9Y4duH8Xa9qSI0UsxZ73h4u5klitmHxg==", "iter": 150000},
 
   // ---- Coins (saved per account) -------------------------------------------
   coins: { start: 150, perKill: 25, win: 150, top5: 60, top10: 25, perDamage: 0.05 },
@@ -264,5 +268,5 @@ BR.weaponScore = w => (w ? (w.def.tier || 0) + (w.rar || 0) * 0.7 : -1);
 // v1.15.1: level L -> L+1 costs 1250 + 110·L XP. An average Battle Royale match is ~1,500 XP (a couple of kills,
 // ~400 damage, ~5 min alive, a mid placing), so level 20 (45,900 XP) takes about 30 matches; every level after
 // keeps costing more (level 50 -> 51 is 6,750 XP, 99 -> 100 is 12,140).
-BR.LEVELS = { max: 100, coins: 150, need: L => 1250 + 110 * L };
+BR.LEVELS = { max: 100, coins: 150, need: L => 1250 + 110 * L, ranked: 20 };      // v1.16: Ranked unlocks at level 20
 BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };

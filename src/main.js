@@ -12,6 +12,7 @@
   settings.duel = Object.assign({}, DEFAULTS.duel, stored.duel || {});
   const save = () => BR.util.save('velocity-royale.settings', settings);
   BR.saveSettings = save;
+  if (BR.AntiCheat) BR.AntiCheat.lock();          // v1.16: stat tables can't be edited from the console
   BR.Accounts.load();
   BR.Profile.load();
   setTimeout(() => daily(), 0);
@@ -225,9 +226,11 @@
       $('acct-dev').classList.toggle('hidden', !BR.Profile.infinite());
       $('acct-id').textContent = BR.Accounts.accountId() || '—';
       $('acct-admin').classList.toggle('hidden', !BR.Accounts.isSeededDev());
+      $('acct-devmenu').classList.toggle('hidden', !BR.Accounts.isSeededDev());
+      $('acct-banned').classList.toggle('hidden', !(BR.Bans && BR.Bans.blocked(false)));
     }
   };
-  const copyText = t => { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
+  const copyText = t => { try { const pr = navigator.clipboard.writeText(t); if (pr && pr.catch) pr.catch(() => {}); return true; } catch (e) { return false; } };
   $('acct-copy').addEventListener('click', () => { const id = BR.Accounts.accountId(); if (id && copyText(id)) $('acct-msg').textContent = 'Account ID copied'; });
   // ---- support panel: only the built-in dev account, password re-entry required
   const esc = v => String(v).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
@@ -248,6 +251,56 @@
     if (!confirm('Reset the password for ' + b.dataset.reset + '? Their old password stops working.')) return;
     const r = await BR.Accounts.adminResetPassword(b.dataset.reset); $('adm-msg').textContent = r.msg; renderAdmin(); });
   $('adm-export').addEventListener('click', () => { const csv = BR.Accounts.adminExport(); $('adm-msg').textContent = csv && copyText(csv) ? 'Account list copied as CSV (no passwords)' : 'Nothing to copy'; });
+  // ---- v1.16 dev menu (built-in dev accounts; commands are signed after unlocking with the dev code)
+  const dvMsg = t => { $('dv-msg').textContent = t || ''; };
+  const dvAmt = () => Math.max(1, Math.min(1000000, parseInt($('dv-coins').value, 10) || 0));
+  const dvReason = () => $('dv-reason').value.trim().slice(0, 60);
+  const livePlayers = () => {
+    const S = BR.Lobby && BR.Lobby.sess; if (!S) return [];
+    return (BR.Lobby.players || []).filter(p => p.pid !== S.pid).map(p => ({ pid: p.pid, name: p.name, acct: p.acct || '' }));
+  };
+  const renderDev = () => {
+    const open = BR.Dev.unlocked();
+    $('dv-gate').classList.toggle('hidden', open); $('dv-body').classList.toggle('hidden', !open);
+    if (!open) return;
+    const live = livePlayers(), S = BR.Lobby && BR.Lobby.sess;
+    $('dv-live').innerHTML = live.length ? live.map(p => `<div class="adm-row"><div><b>${esc(p.name)}</b><code>${esc(p.acct || 'guest')}</code></div><small>${S && S.isHost ? 'in your lobby (you are host)' : 'in your lobby'}</small><span class="dv-btns"><button class="mbtn sm" data-live="kick" data-pid="${esc(p.pid)}">KICK</button><button class="mbtn sm" data-live="ban" data-pid="${esc(p.pid)}">BAN</button><button class="mbtn sm" data-live="coins" data-pid="${esc(p.pid)}">+COINS</button></span></div>`).join('') : '<p class="fine">Nobody else is in a lobby with you. Host or join an online lobby to manage players live.</p>';
+    const rows = Object.keys(BR.Accounts.db.users).map(n => ({ n, u: BR.Accounts.db.users[n] }));
+    $('dv-local').innerHTML = rows.map(({ n, u }) => { const banned = BR.Bans.has(u.id); return `<div class="adm-row"><div><b>${esc(n)}</b>${u.seeded ? ' <i class="dev-badge">BUILT-IN</i>' : ''}${banned ? ' <i class="dev-badge ban">BANNED</i>' : ''}<code>${esc(u.id)}</code></div><small>on this device</small><span class="dv-btns"><button class="mbtn sm" data-loc="coins" data-n="${esc(n)}">+COINS</button>${u.seeded ? '' : `<button class="mbtn sm" data-loc="${banned ? 'unban' : 'ban'}" data-n="${esc(n)}">${banned ? 'UNBAN' : 'BAN'}</button>`}</span></div>`; }).join('');
+    const bans = BR.Bans.records();
+    $('dv-bans').innerHTML = bans.length ? bans.map(r => `<div class="adm-row"><div><code>${esc(r.cmd.target)}</code></div><small>${new Date(r.cmd.ts).toLocaleString()}${r.cmd.reason ? ' · ' + esc(r.cmd.reason) : ''}</small><span class="dv-btns"><button class="mbtn sm" data-unban="${esc(r.cmd.target)}">UNBAN</button></span></div>`).join('') : '<p class="fine">No bans.</p>';
+    const L = BR.AntiCheat ? BR.AntiCheat.log : [];
+    $('dv-log').innerHTML = L.length ? L.map(e => `<div class="adm-row"><div><b>${esc(e.kind)}</b></div><small>${new Date(e.t).toLocaleTimeString()} · ${esc(e.detail)}</small></div>`).join('') : '<p class="fine">Nothing flagged this session.</p>';
+  };
+  BR.renderBan = () => { renderAccount(); };
+  const dvSend = async (c, pid, extra) => {
+    const p = livePlayers().find(q => q.pid === pid), S = BR.Lobby.sess; if (!p || !S) return;
+    if (!p.acct && c !== 'kick') { dvMsg('That player is a guest (no Account ID): only KICK works'); return; }
+    const sc = await BR.Dev.sign(c, p.acct || 'guest:' + pid, Object.assign({ reason: dvReason() }, extra || {}));
+    if (c === 'ban') BR.Bans.add(sc);
+    S.send('dev', { sc }, pid);
+    if ((c === 'kick' || c === 'ban') && S.isHost) S.kick(pid, c === 'ban' ? 'banned' : '');
+    dvMsg(c === 'coins' ? `Sent ${extra.amount} coins to ${p.name}` : `${c === 'ban' ? 'Banned' : 'Kicked'} ${p.name}`); renderDev();
+  };
+  $('acct-devmenu').addEventListener('click', () => { if (!BR.Dev.isDev()) return; dvMsg(''); renderDev(); $('devmenu').classList.remove('hidden'); });
+  $('dv-gate').addEventListener('submit', async e => { e.preventDefault(); const r = await BR.Dev.unlock($('dv-code').value); $('dv-code').value = ''; dvMsg(r.msg); renderDev(); });
+  $('dv-live').addEventListener('click', async e => { const b = e.target.closest('[data-live]'); if (!b) return; const c = b.dataset.live;
+    if (c !== 'coins' && !confirm(`${c.toUpperCase()} this player?`)) return;
+    try { await dvSend(c, b.dataset.pid, c === 'coins' ? { amount: dvAmt() } : null); } catch (err) { dvMsg(err.message); } });
+  $('dv-local').addEventListener('click', async e => { const b = e.target.closest('[data-loc]'); if (!b) return; const n = b.dataset.n, u = BR.Accounts.db.users[n], c = b.dataset.loc;
+    try {
+      if (c === 'coins') { BR.Dev.giveLocal(n, dvAmt()); dvMsg(`Gave ${dvAmt()} coins to ${n}`); BR.updateCoins(); }
+      else if (c === 'ban') { if (!confirm('Ban ' + n + '?')) return; BR.Bans.add(await BR.Dev.sign('ban', u.id, { reason: dvReason() })); dvMsg('Banned ' + n); }
+      else { BR.Bans.remove(u.id); dvMsg('Unbanned ' + n); }
+      renderDev();
+    } catch (err) { dvMsg(err.message); } });
+  const dvId = () => { const v = $('dv-id').value.trim().toUpperCase(); return /^SRG-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(v) ? v : null; };
+  const showCode = (t, label) => { $('dv-out').value = t; $('dv-out').classList.remove('hidden'); try { const pr = navigator.clipboard.writeText(t); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no clipboard */ } dvMsg(label + ' (copied). The player pastes it into Account → Redeem a code.'); };
+  $('dv-gift').addEventListener('click', async () => { const id = dvId(); if (!id) { dvMsg('Enter an Account ID like SRG-7K3Q-92XD'); return; } try { showCode(BR.Dev.toCode(await BR.Dev.sign('coins', id, { amount: dvAmt() })), `Gift code for ${dvAmt()} coins → ${id}`); } catch (err) { dvMsg(err.message); } });
+  $('dv-ban').addEventListener('click', async () => { const id = dvId(); if (!id) { dvMsg('Enter an Account ID like SRG-7K3Q-92XD'); return; } if (!confirm('Ban ' + id + '?')) return; try { const sc = await BR.Dev.sign('ban', id, { reason: dvReason() }); BR.Bans.add(sc); renderDev(); showCode(BR.Dev.toCode(sc), 'Banned ' + id + '. Ban code'); } catch (err) { dvMsg(err.message); } });
+  $('dv-unban').addEventListener('click', async () => { const id = dvId(); if (!id) { dvMsg('Enter an Account ID like SRG-7K3Q-92XD'); return; } try { const sc = await BR.Dev.sign('unban', id); BR.Bans.remove(id); renderDev(); showCode(BR.Dev.toCode(sc), 'Unbanned ' + id + '. Unban code'); } catch (err) { dvMsg(err.message); } });
+  $('dv-bans').addEventListener('click', e => { const b = e.target.closest('[data-unban]'); if (!b) return; BR.Bans.remove(b.dataset.unban); renderDev(); });
+  $('dv-close').addEventListener('click', () => { $('devmenu').classList.add('hidden'); $('dv-out').classList.add('hidden'); });
   $('adm-close').addEventListener('click', () => { $('admin').classList.add('hidden'); BR.Accounts.adminLock(); $('adm-list').innerHTML = ''; });
   // daily login reward: streak coins, a Nova Case key every 3rd day
   const daily = () => { const r = BR.Profile.claimDaily(); if (!r) return;
@@ -271,6 +324,12 @@
   });
   $('acct-logout').addEventListener('click', () => { BR.Accounts.logOut(); afterAuth(); });
   $('acct-redeem').addEventListener('click', async () => {
+    const sc = BR.Dev && BR.Dev.fromCode($('acct-code').value);
+    if (sc) {      // v1.16 signed gift / unban code from the developers
+      $('acct-code').value = ''; const res = await BR.Dev.receive(sc, 'code');
+      $('acct-msg').textContent = res === 'coins' ? `Gift redeemed: +${sc.cmd.amount} coins` : res === 'used' ? 'That code was already used' : res === 'unban' ? 'Ban lifted' : res === 'ban' ? 'Ban recorded' : 'That code isn’t valid for this account';
+      BR.updateCoins(); renderAccount(); return;
+    }
     const r = await BR.Accounts.redeem($('acct-code').value);
     $('acct-code').value = '';
     BR.updateCoins(); renderAccount();
@@ -577,14 +636,17 @@
   if (!MODES[settings.mode]) settings.mode = 'br';          // (the classic 1v1 Duel was retired in v1.15: Duels 1v1 · 2v2 replaces it)
   // v1.15 Ranked / Casual: every mode except Zombies, Overdrive and Training has both queues.
   // Ranked gives RP; Casual gives XP, coins, challenge + mastery progress only.
-  const rankedNow = id => !!(settings.ranked && MODES[id] && MODES[id].rk);
+  const rankedOk = () => BR.Profile.level() >= BR.LEVELS.ranked && !(BR.AntiCheat && BR.AntiCheat.rankedBlocked());
+  const rankedNow = id => !!(settings.ranked && MODES[id] && MODES[id].rk && rankedOk());
   BR.rankedNow = () => rankedNow(settings.mode);
   const art = (id, big) => { const M = MODES[id]; return `<span class="mart${big ? ' big' : ''}" style="background:${M.art};--g:${M.glow}"><i class="mart-grid"></i><svg viewBox="0 0 24 24">${ICO[id]}</svg></span>`; };
   const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = M.sub; $('mode-cur').style.setProperty('--g', M.glow);
     const q = $('mode-cur').querySelector('.mc-tag'); q.innerHTML = M.rk ? (rankedNow(settings.mode) ? '<em class="q-rk">RANKED</em> GAME MODE' : '<em class="q-cs">CASUAL</em> GAME MODE') : 'GAME MODE'; };
   const renderDiscover = () => {
-    document.querySelectorAll('#dc-queue button').forEach(b => b.classList.toggle('sel', (b.dataset.q === 'ranked') === !!settings.ranked));
-    const qtag = M => M.rk ? [settings.ranked ? 'RANKED' : 'CASUAL'] : [];
+    const rk = !!settings.ranked && rankedOk();
+    document.querySelectorAll('#dc-queue button').forEach(b => b.classList.toggle('sel', (b.dataset.q === 'ranked') === rk));
+    const rb = document.querySelector('#dc-queue [data-q="ranked"]'); rb.classList.toggle('locked', !rankedOk()); rb.textContent = rankedOk() ? 'RANKED' : '🔒 RANKED · LV ' + BR.LEVELS.ranked;
+    const qtag = M => M.rk ? [rk ? 'RANKED' : 'CASUAL'] : [];
     const feat = 'overdrive', F = MODES[feat];
     $('dc-feat').innerHTML = `<button class="dc-tile feat${settings.mode === feat ? ' sel' : ''}" data-m="${feat}" style="--g:${F.glow}">${art(feat, true)}<span class="dt-txt"><em>FEATURED</em><b>${F.name}</b><i>${F.sub}</i><span class="dt-tags">${F.tags.map(t => `<u>${t}</u>`).join('')}</span></span></button>`;
     $('dc-rows').innerHTML = CATS.map(c => `<div class="dc-row"><div class="dc-cat">${c}</div><div class="dc-strip">${Object.entries(MODES).filter(([, M]) => M.cat === c).map(([id, M]) =>
@@ -593,9 +655,12 @@
   BR.selectMode = id => { if (!MODES[id]) return; settings.mode = id; save(); renderLobby(); };
   $('mode-cur').addEventListener('click', () => { BR.Audio.init(); BR.Audio.click(); renderDiscover(); $('discover').classList.remove('hidden'); });
   $('dc-x').addEventListener('click', () => $('discover').classList.add('hidden'));
-  $('dc-queue').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (!b) return; e.stopPropagation(); settings.ranked = b.dataset.q === 'ranked'; save(); BR.Audio.click(); renderDiscover(); renderLobby(); });
+  $('dc-queue').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (!b) return; e.stopPropagation();
+    if (b.dataset.q === 'ranked' && !rankedOk()) { BR.Audio.click(); game.hud.toast(BR.AntiCheat && BR.AntiCheat.rankedBlocked() ? 'Ranked is disabled on this account' : `Ranked unlocks at level ${BR.LEVELS.ranked} (you are level ${BR.Profile.level()})`, 1800); return; }
+    settings.ranked = b.dataset.q === 'ranked'; save(); BR.Audio.click(); renderDiscover(); renderLobby(); });
   $('discover').addEventListener('click', e => { const t = e.target.closest('[data-m]'); if (!t) return; BR.selectMode(t.dataset.m); BR.Audio.pickup(); renderDiscover(); setTimeout(() => $('discover').classList.add('hidden'), 160); });
-  $('btn-go').addEventListener('click', () => { BR.Audio.init(); game.ranked = rankedNow(settings.mode); MODES[settings.mode].go(); });
+  $('btn-go').addEventListener('click', () => { BR.Audio.init();
+    if (BR.Bans && BR.Bans.blocked(false)) { game.hud.toast('This account is banned', 2200); BR.Audio.click(); return; } game.ranked = rankedNow(settings.mode); MODES[settings.mode].go(); });
   renderLobby();
 
   // ---- v1.11: loadout editor

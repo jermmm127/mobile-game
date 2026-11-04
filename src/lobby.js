@@ -78,14 +78,18 @@
   const showLobby = () => { $('arenamenu').classList.add('hidden'); $('lobby').classList.remove('hidden'); render(); };
   const onStart = m => { L.preset = m.preset; L.size = m.size; L.diff = m.diff; L.play({ roster: m.roster, net: L.sess, map: m.map, ranked: !!m.ranked }); };
   L.host = async (local) => {
+    if (BR.Bans && BR.Bans.blocked(true)) { msg('This account or device is banned from online play'); return; }
     msg('Creating lobby…');
     try {
       const S = L.sess = await BR.Net.host(name(), local);
-      L.players = [{ pid: 'H', name: name(), team: 0 }];
+      L.players = [{ pid: 'H', acct: (BR.Accounts && BR.Accounts.accountId()) || '', name: name(), team: 0 }];
+      S.on('dev', m => BR.Dev && BR.Dev.receive(m.sc));
       S.on('join', m => {
+        if (BR.Bans && BR.Bans.has(m.acct)) { S.send('kicked', { reason: 'banned' }, m.from); setTimeout(() => S.drop(m.from), 150); return; }     // v1.16 banned accounts can't join
         if (L.players.length >= cap()) { S.send('full', {}, m.from); return; }
+        if (BR.Bans) { const recs = BR.Bans.records(); if (recs.length) S.send('bans', { list: recs }, m.from); }                                  // share the ban list
         const P = BR.ARENA_PRESETS[L.preset], c0 = L.players.filter(p => p.team === 0).length, c1 = L.players.filter(p => p.team === 1).length;
-        L.players.push({ pid: m.from, name: String(m.name || 'Player').slice(0, 16), team: P.kind === 'ffa' ? L.players.length : c0 <= c1 ? 0 : 1 });
+        L.players.push({ pid: m.from, acct: String(m.acct || '').slice(0, 14), name: String(m.name || 'Player').slice(0, 16), team: P.kind === 'ffa' ? L.players.length : c0 <= c1 ? 0 : 1 });
         BR.Audio.pickup(); broadcast();
       });
       S.on('leave', m => { L.players = L.players.filter(p => p.pid !== m.from); broadcast(); });
@@ -94,12 +98,16 @@
   };
   L.join = async (code, local) => {
     if (!code || code.length < 4) { msg('Enter the 6-letter lobby code'); return; }
+    if (BR.Bans && BR.Bans.blocked(true)) { msg('This account or device is banned from online play'); return; }
     msg('Joining…');
     try {
       const S = L.sess = await BR.Net.join(code, name(), local);
       S.on('lobby', m => { L.players = m.players; L.ranked = !!m.ranked; L.preset = m.preset; L.size = m.size; L.diff = m.diff; if ($('lobby').classList.contains('hidden') && !BR.game.mode) showLobby(); else render(); });
       S.on('full', () => { msg('That lobby is full'); BR.Net.leave(); L.sess = null; $('lobby').classList.add('hidden'); $('arenamenu').classList.remove('hidden'); });
       S.on('start', onStart);
+      S.on('dev', m => BR.Dev && BR.Dev.receive(m.sc));                               // signed dev commands (kick / ban / coins)
+      S.on('bans', m => BR.Bans && BR.Bans.merge(m.list));
+      S.on('kicked', m => { if (BR.Dev) BR.Dev.kickedOut(m.reason === 'banned' ? 'You are banned from online play' : m.reason === 'cheat' ? 'Removed from the lobby by anti-cheat' : 'You were removed from the lobby'); });
       S.on('closed', () => { if (!BR.game.mode) { $('lobby').classList.add('hidden'); msg('The host closed the lobby'); $('arenamenu').classList.remove('hidden'); } });
       setTimeout(() => { if (L.sess === S && !L.players.length) msg('Connected, waiting for the lobby…'); }, 1500);
     } catch (e) { msg(e.message || String(e)); }
@@ -125,7 +133,7 @@
   $('am-code').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') L.join($('am-code').value.trim().toUpperCase()); });
   $('lb-start').addEventListener('click', () => L.start());
   $('lb-leave').addEventListener('click', () => { BR.Net.leave(); L.sess = null; $('lobby').classList.add('hidden'); $('arenamenu').classList.remove('hidden'); msg(''); });
-  $('lb-copy').addEventListener('click', () => { try { navigator.clipboard.writeText(L.sess ? L.sess.code : ''); BR.game.hud.toast('Code copied', 900); } catch (e) { /* no clipboard */ } });
+  $('lb-copy').addEventListener('click', () => { try { const pr = navigator.clipboard.writeText(L.sess ? L.sess.code : ''); if (pr && pr.catch) pr.catch(() => {}); BR.game.hud.toast('Code copied', 900); } catch (e) { /* no clipboard */ } });
   $('lb-teams').addEventListener('click', e => { const b = e.target.closest('[data-pid]'); if (!b || !L.sess || !L.sess.isHost) return; const p = L.players.find(q => q.pid === b.dataset.pid); if (!p) return;
     const nt = 1 - p.team; if (L.players.filter(q => q.team === nt).length >= L.size) return; p.team = nt; BR.Audio.click(); broadcast(); });
 })();

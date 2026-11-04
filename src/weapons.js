@@ -184,6 +184,7 @@ BR.Weapons = {
       actor.recoil += v; actor.recoilPull = (actor.recoilPull || 0) + v;
     }
     game.onShot(actor, w);
+    if (BR.AntiCheat) BR.AntiCheat.onShot(game, actor, w);
     return true;
   },
 

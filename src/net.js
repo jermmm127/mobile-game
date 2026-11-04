@@ -42,6 +42,9 @@
       this.emit(m);
     }
     close() { this.closed = true; }
+    acct() { return (BR.Accounts && BR.Accounts.accountId()) || ''; }
+    // v1.16 host: remove a player from the lobby / match (they get a 'kicked' message first)
+    kick(pid, reason) { if (!this.isHost || !this.conns.has(pid)) return; this.send('kicked', { reason: reason || '' }, pid); setTimeout(() => this.drop(pid), 150); }
   }
 
   // ---- BroadcastChannel transport (same browser)
@@ -50,12 +53,13 @@
       super(code, name, isHost);
       this.ch = new BroadcastChannel('surge-' + code);
       this.ch.onmessage = e => { const m = e.data; if (this.closed || m.from === this.pid) return; if (m.to && m.to !== this.pid) return;
-        if (m.t === '_hello' && this.isHost) { this.conns.set(m.from, true); this.emit({ t: 'join', from: m.from, name: m.name }); return; }
+        if (m.t === '_hello' && this.isHost) { this.conns.set(m.from, true); this.emit({ t: 'join', from: m.from, name: m.name, acct: m.acct }); return; }
         if (m.t === '_bye') { if (this.isHost) { this.conns.delete(m.from); this.emit({ t: 'leave', from: m.from }); } else if (m.from === 'H') this.emit({ t: 'closed' }); return; }
         if (this.isHost && m.to === undefined) { this.emit(m); return; }       // everyone already got it
         this.emit(m); };
     }
-    start() { if (!this.isHost) this.ch.postMessage({ t: '_hello', from: this.pid, name: this.name }); return Promise.resolve(this); }
+    start() { if (!this.isHost) this.ch.postMessage({ t: '_hello', from: this.pid, name: this.name, acct: this.acct() }); return Promise.resolve(this); }
+    drop(pid) { if (this.conns.delete(pid)) this.emit({ t: 'leave', from: pid }); }
     out(m) { this.ch.postMessage(m); }
     deliver(pid, m) { this.ch.postMessage(Object.assign({}, m, { to: pid })); }
     close() { if (this.closed) return; try { this.ch.postMessage({ t: '_bye', from: this.pid }); } catch (e) { /* closed */ } super.close(); this.ch.close(); }
@@ -74,14 +78,14 @@
           this.ready = true;
           if (this.isHost) {
             this.peer.on('connection', c => {
-              c.on('data', m => { if (m.t === '_hello') { c.pid = m.from; this.conns.set(m.from, c); this.emit({ t: 'join', from: m.from, name: m.name }); return; } this.route(m); });
+              c.on('data', m => { if (m.t === '_hello') { c.pid = m.from; this.conns.set(m.from, c); this.emit({ t: 'join', from: m.from, name: m.name, acct: m.acct }); return; } if (c.pid && m.from !== c.pid) return; this.route(m); });     // (a client can't speak as someone else)
               c.on('close', () => { if (c.pid) { this.conns.delete(c.pid); this.emit({ t: 'leave', from: c.pid }); } });
             });
             res(this);
           } else {
             const c = this.conn = this.peer.connect(hostId, { reliable: true });
             const to = setTimeout(() => fail({ type: 'peer-unavailable' }), 12000);
-            c.on('open', () => { clearTimeout(to); c.send({ t: '_hello', from: this.pid, name: this.name }); res(this); });
+            c.on('open', () => { clearTimeout(to); c.send({ t: '_hello', from: this.pid, name: this.name, acct: this.acct() }); res(this); });
             c.on('data', m => this.emit(m));
             c.on('close', () => this.emit({ t: 'closed' }));
           }
@@ -90,6 +94,7 @@
     }
     out(m) { if (this.isHost) { for (const [pid, c] of this.conns) if (!m.to || m.to === pid) c.open && c.send(m); } else if (this.conn && this.conn.open) this.conn.send(m); }
     deliver(pid, m) { const c = this.conns.get(pid); if (c && c.open) c.send(m); }
+    drop(pid) { const c = this.conns.get(pid); if (!c) return; this.conns.delete(pid); try { c.close(); } catch (e) { /* gone */ } this.emit({ t: 'leave', from: pid }); }
     close() { if (this.closed) return; super.close(); try { this.peer && this.peer.destroy(); } catch (e) { /* gone */ } }
   }
 

@@ -495,6 +495,8 @@ BR.HUD = class HUD {
       <label for="acct-code">Redeem a code</label>
       <div class="code-row"><input id="acct-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XX-XXX-XXXX"><button id="acct-redeem" class="mbtn sm">REDEEM</button></div>
       <button id="acct-admin" class="mbtn hidden" type="button">SUPPORT · ACCOUNTS</button>
+      <button id="acct-devmenu" class="mbtn hot hidden" type="button">DEV MENU · KICK · BAN · COINS</button>
+      <div id="acct-banned" class="acct-banned hidden">BANNED · this account can't play</div>
       <button id="acct-logout" class="mbtn">LOG OUT</button>
     </div>
     <div id="acct-msg" class="acct-msg" role="status"></div>
@@ -505,6 +507,25 @@ BR.HUD = class HUD {
   <div class="mr-box"><div class="mr-top"><em id="mr-title">ARENA</em><b>ROLLING THE MAP</b></div>
     <div class="mr-win"><div class="mr-strip" id="mr-strip"></div><i class="mr-mark"></i></div>
     <div class="mr-res" id="mr-res"></div><small class="mr-fine">Every map has the same odds</small></div>
+</div>
+<div id="devmenu" class="overlay hidden">
+  <div class="panel metal acct admin devm">
+    <div class="ptitle">DEV MENU</div>
+    <p class="adm-note">Kick, ban and give coins. Every command is signed with the dev key, so players' games only obey commands from you. Unlock with your private dev code (kept for this session only).</p>
+    <form id="dv-gate"><label for="dv-code">Dev code</label><input id="dv-code" type="password" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="mbtn hot" type="submit">UNLOCK</button></form>
+    <div id="dv-body" class="hidden">
+      <div class="dv-amt"><label for="dv-coins">Coins to give</label><input id="dv-coins" type="number" min="1" max="1000000" value="1000"><label for="dv-reason">Reason (kick / ban)</label><input id="dv-reason" type="text" maxlength="60" placeholder="optional"></div>
+      <div class="dv-h">PLAYERS IN YOUR LOBBY / MATCH</div><div id="dv-live" class="adm-list"></div>
+      <div class="dv-h">ACCOUNTS ON THIS DEVICE</div><div id="dv-local" class="adm-list"></div>
+      <div class="dv-h">BY ACCOUNT ID (gift or ban anyone)</div>
+      <div class="code-row"><input id="dv-id" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="SRG-XXXX-XXXX"><button id="dv-gift" class="mbtn sm" type="button">GIFT CODE</button><button id="dv-ban" class="mbtn sm" type="button">BAN</button><button id="dv-unban" class="mbtn sm" type="button">UNBAN</button></div>
+      <textarea id="dv-out" class="dv-out hidden" readonly></textarea>
+      <div class="dv-h">BAN LIST</div><div id="dv-bans" class="adm-list"></div>
+      <div class="dv-h">ANTI-CHEAT LOG (this device)</div><div id="dv-log" class="adm-list"></div>
+    </div>
+    <div id="dv-msg" class="acct-msg" role="status"></div>
+    <button id="dv-close" class="mbtn">CLOSE</button>
+  </div>
 </div>
 <div id="admin" class="overlay hidden">
   <div class="panel metal acct admin">

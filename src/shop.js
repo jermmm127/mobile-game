@@ -137,7 +137,7 @@ BR.Profile = {
   load() {
     const C = BR.CONFIG.coins;
     this.KEY = BR.Accounts ? BR.Accounts.profileKey() : 'velocity-royale.profile';
-    let d = BR.util.load(this.KEY, null);
+    let d = BR.AntiCheat ? BR.AntiCheat.loadSigned(this.KEY) : BR.util.load(this.KEY, null);
     if (!d && this.KEY.endsWith('.guest')) d = BR.util.load('velocity-royale.profile', null); // pre-accounts save
     d = d || {};
     this.data = {
@@ -203,7 +203,7 @@ BR.Profile = {
     add('charms', Object.keys(M.CHARMS)); add('gloves', Object.keys(M.GLOVES)); add('feeds', Object.keys(BR.FEEDS));
     for (const w in M.BLUEPRINTS) add('blueprints', Object.keys(M.BLUEPRINTS[w]).map(b => w + ':' + b));
   },
-  save() { BR.util.save(this.KEY, this.data); },
+  save() { if (BR.AntiCheat) BR.AntiCheat.saveSigned(this.KEY, this.data); else BR.util.save(this.KEY, this.data); },
   // Blueprint ids are "weapon:blueprint" (e.g. "rifle:vandal"); every weapon owns "default".
   owns(cat, id) {
     if (cat === 'blueprints' && id.endsWith(':default')) return true;
@@ -369,6 +369,8 @@ BR.Profile = {
   // v1.15: Ranked matches give RP; Casual matches give only XP, coins, challenge + mastery progress
   award(r) {
     if (r.ranked === undefined) r.ranked = !!(BR.game && BR.game.ranked);
+    if (BR.AntiCheat && !BR.AntiCheat.checkResult(r)) { r.ranked = false; return { total: 0, parts: [['Result rejected by anti-cheat', 0]], unlocked: [], rejected: true }; }
+    if (r.ranked && (this.level() < BR.LEVELS.ranked || (BR.AntiCheat && BR.AntiCheat.rankedBlocked()))) r.ranked = false;    // v1.16: Ranked needs level 20 (and a clean record)
     const res = this.awardCoins(r);
     res.xp = this.addXP(this.matchXP(r));
     return res;

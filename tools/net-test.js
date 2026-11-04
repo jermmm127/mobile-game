@@ -19,11 +19,19 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
   const sA = await A.evaluate(() => { const g = BR.game; return { n: g.actors.length, proxies: g.actors.filter(a => a.netProxy).length, map: g.world.mapId, ranked: g.mode.ranked }; });
   const mapB = await B.evaluate(() => ({ map: BR.game.world.mapId, ranked: BR.game.mode.ranked }));
   const sB = await B.evaluate(() => { const g = BR.game; return { n: g.actors.length, proxies: g.actors.filter(a => a.netProxy).length, seen: g.actors.filter(a => a.netProxy && a.netProxy.seen).length }; });
-  const hit = await B.evaluate(() => { const g = BR.game, t = g.actors.find(a => a.owner === 'H' && a.team !== g.player.team && a.alive); g.applyDamage(t, g.player, 999, true, { x: t.pos.x, y: t.pos.y + 1.5, z: t.pos.z }, 'rifle'); return t.rosterId; });
+  // three legitimate rifle hits (the host's anti-cheat drops impossible damage)
+  const hit = await B.evaluate(async () => { const g = BR.game, t = g.actors.find(a => a.owner === 'H' && a.team !== g.player.team && a.alive);
+    for (let i = 0; i < 3; i++) { g.applyDamage(t, g.player, 36, false, { x: t.pos.x, y: t.pos.y + 1.5, z: t.pos.z }, 'rifle'); await new Promise(r => setTimeout(r, 150)); } return t.rosterId; });
   await A.waitForTimeout(1500);
   const kA = await A.evaluate(id => { const M = BR.game.mode, me = M.roster.find(r => r.pid && r.pid !== 'H'); return { dead: !M.byId.get(id).alive, kills: M.stats[me.id].kills, score: M.score.slice() }; }, hit);
   const kB = await B.evaluate(id => { const M = BR.game.mode; return { dead: !M.byId.get(id).alive, score: M.score.slice() }; }, hit);
+  // v1.16: host kicks the guest; a banned account can't get back in
+  await A.evaluate(() => { const S = BR.Lobby.sess || BR.game.mode && BR.game.mode.net; const pid = [...S.conns.keys()][0]; S.kick(pid, ''); });
+  await A.waitForTimeout(900);
+  const kicked = await B.evaluate(() => ({ inMatch: !!BR.game.mode, sess: !!BR.Net.session, state: BR.game.state }));
+  const hostConns = await A.evaluate(() => { const S = BR.Net.session; return S ? S.conns.size : -1; });
   const checks = [
+    ['host can kick a player: they are sent back to the menu and dropped from the host', !kicked.inMatch && !kicked.sess && hostConns === 0],
     ['lobby: guest joins with the code, both see 2 players', lobby === 2 && lobbyB === 2],
     ['match starts on both with the same 8-player roster (2 humans + 6 AI)', sA.n === 8 && sB.n === 8 && sA.proxies === 1 && sB.proxies === 7],
     ['host rolls the map + queue; the guest plays the same map', !!sA.map && sA.map === mapB.map && sA.ranked === mapB.ranked],

@@ -152,7 +152,8 @@ BR.Accounts = {
   async redeem(code) {
     if (!this.db.current) return { ok: false, msg: 'Sign in to an account first' };
     const h = await BR.sha256.hex((code || '').trim().toUpperCase());
-    if (h !== BR.CONFIG.devCodeHash) return { ok: false, msg: 'That code isn’t valid' };
+    const want = (BR.AntiCheat && BR.AntiCheat.testing() && BR._testDevHash) || BR.CONFIG.devCodeHash;      // (the test suite uses a throwaway code on localhost)
+    if (h !== want) return { ok: false, msg: 'That code isn’t valid' };
     BR.Profile.data.dev = true;
     BR.Profile.grantAll();
     BR.Profile.save();

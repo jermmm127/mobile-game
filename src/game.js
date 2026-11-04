@@ -668,6 +668,7 @@ BR.Game = class Game {
       return;
     }
     if (this.zm && this.zm.cut) { this.zm.updateCut(dt); return; }      // zombies boss intro cutscene
+    if (BR.AntiCheat) BR.AntiCheat.tick(this, dt);
     if (p.alive && this.state === 'playing') this.controlPlayer(dt);
     else p.fireHeld = false;
     this.simulate(dt);
@@ -996,11 +997,13 @@ BR.Game = class Game {
   playerTracer(actor) { return BR.Models.resolveTracer(actor.weapon ? actor.weapon.id : 'rifle', BR.Profile.data.equip); }
 
   applyDamage(victim, attacker, dmg, head, at, weaponId) {
+    if (BR.AntiCheat) dmg = BR.AntiCheat.checkHit(this, attacker, dmg, weaponId);
     if (!victim.alive) return;
     if (attacker && victim !== attacker && victim.team !== undefined && victim.team === attacker.team) return;     // no friendly fire
     if (this.mode && this.mode.netDamage && this.mode.netDamage(victim, attacker, dmg, head, at, weaponId)) return; // online: the victim's owner applies it
-    if (victim.isPlayer && attacker && !attacker.isPlayer) dmg *= this.diff.playerDamageMult;
-    else if (!victim.isPlayer && attacker && !attacker.isPlayer) dmg *= BR.CONFIG.match.botVsBotDamage;
+    const remoteHuman = attacker && attacker.netProxy;          // v1.16: another player online does full damage (the bot multipliers are for bots)
+    if (victim.isPlayer && attacker && !attacker.isPlayer && !remoteHuman) dmg *= this.diff.playerDamageMult;
+    else if (!victim.isPlayer && attacker && !attacker.isPlayer && !remoteHuman) dmg *= BR.CONFIG.match.botVsBotDamage;
     if (this.zm && attacker && attacker.isPlayer) dmg *= this.zm.damageMult(victim);       // Insta-Kill
     const shieldBefore = victim.shield;
     const died = victim.takeDamage(dmg);

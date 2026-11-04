@@ -26,7 +26,7 @@ const server = http.createServer((req, res) => {
   await page.goto(url);
   await page.waitForFunction(() => window.BR && BR.game);
   // the older checks below cover the karambit, so carry it (the bayonet is the default knife and has its own checks)
-  await page.evaluate(() => { BR.Profile.data.xp = 5e6; BR.Profile.data.equip.melee = 'knife'; BR.Profile.save(); BR.game.refreshCosmetics(); });     // v1.14: max level so every knife is unlocked for the older checks
+  await page.evaluate(() => { if (BR.AntiCheat) BR.AntiCheat._testing = true; BR.Profile.data.xp = 5e6; BR.Profile.data.equip.melee = 'knife'; BR.Profile.save(); BR.game.refreshCosmetics(); });     // v1.14: max level so every knife is unlocked for the older checks
 
   const mech = await page.evaluate(() => {
     const dt = 1 / 60, yawFor = (dx, dz) => Math.atan2(-dx, -dz);
@@ -160,7 +160,7 @@ const server = http.createServer((req, res) => {
     const A = BR.Accounts, r = {};
     const realHash = BR.CONFIG.devCodeHash;
     const testCode = 'TEST-' + Math.random().toString(36).slice(2);
-    BR.CONFIG.devCodeHash = await BR.sha256.hex(testCode.toUpperCase());
+    BR._testDevHash = await BR.sha256.hex(testCode.toUpperCase());
     r.jsHashMatches = BR.sha256.js(new TextEncoder().encode('abc')) === 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
     A.logOut();
     r.bad = (await A.signUp('x', '1')).ok === false;
@@ -177,7 +177,7 @@ const server = http.createServer((req, res) => {
     r.devPersists = BR.Profile.infinite();
     r.wrongPass = (await A.logIn(me, 'nope')).ok === false;
     A.logOut(); BR.Profile.load();
-    BR.CONFIG.devCodeHash = realHash;
+    BR._testDevHash = null; BR.CONFIG.devCodeHash = 'tampered'; r.hashLocked = BR.CONFIG.devCodeHash === realHash;
     return r;
   });
   // Parachute + practice mode + HUD editor coverage
@@ -1096,6 +1096,71 @@ const server = http.createServer((req, res) => {
         localStorage.removeItem('velocity-royale.profile.u:' + me.toLowerCase());
       } finally { A.isSeededDev = keepSeeded; A.db = JSON.parse(keepDb); A.save(); P.KEY = keepKey; P.data = JSON.parse(keepProfile); P.save(); g.refreshCosmetics(); BR.updateCoins(); }
       out.v115 = v; }
+    // v1.16: Ranked at level 20, anti-cheat, signed dev commands (kick / ban / coins), blueprint finishes
+    { const v = {}, P = BR.Profile, AC = BR.AntiCheat, keep = JSON.stringify(P.data), run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
+      // ranked locked under level 20
+      P.data.xp = 0; g.settings.ranked = true; g.settings.mode = 'tdm';
+      v.rankLock = BR.rankedNow() === false && P.award({ arena: true, preset: 'tdm', win: true, kills: 3, time: 200, ranked: true }).rp === undefined;
+      document.getElementById('mode-cur').click(); const rb = document.querySelector('#dc-queue [data-q="ranked"]'); rb.click();
+      v.rankLockUi = rb.classList.contains('locked') && /LV 20/.test(rb.textContent); document.getElementById('discover').classList.add('hidden');
+      P.data.xp = 5e6; v.rankOpen = BR.rankedNow() === true; g.settings.ranked = false;
+      // stat tables are frozen
+      BR.CONFIG.weapons.rifle.dmg = 999; BR.CONFIG.weapons = {}; BR.CONFIG.actor.maxHealth = 9999;
+      v.frozen = BR.CONFIG.weapons.rifle.dmg === 21 && BR.CONFIG.actor.maxHealth === 100;
+      // live checks (switch the test bypass off)
+      AC._testing = false; const log0 = AC.log.length;
+      BR.Lobby.skipRoll = true; BR.Lobby.preset = 'tdm'; BR.Lobby.size = 4; BR.Lobby.play({ map: 'yard' }); run(130);
+      const p = g.player, foe = g.actors.find(a => a.team !== p.team && a.alive); foe.shield = 0; foe.health = 100;
+      g.applyDamage(foe, p, 999, true, foe.pos, 'rifle'); v.dmgClamp = foe.alive && foe.health > 30 && AC.log.some(e => e.kind === 'damage');
+      p.health = 500; p.weapon.mag = 999; run(2); v.hpClamp = p.health <= 100 && AC.log.some(e => e.kind === 'health'); v.magClamp = p.weapon.mag <= p.weapon.def.mag && AC.log.some(e => e.kind === 'ammo');
+      p.mover.pos.x += 30; run(2); v.teleport = AC.log.some(e => e.kind === 'teleport');
+      g.toMenu();
+      v.badResult = P.award({ kills: 80, total: 30, place: 1, win: true, time: 400, damage: 100 }).rejected === true;
+      AC.lastAward = 0; v.fastWin = P.award({ kills: 1, total: 30, place: 1, win: true, time: 6, damage: 100 }).rejected === true;
+      let hk = []; for (let i = 0; i < 3; i++) hk.push(AC.hostHit({ w: 'rifle', d: 500 }, 'Pcheat')); v.hostKick = hk[0] === false && hk[2] === 'kick' && AC.hostHit({ w: 'rifle', d: 20 }, 'Pfair') === true;
+      // a save edited outside the game is rolled back
+      P.data.coins = 1234; P.save(); const raw = JSON.parse(localStorage.getItem(P.KEY)); raw.coins = 9999999; localStorage.setItem(P.KEY, JSON.stringify(raw));
+      P.load(); v.saveEdit = P.data.coins === 1234 && AC.log.some(e => e.kind === 'save-edit');
+      localStorage.removeItem(P.KEY + '.sig'); raw.coins = 5555555; localStorage.setItem(P.KEY, JSON.stringify(raw)); P.load(); v.sigStrip = P.data.coins === 1234;
+      v.logged = AC.log.length > log0; AC.strikes = 0; AC._testing = true;
+      P.data = JSON.parse(keep); P.data.ac = null; P.save();
+      // signed dev commands with a throwaway key (the real key only unlocks with the private dev code)
+      const S = crypto.subtle, code = 'TEST-' + Math.random().toString(36).slice(2).toUpperCase();
+      const kp = await S.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']), jwk = await S.exportKey('jwk', kp.publicKey), pk8 = await S.exportKey('pkcs8', kp.privateKey);
+      const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), b64 = a => btoa(String.fromCharCode(...new Uint8Array(a)));
+      const base = await S.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveKey']), aes = await S.deriveKey({ name: 'PBKDF2', salt, iterations: 1000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+      BR._testDevSign = { pub: { x: jwk.x, y: jwk.y }, salt: b64(salt), iv: b64(iv), ct: b64(await S.encrypt({ name: 'AES-GCM', iv }, aes, pk8)), iter: 1000 };
+      const A = BR.Accounts, keepDb = JSON.stringify(A.db), keepSeed = A.isSeededDev;
+      try {
+        await A.signUp('devtgt_' + (Date.now() % 1e6), 'pw1234'); P.load(); const me = A.accountId(), c0 = P.data.coins;
+        v.notDev = !(await BR.Dev.unlock(code)).ok;
+        A.isSeededDev = () => true;
+        v.wrongCode = !(await BR.Dev.unlock('NOPE')).ok;
+        v.unlock = (await BR.Dev.unlock(code)).ok && BR.Dev.unlocked();
+        const gift = await BR.Dev.sign('coins', me, { amount: 750 });
+        const giftCode = BR.Dev.toCode(gift);
+        document.getElementById('acct-code').value = giftCode; document.getElementById('acct-redeem').click(); await new Promise(r => setTimeout(r, 300));
+        v.gift = P.data.coins === c0 + 750 && (await BR.Dev.receive(gift)) === 'used' && P.data.coins === c0 + 750;
+        const forged = JSON.parse(JSON.stringify(gift)); forged.cmd.amount = 999999; forged.cmd.n = 'ffff0000';
+        v.forged = (await BR.Dev.receive(forged)) === null && P.data.coins === c0 + 750;
+        const other = await BR.Dev.sign('coins', 'SRG-AAAA-BBBB', { amount: 50 }); v.wrongTarget = (await BR.Dev.receive(other)) === null;
+        const ban = await BR.Dev.sign('ban', me, { reason: 'test' }); await BR.Dev.receive(ban);
+        v.ban = BR.Bans.has(me) && BR.Bans.blocked(false) && BR.Bans.blocked(true);
+        document.getElementById('btn-go').click(); v.banBlocksPlay = g.state === 'menu' && !g.mode;
+        const ub = await BR.Dev.sign('unban', me); await BR.Dev.receive(ub); v.unban = !BR.Bans.has(me) && !BR.Bans.blocked(true);
+        BR.Dev.lock(); A.isSeededDev = () => false; let threw = false; try { await BR.Dev.sign('coins', me, { amount: 1 }); } catch (e) { threw = true; } v.lockedSign = threw;
+        A.isSeededDev = () => true; document.getElementById('acct-chip').click(); v.menuBtn = !document.getElementById('acct-devmenu').classList.contains('hidden'); document.getElementById('acct-close').click();
+        A.isSeededDev = () => false; document.getElementById('acct-chip').click(); v.menuHidden = document.getElementById('acct-devmenu').classList.contains('hidden'); document.getElementById('acct-close').click();
+        localStorage.removeItem(P.KEY); localStorage.removeItem(P.KEY + '.sig');
+      } finally { A.isSeededDev = keepSeed; BR.Dev.lock(); BR._testDevSign = null; A.db = JSON.parse(keepDb); A.save(); BR.util.save('surge.devban', null); P.load(); P.data = JSON.parse(keep); P.save(); g.refreshCosmetics(); BR.updateCoins(); }
+      // blueprint finishes: every non-default blueprint gets a textured finish + edge lines; world models stay one mesh
+      let fin = 0, edges = 0, n = 0, bad = [];
+      for (const w in BR.Models.BLUEPRINTS) for (const b in BR.Models.BLUEPRINTS[w]) { if (b === 'default' || !BR.CONFIG.weapons[w]) continue; n++;
+        const m = BR.Models.weapon(w, 'default', 'none', b); let f = false, e = false; m.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.finish) f = true; if (o.isLineSegments) e = true; });
+        if (f) fin++; else bad.push(w + ':' + b); if (e) edges++; }
+      v.finishes = fin === n && edges === n; v.bpCount = n; v.noFinish = bad.slice(0, 5);
+      v.worldOne = BR.Models.worldWeapon('rifle', Object.keys(BR.Models.BLUEPRINTS.rifle).find(k => k !== 'default')).isMesh;
+      out.v116 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1150,7 +1215,7 @@ const server = http.createServer((req, res) => {
     ['big map has 10+ named locations', combat.pois.length >= 10 && combat.mapSize >= 600],
     ['SHA-256 fallback is correct', acct.jsHashMatches],
     ['accounts: validation, sign up, wrong code/password rejected', acct.bad && acct.signup && acct.wrongCode && acct.wrongPass],
-    ['dev code gives that account infinite coins', acct.devOk && acct.buyFree && acct.devPersists],
+    ['dev code gives that account infinite coins; the dev code hash can\'t be swapped from the console', acct.devOk && acct.buyFree && acct.devPersists && acct.hashLocked],
     ['guests and other accounts do not get it', acct.guestNotDev],
     ['big map loads in under 4s (headless)', loadMs < 4000],
     ['all weapon blueprints build', combat.blueprints >= 21],
@@ -1263,6 +1328,10 @@ const server = http.createServer((req, res) => {
     ['v1.15 Duels: pick your loadout before every round (re-arms you during the countdown)', v17.v115.picker && v17.v115.picked],
     ['v1.15 Ranked vs Casual: casual gives XP + coins + challenges but no RP, ranked gives RP; Discover queue toggle; classic 1v1 Duel removed', v17.v115.casual && v17.v115.ranked && v17.v115.brCasual && v17.v115.casualGrind && v17.v115.noClassic && v17.v115.queue && v17.v115.queueOff],
     ['v1.15 account IDs (unique SRG-XXXX-XXXX) + support panel: dev-only, password re-entry, no hashes shown, one-time reset', v17.v115.idFormat && v17.v115.seedId && v17.v115.unique && v17.v115.lockedOut && v17.v115.badPw && v17.v115.unlock && v17.v115.list && v17.v115.csv && v17.v115.reset && v17.v115.panel && v17.v115.hiddenForOthers],
+    ['v1.16 Ranked unlocks at level 20 (locked queue + no RP below it)', v17.v116.rankLock && v17.v116.rankLockUi && v17.v116.rankOpen],
+    ['v1.16 anti-cheat: frozen stats, damage / health / ammo / teleport checks, impossible results paid nothing, host kicks bad hits, edited saves rolled back', v17.v116.frozen && v17.v116.dmgClamp && v17.v116.hpClamp && v17.v116.magClamp && v17.v116.teleport && v17.v116.badResult && v17.v116.fastWin && v17.v116.hostKick && v17.v116.saveEdit && v17.v116.sigStrip && v17.v116.logged],
+    ['v1.16 dev menu: dev-only, unlocks with the dev code, signed gift codes (once, right account), forged + mis-targeted commands ignored, ban/unban', v17.v116.notDev && v17.v116.wrongCode && v17.v116.unlock && v17.v116.gift && v17.v116.forged && v17.v116.wrongTarget && v17.v116.ban && v17.v116.banBlocksPlay && v17.v116.unban && v17.v116.lockedSign && v17.v116.menuBtn && v17.v116.menuHidden],
+    ['v1.16 every gun + knife blueprint has a textured finish and edge lines; world models stay one mesh', v17.v116.finishes && v17.v116.worldOne],
     ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
     ['v1.15.1 level 20 takes about 30 average Battle Royale matches; each level needs more XP than the last', v17.v114.pace],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],

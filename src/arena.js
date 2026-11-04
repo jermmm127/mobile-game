@@ -122,6 +122,7 @@
       return Object.assign(s, { yaw: Math.atan2(s.x, s.z) });
     }
     placeAt(a, s) {
+      if (a.isPlayer && BR.AntiCheat) BR.AntiCheat.grace();
       const m = a.mover; m.dropping = false; m.vel.set(0, 0, 0); m.pos.set(s.x, this.g.world.groundAt(s.x, s.z, 8), s.z); a.yaw = s.yaw; a.pitch = 0;
     }
     revive(a, s) {
@@ -253,7 +254,8 @@
       const N = this.net;
       N.on('st', m => { for (const s of m.a) { const a = this.byId.get(s[0]); if (a && a.netProxy) { a.netProxy.set(s); if (!a.alive && s[7] && a.mesh && !a.mesh.parent) { a.alive = true; } } } });
       N.on('fx', m => { for (const f of m.f) this.remoteShot(f); });
-      N.on('hit', m => { const v = this.byId.get(m.v); if (!v || !v.local || !v.alive) return; this.g.applyDamage(v, this.byId.get(m.a) || null, m.d, m.h, { x: m.at[0], y: m.at[1], z: m.at[2] }, m.w); });
+      N.on('hit', m => { const v = this.byId.get(m.v); if (!v || !v.local || !v.alive) return;
+        if (BR.AntiCheat && m.from && m.from !== this.me) { const ok = BR.AntiCheat.hostHit(m, m.from); if (ok !== true) { if (ok === 'kick' && this.host && N.kick) { N.kick(m.from, 'cheat'); this.g.hud.toast('A player was removed by anti-cheat', 2000); } return; } } this.g.applyDamage(v, this.byId.get(m.a) || null, m.d, m.h, { x: m.at[0], y: m.at[1], z: m.at[2] }, m.w); });
       N.on('kill', m => { const v = this.byId.get(m.v); if (!v || !v.alive) return; this._remote = true; this.g.kill(v, this.byId.get(m.k) || null, m.w, m.h); this._remote = false; });
       N.on('round', m => this.applyRound(m));
       N.on('spawn', m => this.applySpawn(m));

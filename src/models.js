@@ -2552,6 +2552,111 @@ BR.Models = (function () {
     return g;
   }
 
+
+  // ------------------------------------------------------------------ v1.16 blueprint finishes
+  // Every non-default gun + knife blueprint gets a real surface finish instead of a flat colour, chosen
+  // by rarity: Rare = machined (brushed metal, panel lines, screws), Epic = carbon weave or hex armour,
+  // Legendary = engraved filigree with a gilt border, Mythic/Exotic = an animated prismatic flow. On
+  // top, crisp accent edge lines trace the model's hard edges (glowing + pulsing from Legendary up), and
+  // knife blades get a glowing edge line. Edge lines live with the part they trace (so slides, bolts,
+  // mags and knife parts keep them while animating) and never go into the merged world model.
+  const TIER = { Rare: 1, Epic: 2, Legendary: 3, Mythic: 4, Exotic: 5 };
+  const hsh = k => { let h = 2166136261; for (const ch of k) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
+  const css = c => '#' + new THREE.Color(c).getHexString();
+  const tone = (c, k) => { const o = new THREE.Color(c); if (k > 0) o.lerp(new THREE.Color(0xffffff), k); else o.multiplyScalar(1 + k); return '#' + o.getHexString(); };
+  function finishMat(key, bp) {
+    const ck = 'fin:' + key; if (cache.mat[ck]) return cache.mat[ck];
+    const t = TIER[bp.rarity] || 1, body = bp.body != null ? bp.body : 0x444444, acc = bp.accent != null && bp.accent !== body ? bp.accent : (bp.glow != null ? bp.glow : 0xc8ccd2), glow = bp.glow != null ? bp.glow : acc;
+    const dark = new THREE.Color(body).getHSL({}).l < 0.28, line = dark ? tone(body, 0.32) : tone(body, -0.5), hi = tone(body, dark ? 0.5 : 0.35), R = BR.util.rng(hsh(key));
+    const style = t >= 4 ? 'prism' : t === 3 ? 'engraved' : t === 2 ? (hsh(key) % 2 ? 'carbon' : 'hex') : 'machined';
+    const tex = canvasTex('fin-' + key, (c, S) => {
+      c.fillStyle = css(body); c.fillRect(0, 0, S, S);
+      if (style === 'machined' || style === 'engraved') {           // brushed grain
+        for (let i = 0; i < 700; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,' + (0.03 + R() * 0.05) + ')' : 'rgba(0,0,0,' + (0.04 + R() * 0.06) + ')'; c.fillRect(R() * S, R() * S, 10 + R() * 60, 1); }
+      }
+      if (style === 'machined') {
+        c.lineWidth = 2; c.strokeStyle = line;
+        for (const x of [S * 0.32, S * 0.71]) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, S); c.stroke(); }
+        c.beginPath(); c.moveTo(0, S * 0.5); c.lineTo(S, S * 0.5); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 1; for (const x of [S * 0.32 + 2, S * 0.71 + 2]) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, S); c.stroke(); }
+        c.fillStyle = line; for (const [x, y] of [[0.16, 0.25], [0.16, 0.75], [0.52, 0.25], [0.52, 0.75], [0.86, 0.25], [0.86, 0.75]]) { c.beginPath(); c.arc(x * S, y * S, 3.2, 0, 7); c.fill(); }
+        c.fillStyle = css(acc); c.globalAlpha = 0.85; c.fillRect(0, S * 0.08, S, 5); c.fillRect(0, S * 0.9, S, 3); c.globalAlpha = 1;    // accent pinstripes
+      } else if (style === 'carbon') {
+        const q = 16;
+        for (let y = 0; y < S; y += q) for (let x = 0; x < S; x += q) {
+          const odd = ((x + y) / q) % 2, g2 = c.createLinearGradient(x, y, odd ? x + q : x, odd ? y : y + q);
+          g2.addColorStop(0, tone(body, dark ? 0.16 : -0.15)); g2.addColorStop(0.5, tone(body, dark ? 0.04 : -0.05)); g2.addColorStop(1, tone(body, dark ? 0.2 : -0.2));
+          c.fillStyle = g2; c.fillRect(x + 1, y + 1, q - 2, q - 2);
+        }
+        c.save(); c.translate(S / 2, S / 2); c.rotate(-0.5); c.fillStyle = css(acc); c.globalAlpha = 0.9; c.fillRect(-S, -10, S * 2, 8); c.globalAlpha = 0.5; c.fillRect(-S, 4, S * 2, 3); c.restore();
+      } else if (style === 'hex') {
+        const r = 14, w = r * Math.sqrt(3);
+        for (let row = -1; row < S / (r * 1.5) + 1; row++) for (let col = -1; col < S / w + 1; col++) {
+          const cx = col * w + (row % 2 ? w / 2 : 0), cy = row * r * 1.5;
+          c.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3; c.lineTo(cx + Math.cos(a) * (r - 1.5), cy + Math.sin(a) * (r - 1.5)); } c.closePath();
+          c.fillStyle = R() < 0.12 ? css(acc) : tone(body, (R() - 0.5) * 0.18); c.globalAlpha = 1; c.fill();
+          c.strokeStyle = line; c.lineWidth = 1.6; c.stroke();
+        }
+      } else if (style === 'engraved') {
+        const gold = css(acc);
+        c.strokeStyle = 'rgba(0,0,0,0.55)'; c.lineWidth = 3.2;
+        const scroll = (x, y, rr, dir) => { c.beginPath(); for (let a = 0; a < 9.5; a += 0.15) { const rad = rr * (1 - a / 11); c.lineTo(x + Math.cos(a * dir) * rad, y + Math.sin(a * dir) * rad); } c.stroke(); };
+        for (const pass of [0, 1]) {
+          if (pass) { c.strokeStyle = gold; c.lineWidth = 1.6; }
+          for (let i = 0; i < 6; i++) { const x = (i % 3 + 0.5) / 3 * S, y = (Math.floor(i / 3) + 0.5) / 2 * S; scroll(x, y, 26, i % 2 ? 1 : -1); scroll(x + 30, y + 22, 12, i % 2 ? -1 : 1); }
+          c.beginPath(); for (let x = 0; x <= S; x += 4) c.lineTo(x, S * 0.5 + Math.sin(x / S * Math.PI * 6) * 14); c.stroke();
+        }
+        c.strokeStyle = gold; c.lineWidth = 5; c.strokeRect(5, 5, S - 10, S - 10); c.lineWidth = 1.5; c.strokeRect(13, 13, S - 26, S - 26);
+      } else {                                                          // prism: flowing gradient + sparkle + faint hex
+        const g2 = c.createLinearGradient(0, 0, S, S); g2.addColorStop(0, css(body)); g2.addColorStop(0.3, css(acc)); g2.addColorStop(0.55, css(glow)); g2.addColorStop(0.8, css(body)); g2.addColorStop(1, css(acc));
+        c.fillStyle = g2; c.globalAlpha = 0.55; c.fillRect(0, 0, S, S); c.globalAlpha = 1;
+        for (let i = 0; i < 160; i++) { c.fillStyle = 'rgba(255,255,255,' + (0.25 + R() * 0.6) + ')'; const x = R() * S, y = R() * S, z = 0.6 + R() * 1.6; c.fillRect(x - z, y, z * 2 + 1, 1); c.fillRect(x, y - z, 1, z * 2 + 1); }
+        c.strokeStyle = css(glow); c.globalAlpha = 0.35; c.lineWidth = 1.2; const r = 18, w = r * Math.sqrt(3);
+        for (let row = -1; row < S / (r * 1.5) + 1; row++) for (let col = -1; col < S / w + 1; col++) { const cx = col * w + (row % 2 ? w / 2 : 0), cy = row * r * 1.5; c.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3; c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } c.closePath(); c.stroke(); }
+        c.globalAlpha = 1;
+      }
+      // fine edge vignette so every panel reads as a machined plate
+      const v = c.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.28)'); c.fillStyle = v; c.fillRect(0, 0, S, S);
+      c.fillStyle = hi; c.globalAlpha = 0.25; c.fillRect(0, 0, S, 2); c.globalAlpha = 1;
+    }, 256);
+    const m = new THREE.MeshPhongMaterial({ map: tex, specular: t >= 3 ? 0xffffff : 0xa8b0bc, shininess: [0, 45, 70, 110, 140, 150][t], envMap: BR.weaponEnv(), reflectivity: [0, 0.08, 0.12, 0.2, 0.26, 0.3][t] });
+    if (t >= 4) m.emissive = new THREE.Color(glow).multiplyScalar(0.08);
+    m.userData.finish = style;
+    return (cache.mat[ck] = m);
+  }
+  // One LineSegments per parent object (so moving parts keep their lines), local to that parent
+  function edgeLines(g, test, color, opacity, additive, threshold) {
+    g.updateMatrixWorld(true);
+    const buckets = new Map();
+    g.traverse(o => {
+      if (!o.isMesh || !test(o) || !o.parent || o.geometry.attributes.position.count > 8000) return;
+      const e = new THREE.EdgesGeometry(o.geometry, threshold); e.applyMatrix4(o.matrix);
+      if (!buckets.has(o.parent)) buckets.set(o.parent, []);
+      buckets.get(o.parent).push(e.attributes.position.array);
+    });
+    const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending });
+    for (const [par, arrs] of buckets) {
+      let n = 0; for (const a of arrs) n += a.length; const P = new Float32Array(n); let o = 0; for (const a of arrs) { P.set(a, o); o += a.length; }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3));
+      const L = new THREE.LineSegments(geo, mat); L.userData.noMerge = true; L.renderOrder = 2; par.add(L);
+    }
+    return buckets.size ? mat : null;
+  }
+  function bpUpgrade(g, id, bpId, bp, S, opts) {
+    const t = TIER[bp.rarity]; if (!t) return;
+    const F = finishMat(id + ':' + bpId, bp), melee = !!(BR.CONFIG.weapons[id] || {}).melee;
+    g.traverse(o => { if (o.isMesh && o.material === S) o.material = F; });
+    const acc = bp.accent != null && bp.accent !== bp.body ? bp.accent : (bp.glow != null ? bp.glow : 0xc8ccd2), glow = bp.glow != null ? bp.glow : acc;
+    const em = edgeLines(g, o => o.material === F, t >= 3 ? glow : new THREE.Color(acc).lerp(new THREE.Color(0xffffff), 0.35), t >= 3 ? 0.85 : 0.55, t >= 3, 30);
+    const bm = melee && opts.blade ? edgeLines(g, o => o.material === opts.blade, glow, t >= 3 ? 0.8 : 0.4, true, 35) : null;
+    if (t >= 3) anim(g, tt => {
+      const k = 0.5 + 0.5 * Math.sin(tt * (t >= 4 ? 3.2 : 2));
+      if (em) em.opacity = 0.55 + 0.4 * k; if (bm) bm.opacity = 0.45 + 0.5 * k;
+      if (t >= 5 && em) em.color.setHSL((tt * 0.12) % 1, 1, 0.62);
+    });
+    if (t >= 4 && F.map) anim(g, tt => { F.map.offset.set((tt * 0.035) % 1, (tt * 0.02) % 1); });
+  }
+
   return {
     SKINS, TRACERS, CHARMS, BLUEPRINTS, GLOVES,
     parachute,
@@ -2587,6 +2692,7 @@ BR.Models = (function () {
       try {
         (BUILD[id] || BUILD.pistol)(g, S, MAT(), opts);
         if (bp && bp.mod) bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT() });
+        if (bp && !opts.camo) bpUpgrade(g, id, bpId, bp, S, opts);          // v1.16 finishes + edge lines
       } finally { ROUND = false; }
       if (charmId && charmId !== 'none') {
         const c = charm(charmId);
