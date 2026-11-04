@@ -253,7 +253,8 @@
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.id === 'bayonet' ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
-    hide() { if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { if (this.sparks) { for (const q of this.sparks) { q.life = 0; q.m.visible = false; } for (const q of this.rings) { q.life = 0; q.m.visible = false; } }      // v1.11.1: no frozen white spark boxes while skydiving
+      if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -833,11 +834,18 @@
       if (lt && !leftHidden) {
         const lp = model.localToWorld(this._v.copy(lt));
         L.hand.position.copy(lp);
-        // v1.11: palm under the handguard, rolled so the heel, thumb and knuckles show on the near
-        // side instead of the whole hand sinking into the gun (which left only the cuff visible)
-        L.hand.quaternion.copy(wq).multiply(this._qFore || (this._qFore = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, Math.PI, 'YXZ'))))
-          .multiply(this._qFore2 || (this._qFore2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.12, 0, -0.55))));
-        L.hand.translateY(0.036); L.hand.translateZ(0.016); L.hand.translateX(-0.004);
+        // v1.11.1: a straight wrist. The hand is lined up with the forearm (wrist axis pointing at the
+        // elbow, lower left) with the palm turned up against the underside of the handguard, so the
+        // fingers wrap the far side and no joint bends at an odd angle.
+        const gUp = this._gUp || (this._gUp = new THREE.Vector3()), gRt = this._gRt || (this._gRt = new THREE.Vector3());
+        gUp.set(0, 1, 0).applyQuaternion(wq); gRt.set(1, 0, 0).applyQuaternion(wq);
+        L.hand.position.addScaledVector(gUp, -0.038).addScaledVector(gRt, -0.012);
+        const elb = this._lElb || (this._lElb = new THREE.Vector3());
+        elb.copy(L.hand.position).add(this._sv.set(U.lerp(-0.3, -0.22, A) * s, U.lerp(-0.3, -0.26, A), U.lerp(0.14, 0.18, A)));
+        const Zw = this._lZ || (this._lZ = new THREE.Vector3()); Zw.subVectors(elb, L.hand.position).normalize();
+        const Yw = this._lY || (this._lY = new THREE.Vector3()); Yw.copy(gUp).negate().addScaledVector(Zw, gUp.dot(Zw)).normalize();
+        const Xw = this._lX || (this._lX = new THREE.Vector3()); Xw.crossVectors(Yw, Zw);
+        L.hand.quaternion.setFromRotationMatrix((this._lM || (this._lM = new THREE.Matrix4())).makeBasis(Xw, Yw, Zw));
       } else {
         // no off hand on this weapon (karambit): come in from below the screen
         L.hand.position.set(-0.3, -0.62, -0.25);

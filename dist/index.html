@@ -1465,7 +1465,7 @@ body.shopping #play > :not(#view) { visibility: hidden !important; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.11.0',
+  version: '1.11.1',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1687,11 +1687,11 @@ BR.CONFIG = {
 };
 
 // Resurgence: smaller, faster circles. Respawns stay on until the 4th circle (index 3) starts.
-BR.RESURGENCE_PHASES = [
-  { wait: 30, shrink: 30, radius: 170, dps: 2 },
-  { wait: 40, shrink: 30, radius: 110, dps: 3 },
-  { wait: 40, shrink: 25, radius: 65,  dps: 5 },
-  { wait: 30, shrink: 25, radius: 35,  dps: 8 },
+BR.RESURGENCE_PHASES = [            // sized for the Ironreef island (380 m)
+  { wait: 30, shrink: 30, radius: 150, dps: 2 },
+  { wait: 40, shrink: 30, radius: 100, dps: 3 },
+  { wait: 40, shrink: 25, radius: 62,  dps: 5 },
+  { wait: 30, shrink: 25, radius: 34,  dps: 8 },
   { wait: 25, shrink: 20, radius: 14,  dps: 12 },
   { wait: 15, shrink: 20, radius: 0,   dps: 18 },
 ];
@@ -1725,6 +1725,12 @@ BR.weaponScore = w => (w ? (w.def.tier || 0) + (w.rar || 0) * 0.7 : -1);
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.11.1', date: '2026-11-04', title: 'Ironreef + fixes', notes: [
+    'New map for Resurgence: IRONREEF, a small prison island. The walled Stockade in the middle (cell blocks, mess hall, a warden tower and four guard towers), Saltworks chemical plant with tank-top loot and catwalks, Pier Nine docks and container yard, the Beacon Point lighthouse with a spiral stair, Harbor Row and Signal Hill. Circles are resized for the smaller island.',
+    'Fixed: the support hand\'s wrist was bent at an odd angle on guns. The hand now lines up straight with the forearm and wraps under the handguard.',
+    'Aim Trainer: infinite ammo. Your magazine never empties, so no more reloads mid-drill.',
+    'Fixed: random white boxes on screen while skydiving (leftover spark effects that froze in place when the weapon view was hidden).',
+  ] },
   { v: '1.11.0', date: '2026-11-03', title: 'Discover, rarities + better hands', notes: [
     'New lobby: a big PLAY button and your selected mode. Tap CHANGE to open DISCOVER, a mode browser with a featured mode and rows for Battle Royale, Survival, Competitive and Training. Your pick is remembered.',
     'Weapon rarity: every gun now drops as Common, Uncommon, Rare, Epic, Legendary or Mythic. Higher rarity means more damage, faster reloads and tighter spread (Mythic: +36% damage). Loot rings, name tags, light pillars (Epic and up), HUD slots and the swap prompt all show the rarity colour. Chests roll better gear, you can swap a gun for a better copy of the same gun, bots go for better rarities, and Practice has a rarity picker.',
@@ -2118,11 +2124,12 @@ BR.World = class World {
   constructor(seed, opts) {
     const M = BR.CONFIG.map;
     this.arena = !!(opts && (opts.arena || opts.halloween || opts.range || opts.overdrive));
+    this.reef = !!(opts && opts.reef);           // v1.11.1: the small Resurgence island
     this.halloween = !!(opts && opts.halloween);
     this.range = !!(opts && opts.range); this.overdrive = !!(opts && opts.overdrive);
     if (this.halloween) this.groundCols = [0x2b3820, 0x1f2a17, 0x3a3122];   // dead grass, mud
-    this.size = opts && opts.halloween ? 230 : this.overdrive ? 170 : this.range ? 100 : this.arena ? 92 : M.size;
-    this.half = M.size / 2;
+    this.size = this.reef ? 380 : opts && opts.halloween ? 230 : this.overdrive ? 170 : this.range ? 100 : this.arena ? 92 : M.size;
+    this.half = this.reef ? this.size / 2 : M.size / 2;
     this.gridHalf = this.size / 2;     // collision grid spans this world's own size (the duel arena is 72 m)
     this.cell = M.cell;
     this.n = Math.ceil(this.size / this.cell) + 2;
@@ -2142,7 +2149,7 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [], rockFill: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.arena) this.generateArena(); else this.generate();
+    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.arena) this.generateArena(); else this.generate();
   }
 
   // ------------------------------------------------------------------ zombies: Hollow Graves
@@ -3914,6 +3921,98 @@ function makeTileTexture(grass) {
   tex.anisotropy = 4;
   return tex;
 }
+
+// =============================================================================
+// IRONREEF (v1.11.1) — a small island for Resurgence (original layout, inspired by the compact
+// prison-island maps of other shooters). A walled prison in the middle with cell blocks, a warden
+// tower and four guard towers; a chemical plant; docks with a container yard; a lighthouse; a
+// little harbour town; a fortified hill. Tight sightlines, lots of rooftops, fast rotations.
+// =============================================================================
+Object.assign(BR.World.prototype, {
+  generateReef() {
+    const R = this.rand, U = BR.util, H = this.half;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    const D = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    const CON = 0x8e8a82, CON2 = 0x77736c, RUST = 0x7a4a34, STEEL = PAL.tower, WARN = 0xd9a02a;
+    // invisible boundary at the edge of the water
+    const bw = 6, eh = 80;
+    B(-H - bw, 0, -H - bw, H + bw, eh, -H, PAL.cliff, { tag: 'edge', hidden: true }); B(-H - bw, 0, H, H + bw, eh, H + bw, PAL.cliff, { tag: 'edge', hidden: true });
+    B(-H - bw, 0, -H, -H, eh, H, PAL.cliff, { tag: 'edge', hidden: true }); B(H, 0, -H, H + bw, eh, H, PAL.cliff, { tag: 'edge', hidden: true });
+    const guardTower = (x, z, h) => {
+      B(x - 1.1, 0, z - 1.1, x + 1.1, h, z + 1.1, STEEL);                                  // leg
+      B(x - 2.6, h, z - 2.6, x + 2.6, h + 0.3, z + 2.6, CON2);                            // deck
+      for (const [a, b, c, d] of [[-2.6, -2.6, 2.6, -2.4], [-2.6, 2.4, 2.6, 2.6], [-2.6, -2.6, -2.4, 2.6], [2.4, -2.6, 2.6, 2.6]]) B(x + a, h + 0.3, z + b, x + c, h + 1.4, z + d, CON2);   // parapet
+      D(x - 2.8, h + 3.1, z - 2.8, x + 2.8, h + 3.4, z + 2.8, 0x3a3d42);                  // roof
+      for (const [a, b] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) D(x + a - 0.08, h + 1.4, z + b - 0.08, x + a + 0.08, h + 3.1, z + b + 0.08, 0x3a3d42);
+      for (let i = 0; i < Math.floor(h / 0.9); i++) { const y = (i + 1) * 0.9; B(x + 1.1, y - 0.25, z - 0.6, x + 1.9, y, z + 0.6, PAL.parkour); }   // climb rungs
+      this.chestSpots.push({ x, y: h + 0.3, z, tier: 2 });
+    };
+    // ---- THE STOCKADE (prison, centre)
+    const sx = 0, sz = -8, SW = 76, SD = 62, WH = 5;
+    this.claim(sx - SW / 2 - 4, sz - SD / 2 - 4, sx + SW / 2 + 4, sz + SD / 2 + 4);
+    const gate = [{ a: -4, b: 4, gaps: [[0, 4]] }];
+    this.wallSeg('x', sx - SW / 2, sx + SW / 2, sz - SD / 2 - 0.5, sz - SD / 2 + 0.5, 0, WH, gate.map(g => ({ a: sx + g.a, b: sx + g.b, gaps: g.gaps })), CON);
+    this.wallSeg('x', sx - SW / 2, sx + SW / 2, sz + SD / 2 - 0.5, sz + SD / 2 + 0.5, 0, WH, [{ a: sx - 22, b: sx - 15, gaps: [[0, 4]] }, { a: sx + 15, b: sx + 22, gaps: [[0, 4]] }], CON);
+    this.wallSeg('z', sz - SD / 2, sz + SD / 2, sx - SW / 2 - 0.5, sx - SW / 2 + 0.5, 0, WH, [{ a: sz - 4, b: sz + 4, gaps: [[0, 4]] }], CON);
+    this.wallSeg('z', sz - SD / 2, sz + SD / 2, sx + SW / 2 - 0.5, sx + SW / 2 + 0.5, 0, WH, [{ a: sz - 4, b: sz + 4, gaps: [[0, 4]] }], CON);
+    for (const z of [sz - SD / 2, sz + SD / 2]) D(sx - SW / 2, WH, z - 0.6, sx + SW / 2, WH + 0.2, z + 0.6, CON2);
+    for (const x of [sx - SW / 2, sx + SW / 2]) D(x - 0.6, WH, sz - SD / 2, x + 0.6, WH + 0.2, sz + SD / 2, CON2);
+    for (const z of [sz - SD / 2, sz + SD / 2]) for (let x = sx - SW / 2; x <= sx + SW / 2; x += 3) D(x - 0.04, WH + 0.2, z - 0.04, x + 0.04, WH + 1.2, z + 0.04, 0x2a2d33);   // wire posts
+    this.building(sx - 20, sz - 14, 26, 12, 2);                 // cell block A
+    this.building(sx - 20, sz + 14, 26, 12, 2);                 // cell block B
+    this.building(sx + 22, sz + 14, 16, 14, 2);                 // mess hall
+    this.building(sx + 22, sz - 15, 14, 12, 1);                 // infirmary
+    this.tower(sx + 4, sz);                                     // warden tower (spiral climb)
+    for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) guardTower(sx + x * (SW / 2 - 3), sz + z * (SD / 2 - 3), 8);
+    for (const [x, z, w, d] of [[-6, -2, 3, 0.7], [-6, 6, 0.7, 3], [12, 2, 3, 0.7], [12, -6, 0.7, 3]]) B(sx + x - w / 2, 0, sz + z - d / 2, sx + x + w / 2, 1.2, sz + z + d / 2, PAL.cover);   // yard cover
+    for (let i = 0; i < 10; i++) this.lootSpots.push({ x: sx + U.rand(R, -SW / 2 + 4, SW / 2 - 4), y: 0, z: sz + U.rand(R, -SD / 2 + 4, SD / 2 - 4), tier: 1 });
+    this.jumpPad(sx, sz - SD / 2 - 5); this.jumpPad(sx, sz + SD / 2 + 5);
+    // ---- SALTWORKS (chemical plant, north-east)
+    const cx = 92, cz = -78;
+    this.claim(cx - 30, cz - 26, cx + 30, cz + 26);
+    const tanks = [[-14, -10], [-2, -12], [10, -8], [-12, 6]];
+    for (const [x, z] of tanks) { B(cx + x - 4, 0, cz + z - 4, cx + x + 4, 9, cz + z + 4, 0xb8b2a4); D(cx + x - 4.2, 2.8, cz + z - 4.2, cx + x + 4.2, 3.2, cz + z + 4.2, RUST); D(cx + x - 4.2, 6.6, cz + z - 4.2, cx + x + 4.2, 7, cz + z + 4.2, RUST); B(cx + x - 3, 9, cz + z - 3, cx + x + 3, 10, cz + z + 3, 0x9a958a); this.lootSpots.push({ x: cx + x, y: 10, z: cz + z, tier: 2, force: 'weapon' }); }
+    B(cx - 14, 6.2, cz - 11, cx + 10, 6.6, cz - 9, STEEL);                     // catwalk linking the tanks
+    for (let i = 0; i < 12; i++) { const y = (i + 1) * 0.55; B(cx + 14 + i * 0.01, 0, cz - 2 - i, cx + 17, y, cz - 1 - i, CON2); }   // stairs up
+    B(cx + 13.5, 6.2, cz - 14, cx + 17.5, 6.6, cz - 9, STEEL);
+    this.building(cx + 6, cz + 12, 16, 12, 1);
+    for (let i = 0; i < 6; i++) D(cx - 20 + i * 7, 3.5, cz + 2, cx - 19.4 + i * 7, 4.1, cz + 22, 0x6a6f74);     // pipe rack
+    D(cx - 22, 3.4, cz + 1.6, cx + 20, 3.6, cz + 22, 0x585e66);
+    this.chestSpots.push({ x: cx + 2, y: 6.6, z: cz - 10, tier: 2 });
+    // ---- PIER NINE (docks, south)
+    const px = 22, pz = 118;
+    this.yard(px, pz - 8);
+    for (const x of [-30, -14, 2, 18]) { B(px + x - 2.5, -2, pz + 22, px + x + 2.5, 0.45, pz + 52, 0x6e5a44); for (let k = 0; k < 4; k++) D(px + x - 2.8, -2, pz + 26 + k * 8, px + x - 2.4, 1.1, pz + 26.4 + k * 8, 0x4a3a2a); this.lootSpots.push({ x: px + x, y: 0.45, z: pz + 46, tier: 1 }); }
+    B(px - 34, -2, pz + 16, px + 24, 0.45, pz + 23, 0x6e5a44);                 // quay
+    // ---- BEACON POINT (lighthouse, north-west)
+    const lx = -112, lz = -98;
+    this.claim(lx - 16, lz - 16, lx + 16, lz + 16);
+    B(lx - 3, 0, lz - 3, lx + 3, 16, lz + 3, 0xe8e4dc); for (let y = 2; y < 16; y += 4) D(lx - 3.05, y, lz - 3.05, lx + 3.05, y + 1.4, lz + 3.05, 0xc8362c);
+    B(lx - 4.2, 16, lz - 4.2, lx + 4.2, 16.4, lz + 4.2, STEEL); D(lx - 2.2, 16.4, lz - 2.2, lx + 2.2, 19, lz + 2.2, 0xfff4c8); D(lx - 2.6, 19, lz - 2.6, lx + 2.6, 19.5, lz + 2.6, 0x3a3d42);
+    for (let i = 0; i < 20; i++) { const a = i * Math.PI / 4, r = 5.4, y = (i + 1) * 0.8; B(lx + Math.cos(a) * r - 1.1, y - 0.35, lz + Math.sin(a) * r - 1.1, lx + Math.cos(a) * r + 1.1, y, lz + Math.sin(a) * r + 1.1, PAL.parkour); }   // spiral stair
+    this.chestSpots.push({ x: lx + 3.4, y: 16.4, z: lz, tier: 2 }); this.building(lx + 10, lz + 8, 9, 9, 1);
+    // ---- HARBOR ROW (town, south-west) + SIGNAL HILL (fortified plateau, east)
+    this.town(-96, 66);
+    this.outpost(112, 40);
+    this.pois = [
+      { x: sx, z: sz, name: 'The Stockade', type: 'prison' }, { x: cx, z: cz, name: 'Saltworks', type: 'plant' }, { x: px, z: pz, name: 'Pier Nine', type: 'docks' },
+      { x: lx, z: lz, name: 'Beacon Point', type: 'lighthouse' }, { x: -96, z: 66, name: 'Harbor Row', type: 'town' }, { x: 112, z: 40, name: 'Signal Hill', type: 'outpost' },
+    ];
+    this.towns = this.pois;
+    // scatter (scaled down for the small island)
+    for (let i = 0; i < 3; i++) this.ridge();
+    for (let i = 0; i < 14; i++) this.placeRandom(8, 8, (x, z) => this.container(x, z));
+    for (let i = 0; i < 40; i++) this.placeRandom(5, 5, (x, z) => this.crateStack(x, z));
+    for (let i = 0; i < 46; i++) this.placeRandom(7, 7, (x, z) => this.rock(x, z));
+    for (let i = 0; i < 36; i++) this.placeRandom(7, 7, (x, z) => this.coverWall(x, z));
+    for (let i = 0; i < 140; i++) this.placeRandom(2, 2, (x, z) => this.tree(x, z));
+    for (let i = 0; i < 12; i++) this.placeRandom(4, 4, (x, z) => this.jumpPad(x, z));
+    for (let i = 0; i < 4; i++) this.placeRandom(18, 18, (x, z) => this.wallRunLane(x, z));
+    this.dress();
+    for (let i = 0; i < 70; i++) { const x = U.rand(R, -H + 30, H - 30), z = U.rand(R, -H + 30, H - 30); if (Math.hypot(x, z) < H - 30 && this.free(x - 0.5, z - 0.5, x + 0.5, z + 0.5, 0.5)) this.lootSpots.push({ x, y: 0, z, tier: 0 }); }
+    this.spawns = [{ x: 0, z: 0, yaw: 0 }];
+  },
+});
 
 </script>
 <script>
@@ -7475,7 +7574,8 @@ BR.Models = (function () {
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
     startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.id === 'bayonet' ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
-    hide() { if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
+    hide() { if (this.sparks) { for (const q of this.sparks) { q.life = 0; q.m.visible = false; } for (const q of this.rings) { q.life = 0; q.m.visible = false; } }      // v1.11.1: no frozen white spark boxes while skydiving
+      if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
@@ -8055,11 +8155,18 @@ BR.Models = (function () {
       if (lt && !leftHidden) {
         const lp = model.localToWorld(this._v.copy(lt));
         L.hand.position.copy(lp);
-        // v1.11: palm under the handguard, rolled so the heel, thumb and knuckles show on the near
-        // side instead of the whole hand sinking into the gun (which left only the cuff visible)
-        L.hand.quaternion.copy(wq).multiply(this._qFore || (this._qFore = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, Math.PI, 'YXZ'))))
-          .multiply(this._qFore2 || (this._qFore2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.12, 0, -0.55))));
-        L.hand.translateY(0.036); L.hand.translateZ(0.016); L.hand.translateX(-0.004);
+        // v1.11.1: a straight wrist. The hand is lined up with the forearm (wrist axis pointing at the
+        // elbow, lower left) with the palm turned up against the underside of the handguard, so the
+        // fingers wrap the far side and no joint bends at an odd angle.
+        const gUp = this._gUp || (this._gUp = new THREE.Vector3()), gRt = this._gRt || (this._gRt = new THREE.Vector3());
+        gUp.set(0, 1, 0).applyQuaternion(wq); gRt.set(1, 0, 0).applyQuaternion(wq);
+        L.hand.position.addScaledVector(gUp, -0.038).addScaledVector(gRt, -0.012);
+        const elb = this._lElb || (this._lElb = new THREE.Vector3());
+        elb.copy(L.hand.position).add(this._sv.set(U.lerp(-0.3, -0.22, A) * s, U.lerp(-0.3, -0.26, A), U.lerp(0.14, 0.18, A)));
+        const Zw = this._lZ || (this._lZ = new THREE.Vector3()); Zw.subVectors(elb, L.hand.position).normalize();
+        const Yw = this._lY || (this._lY = new THREE.Vector3()); Yw.copy(gUp).negate().addScaledVector(Zw, gUp.dot(Zw)).normalize();
+        const Xw = this._lX || (this._lX = new THREE.Vector3()); Xw.crossVectors(Yw, Zw);
+        L.hand.quaternion.setFromRotationMatrix((this._lM || (this._lM = new THREE.Matrix4())).makeBasis(Xw, Yw, Zw));
       } else {
         // no off hand on this weapon (karambit): come in from below the screen
         L.hand.position.set(-0.3, -0.62, -0.25);
@@ -10624,6 +10731,7 @@ BR.BotBrain = class BotBrain {
     update(dt) {
       const g = this.g, p = g.player;
       for (const t in p.ammo) p.ammo[t] = Math.max(p.ammo[t], 300);           // infinite reserve
+      for (const w of p.slots) if (w && !w.def.melee) { w.mag = w.def.mag; w.reloadT = 0; }      // v1.11.1: infinite ammo, never reload
       if (p.health < 100) p.health = 100;
       if (this.state === 'count') {
         const R = this.run; R.count -= dt; const n = Math.ceil(R.count);
@@ -15012,7 +15120,7 @@ BR.Game = class Game {
     this.duel = null; document.body.classList.remove('duel');
     const practiceMode = !!(opts && opts.practice), resMode = !!(opts && opts.resurgence);
     this.zonePhases = resMode ? BR.RESURGENCE_PHASES : null;
-    this.buildScene(Math.floor(Math.random() * 1e9), false);
+    this.buildScene(Math.floor(Math.random() * 1e9), false, resMode ? { reef: true } : undefined);     // Resurgence: the Ironreef island
     if (resMode) { this.resurgence = { lastPhase: 3, queue: [], credit: 0, kills: 0, redeploys: 0 }; document.body.classList.add('resurgence'); }
     this.diff = C.difficulty[S.difficulty] || C.difficulty.normal;
     this.result = null;

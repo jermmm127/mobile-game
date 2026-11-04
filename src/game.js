@@ -239,7 +239,7 @@ BR.Game = class Game {
     this.duel = null; document.body.classList.remove('duel');
     const practiceMode = !!(opts && opts.practice), resMode = !!(opts && opts.resurgence);
     this.zonePhases = resMode ? BR.RESURGENCE_PHASES : null;
-    this.buildScene(Math.floor(Math.random() * 1e9), false);
+    this.buildScene(Math.floor(Math.random() * 1e9), false, resMode ? { reef: true } : undefined);     // Resurgence: the Ironreef island
     if (resMode) { this.resurgence = { lastPhase: 3, queue: [], credit: 0, kills: 0, redeploys: 0 }; document.body.classList.add('resurgence'); }
     this.diff = C.difficulty[S.difficulty] || C.difficulty.normal;
     this.result = null;

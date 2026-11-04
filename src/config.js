@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.11.0',
+  version: '1.11.1',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -229,11 +229,11 @@ BR.CONFIG = {
 };
 
 // Resurgence: smaller, faster circles. Respawns stay on until the 4th circle (index 3) starts.
-BR.RESURGENCE_PHASES = [
-  { wait: 30, shrink: 30, radius: 170, dps: 2 },
-  { wait: 40, shrink: 30, radius: 110, dps: 3 },
-  { wait: 40, shrink: 25, radius: 65,  dps: 5 },
-  { wait: 30, shrink: 25, radius: 35,  dps: 8 },
+BR.RESURGENCE_PHASES = [            // sized for the Ironreef island (380 m)
+  { wait: 30, shrink: 30, radius: 150, dps: 2 },
+  { wait: 40, shrink: 30, radius: 100, dps: 3 },
+  { wait: 40, shrink: 25, radius: 62,  dps: 5 },
+  { wait: 30, shrink: 25, radius: 34,  dps: 8 },
   { wait: 25, shrink: 20, radius: 14,  dps: 12 },
   { wait: 15, shrink: 20, radius: 0,   dps: 18 },
 ];

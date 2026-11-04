@@ -204,6 +204,7 @@
     update(dt) {
       const g = this.g, p = g.player;
       for (const t in p.ammo) p.ammo[t] = Math.max(p.ammo[t], 300);           // infinite reserve
+      for (const w of p.slots) if (w && !w.def.melee) { w.mag = w.def.mag; w.reloadT = 0; }      // v1.11.1: infinite ammo, never reload
       if (p.health < 100) p.health = 100;
       if (this.state === 'count') {
         const R = this.run; R.count -= dt; const n = Math.ceil(R.count);

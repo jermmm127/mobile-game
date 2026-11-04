@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.11.1', date: '2026-11-04', title: 'Ironreef + fixes', notes: [
+    'New map for Resurgence: IRONREEF, a small prison island. The walled Stockade in the middle (cell blocks, mess hall, a warden tower and four guard towers), Saltworks chemical plant with tank-top loot and catwalks, Pier Nine docks and container yard, the Beacon Point lighthouse with a spiral stair, Harbor Row and Signal Hill. Circles are resized for the smaller island.',
+    'Fixed: the support hand\'s wrist was bent at an odd angle on guns. The hand now lines up straight with the forearm and wraps under the handguard.',
+    'Aim Trainer: infinite ammo. Your magazine never empties, so no more reloads mid-drill.',
+    'Fixed: random white boxes on screen while skydiving (leftover spark effects that froze in place when the weapon view was hidden).',
+  ] },
   { v: '1.11.0', date: '2026-11-03', title: 'Discover, rarities + better hands', notes: [
     'New lobby: a big PLAY button and your selected mode. Tap CHANGE to open DISCOVER, a mode browser with a featured mode and rows for Battle Royale, Survival, Competitive and Training. Your pick is remembered.',
     'Weapon rarity: every gun now drops as Common, Uncommon, Rare, Epic, Legendary or Mythic. Higher rarity means more damage, faster reloads and tighter spread (Mythic: +36% damage). Loot rings, name tags, light pillars (Epic and up), HUD slots and the swap prompt all show the rarity colour. Chests roll better gear, you can swap a gun for a better copy of the same gun, bots go for better rarities, and Practice has a rarity picker.',

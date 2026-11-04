@@ -934,6 +934,24 @@ const server = http.createServer((req, res) => {
       g.toMenu(); BR.selectMode('br');
       document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 8 && !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
       out.v111 = v; }
+    // v1.11.1: straight wrist, aim trainer infinite ammo, no frozen sparks in freefall, Ironreef for Resurgence
+    { const v = {}, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
+      document.getElementById('btn-practice').click(); const pl = g.player; pl.slots[0] = BR.Weapons.create('rifle'); pl.cur = 0; g.vmr.lastWeapon = null; run(40);
+      const L = g.vmr.arms.L; L.hand.updateMatrixWorld(true);
+      const hz = new THREE.Vector3(0, 0, 1).applyQuaternion(L.hand.quaternion), fd = new THREE.Vector3(0, 1, 0).applyQuaternion(L.fore.quaternion);
+      v.wrist = hz.dot(fd) > 0.97;
+      // sparks are cleared when the viewmodel hides (skydive)
+      const sp = g.vmr.sparks[0]; sp.life = 1; sp.m.visible = true; g.practiceSpawn('skydive'); run(3);
+      v.sparks = g.vmr.sparks.every(q => !q.m.visible);
+      // aim trainer: the mag never empties
+      g.startMode(BR.AimTrainer, { range: true }); document.getElementById('at-go').click(); run(100);
+      const w = g.player.weapon; for (let i = 0; i < 40; i++) { w.cool = 0; BR.Weapons.tryFire(g, g.player); run(1); }
+      v.infAmmo = w.mag === w.def.mag && w.reloadT === 0;
+      // Resurgence plays on Ironreef
+      g.startMatch({ resurgence: true }); const W = g.world;
+      v.reef = W.reef && W.size === 380 && W.half === 190 && W.pois.length === 6 && W.pois[0].name === 'The Stockade' && W.chestSpots.length >= 15 && g.loot.items.length > 100 && g.zone.phases[0].radius <= 160;
+      g.toMenu();
+      out.v1111 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1091,6 +1109,7 @@ const server = http.createServer((req, res) => {
     ['v1.11 default loadout (rifle + pistol + bayonet), used in practice, loadout screen', v17.v111.loadoutDefault && v17.v111.loadoutUsed && v17.v111.loUi],
     ['v1.11 Discover mode browser: tiles, select, lobby PLAY launches the mode', v17.v111.discover && v17.v111.selected && v17.v111.goAim],
     ['v1.11 arms: fabric sleeves attached at the wrist; bayonet full flip; karambit inspect shows the blade then spins', v17.v111.sleeve && v17.v111.bayFlip && v17.v111.karShow && v17.v111.karSpin],
+    ['v1.11.1 straight support wrist, aim trainer infinite ammo, no white boxes in freefall, Ironreef map for Resurgence', v17.v1111.wrist && v17.v1111.sparks && v17.v1111.infAmmo && v17.v1111.reef],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
     ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],
     ['victory: orbit cam, celebrating character, overlay, HUD hidden, then results', v17.victory.state === 'won' && v17.victory.active && v17.victory.overlay && v17.victory.hudHidden && v17.victory.body && v17.victory.camOut && v17.victory.armsUp && v17.victory.vmHidden && v17.victory.ended],
