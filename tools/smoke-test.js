@@ -685,7 +685,7 @@ const server = http.createServer((req, res) => {
       await new Promise(r => setTimeout(r, 1300));
       for (let i = 0; i < 60 * 3; i++) fx.update(1 / 60);
       const left = fx.fins.length - base;
-      const M = BR.Models.weapon('smg', 'default', 'none'); let env = 0, bump = 0; M.traverse(o => { if (o.material && o.material.envMap) env++; if (o.material && o.material.bumpMap) bump++; });   // (v1.16.3: the rifle is an imported model now, checked separately)
+      const M = BR.Models.weapon('smg', 'default', 'none'); let env = 0, bump = 0; M.traverse(o => { if (o.material && o.material.envMap) env++; if (o.material && (o.material.bumpMap || o.material.normalMap)) bump++; });   // (v1.17: normal maps; v1.16.3: the rifle is an imported model now, checked separately)
       const bm = g.vmr.models.bayonet.userData.model.userData;
       out.v180 = { auraOk, trails, fins, left, env, bump, grip: !!(bm.armVec && bm.armVecUp && bm.wristRoll && bm.gripY), shop: ['sakura', 'prismburst', 'supernova'].every(k => BR.FINISHERS[k] && BR.FINISHERS[k].price), nova: ['thunderstrike', 'dragonsoul'].every(k => BR.FINISHERS[k].caseOnly && BR.FINISHERS[k].case === 'nova') }; }
     // v1.8.2: PC keybinds for every action
@@ -1202,6 +1202,17 @@ const server = http.createServer((req, res) => {
       const w = BR.Models.worldWeapon('rifle'); v.world = w.isMesh && w.geometry.attributes.position.count > 10000;
       const sk = BR.Models.weapon('rifle', 'chrome', 'none', null); let skinOn = false; sk.traverse(o => { if (o.isMesh && !o.material.map && o.material !== m.children[0].material) skinOn = true; }); v.skin = skinOn;
       out.v1163 = v; }
+    // v1.17: detailed surfaces on every procedural weapon, knife and glove
+    { const v = {}; let real = 0, uvOk = 0, edges = 0, n = 0;
+      for (const id of ['holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'sniper', 'pistol', 'revolver', 'tracker', 'bayonet', 'knife', 'butterfly']) {
+        const m = BR.Models.weapon(id, 'default', 'none', null); n++; let r = 0, e = 0, u = true;
+        m.traverse(o => { if (o.isMesh && o.material.userData && o.material.userData.real) { r++; if (!o.material.map || !o.material.normalMap || !o.geometry.attributes.uv) u = false; } if (o.isLineSegments) e++; });
+        if (r > 3) real++; if (u) uvOk++; if (e) edges++;
+      }
+      v.weapons = real === n && uvOk === n && edges >= 8;      // edge highlights on the guns' main bodies (knife parts live in sub-groups)
+      const h = BR.Models.hand('default', false); let fab = false; h.traverse(o => { if (o.isMesh && o.material.normalMap && o.material.map) fab = true; }); v.gloves = fab;
+      const w = BR.Models.worldWeapon('smg'); v.world = w.isMesh;
+      out.v117 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1375,6 +1386,7 @@ const server = http.createServer((req, res) => {
     ['v1.16 every gun + knife blueprint has a textured finish and edge lines; world models stay one mesh', v17.v116.finishes && v17.v116.worldOne],
     ['v1.16.1 leaderboard: 50 spots filled with the owner\'s name, real ranked players replace them, forged / impersonated / impossible entries refused, bans hidden', v17.v1161.empty && v17.v1161.took && v17.v1161.forged && v17.v1161.pinned && v17.v1161.newcomer && v17.v1161.bannedHidden && v17.v1161.ui],
     ['v1.16.3 imported .glb rifle: textured + normal-mapped, placed (length, muzzle, sights, hands), magazine split off, world model, camos still apply', v17.v1163.imported && v17.v1163.anchors && v17.v1163.mag && v17.v1163.world && v17.v1163.skin],
+    ['v1.17 every procedural weapon + knife has worn textures, normal maps and real-scale UVs, guns get edge highlights; gloves get fabric', v17.v117.weapons && v17.v117.gloves && v17.v117.world],
     ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
     ['v1.15.1 level 20 takes about 30 average Battle Royale matches; each level needs more XP than the last', v17.v114.pace],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],

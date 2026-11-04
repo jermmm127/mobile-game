@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.17.0', date: '2026-11-04', title: 'Detailed weapon surfaces', notes: [
+    'Every gun and knife got a hand-textured look, closer to the new Rifle. Finishes now have soft mottling, grime streaks, fine scratches, chipped edges and dust instead of flat colour, and real surface normals make light catch the scratches, stippled grips and brushed metal.',
+    'Grips use a stippled polymer texture, steel parts a brushed grain, and knife blades a brushed satin with fine polishing lines.',
+    'Textures are mapped in real-world size on every model, so detail is even across all guns with no stretched faces.',
+    'Faint highlights along hard edges make parts read as machined.',
+    'Gloves: every pair now has a woven fabric grain with stitched seams, and the knuckle and palm pads have a grippy stipple.',
+  ] },
   { v: '1.16.3', date: '2026-11-04', title: 'Imported Rifle model', notes: [
     'The Rifle is now a fully textured imported 3D model: an ornate AK-style rifle in green, rust and gold with a glowing engraved handguard and a carved magazine.',
     'It fits the game like every other gun: the hands, iron sights, muzzle flash and tracers line up, the magazine comes out on reloads, and camos and blueprints still apply.',

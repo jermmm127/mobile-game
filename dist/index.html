@@ -1588,7 +1588,7 @@ body.arenamode #topbar { display: none !important; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.16.3',
+  version: '1.17.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1861,6 +1861,13 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.17.0', date: '2026-11-04', title: 'Detailed weapon surfaces', notes: [
+    'Every gun and knife got a hand-textured look, closer to the new Rifle. Finishes now have soft mottling, grime streaks, fine scratches, chipped edges and dust instead of flat colour, and real surface normals make light catch the scratches, stippled grips and brushed metal.',
+    'Grips use a stippled polymer texture, steel parts a brushed grain, and knife blades a brushed satin with fine polishing lines.',
+    'Textures are mapped in real-world size on every model, so detail is even across all guns with no stretched faces.',
+    'Faint highlights along hard edges make parts read as machined.',
+    'Gloves: every pair now has a woven fabric grain with stitched seams, and the knuckle and palm pads have a grippy stipple.',
+  ] },
   { v: '1.16.3', date: '2026-11-04', title: 'Imported Rifle model', notes: [
     'The Rifle is now a fully textured imported 3D model: an ornate AK-style rifle in green, rust and gold with a glowing engraved handguard and a carved magazine.',
     'It fits the game like every other gun: the hands, iron sights, muzzle flash and tracers line up, the magazine comes out on reloads, and camos and blueprints still apply.',
@@ -5611,7 +5618,8 @@ BR.Models = (function () {
         m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: 0.85, specular: 0x888888, shininess: 60 }); break;
       case 'liquidgold': m = new THREE.MeshPhongMaterial({ map: TEX.liquidgold(), specular: 0xfff4c0, shininess: 180, emissive: 0x4a3000, emissiveMap: TEX.liquidgold(), emissiveIntensity: 0.4 }); break;
       case 'prism': m = new THREE.MeshPhongMaterial({ map: TEX.prism(), emissive: 0xffffff, emissiveMap: TEX.prism(), emissiveIntensity: 0.35, specular: 0xffffff, shininess: 150 }); break;
-      default: m = new THREE.MeshPhongMaterial({ color: base, specular: 0x30353c, shininess: 22, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.04 });
+      default: m = new THREE.MeshPhongMaterial({ map: wearTex(base, 'polymer'), normalMap: NRM.scratch(), normalScale: new THREE.Vector2(0.45, 0.45), specular: 0x3a4048, shininess: 26, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.05 });
+        m.userData.real = true;
     }
     // ---- finish pass (v1.8.3): every camo gets a real surface. Matte camos become satin Phong (soft
     // highlights), glossy ones a clear-coat sheen, metals a mirror-like reflection of the studio env.
@@ -5632,6 +5640,64 @@ BR.Models = (function () {
     // stippled polymer grip texture
     stipple: () => { const t = canvasTex('d-stipple', (c, s) => { c.fillStyle = '#808080'; c.fillRect(0, 0, s, s); for (let i = 0; i < 900; i++) { const r = 0.6 + Math.random() * 1.3; c.fillStyle = Math.random() < 0.5 ? '#b0b0b0' : '#4a4a4a'; c.beginPath(); c.arc(Math.random() * s, Math.random() * s, r, 0, 7); c.fill(); } }, 128); t.repeat.set(1.5, 1.5); return t; },
   };
+  // ---- v1.17 surface detail (the look of a hand-textured model, made procedurally): worn albedo maps
+  // (mottling, grime, fine scratches, chips, dust) and real normal maps generated from height fields
+  // (scratches, stipple, knurling, brushed grain, fabric weave). Shared by every weapon, knife and glove.
+  function normalTex(key, size, drawH, strength) {
+    return canvasTex('n-' + key, (c, S) => {
+      drawH(c, S);
+      const src = c.getImageData(0, 0, S, S).data, out = c.createImageData(S, S), h = (x, y) => src[(((y + S) % S) * S + ((x + S) % S)) * 4] / 255;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        const dx = (h(x + 1, y) - h(x - 1, y)) * strength, dy = (h(x, y + 1) - h(x, y - 1)) * strength, l = Math.hypot(dx, dy, 1), i = (y * S + x) * 4;
+        out.data[i] = (-dx / l * 0.5 + 0.5) * 255; out.data[i + 1] = (-dy / l * 0.5 + 0.5) * 255; out.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; out.data[i + 3] = 255;
+      }
+      c.putImageData(out, 0, 0);
+    }, size);
+  }
+  const NRM = {
+    scratch: () => normalTex('scratch', 256, (c, S) => { const R = BR.util.rng(71); c.fillStyle = '#808080'; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 2600; i++) { const v = 118 + R() * 20 | 0; c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(R() * S, R() * S, 2, 2); }
+      c.lineCap = 'round'; for (let i = 0; i < 110; i++) { const x = R() * S, y = R() * S, a = R() * Math.PI, l = 3 + R() * 16; c.strokeStyle = `rgba(60,60,60,${0.25 + R() * 0.35})`; c.lineWidth = R() < 0.8 ? 1 : 1.6; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
+      for (let i = 0; i < 60; i++) { c.fillStyle = 'rgba(60,60,60,0.7)'; c.beginPath(); c.arc(R() * S, R() * S, 0.8 + R() * 1.6, 0, 7); c.fill(); } }, 2.4),
+    stipple: () => normalTex('stipple', 256, (c, S) => { const R = BR.util.rng(72); c.fillStyle = '#606060'; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 5200; i++) { const r = 0.9 + R() * 1.4, g2 = c.createRadialGradient(0, 0, 0, 0, 0, r); const x = R() * S, y = R() * S; c.save(); c.translate(x, y); g2.addColorStop(0, '#e0e0e0'); g2.addColorStop(1, 'rgba(96,96,96,0)'); c.fillStyle = g2; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); c.restore(); } }, 3.2),
+    knurl: () => normalTex('knurl', 128, (c, S) => { const im = c.createImageData(S, S), P = 8;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const u = ((x + y) / P) % 1, v = ((x - y + S * 4) / P) % 1, h = 1 - Math.max(Math.abs(u - 0.5), Math.abs(v - 0.5)) * 2, q = h * 255, i = (y * S + x) * 4; im.data[i] = im.data[i + 1] = im.data[i + 2] = q; im.data[i + 3] = 255; }
+      c.putImageData(im, 0, 0); }, 3.5),
+    brushed: () => normalTex('brushed', 256, (c, S) => { const R = BR.util.rng(73); c.fillStyle = '#808080'; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 1400; i++) { const v = 100 + R() * 56 | 0; c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(R() * S, R() * S, 30 + R() * 140, 1); } }, 1.6),
+    weave: () => normalTex('weave', 128, (c, S) => { const im = c.createImageData(S, S), T = 4;
+      for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const cx = Math.floor(x / T), cy = Math.floor(y / T), over = (cx + cy) % 2, f = over ? (x % T) / T : (y % T) / T, h = 0.25 + 0.75 * Math.sin(f * Math.PI), q = h * 255, i = (y * S + x) * 4; im.data[i] = im.data[i + 1] = im.data[i + 2] = q; im.data[i + 3] = 255; }
+      c.putImageData(im, 0, 0); }, 2.2),
+  };
+  // worn albedo for a base colour: soft mottling, grime, scratches, edge chips, dust
+  function wearTex(base, kind) {
+    return canvasTex('w-' + kind + '-' + base, (c, S) => {
+      const R = BR.util.rng(base % 9973 + kind.length * 31), col = new THREE.Color(base), css = k => { const o = col.clone(); if (k > 0) o.lerp(new THREE.Color(0xffffff), k); else o.multiplyScalar(1 + k); return '#' + o.getHexString(); };
+      c.fillStyle = css(0); c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 46; i++) { const x = R() * S, y = R() * S, r = 18 + R() * 60, g2 = c.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, R() < 0.5 ? css(0.05) : css(-0.09)); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = 0.38; c.fillStyle = g2; c.fillRect(x - r, y - r, r * 2, r * 2); }
+      c.globalAlpha = 1;
+      for (let i = 0; i < 22; i++) { c.fillStyle = `rgba(20,16,10,${0.05 + R() * 0.08})`; const x = R() * S; c.fillRect(x, R() * S, 2 + R() * 5, 20 + R() * 70); }          // grime streaks
+      const nS = kind === 'metal' ? 150 : kind === 'blade' ? 260 : 45;
+      c.lineCap = 'round';
+      for (let i = 0; i < nS; i++) { const x = R() * S, y = R() * S, a = kind === 'blade' ? (R() - 0.5) * 0.3 : R() * Math.PI, l = 2 + R() * (kind === 'blade' ? 50 : 12);
+        c.strokeStyle = kind === 'blade' ? `rgba(255,255,255,${0.05 + R() * 0.09})` : css(0.3 + R() * 0.25); c.globalAlpha = kind === 'blade' ? 1 : 0.06 + R() * 0.14; c.lineWidth = R() < 0.85 ? 0.8 : 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
+      c.globalAlpha = 1;
+      for (let i = 0; i < (kind === 'polymer' ? 40 : 90); i++) { c.fillStyle = css(0.4 + R() * 0.3); c.globalAlpha = 0.18 + R() * 0.3; c.fillRect(R() * S, R() * S, 1 + R() * 2.4, 1 + R() * 1.6); }      // chips
+      for (let i = 0; i < 500; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.14)'; c.globalAlpha = 1; c.fillRect(R() * S, R() * S, 1, 1); }        // dust
+    }, 256);
+  }
+  // fabric for gloves: the glove colour with a woven grain + soft wear
+  function fabricTex(base) {
+    return canvasTex('fab-' + base, (c, S) => {
+      const R = BR.util.rng(base % 7919), col = new THREE.Color(base), css = k => { const o = col.clone(); if (k > 0) o.lerp(new THREE.Color(0xffffff), k); else o.multiplyScalar(1 + k); return '#' + o.getHexString(); };
+      c.fillStyle = css(0); c.fillRect(0, 0, S, S);
+      for (let y = 0; y < S; y += 2) { c.fillStyle = y % 4 ? css(0.05) : css(-0.08); c.globalAlpha = 0.5; c.fillRect(0, y, S, 1); }
+      for (let i = 0; i < 30; i++) { const x = R() * S, y = R() * S, r = 14 + R() * 40, g2 = c.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, R() < 0.5 ? css(0.1) : css(-0.15)); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = 0.5; c.fillStyle = g2; c.fillRect(x - r, y - r, r * 2, r * 2); }
+      c.globalAlpha = 0.6; c.strokeStyle = css(-0.35); c.setLineDash([3, 3]); c.lineWidth = 1; for (const y of [S * 0.25, S * 0.75]) { c.beginPath(); c.moveTo(0, y); c.lineTo(S, y); c.stroke(); }      // stitch seams
+      c.setLineDash([]); c.globalAlpha = 1;
+    }, 128);
+  }
   // studio environment: soft bright top, a hot horizon band (where reflections "catch"), dark floor
   const envCube = () => cache.env || (cache.env = (() => {
     const face = (top) => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
@@ -5643,11 +5709,14 @@ BR.Models = (function () {
       return c; };
     const t = new THREE.CubeTexture([face(0), face(0), face(1), face(-1), face(0), face(0)]); t.needsUpdate = true; return t; })());
   BR.weaponEnv = envCube;
+  const realMat = o => { const m = new THREE.MeshPhongMaterial(o); m.userData.real = true; return m; };
   const MAT = () => cache.common || (cache.common = {
-    dark: new THREE.MeshPhongMaterial({ color: 0x272b31, specular: 0x3a4048, shininess: 28, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.05 }),
-    metal: new THREE.MeshPhongMaterial({ color: 0x5f6771, specular: 0xb8c0ca, shininess: 75, bumpMap: DETAIL.brushed(), bumpScale: 0.006, specularMap: DETAIL.brushed(), envMap: envCube(), reflectivity: 0.28 }),
-    grip: new THREE.MeshPhongMaterial({ color: 0x1b1d20, specular: 0x262a2e, shininess: 10, bumpMap: DETAIL.stipple(), bumpScale: 0.01 }),
-    blade: new THREE.MeshPhongMaterial({ color: 0xc8d0d8, specular: 0xffffff, shininess: 120, side: THREE.DoubleSide, envMap: envCube(), reflectivity: 0.4 }),
+    // (v1.17) worn albedo + real normal maps on the shared parts; UVs are box-mapped per model in weapon()
+    dark: realMat({ map: wearTex(0x272b31, 'metal'), normalMap: NRM.scratch(), normalScale: new THREE.Vector2(0.5, 0.5), specular: 0x4a5058, shininess: 30, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.06 }),
+    metal: realMat({ map: wearTex(0x5f6771, 'metal'), normalMap: NRM.brushed(), normalScale: new THREE.Vector2(0.35, 0.35), specular: 0xb8c0ca, shininess: 75, specularMap: DETAIL.brushed(), envMap: envCube(), reflectivity: 0.28 }),
+    grip: realMat({ map: wearTex(0x1b1d20, 'polymer'), normalMap: NRM.stipple(), normalScale: new THREE.Vector2(0.9, 0.9), specular: 0x2e3236, shininess: 12 }),
+    blade: realMat({ map: wearTex(0xc8d0d8, 'blade'), normalMap: NRM.brushed(), normalScale: new THREE.Vector2(0.18, 0.18), specular: 0xffffff, shininess: 120, side: THREE.DoubleSide, envMap: envCube(), reflectivity: 0.4 }),
+    knurl: realMat({ map: wearTex(0x3a3f46, 'metal'), normalMap: NRM.knurl(), normalScale: new THREE.Vector2(1, 1), specular: 0x9aa2ac, shininess: 50, envMap: envCube(), reflectivity: 0.12 }),
     lens: new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false }),
     lensDark: new THREE.MeshPhongMaterial({ color: 0x102030, specular: 0x88ccff, shininess: 120 }),
     reticle: new THREE.MeshBasicMaterial({ color: 0xff2236 }),
@@ -5659,7 +5728,7 @@ BR.Models = (function () {
       g.addColorStop(0, 'rgba(255,220,200,0.03)'); g.addColorStop(0.6, 'rgba(150,170,255,0.10)'); g.addColorStop(0.9, 'rgba(120,90,255,0.32)'); g.addColorStop(1, 'rgba(40,40,80,0.7)');
       c.clearRect(0, 0, s, s); c.fillStyle = g; c.fillRect(0, 0, s, s); }, 64) }),
     dotHalo2: new THREE.MeshBasicMaterial({ color: 0xff2236, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false }),
-    scopeTube: new THREE.MeshPhongMaterial({ color: 0x1d2025, specular: 0x555a60, shininess: 40, side: THREE.DoubleSide, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.12 }),
+    scopeTube: realMat({ map: wearTex(0x1d2025, 'metal'), normalMap: NRM.scratch(), normalScale: new THREE.Vector2(0.4, 0.4), specular: 0x555a60, shininess: 40, side: THREE.DoubleSide, specularMap: DETAIL.finish(), envMap: envCube(), reflectivity: 0.12 }),
     sightDot: new THREE.MeshBasicMaterial({ color: 0xff8a1f }),
     shell: new THREE.MeshLambertMaterial({ color: 0xc8202a }),
     brass: new THREE.MeshPhongMaterial({ color: 0xc89b3c, specular: 0xffe2a0, shininess: 80, envMap: envCube(), reflectivity: 0.35 }),
@@ -7791,8 +7860,12 @@ BR.Models = (function () {
     if (G.tex === 'neon') main = skinMaterial('neon');
     else if (G.tex && G.emissive) main = new THREE.MeshPhongMaterial({ map: TEX[G.tex](), emissive: 0xffffff, emissiveMap: TEX[G.tex](), emissiveIntensity: G.emissive, specular: 0x888888, shininess: G.gloss ? 110 : 40 });
     else if (G.tex) main = G.gloss || G.fx ? new THREE.MeshPhongMaterial({ map: TEX[G.tex](), specular: 0xffffff, shininess: 80 }) : new THREE.MeshLambertMaterial({ map: TEX[G.tex]() });
-    else main = G.gloss ? new THREE.MeshPhongMaterial({ color: G.color, specular: 0xffffff, shininess: 70 }) : new THREE.MeshLambertMaterial({ color: G.color });
-    return (cache.mat[key] = { main, pad: G.fx ? new THREE.MeshPhongMaterial({ color: G.pad, specular: 0xffffff, shininess: 120 }) : new THREE.MeshLambertMaterial({ color: G.pad }), glow: G.glow ? glowMat(G.glow) : null, fx: !!G.fx });
+    else main = G.gloss ? new THREE.MeshPhongMaterial({ color: G.color, specular: 0xffffff, shininess: 70 }) : new THREE.MeshPhongMaterial({ map: fabricTex(G.color), specular: 0x2a2a2a, shininess: 14 });
+    // v1.17: woven fabric grain on every glove, a grippy stipple on the pads
+    if (main.isMeshLambertMaterial) main = new THREE.MeshPhongMaterial({ map: main.map, color: main.color, specular: 0x2a2a2a, shininess: 14 });
+    if (!main.normalMap && !G.emissive && G.tex !== 'neon') { main.normalMap = NRM.weave(); main.normalScale = new THREE.Vector2(0.6, 0.6); if (main.map) { main.map = main.map.clone(); main.map.needsUpdate = true; main.map.repeat.set(2, 2); } }
+    const pad = G.fx ? new THREE.MeshPhongMaterial({ color: G.pad, specular: 0xffffff, shininess: 120 }) : new THREE.MeshPhongMaterial({ color: G.pad, specular: 0x333333, shininess: 18, normalMap: NRM.stipple(), normalScale: new THREE.Vector2(0.8, 0.8) });
+    return (cache.mat[key] = { main, pad, glow: G.glow ? glowMat(G.glow) : null, fx: !!G.fx });
   }
   // Merge a group's meshes into one mesh per material (fewer draw calls). Keeps uvs for textures.
   function mergeByMaterial(g) {
@@ -8019,6 +8092,26 @@ BR.Models = (function () {
     if (t >= 4 && F.map) anim(g, tt => { F.map.offset.set((tt * 0.035) % 1, (tt * 0.02) % 1); });
   }
 
+  // v1.17: every part with a detailed surface gets box-mapped UVs in real units (the same texel density
+  // on every gun, no stretched faces), and standard-finish models get faint machined edge highlights.
+  function boxUV(m, k) {
+    const geo = m.geometry = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+    if (!geo.attributes.normal) geo.computeVertexNormals();
+    m.updateMatrix(); const P = geo.attributes.position, N = geo.attributes.normal, uv = new Float32Array(P.count * 2);
+    const v = new THREE.Vector3(), n = new THREE.Vector3(), nm = new THREE.Matrix3().getNormalMatrix(m.matrix);
+    for (let i = 0; i < P.count; i++) {
+      v.fromBufferAttribute(P, i).applyMatrix4(m.matrix); n.fromBufferAttribute(N, i).applyMatrix3(nm);
+      const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+      if (ax >= ay && ax >= az) { uv[i * 2] = v.z * k; uv[i * 2 + 1] = v.y * k; } else if (ay >= az) { uv[i * 2] = v.z * k; uv[i * 2 + 1] = v.x * k + 0.31; } else { uv[i * 2] = v.x * k + 0.57; uv[i * 2 + 1] = v.y * k; }
+    }
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  }
+  function realPass(g, edges) {
+    if (g.userData.imported) return;
+    g.updateMatrixWorld(true);
+    g.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.real && !o.userData.noUV && o.geometry.attributes.position.count < 20000) boxUV(o, 6.5); });
+    if (edges) edgeLines(g, o => o.parent === g && o.material && o.material.userData && o.material.userData.real, 0xffffff, 0.1, false, 38);     // main body only: one extra draw call
+  }
   return {
     SKINS, TRACERS, CHARMS, BLUEPRINTS, GLOVES,
     // v1.16.3: parse every imported model now; resolves when their textures have decoded
@@ -8057,6 +8150,7 @@ BR.Models = (function () {
         (BUILD[id] || BUILD.pistol)(g, S, MAT(), opts);
         if (bp && bp.mod) bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT() });
         if (bp && !opts.camo) bpUpgrade(g, id, bpId, bp, S, opts);          // v1.16 finishes + edge lines
+        realPass(g, !bp && !opts.camo);                                        // v1.17 surface detail
       } finally { ROUND = false; }
       if (charmId && charmId !== 'none') {
         const c = charm(charmId);
