@@ -131,6 +131,7 @@ BR.Weapons = {
         }
       }
       if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
+      if (game.mode && game.mode.netShot && p < 3) game.mode.netShot(actor, muzzle, end, w.id, p === 0);      // online: show this shot on the other screens
     }
     hits.forEach((h, victim) => game.applyDamage(victim, actor, h.dmg, h.head, h, w.id));
     if (this._thits && this._thits.size) { if (game.mode && game.mode.hitTarget) this._thits.forEach((h, t) => game.mode.hitTarget(t, h.dmg, h.head, h, w)); this._thits.clear(); }

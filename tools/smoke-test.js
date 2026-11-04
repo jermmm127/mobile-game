@@ -927,7 +927,7 @@ const server = http.createServer((req, res) => {
       P.data.equip.melee = 'bayonet'; g.refreshCosmetics();
       // Discover browser + lobby PLAY
       g.toMenu(); document.getElementById('mode-cur').click();
-      v.discover = !document.getElementById('discover').classList.contains('hidden') && document.querySelectorAll('#dc-rows .dc-tile').length === 7;
+      v.discover = !document.getElementById('discover').classList.contains('hidden') && document.querySelectorAll('#dc-rows .dc-tile').length === 12;
       document.querySelector('#discover [data-m="aim"]').click();
       v.selected = g.settings.mode === 'aim' && /AIM TRAINER/.test(document.getElementById('mc-name').textContent);
       document.getElementById('btn-go').click(); v.goAim = g.mode instanceof BR.AimTrainer;
@@ -952,6 +952,31 @@ const server = http.createServer((req, res) => {
       v.reef = W.reef && W.size === 380 && W.half === 190 && W.pois.length === 6 && W.pois[0].name === 'The Stockade' && W.chestSpots.length >= 15 && g.loot.items.length > 100 && g.zone.phases[0].radius <= 160;
       g.toMenu();
       out.v1111 = v; }
+    // v1.12: arena formats offline (duels 1v1/2v2, shotgun, sniper, TDM, FFA), shield cell, Overdrive humanoids
+    { const v = {}, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
+      const play = (preset, size) => { BR.Lobby.preset = preset; BR.Lobby.size = size; BR.Lobby.play(); return g.mode; };
+      let M = play('duel', 2); v.duel2 = g.actors.length === 4 && g.actors.filter(a => a.team === g.player.team).length === 2 && M.arena;
+      run(120); v.duelFight = M.phase === 'fight';
+      // a kill on the enemy team scores; no friendly fire
+      const mate = g.actors.find(a => !a.isPlayer && a.team === g.player.team), foe = g.actors.find(a => a.team !== g.player.team);
+      const hp0 = mate.health; g.applyDamage(mate, g.player, 50, false, mate.pos, 'rifle'); v.noFF = mate.health === hp0;
+      g.applyDamage(foe, g.player, 999, true, foe.pos, 'rifle'); v.duelKill = !foe.alive && M.stats[g.player.rosterId].kills === 1;
+      M = play('shotgun', 1); v.shotgun = g.player.slots[0].id === 'shotgun' && !g.player.slots[1] && g.actors.every(a => !a.slots[1] && a.slots[0].id === 'shotgun');
+      M = play('sniper', 2); v.sniper = g.actors.every(a => a.slots[0].id === 'sniper' && a.slots[1].id === 'hunter');
+      M = play('tdm', 4); v.tdm = g.actors.length === 8; run(120);
+      const f2 = g.actors.find(a => a.team !== g.player.team && a.alive); g.applyDamage(f2, g.player, 999, true, f2.pos, 'rifle'); v.tdmScore = M.score[g.player.team] === 1;
+      run(30 * 4); v.respawn = f2.alive;
+      M.score[g.player.team] = 30; run(3); v.tdmEnd = M.ended; run(90); v.tdmResult = g.state === 'end' && /TEAM DEATHMATCH/.test(document.getElementById('end-eyebrow').textContent);
+      g.toMenu(); M = play('ffa', 6); v.ffa = g.actors.length === 6 && new Set(g.actors.map(a => a.team)).size === 6; g.toMenu();
+      v.discover = document.querySelectorAll('#discover [data-m="tdm"], #discover [data-m="ffa"], #discover [data-m="shotgun"], #discover [data-m="sniper"], #discover [data-m="duels"]').length >= 0 && typeof BR.Lobby.open === 'function';
+      // shield cell model
+      document.getElementById('btn-practice').click(); const it = g.loot.add({ kind: 'shield', amount: 50 }, 0, 0, 0); let n = 0; it.mesh.traverse(o => { if (o.isMesh) n++; }); v.shieldModel = n > 30 && !!it.mesh.userData.cell;
+      // overdrive humanoids with head hitboxes
+      g.startMode(BR.Overdrive, { overdrive: true }); const O = g.mode, h = O.spawnEnemy('gunner', { r: 10 }); run(2);
+      const e = g.player.eye(new THREE.Vector3()), d = new THREE.Vector3(h.x - e.x, 1.8 * h.k - e.y, h.z - e.z).normalize(), r = O.rayTargets(e, d, 200);
+      v.humanoid = !!h.limbs && r && r.target === h && r.head === true && ['husk', 'gunner', 'warden'].every(k => BR.OVERDRIVE.ENEMY[k].humanoid);
+      g.toMenu();
+      out.v112 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1110,6 +1135,8 @@ const server = http.createServer((req, res) => {
     ['v1.11 Discover mode browser: tiles, select, lobby PLAY launches the mode', v17.v111.discover && v17.v111.selected && v17.v111.goAim],
     ['v1.11 arms: fabric sleeves attached at the wrist; bayonet full flip; karambit inspect shows the blade then spins', v17.v111.sleeve && v17.v111.bayFlip && v17.v111.karShow && v17.v111.karSpin],
     ['v1.11.1 straight support wrist, aim trainer infinite ammo, no white boxes in freefall, Ironreef map for Resurgence', v17.v1111.wrist && v17.v1111.sparks && v17.v1111.infAmmo && v17.v1111.reef],
+    ['v1.12 arena modes: 2v2 duels, shotgun + sniper duels, TDM (score, respawns, end), FFA; no friendly fire', v17.v112.duel2 && v17.v112.duelFight && v17.v112.noFF && v17.v112.duelKill && v17.v112.shotgun && v17.v112.sniper && v17.v112.tdm && v17.v112.tdmScore && v17.v112.respawn && v17.v112.tdmEnd && v17.v112.tdmResult && v17.v112.ffa],
+    ['v1.12 shield cell model + Overdrive humanoids (husk, gunner, warden) with head hitboxes', v17.v112.shieldModel && v17.v112.humanoid],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
     ['butterfly (reference clip): flat idle, upright beat mid-draw, spin-open, upright inspect', v17.bfly2.upMid < 0.35 && v17.bfly2.flatEnd < 0.2 && v17.bfly2.rollSeen > 3 && v17.bfly2.upInsp < 0.5],
     ['victory: orbit cam, celebrating character, overlay, HUD hidden, then results', v17.victory.state === 'won' && v17.victory.active && v17.victory.overlay && v17.victory.hudHidden && v17.victory.body && v17.victory.camOut && v17.victory.armsUp && v17.victory.vmHidden && v17.victory.ended],

@@ -5,6 +5,16 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.12.0', date: '2026-11-04', title: 'Online lobbies, 2v2, TDM + FFA', notes: [
+    'Online multiplayer (beta): host a lobby and share the 6-letter code; friends join from their own phone or computer. Lobbies are peer-to-peer (the host\'s browser runs the match), so no game server is needed. Empty slots fill with AI and the host can move players between teams. Online works in every arena mode below.',
+    'New: DUELS 1v1 / 2v2, round-based on The Yard with your duel loadout. Play 2v2 with an AI teammate, or with a friend online.',
+    'New: SHOTGUN DUELS (Breacher only) and SNIPER DUELS (Sniper + Hunting Rifle only), each in 1v1 or 2v2.',
+    'New casual modes: TEAM DEATHMATCH (4v4, respawns, first to 30 kills) and FREE FOR ALL (6 players, first to 20). You respawn with your loadout.',
+    'Teammates get blue name tags, no red highlight and no friendly fire. Bots now play teams properly and push in to find you on small maps.',
+    'Discover has new COMPETITIVE and CASUAL rows. Each arena mode opens a setup screen: format, bot skill, PLAY WITH AI, HOST ONLINE LOBBY or JOIN with a code.',
+    'Overdrive: three new humanoid enemies. Husks (fast runners with grasping arms), Gunners (keep their distance and shoot energy bolts) and Wardens (armoured giants with a tower shield). All have head hitboxes for headshots.',
+    'New model for dropped shields: a hexagonal energy cell with a glowing core, metal caps, a shield chevron and a floating halo ring.',
+  ] },
   { v: '1.11.1', date: '2026-11-04', title: 'Ironreef + fixes', notes: [
     'New map for Resurgence: IRONREEF, a small prison island. The walled Stockade in the middle (cell blocks, mess hall, a warden tower and four guard towers), Saltworks chemical plant with tank-top loot and catwalks, Pier Nine docks and container yard, the Beacon Point lighthouse with a spiral stair, Harbor Row and Signal Hill. Circles are resized for the smaller island.',
     'Fixed: the support hand\'s wrist was bent at an odd angle on guns. The hand now lines up straight with the forearm and wraps under the handguard.',

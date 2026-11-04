@@ -1425,3 +1425,32 @@ body.shopping #play > :not(#view) { visibility: hidden !important; }
 .dock { overflow-x: auto; scrollbar-width: none; padding-top: 8px; margin-top: -8px; } .dock::-webkit-scrollbar { display: none; }
 .dk { flex: none; }
 @media (max-width: 900px) and (orientation: landscape) { .dock { gap: 6px; } .dk { padding: 8px 10px; gap: 6px; font-size: 11px; } .dk.grind span { display: none; } }
+
+/* ---- v1.12 arena modes: score bar, teammate tags, setup + online lobby */
+#ar-hud { position: absolute; inset: 0; pointer-events: none; display: none; font-family: 'Outfit', sans-serif; color: #fff; }
+body.arenamode #ar-hud { display: block; } #ar-hud.hidden { display: none !important; }
+body.arenamode #topbar { display: none !important; }
+.ar-score { position: absolute; left: 50%; top: calc(8px + var(--st)); transform: translateX(-50%); display: grid; grid-template-columns: auto auto auto; grid-template-areas: 't t t' 'a m b' 'g g g'; align-items: center; justify-items: center; column-gap: 12px; row-gap: 1px; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.ar-t { grid-area: t; font-size: 10px; letter-spacing: .26em; opacity: .75; }
+.ar-tg { grid-area: g; font-size: 9px; letter-spacing: .2em; opacity: .6; }
+.ar-score i { grid-area: m; font-style: normal; font-size: 18px; font-weight: 800; padding: 1px 10px; border-radius: 8px; background: rgba(8, 10, 16, .55); }
+.ar-b, .ar-me, .ar-top { display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .16em; font-weight: 700; color: var(--c, #fff); }
+.ar-score .ar-b:first-of-type, .ar-me { grid-area: a; } .ar-score .ar-b:last-of-type, .ar-top { grid-area: b; }
+.ar-b b, .ar-me b, .ar-top b { font-size: 26px; letter-spacing: 0; color: #fff; min-width: 34px; text-align: center; padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, var(--c, #8a6bff) 55%, rgba(0,0,0,.4)); }
+.ar-me { --c: #c8a8ff; } .ar-top { --c: #ffd24a; }
+#ar-marks { position: absolute; inset: 0; }
+.ar-mk { position: absolute; left: 0; top: 0; transform-origin: 0 0; margin: -18px 0 0 0; translate: -50% 0; font: 700 11px 'Outfit', sans-serif; color: #9fc2ff; text-shadow: 0 1px 3px #000; white-space: nowrap; }
+.ar-mk::after { content: ''; display: block; width: 8px; height: 8px; margin: 2px auto 0; background: #4f8fff; transform: rotate(45deg); box-shadow: 0 0 6px #4f8fff; }
+.arpanel, .lbpanel { position: relative; }
+.am-actions { display: flex; gap: 8px; } .am-actions .mbtn { flex: 1; }
+.am-join { display: flex; gap: 8px; } .am-join input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.18); background: rgba(0,0,0,.3); color: #fff; font: 800 16px 'Outfit', sans-serif; letter-spacing: .3em; text-transform: uppercase; }
+.am-msg { min-height: 16px; font-size: 12px; color: #ffd24a; text-align: center; }
+.lb-code { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 10px; border-radius: 14px; background: rgba(160, 107, 255, .12); border: 1px solid rgba(160, 107, 255, .4); }
+.lb-code span { font-size: 10px; letter-spacing: .22em; opacity: .7; } .lb-code b { font: 900 32px 'Outfit', sans-serif; letter-spacing: .28em; color: #fff; text-shadow: 0 0 16px rgba(192, 132, 252, .8); }
+.lb-teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.lb-team { display: flex; flex-direction: column; gap: 5px; padding: 8px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--c) 50%, transparent); background: color-mix(in srgb, var(--c) 10%, transparent); }
+.lb-team > b { font-size: 11px; letter-spacing: .24em; color: var(--c); }
+.lb-p { padding: 8px 10px; border-radius: 9px; text-align: left; font: 700 13px 'Outfit', sans-serif; color: #fff; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); }
+.lb-p i { font-style: normal; font-size: 9px; letter-spacing: .14em; color: #ffd24a; margin-left: 4px; } .lb-p.me { border-color: #ffd24a; } .lb-p.ai { opacity: .45; font-style: italic; } button.lb-p:not([disabled]) { cursor: pointer; }
+.am-join input { flex: 1 1 auto; width: 100%; height: 44px; box-sizing: border-box; }
+.am-join .mbtn { flex: 0 0 auto; width: auto; min-width: 110px; }

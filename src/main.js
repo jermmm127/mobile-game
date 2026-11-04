@@ -362,6 +362,7 @@
     if (game.result && game.result.duel && game.lastDuel) { BR.Audio.init(); game.startDuel(game.lastDuel); }   // rematch, same settings
     else if (game.result && game.result.zombies) { BR.Audio.init(); game.startZombies(); }
     else if (game.result && game.result.overdrive) overdrive();
+    else if (game.result && game.result.arena) { game.toMenu(); if (!game.result.online && BR.Lobby) { BR.Lobby.preset = game.result.preset; BR.Lobby.play(); } else BR.Lobby && BR.Lobby.open(game.result.preset); }
     else play(game.resurgence ? { resurgence: true } : null);
   });
 
@@ -510,18 +511,28 @@
     zombies: '<path d="M32 4C18 4 8 14 8 27c0 8 4 14 9 17v8c0 2 2 4 4 4h3v-6h4v6h8v-6h4v6h3c2 0 4-2 4-4v-8c5-3 9-9 9-17C56 14 46 4 32 4zm-11 32a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm22 0a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-11 9-4-6h8z" transform="scale(.375)"/>',
     overdrive: '<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>',
     practice: '<path d="M4 20h16M6 20V9l6-5 6 5v11"/><path d="M10 20v-6h4v6" fill="none" stroke-width="2"/>',
+    duels: '<path d="M3 4l8 8M21 4l-8 8M7 14l-3 3 3 3 3-3zM17 14l3 3-3 3-3-3z" fill="none" stroke-width="2.2"/><circle cx="6" cy="6" r="1.6"/><circle cx="18" cy="6" r="1.6"/>',
+    shotgun: '<path d="M2 11h14l2-2h4v4h-4l-1 1H8l-2 4H3l1-4H2z"/><circle cx="20" cy="6" r="1.4"/><circle cx="17" cy="5" r="1.1"/><circle cx="22" cy="4" r="1"/>',
+    sniper: '<circle cx="12" cy="12" r="9" fill="none" stroke-width="1.8"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6" stroke-width="1.8"/><circle cx="12" cy="12" r="1.4"/>',
+    tdm: '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20c0-4 3-6 6-6s6 2 6 6zM10 20c0-4 3-6 6-6s6 2 6 6z"/>',
+    ffa: '<path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/>',
     aim: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke-width="2"/>',
   };
   const MODES = {
     br:         { name: 'BATTLE ROYALE', sub: 'Solo · 30 players · one life', cat: 'BATTLE ROYALE', tags: ['RANKED', '30 PLAYERS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play() },
     resurgence: { name: 'RESURGENCE', sub: 'Redeploy until the 4th circle', cat: 'BATTLE ROYALE', tags: ['NEW', '24 PLAYERS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true }) },
-    duel:       { name: '1V1 DUEL', sub: 'The Yard · first to 5', cat: 'COMPETITIVE', tags: ['1V1'], art: 'linear-gradient(120deg,#2f6fd8 0 48%,#d8443a 52% 100%)', glow: '#8ab4ff', go: () => { BR.Audio.init(); BR.openDuelMenu('setup'); } },
+    duel:       { name: '1V1 DUEL', sub: 'Classic · pick guns between rounds', cat: 'COMPETITIVE', tags: ['1V1', 'VS AI'], art: 'linear-gradient(120deg,#2f6fd8 0 48%,#d8443a 52% 100%)', glow: '#8ab4ff', go: () => { BR.Audio.init(); BR.openDuelMenu('setup'); } },
+    duels:      { name: 'DUELS 1V1 · 2V2', sub: 'AI teammate or friends online', cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE', '2V2'], art: 'linear-gradient(120deg,#1f4fb8 0 46%,#ffd24a 48% 52%,#b8302a 54% 100%)', glow: '#ffd24a', go: () => BR.Lobby.open('duel') },
+    shotgun:    { name: 'SHOTGUN DUELS', sub: 'Breachers only · 1v1 / 2v2', cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff9a1f,#6a2a10 55%,#1a0a06)', glow: '#ff9a1f', go: () => BR.Lobby.open('shotgun') },
+    sniper:     { name: 'SNIPER DUELS', sub: 'Snipers + hunting rifles · 1v1 / 2v2', cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#9fe8ff,#1a4a6a 55%,#06121c)', glow: '#9fe8ff', go: () => BR.Lobby.open('sniper') },
+    tdm:        { name: 'TEAM DEATHMATCH', sub: '4v4 · first to 30 kills', cat: 'CASUAL', tags: ['NEW', 'ONLINE', '4V4'], art: 'linear-gradient(160deg,#4f8fff,#1a2f6a 50%,#6a1a1a 51%,#ff5a4a)', glow: '#c8a8ff', go: () => BR.Lobby.open('tdm') },
+    ffa:        { name: 'FREE FOR ALL', sub: '6 players · first to 20 kills', cat: 'CASUAL', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ffe14d,#8a3aff 55%,#12061c)', glow: '#ffe14d', go: () => BR.Lobby.open('ffa') },
     zombies:    { name: 'ZOMBIES', sub: 'Hollow Graves · endless rounds', cat: 'SURVIVAL', tags: ['STORY', 'BOSSES'], art: 'radial-gradient(120% 120% at 80% 0%,#ff7a1a,#5a141e 55%,#140818)', glow: '#ff8a2a', go: () => { BR.Audio.init(); game.startZombies(); } },
     overdrive:  { name: 'OVERDRIVE', sub: 'Roguelike swarm survival', cat: 'SURVIVAL', tags: ['NEW', 'ROGUELIKE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff5ec4,#46145a 55%,#12061c)', glow: '#ff5ec4', go: () => overdrive() },
     practice:   { name: 'PRACTICE', sub: 'Spawn anything · no bots', cat: 'TRAINING', tags: ['SOLO'], art: 'linear-gradient(160deg,#4fdc8a,#14583a 55%,#071a12)', glow: '#4fdc8a', go: () => practice() },
     aim:        { name: 'AIM TRAINER', sub: 'Gridshot · Flick · Tracking · Strafe', cat: 'TRAINING', tags: ['NEW', 'SCORES'], art: 'radial-gradient(120% 120% at 80% 0%,#45e0ff,#0b3a56 55%,#050d18)', glow: '#45e0ff', go: () => aimTrainer() },
   };
-  const CATS = ['BATTLE ROYALE', 'SURVIVAL', 'COMPETITIVE', 'TRAINING'];
+  const CATS = ['BATTLE ROYALE', 'COMPETITIVE', 'CASUAL', 'SURVIVAL', 'TRAINING'];
   if (!MODES[settings.mode]) settings.mode = 'br';
   const art = (id, big) => { const M = MODES[id]; return `<span class="mart${big ? ' big' : ''}" style="background:${M.art};--g:${M.glow}"><i class="mart-grid"></i><svg viewBox="0 0 24 24">${ICO[id]}</svg></span>`; };
   const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = M.sub; $('mode-cur').style.setProperty('--g', M.glow); };

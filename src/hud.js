@@ -563,6 +563,29 @@ BR.HUD = class HUD {
   </div>
 </div>
 
+<div id="arenamenu" class="overlay hidden">
+  <div class="panel metal wide arpanel">
+    <button id="am-x" class="xbtn" aria-label="Close">✕</button>
+    <div class="ptitle" id="am-title">DUELS</div>
+    <p class="tip" id="am-desc"></p>
+    <div class="row" id="am-sizerow"><label>FORMAT</label><div class="seg" id="am-size"></div></div>
+    <div class="row"><label>BOT SKILL</label><div class="seg" id="am-diff"><button data-v="easy">EASY</button><button data-v="normal">NORMAL</button><button data-v="hard">HARD</button></div></div>
+    <div class="am-actions"><button class="mbtn hot" id="am-ai">PLAY WITH AI</button><button class="mbtn" id="am-host">HOST ONLINE LOBBY</button></div>
+    <div class="am-join"><input id="am-code" maxlength="6" autocomplete="off" spellcheck="false" placeholder="FRIEND'S LOBBY CODE"><button class="mbtn" id="am-join">JOIN</button></div>
+    <div class="am-msg" id="am-msg"></div>
+  </div>
+</div>
+
+<div id="lobby" class="overlay hidden">
+  <div class="panel metal wide lbpanel">
+    <div class="ptitle" id="lb-title">ONLINE LOBBY</div>
+    <div class="lb-code"><span>LOBBY CODE</span><b id="lb-code">------</b><button id="lb-copy" class="mbtn sm">COPY</button></div>
+    <p class="tip" id="lb-info">Send the code to your friends. Empty slots are filled with AI.</p>
+    <div class="lb-teams" id="lb-teams"></div>
+    <div class="am-actions"><button class="mbtn hot" id="lb-start">START MATCH</button><button class="mbtn" id="lb-leave">LEAVE</button></div>
+  </div>
+</div>
+
 <div id="grind" class="overlay hidden">
   <div class="panel metal wide grindpanel">
     <button id="grind-x" class="xbtn" aria-label="Close challenges">✕</button>
@@ -1176,7 +1199,12 @@ BR.HUD = class HUD {
 
   showEnd(r) {
     const $ = this.$;
-    if (r.overdrive) {
+    if (r.arena) {
+      $('end-eyebrow').textContent = r.title + (r.online ? ' · ONLINE' : '');
+      $('end-place').textContent = r.draw ? 'DRAW' : r.ffa ? '#' + r.rank : r.win ? 'VICTORY' : 'DEFEAT';
+      $('btn-again').textContent = 'PLAY AGAIN';
+      $('end-sub').textContent = `${r.by} · ${r.kills} kills · ${r.deaths} deaths`;
+    } else if (r.overdrive) {
       $('end-eyebrow').textContent = r.win ? 'OVERDRIVE · VICTORY' : 'OVERDRIVE · OVERRUN';
       $('end-place').textContent = fmtTime(r.time); $('btn-again').textContent = 'PLAY AGAIN';
       $('end-sub').textContent = `${r.by} · level ${r.level} · ${r.kills} kills · ${r.bosses || 0} bosses`;

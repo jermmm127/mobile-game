@@ -49,7 +49,7 @@ BR.BotBrain = class BotBrain {
   onDamaged(attacker) {
     // Hurt bots pop a stim (same cooldown + rules as the player); dummies don't
     if (!this.passive && this.a.health < 65 && Math.random() < 0.6) this.a.tryStim();
-    if (attacker && attacker !== this.a && attacker.alive && (!this.target || !this.canSee(this.target))) {
+    if (attacker && attacker !== this.a && attacker.alive && !(this.a.team !== undefined && attacker.team === this.a.team) && (!this.target || !this.canSee(this.target))) {
       this.target = attacker;
       this.targetSeenT = this.g.time;
       this.engageT = Math.min(this.engageT, 0.1);
@@ -119,6 +119,22 @@ BR.BotBrain = class BotBrain {
       this.target = P && P.alive ? P : null;
       if (this.target && this.canSee(this.target)) this.targetSeenT = g.time;
       this.state = this.target ? 'fight' : 'roam';
+      this.pickWeapon();
+      return;
+    }
+    // v1.12 arena modes (duels, TDM, FFA): hunt the closest enemy, prefer one in sight; never a teammate
+    if (g.mode && g.mode.arena) {
+      let vis = null, vd = 1e9, near = null, nd = 1e9;
+      for (const o of g.actors) {
+        if (o === a || !o.alive || (a.team !== undefined && o.team === a.team)) continue;
+        const dd = a.pos.distanceTo(o.pos);
+        if (dd < nd) { nd = dd; near = o; }
+        if (dd < vd && this.canSee(o)) { vd = dd; vis = o; }
+      }
+      const t = vis || near;
+      if (t !== this.target) this.engageT = 0;
+      this.target = t; if (t && vis) this.targetSeenT = g.time;
+      this.state = t ? 'fight' : 'roam';
       this.pickWeapon();
       return;
     }
@@ -206,9 +222,11 @@ BR.BotBrain = class BotBrain {
     const aimErr = this.lookToward(ax, ay, az, dt);
 
     // Movement: hold preferred range + strafe
-    const pd = w ? PREF_DIST[w.id] : 12;
+    const arena = g.mode && g.mode.arena;
+    const pd = (w ? PREF_DIST[w.id] : 12) * (arena ? 0.45 : 1);                 // the arena is small: fight closer
     const dx = (tx - a.pos.x) / (dist || 1), dz = (tz - a.pos.z) / (dist || 1);
     let radial = dist > pd * 1.25 ? 1 : dist < pd * 0.7 ? -1 : 0;
+    if (arena && g.time - this.targetSeenT > 0.6) radial = 1;                     // lost sight: push in to find them
     this.strafeT -= dt;
     if (this.strafeT <= 0) { this.strafeT = 0.5 + Math.random() * 1.0; this.strafe = Math.random() < 0.5 ? 1 : -1; }
     const mx = dx * radial + -dz * this.strafe * 0.9, mz = dz * radial + dx * this.strafe * 0.9;

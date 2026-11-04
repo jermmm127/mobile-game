@@ -178,6 +178,7 @@ BR.Actor = class Actor {
   }
 
   update(dt) {
+    if (this.netProxy) { this.netProxy.apply(this, dt); return; }     // v1.12: a remote player / remote bot (net.js)
     if (!this.alive) return;
     const w = this.weapon;
     this.input.speedMult = w && w.def.speedMult ? w.def.speedMult : 1;

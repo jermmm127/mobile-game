@@ -109,7 +109,8 @@ BR.Game = class Game {
   // tint one actor (bots, zombies as they spawn, bosses) by the Enemy highlight setting
   highlightActor(a) {
     if (!a || a.isPlayer || !a.mesh) return;
-    const mode = this.settings.highlight || 'off', k = (mode === 'bright' ? 0.5 : mode === 'subtle' ? 0.22 : 0) * (a.zombie ? 0.32 : 1);   // night map: zombies need far less tint
+    const mate = this.player && a.team !== undefined && a.team === this.player.team;      // teammates: no red tint
+    const mode = this.settings.highlight || 'off', k = mate ? 0 : (mode === 'bright' ? 0.5 : mode === 'subtle' ? 0.22 : 0) * (a.zombie ? 0.32 : 1);   // night map: zombies need far less tint
     const col = this._hlc || (this._hlc = new THREE.Color(0xff3b30));
     a.mesh.traverse(o => {
       if (!o.isMesh || !o.material || !o.material.emissive) return;
@@ -623,7 +624,7 @@ BR.Game = class Game {
   // Everything that happens in the world, with or without a player.
   simulate(dt) {
     this.time += dt;
-    const frozen = this.duel && this.duel.phase === 'countdown';
+    const frozen = (this.duel && this.duel.phase === 'countdown') || !!(this.mode && this.mode.frozen);
     for (const a of this.actors) if (a.brain && a.alive && !frozen) a.brain.update(dt);
     for (const a of this.actors) a.update(dt);
     for (const a of this.actors) {
@@ -996,6 +997,8 @@ BR.Game = class Game {
 
   applyDamage(victim, attacker, dmg, head, at, weaponId) {
     if (!victim.alive) return;
+    if (attacker && victim !== attacker && victim.team !== undefined && victim.team === attacker.team) return;     // no friendly fire
+    if (this.mode && this.mode.netDamage && this.mode.netDamage(victim, attacker, dmg, head, at, weaponId)) return; // online: the victim's owner applies it
     if (victim.isPlayer && attacker && !attacker.isPlayer) dmg *= this.diff.playerDamageMult;
     else if (!victim.isPlayer && attacker && !attacker.isPlayer) dmg *= BR.CONFIG.match.botVsBotDamage;
     if (this.zm && attacker && attacker.isPlayer) dmg *= this.zm.damageMult(victim);       // Insta-Kill
@@ -1040,11 +1043,11 @@ BR.Game = class Game {
       const wd = BR.CONFIG.weapons[weaponId];
       BR.Profile.addGrind('kill', 1, { w: weaponId, head: !!head, melee: !!(wd && wd.melee), zombie: !!victim.zombie });
     }
-    if (!this.zm) this.loot.dropAll(victim);
+    if (!this.zm && !(this.mode && this.mode.noDrops)) this.loot.dropAll(victim);
     victim.dieVisual();
     if (this.demo) return;
     if (this.zm) { this.zm.onKill(victim, killer, weaponId, head); return; }
-    if (this.mode && this.mode.onKill) { this.mode.onKill(victim, killer, weaponId, head); return; }
+    if (this.mode && this.mode.onKill) { this.mode.onKill(victim, killer, weaponId, head); if (!this.mode.feed) return; }
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const nm = a => `<b class="${a.isPlayer ? 'me' : ''}">${esc(a.name)}</b>`;
     const how = weaponId === 'storm' ? 'storm' : weaponId === 'shockwave' ? 'Shockwave' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');

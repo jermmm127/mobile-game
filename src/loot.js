@@ -139,9 +139,30 @@ BR.Loot = class Loot {
       g.add(new THREE.Mesh(G.heal, this.mat('heal', 0xf4f4f0)));
       g.add(new THREE.Mesh(G.cross, this.mat('healx', 0x3ccf6e)));
     } else {
-      g.add(new THREE.Mesh(G.shield, this.mat('shield', 0x4aa8ff)));
+      const sc = this.shieldCell().clone(); g.add(sc); g.userData.cell = sc;
+      const ring = new THREE.Mesh(G.ring, this.mat('ringShield', 0x4aa8ff, true)); ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4; ring.scale.setScalar(1.1); g.add(ring); g.userData.ring = ring;
     }
     return g;
+  }
+
+  // v1.12 shield cell: a hexagonal energy battery. Glass shell over a glowing blue core with a
+  // floating chevron, gunmetal end caps with grip ribs, side clamps and a halo ring.
+  shieldCell() {
+    if (this._cell) return this._cell;
+    const g = new THREE.Group(), metal = new THREE.MeshPhongMaterial({ color: 0x2c3138, specular: 0x9aa6b4, shininess: 90 }), trim = new THREE.MeshPhongMaterial({ color: 0x6fc8ff, emissive: 0x2a7ad8, shininess: 60 });
+    const core = new THREE.MeshBasicMaterial({ color: 0x6fd0ff }), glass = new THREE.MeshPhongMaterial({ color: 0x9fe0ff, transparent: true, opacity: 0.32, shininess: 160, specular: 0xffffff, depthWrite: false });
+    const glow = new THREE.MeshBasicMaterial({ color: 0x4aa8ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false });
+    const add = (geo, m, y, ry) => { const o = new THREE.Mesh(geo, m); o.position.y = y || 0; if (ry) o.rotation.y = ry; g.add(o); return o; };
+    add(new THREE.CylinderGeometry(0.075, 0.075, 0.34, 6), core);                       // the energy core
+    add(new THREE.CylinderGeometry(0.15, 0.15, 0.36, 6), glass);                         // hex glass shell
+    for (const y of [-0.2, 0.2]) { add(new THREE.CylinderGeometry(0.175, 0.175, 0.07, 6), metal, y); add(new THREE.CylinderGeometry(0.182, 0.182, 0.018, 6), trim, y + (y > 0 ? -0.04 : 0.04)); }
+    add(new THREE.CylinderGeometry(0.09, 0.12, 0.05, 6), metal, 0.26); add(new THREE.CylinderGeometry(0.04, 0.04, 0.035, 12), trim, 0.3);   // top terminal
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6, c = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.36, 0.035), metal); c.position.set(Math.cos(a) * 0.155, 0, Math.sin(a) * 0.155); c.rotation.y = -a; g.add(c); }   // frame edges
+    for (const y of [-0.21, -0.19, 0.19, 0.21]) for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, r = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.008, 0.012), trim); r.position.set(Math.cos(a) * 0.178, y, Math.sin(a) * 0.178); r.rotation.y = -a; g.add(r); }
+    const chev = new THREE.Group(); for (const s of [-1, 1]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.02, 0.012), core); b.position.set(s * 0.028, 0.02, 0); b.rotation.z = s * 0.7; chev.add(b); } chev.position.z = 0.16; g.add(chev);   // shield chevron on the glass
+    const halo = add(new THREE.TorusGeometry(0.24, 0.012, 6, 32), glow); halo.rotation.x = Math.PI / 2; halo.userData.halo = true;
+    g.scale.setScalar(1.75);
+    return (this._cell = g);
   }
 
   remove(item) {
@@ -173,6 +194,7 @@ BR.Loot = class Loot {
       it.mesh.position.y = it.kind === 'weapon' ? it.pos.y + 0.3 + Math.abs(Math.sin(t * 2.6 + it.phase)) * 0.2 : it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;
       if (it.mesh.userData.ring) it.mesh.userData.ring.rotation.z = -it.mesh.rotation.y;
       if (it.mesh.userData.nade) BR.Models.animate(it.mesh.userData.nade, t);
+      if (it.mesh.userData.cell) { const c = it.mesh.userData.cell, h = c.children[c.children.length - 1]; h.position.y = Math.sin(t * 2.2 + it.phase) * 0.12; h.scale.setScalar(1 + 0.08 * Math.sin(t * 4 + it.phase)); }
     }
   }
 

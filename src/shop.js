@@ -328,6 +328,14 @@ BR.Profile = {
   // Coins for a finished match. Returns the breakdown so the end screen can show it.
   award(r) {
     const C = BR.CONFIG.coins;
+    if (r.arena) {          // arena modes (duels, TDM, FFA): coins for kills + the win, no Ranked RP
+      const parts = [['Kills ×' + r.kills, r.kills * 15]];
+      if (r.win) parts.push([r.ffa ? 'Won the lobby' : 'Victory', r.online ? 200 : 120]);
+      else if (r.ffa && r.rank <= 3) parts.push(['Top 3', 50]);
+      const total = parts.reduce((s, p) => s + p[1], 0);
+      this.data.coins += total; this.data.stats.kills += r.kills; this.save();
+      return { total, parts, unlocked: [] };
+    }
     if (r.overdrive) {      // Overdrive: coins for time survived, kills, bosses and the win (no Ranked RP)
       const parts = [['Survived ' + BR.fmtTime(r.time), Math.floor(r.time / 10) * 5], ['Kills ×' + r.kills, Math.floor(r.kills * 0.5)]];
       if (r.bosses) parts.push(['Bosses ×' + r.bosses, r.bosses * 150]);

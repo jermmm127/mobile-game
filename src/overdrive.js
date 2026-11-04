@@ -20,6 +20,10 @@
     wisp:    { hp: 48, speed: 3.6, dmg: 9, r: 0.55, xp: 3, col: 0x45e0ff, eye: 0xffffff, score: 30, ranged: true, fly: 1.6 },
     charger: { hp: 80, speed: 3.4, dmg: 14, r: 0.7, xp: 3, col: 0xff7a1a, eye: 0xffffff, score: 30, dash: true },
     boss:    { hp: 2600, speed: 2.4, dmg: 26, r: 2.2, xp: 60, col: 0xff2a6a, eye: 0xffffff, score: 1000, boss: true },
+    // v1.12 humanoids: walk on two legs, swing their arms, have a head hitbox (headshots)
+    husk:    { hp: 40, speed: 4.7, dmg: 8, r: 0.5, xp: 2, col: 0x6f7a5c, eye: 0xff3a2a, score: 15, humanoid: true, h: 1.8 },
+    gunner:  { hp: 64, speed: 3.2, dmg: 9, r: 0.5, xp: 3, col: 0x34405c, eye: 0x45e0ff, score: 30, humanoid: true, h: 1.85, ranged: true },
+    warden:  { hp: 240, speed: 2.4, dmg: 20, r: 0.75, xp: 6, col: 0x5c3a2a, eye: 0xffd24a, score: 60, humanoid: true, h: 2.6 },
     overlord:{ hp: 9000, speed: 2.6, dmg: 34, r: 2.8, xp: 200, col: 0xffd24a, eye: 0xff2a2a, score: 5000, boss: true, final: true },
   };
   const POWERS = {
@@ -176,17 +180,37 @@
       let body;
       if (kind === 'mite') { body = new THREE.Mesh(this.ico, mat); body.scale.setScalar(s); for (let i = 0; i < 4; i++) { const sp = new THREE.Mesh(this.cone, mat); sp.scale.set(0.1, 0.45, 0.1); const a = i / 4 * 6.28; sp.position.set(Math.cos(a) * s * 0.9, -s * 0.3, Math.sin(a) * s * 0.9); sp.rotation.set(Math.sin(a) * 1.2, 0, -Math.cos(a) * 1.2); grp.add(sp); } }
       else if (kind === 'brute' || E.boss) { body = new THREE.Mesh(this.box, mat); body.scale.set(s * 1.6, s * 1.8, s * 1.3); for (const sx of [-1, 1]) { const arm = new THREE.Mesh(this.box, mat); arm.scale.set(s * 0.5, s * 1.4, s * 0.5); arm.position.set(sx * s * 1.1, -s * 0.2, 0); grp.add(arm); } if (E.boss) { for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(this.cone, this.mats[kind + 'eye']); c.scale.set(0.25, 0.9, 0.25); c.position.set((i - 2.5) * s * 0.28, s * 1.1, 0); grp.add(c); } } }
+      else if (E.humanoid) body = this.humanoid(grp, kind, mat, E, o.elite);
       else if (kind === 'wisp') { body = new THREE.Mesh(this.sphere, mat); body.scale.setScalar(s); const ring = new THREE.Mesh(new THREE.TorusGeometry(s * 1.4, 0.05, 6, 24), this.mats[kind + 'eye']); ring.rotation.x = Math.PI / 2; grp.add(ring); }
       else { body = new THREE.Mesh(this.oct, mat); body.scale.set(s, s * 0.8, s * 1.5); }
-      grp.add(body);
-      const eye = new THREE.Mesh(this.sphere, this.mats[kind + 'eye']); eye.scale.setScalar(s * 0.22); eye.position.set(0, s * 0.25, -s * 0.85); grp.add(eye);
-      const fly = E.fly || 0, y = (E.boss ? s * 0.9 : s) + fly;
-      grp.position.set(x, y, z); this.root.add(grp);
+      if (!E.humanoid) { grp.add(body); const eye = new THREE.Mesh(this.sphere, this.mats[kind + 'eye']); eye.scale.setScalar(s * 0.22); eye.position.set(0, s * 0.25, -s * 0.85); grp.add(eye); }
+      const fly = E.fly || 0, y = E.humanoid ? E.h * 0.55 : (E.boss ? s * 0.9 : s) + fly;
+      grp.position.set(x, E.humanoid ? 0 : y, z); this.root.add(grp);
       const hpM = (E.boss ? 1 + this.bossKills * 0.6 : scaleT) * (o.elite ? 6 : 1);
       const e = { kind, E, grp, body, mat, x, z, y, r: s, hp: E.hp * hpM, max: E.hp * hpM, speed: E.speed * (o.elite ? 1.1 : 1) * (1 + Math.min(0.5, this.t / 600)), dmg: E.dmg * (1 + this.t / 180), elite: !!o.elite, hitCd: 0, flash: 0, slow: 0, t: Math.random() * 6, dashT: 3 + Math.random() * 2, shootT: 2 + Math.random() * 2, kx: 0, kz: 0 };
+      if (E.humanoid) { e.limbs = grp.userData.limbs; e.k = E.h / 1.8 * (o.elite ? 1.15 : 1); }
       this.enemies.push(e);
       if (E.boss) { this.boss = e; $('od-boss').classList.remove('hidden'); $('od-bossn').textContent = E.final ? 'THE OVERLORD' : 'CRUCIBLE TITAN'; this.g.hud.toast(E.final ? 'THE OVERLORD HAS COME · KILL IT TO WIN' : 'A CRUCIBLE TITAN APPROACHES', 2600); BR.Audio.zRoar && BR.Audio.zRoar(); this.g.cam.shake = Math.max(this.g.cam.shake, 0.4); }
       return e;
+    }
+    // a low-poly humanoid built from boxes: torso + head with glowing eyes, hinged arms + legs
+    humanoid(grp, kind, mat, E, elite) {
+      const k = E.h / 1.8 * (elite ? 1.15 : 1), B = this.box, dark = this.hdark || (this.hdark = new THREE.MeshPhongMaterial({ color: 0x1c1e24, shininess: 20 })), eyeM = this.mats[kind + 'eye'];
+      const part = (par, w, h, d, x, y, z, m) => { const q = new THREE.Mesh(B, m || mat); q.scale.set(w * k, h * k, d * k); q.position.set(x * k, y * k, z * k); par.add(q); return q; };
+      const torso = part(grp, 0.52, 0.62, 0.3, 0, 1.32, 0);
+      part(grp, 0.46, 0.2, 0.28, 0, 0.98, 0, dark);                                           // belt / hips
+      const head = new THREE.Group(); head.position.set(0, 1.78 * k, 0); grp.add(head);
+      part(head, 0.3, 0.32, 0.3, 0, 0, 0);
+      const vis = part(head, 0.24, 0.07, 0.04, 0, 0.03, -0.155, eyeM);                      // glowing eye slit
+      if (kind === 'husk') { vis.scale.x = 0.08 * k; const e2 = vis.clone(); vis.position.x = -0.06 * k; e2.position.x = 0.06 * k; head.add(e2); }
+      const limb = (x, y, len, w) => { const pv = new THREE.Group(); pv.position.set(x * k, y * k, 0); grp.add(pv); part(pv, w, len, w, 0, -len / 2, 0); return pv; };
+      const la = limb(-0.34, 1.6, 0.66, 0.14), ra = limb(0.34, 1.6, 0.66, 0.14), ll = limb(-0.13, 0.92, 0.9, 0.18), rl = limb(0.13, 0.92, 0.9, 0.18);
+      for (const lg of [ll, rl]) part(lg, 0.2, 0.08, 0.3, 0, -0.9, -0.05, dark);              // boots
+      if (kind === 'gunner') { part(ra, 0.09, 0.09, 0.55, 0, -0.62, -0.22, dark); part(ra, 0.05, 0.05, 0.05, 0, -0.62, -0.5, eyeM); ra.userData.aim = true; part(torso.parent, 0.56, 0.3, 0.34, 0, 1.4, -0.02, dark); }
+      if (kind === 'warden') { for (const sx of [-1, 1]) part(grp, 0.3, 0.14, 0.38, sx * 0.36, 1.66, 0, dark); part(la, 0.08, 0.95, 0.62, -0.06, -0.5, -0.22, dark).userData.shield = true; part(head, 0.34, 0.08, 0.34, 0, 0.18, 0, dark); }
+      if (kind === 'husk') { for (const a of [la, ra]) part(a, 0.05, 0.12, 0.05, 0, -0.72, -0.06, dark); }
+      grp.userData.limbs = { la, ra, ll, rl, head };
+      return torso;
     }
     damage(e, dmg, at, head, src) {
       if (e.dead) return;
@@ -234,20 +258,26 @@
 
     // ------------------------------------------------------------------ shooting hooks
     rayTargets(o, d, maxT) {
-      const u = BR.util; let best = maxT, hit = null;
+      const u = BR.util; let best = maxT, hit = null, hd = false;
       for (const e of this.enemies) {
         if (e.dead) continue;
         const lx = e.x - o.x, ly = e.y - o.y, lz = e.z - o.z, tc = lx * d.x + ly * d.y + lz * d.z;
         if (tc < 0 || tc > best + e.r * 2) continue;
+        if (e.E.humanoid) {                                       // head sphere + two body spheres
+          const k = e.k, hh = u.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, e.x, 1.8 * k, e.z, 0.21 * k, best);
+          if (hh < best) { best = hh; hit = e; hd = true; }
+          for (const yy of [0.62, 1.3]) { const tb = u.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, e.x, yy * k, e.z, 0.4 * k, best); if (tb < best) { best = tb; hit = e; hd = false; } }
+          continue;
+        }
         const th = u.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, e.x, e.y, e.z, e.r * (e.kind === 'brute' || e.E.boss ? 1.25 : 1.05), best);
-        if (th < best) { best = th; hit = e; }
+        if (th < best) { best = th; hit = e; hd = false; }
       }
-      return hit ? { t: best, target: hit, head: false } : null;
+      return hit ? { t: best, target: hit, head: hd } : null;
     }
     hitTarget(e, dmg, head, at) {
       const g = this.g, v = this._hv || (this._hv = new THREE.Vector3()); v.set(at.x, at.y, at.z);
       // weak spot: shots near the eye count as headshots
-      const hs = Math.hypot(at.x - e.x, at.y - (e.y + e.r * 0.25), at.z - e.z) < e.r * 0.45;
+      const hs = e.E.humanoid ? !!head : Math.hypot(at.x - e.x, at.y - (e.y + e.r * 0.25), at.z - e.z) < e.r * 0.45;
       this.damage(e, dmg * (hs ? 1.6 : 1), v, hs, 'gun');
       g.fx.burst(v, [e.E.col, 0xffffff], 5, 3.5, 0.05, 0.25, 0);
       g.hud.hitmarker(hs, !!e.dead); if (!e.dead) BR.Audio.hit(hs);
@@ -279,11 +309,11 @@
       if (this.spawnT <= 0 && alive < cap) {
         this.spawnT = Math.max(0.12, 0.9 - this.t / 260);
         const r = Math.random(), T = this.t;
-        const kind = T > 150 && r < 0.12 ? 'charger' : T > 90 && r < 0.27 ? 'wisp' : T > 40 && r < 0.45 ? 'brute' : 'mite';
-        const pack = kind === 'mite' ? 1 + Math.floor(Math.random() * (2 + T / 90)) : 1;
+        const kind = T > 150 && r < 0.1 ? 'charger' : T > 120 && r < 0.18 ? 'warden' : T > 90 && r < 0.3 ? 'wisp' : T > 55 && r < 0.44 ? 'gunner' : T > 40 && r < 0.56 ? 'brute' : r < 0.78 ? 'husk' : 'mite';
+        const pack = kind === 'mite' || kind === 'husk' ? 1 + Math.floor(Math.random() * (2 + T / 90)) : 1;
         for (let i = 0; i < pack; i++) this.spawnEnemy(kind);
       }
-      this.eliteT -= dt; if (this.eliteT <= 0) { this.eliteT = 60; this.spawnEnemy(['brute', 'charger', 'wisp'][Math.floor(Math.random() * 3)], { elite: true }); g.hud.toast('An ELITE has appeared', 1600); }
+      this.eliteT -= dt; if (this.eliteT <= 0) { this.eliteT = 60; this.spawnEnemy(['brute', 'charger', 'wisp', 'warden', 'gunner'][Math.floor(Math.random() * 5)], { elite: true }); g.hud.toast('An ELITE has appeared', 1600); }
       this.bossT -= dt; if (this.bossT <= 0 && !this.boss) { this.bossT = 180; if (this.t < FINAL_T - 30) this.spawnEnemy('boss', { r: 30 }); }
       if (this.t >= FINAL_T && !this.finalSpawned) { this.finalSpawned = true; this.spawnEnemy('overlord', { r: 30 }); }
       this.chestT -= dt; if (this.chestT <= 0) { this.chestT = 70; const a = Math.random() * 6.28, r = 15 + Math.random() * 35; this.spawnChest(Math.cos(a) * r, Math.sin(a) * r); g.hud.toast('A treasure chest appeared · follow the beam', 1800); }
@@ -328,9 +358,19 @@
           if (ol < e.r) { if (ol > 1e-4) { nx = cx + ox / ol * e.r; nz = cz + oz / ol * e.r; } else { nx = e.x; nz = e.z; } } }
         const rr = Math.hypot(nx, nz); if (rr > 71) { nx *= 71 / rr; nz *= 71 / rr; }
         e.x = nx; e.z = nz;
+        if (e.E.humanoid) {
+          // walk cycle: legs + arms swing with speed; husks reach forward, gunners aim, wardens raise the shield
+          const L = e.limbs, mv = Math.min(1, Math.hypot(wx, wz) > 0.1 && sp > 0.2 ? 1 : 0), ph = e.t * (2.4 + sp * 0.9), sw = Math.sin(ph) * 0.75 * mv;
+          L.ll.rotation.x = sw; L.rl.rotation.x = -sw;
+          if (e.kind === 'husk') { L.la.rotation.x = -1.35 + Math.sin(ph * 2) * 0.15; L.ra.rotation.x = -1.35 - Math.sin(ph * 2) * 0.15; L.head.rotation.z = Math.sin(e.t * 3) * 0.15; }
+          else if (e.kind === 'gunner') { L.ra.rotation.x = -1.45; L.la.rotation.x = -1.2; L.la.rotation.z = -0.45; }
+          else { L.la.rotation.x = -1.0; L.ra.rotation.x = -sw * 0.6; }
+          e.y = 1.05 * e.k; e.grp.position.set(e.x, Math.abs(Math.sin(ph)) * 0.05 * mv, e.z); e.grp.rotation.y = Math.atan2(-dx, -dz);
+        } else {
         const baseY = (e.E.boss ? e.r * 0.9 : e.r) + (e.E.fly || 0);
         e.y = baseY + (e.E.fly ? Math.sin(e.t * 2) * 0.3 : Math.abs(Math.sin(e.t * (e.kind === 'mite' ? 12 : 5))) * 0.12);
         e.grp.position.set(e.x, e.y, e.z); e.grp.rotation.y = Math.atan2(-dx, -dz);
+        }
         if (e.kind === 'wisp') e.grp.children[0].rotation.z = e.t * 2;
         if (e.flash > 0) { e.flash -= dt; e.body.material = e.flash > 0 ? this.flashMat : e.mat; }
         // contact damage
