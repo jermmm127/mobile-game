@@ -1,0 +1,16 @@
+{
+  "_about": "One Meshy text-to-3D prompt per weapon (original designs). tools/meshy_generate.py sends these, downloads the .glb and runs import_model.py. Edit freely; 'image' can point to a reference picture (image-to-3D) instead.",
+  "holoar":   { "prompt": "modern assault rifle with a holographic red dot sight, slim M-LOK handguard, suppressor, collapsible stock, matte graphite with dark bronze accents, game-ready weapon, side view, highly detailed", "length": 1.0 },
+  "smg":      { "prompt": "compact submachine gun with a short barrel, small reflex sight, folding stock, straight box magazine, matte black polymer and steel, game-ready weapon, highly detailed", "length": 0.62 },
+  "lmg":      { "prompt": "belt-fed light machine gun with a box ammo pouch, folded bipod, carry handle, 4x prism scope, olive drab and gunmetal, game-ready weapon, highly detailed", "length": 1.12 },
+  "shotgun":  { "prompt": "pump-action tactical breacher shotgun, short barrel with a breaching muzzle, shell holder on the receiver, orange-tan polymer furniture, black steel, game-ready weapon, highly detailed", "length": 0.95 },
+  "dmr":      { "prompt": "semi-automatic designated marksman rifle with a medium scope, free-float handguard, adjustable cheek rest stock, tan and black, game-ready weapon, highly detailed", "length": 1.1 },
+  "hunter":   { "prompt": "classic bolt-action rifle with a full-length stock, two barrel bands, turned-down bolt handle, open iron sights, black white and mint splatter camo finish, small laser under the muzzle, game-ready weapon, highly detailed", "length": 1.08 },
+  "sniper":   { "prompt": "heavy bolt-action sniper rifle with a long scope, muzzle brake, folding bipod, skeleton stock with adjustable cheek piece, matte black and grey, game-ready weapon, highly detailed", "length": 1.25 },
+  "pistol":   { "prompt": "modern polymer-frame semi-automatic pistol with a slide-mounted mini red dot, black slide, game-ready weapon, highly detailed", "length": 0.21 },
+  "revolver": { "prompt": "heavy six-shot revolver with a long fluted barrel, swing-out cylinder, wooden grip, polished stainless steel, game-ready weapon, highly detailed", "length": 0.33 },
+  "tracker":  { "prompt": "hunting knife with a drop-point blade, flat grind line, thumb studs, black textured handle with a metal guard, game-ready weapon, highly detailed", "length": 0.3 },
+  "bayonet":  { "prompt": "military bayonet knife with a clip-point blade, ribbed black grip, crossguard with a muzzle ring, pommel latch, game-ready weapon, highly detailed", "length": 0.32 },
+  "knife":    { "prompt": "karambit knife with a slender curved claw blade, finger ring at the end of the handle, black handle scales, game-ready weapon, highly detailed", "length": 0.24 },
+  "butterfly":{ "prompt": "butterfly knife balisong with two skeletonized handles, latch, tanto blade, polished steel, game-ready weapon, highly detailed", "length": 0.28 }
+}
