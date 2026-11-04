@@ -142,7 +142,7 @@
           const basis = (y, z) => { const Y = new THREE.Vector3(...y).normalize(), X = new THREE.Vector3().crossVectors(Y, new THREE.Vector3(...z)).normalize();
             return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, new THREE.Vector3().crossVectors(X, Y))); };
           m.userData.qIdle = basis([-0.86, 0.52, -0.2], [0.1, -1, -0.1]);       // saw teeth on the bottom edge, flat to the camera
-          m.userData.wristRoll = Math.PI; m.userData.gripY = -0.05; m.userData.armVec = new THREE.Vector3(0.22, -0.42, 0.42); m.userData.armVecUp = new THREE.Vector3(0.44, -0.55, 0.0);                // forearm comes up from below, toward you (back of the hand faces the camera)
+          m.userData.wristRoll = Math.PI; m.userData.gripY = -0.05; m.userData.armVec = new THREE.Vector3(0.22, -0.42, 0.42); m.userData.armVecUp = new THREE.Vector3(0.42, -0.62, 0.3);    // upright: forearm comes up from the lower right, slightly toward you (reference clip)                // forearm comes up from below, toward you (back of the hand faces the camera)
           m.userData.qUp = basis([-0.06, 1, -0.12], [-1, 0, -0.1]);
           m.userData.qUp2 = basis([-0.4, 1, -0.1], [1, 0.1, 0.1]);
           m.quaternion.copy(m.userData.qIdle); m.scale.setScalar(1.08);
@@ -748,8 +748,14 @@
         let AV = model.userData.armVec || BF_ARM;
         if (model.userData.armVecUp) AV = (this._avb || (this._avb = new THREE.Vector3())).copy(AV).lerp(model.userData.armVecUp, this._bUpNow || 0);
         const Z = (this._bhz || (this._bhz = new THREE.Vector3())).set(AV.x * s, AV.y, AV.z);
-        this._bfElbow = (this._bfElbow || new THREE.Vector3()).copy(hc).add(Z);
+        const armLen = Z.length(), Zr = (this._bzr || (this._bzr = new THREE.Vector3())).copy(Z).normalize();
         Z.addScaledVector(X, -Z.dot(X)).normalize();
+        // v1.12.1: the forearm leaves the wrist along the fist's own axis, cocked at most ~32° toward the
+        // natural arm direction (like a real hammer grip). It used to aim straight at the raw arm vector,
+        // which bent the wrist ~90° in the upright bayonet pose.
+        const ang = Math.acos(BR.util.clamp(Z.dot(Zr), -1, 1)), tk = ang > 0.56 ? 0.56 / ang : 1;
+        const F = (this._bzf || (this._bzf = new THREE.Vector3())).copy(Z).multiplyScalar(1 - tk).addScaledVector(Zr, tk).normalize();
+        this._bfElbow = (this._bfElbow || new THREE.Vector3()).copy(hc).addScaledVector(F, armLen);
         const Y = (this._bhy || (this._bhy = new THREE.Vector3())).crossVectors(Z, X);
         H.quaternion.setFromRotationMatrix((this._bhm || (this._bhm = new THREE.Matrix4())).makeBasis(X, Y, Z));
         // bayonet: the forearm rolls the fist over (back of the hand up) for the flat idle, back for upright poses

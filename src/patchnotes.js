@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.12.1', date: '2026-11-04', title: 'Knife wrist fix', notes: [
+    'M9 Bayonet (and butterfly): fixed the wrist bending sideways in the upright poses (draw, inspect). The forearm now comes up from the lower right straight into the fist, with only a natural cock of the wrist, like the reference clip.',
+  ] },
   { v: '1.12.0', date: '2026-11-04', title: 'Online lobbies, 2v2, TDM + FFA', notes: [
     'Online multiplayer (beta): host a lobby and share the 6-letter code; friends join from their own phone or computer. Lobbies are peer-to-peer (the host\'s browser runs the match), so no game server is needed. Empty slots fill with AI and the host can move players between teams. Online works in every arena mode below.',
     'New: DUELS 1v1 / 2v2, round-based on The Yard with your duel loadout. Play 2v2 with an AI teammate, or with a friend online.',
