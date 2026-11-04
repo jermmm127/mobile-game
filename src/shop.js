@@ -375,8 +375,8 @@ BR.Profile = {
   },
 };
 
-BR.MELEE = { bayonet: true, knife: true, butterfly: true };
-const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly']];
+BR.MELEE = { bayonet: true, knife: true, butterfly: true, tracker: true };
+const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker']];
 const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
 
 BR.Shop = class Shop {
@@ -559,7 +559,7 @@ BR.Inventory = class Inventory {
       const b = e.target.closest('button[data-m]'); if (!b) return;
       const P = BR.Profile; P.data.equip.melee = b.dataset.m; P.save(); BR.Audio.pickup();
       this.cat = 'blueprints'; this.weapon = b.dataset.m; this.sel = null;
-      this.flash(({ butterfly: 'Butterfly knife', knife: 'Karambit', bayonet: 'M9 Bayonet' })[b.dataset.m] + ' equipped');
+      this.flash(({ butterfly: 'Butterfly knife', knife: 'Karambit', bayonet: 'M9 Bayonet', tracker: 'Tracker' })[b.dataset.m] + ' equipped');
       this.game.refreshCosmetics(); this.render();
     });
     this.el.action.addEventListener('click', () => this.act());

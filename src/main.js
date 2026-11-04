@@ -550,7 +550,7 @@
   renderLobby();
 
   // ---- v1.11: loadout editor
-  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
+  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY'], ['tracker', 'TRACKER']];
   const renderLoadout = () => {
     const L = BR.Profile.loadoutGuns();
     $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');

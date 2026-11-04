@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.12.1',
+  version: '1.13.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -151,6 +151,8 @@ BR.CONFIG = {
     butterfly: { name: 'Butterfly Knife', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 150, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.2 },
     // Default knife: M9-style bayonet (flipped into the hand on draw)
     bayonet: { name: 'M9 Bayonet', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.5, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1c1e22, speedMult: 1.2 },
+    // v1.13: tanto-point survival knife (a touch heavier and slower than the bayonet)
+    tracker: { name: 'Tracker', melee: true, ammo: null, dmg: 50, backstab: 110, pellets: 1, rpm: 130, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.5, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x2c3524, speedMult: 1.2 },
     knife:   { name: 'Karambit', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1b1d21, speedMult: 1.2 },
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x26282c },
     smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 1100, mag: 35, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.0035, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.0095, recoilH: 0.012, zoom: 1.3, tier: 1, color: 0x2f3237 },

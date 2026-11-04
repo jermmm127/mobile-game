@@ -14,6 +14,7 @@
   // v1.11 sleeves: a tapered fabric forearm (lathe) with an elastic cuff at the wrist and a
   // seam band, instead of a plain tube. Unit length along +Y (wrist at -0.5, elbow at +0.5).
   const KI = { z1: 0.95, y1: -0.15, x1: 0.1, z2: -0.25, y2: -0.55, x2: 0 };      // karambit inspect show poses (wrist turns)
+  const BAYLIKE = id => id === 'bayonet' || id === 'tracker';      // v1.13: the Tracker shares the bayonet's fist + flips
   let SLEEVE = null;
   function sleeveParts() {
     if (SLEEVE) return SLEEVE;
@@ -134,7 +135,7 @@
           const inner = new THREE.Group(); while (m.children.length) inner.add(m.children[0]); m.add(inner);
           m.userData.inner = inner; m.userData.pivot = new THREE.Vector3(0, 0.004, 0.001);
           holder.add(m);
-        } else if (id === 'bayonet') {
+        } else if (BAYLIKE(id)) {
           // Poses from the reference clip (model +Y = blade, -Z = edge, +Z = saw-tooth spine):
           // IDLE forward grip at the bottom right, blade angled up and to the left, spine on top;
           // SHOW1 upright close to the centre, one face to the camera (spine on the left);
@@ -251,7 +252,7 @@
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.id === 'bayonet' ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : BAYLIKE(w.id) ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
 
     hide() { if (this.sparks) { for (const q of this.sparks) { q.life = 0; q.m.visible = false; } for (const q of this.rings) { q.life = 0; q.m.visible = false; } }      // v1.11.1: no frozen white spark boxes while skydiving
       if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
@@ -308,7 +309,7 @@
       if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
-      if (w.id === 'bayonet') { hx = 0.04 * s; hy = -0.108; hz = -0.42; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
+      if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
@@ -359,7 +360,7 @@
           const hold = win(t, 0.55, 0.62, 0.72, 0.86);                                   // upright beat
           oy += 0.06 * hold; ox -= 0.03 * hold; orz += 0.1 * hold;
           this.bflySwish(t, [0.2, 0.36, 0.5]);
-        } else if (w.id === 'bayonet') {
+        } else if (BAYLIKE(w.id)) {
           // Bayonet deploy (reference clip): the hand comes up near the centre holding the knife
           // blade-down, flips it end over end in the palm to blade-up, then rolls the wrist down
           // into the angled idle with a small settle
@@ -412,7 +413,7 @@
           ory += 0.35 * Math.sin((t - 0.3) / 0.22 * Math.PI * 2) * sw; oy += 0.03 * sw;
           ory += 0.25 * show + Math.sin(t * Math.PI * 2.4) * 0.03 * show; orz += 0.12 * show; orx -= 0.05 * show;
           this.bflySwish(t, [0.14, 0.34, 0.44, 0.85]);
-        } else if (w.id === 'bayonet') {
+        } else if (BAYLIKE(w.id)) {
           // Bayonet inspect (reference clip): bring it up upright close to the centre showing one face,
           // a slow look with small wobbles, twist the wrist to show the other face tilted left, twist
           // back to the first face, then drop back into the angled idle. No tosses.
@@ -576,7 +577,7 @@
         // idle: a slow relaxed wrist drift so the hold never looks frozen
         if (!bfly) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.035 * Math.sin(q * 1.1); orx += 0.025 * Math.sin(q * 0.8 + 1); ory += 0.03 * Math.sin(q * 0.6); }
       }
-      if (w.id === 'bayonet' && !bay && this.inspectT <= 0) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.03 * Math.sin(q * 1.1); orx += 0.02 * Math.sin(q * 0.8 + 1); ory += 0.025 * Math.sin(q * 0.6); }
+      if (BAYLIKE(w.id) && !bay && this.inspectT <= 0) { this.bfIdle = (this.bfIdle || 0) + dt; const q = this.bfIdle; orz += 0.03 * Math.sin(q * 1.1); orx += 0.02 * Math.sin(q * 0.8 + 1); ory += 0.025 * Math.sin(q * 0.6); }
       this._bUpNow = bUp;
       // melee blade trail: sample after the pose is applied (see end of update)
       this._trailFrame = this.bfTrail && this.bfTrail.id === w.id ? { model } : null;

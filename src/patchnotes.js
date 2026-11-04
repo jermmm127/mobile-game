@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.13.0', date: '2026-11-04', title: 'The Tracker', notes: [
+    'New knife: the TRACKER, a tanto-point survival knife. Straight spine with a saw-back near the tip, an angled tanto front, a long fuller, an integral guard with a hooked finger quillon, and a thick finger-grooved olive rubber grip with screws, a tang strip and a lanyard hole. It hits a bit harder than the bayonet but swings a little slower. Equip it from the Inventory melee picker or the Loadout screen.',
+    'It is held, flipped on draw and inspected like the M9 Bayonet (same fist grip and animations).',
+    'Six Tracker blueprints: Blackout (Rare), Timberline (Epic, woodland camo), Goldrune (Legendary, an engraved gold blade with an etched scroll-and-rune band on the olive grip), Glacier Fang (Legendary, ice blade), Magma Tooth (Mythic, animated molten blade, fire aura + trail) and Aurum Prime (Exotic, animated liquid gold, gold aura + trail). Camos also go on its blade.',
+  ] },
   { v: '1.12.1', date: '2026-11-04', title: 'Knife wrist fix', notes: [
     'M9 Bayonet (and butterfly): fixed the wrist bending sideways in the upright poses (draw, inspect). The forearm now comes up from the lower right straight into the fist, with only a natural cock of the wrist, like the reference clip.',
   ] },

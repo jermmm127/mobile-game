@@ -380,9 +380,9 @@ BR.Actor = class Actor {
       u.wid = wid;
       while (u.gun.children.length) u.gun.remove(u.gun.children[0]);
       if (wid) {
-        const sc = wid === 'knife' ? 1.6 : wid === 'bayonet' ? 1.3 : 1.15, gm = BR.Models.worldWeapon(wid);
+        const sc = wid === 'knife' ? 1.6 : wid === 'bayonet' || wid === 'tracker' ? 1.3 : 1.15, gm = BR.Models.worldWeapon(wid);
         gm.scale.setScalar(sc); u.gun.add(gm);
-        u.gp = BR.Models.gripPoints(wid); u.gunScale = sc; u.gun.userData.knife = wid === 'knife' || wid === 'bayonet';
+        u.gp = BR.Models.gripPoints(wid); u.gunScale = sc; u.gun.userData.knife = wid === 'knife' || wid === 'bayonet' || wid === 'tracker';
       }
     }
   }

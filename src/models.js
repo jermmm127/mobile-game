@@ -1332,6 +1332,63 @@ BR.Models = (function () {
       anchors(g, 0.15, 0, [0, -0.13, 0]);
       g.userData.flash.visible = false;
     },
+    // v1.13 TRACKER: a tanto-point survival knife (modelled from the reference image). Straight spine with
+    // a saw-back near the tip, an angled tanto front, a long fuller, an integral guard whose lower
+    // quillon hooks forward round your index finger, and a fat finger-grooved olive rubber handle
+    // with two screws, a metal tang strip on the spine side, a flared butt and a lanyard hole.
+    // Same layout as the bayonet (blade +Y, edge -Z, grip -Y) so it shares the fist + flip animations.
+    tracker(g, S, M, opts) {
+      const inner = new THREE.Group(); g.add(inner);
+      const camo = opts && opts.camo;
+      const bladeMat = (opts && opts.blade) || camo || (cache.mat.trkBlade || (cache.mat.trkBlade = new THREE.MeshPhongMaterial({ color: 0xc9cfd6, specular: 0xffffff, shininess: 150, envMap: envCube(), reflectivity: 0.3 })));
+      const rubber = camo ? (cache.mat.trkGrip || (cache.mat.trkGrip = new THREE.MeshPhongMaterial({ color: 0x2c3524, specular: 0x2a2f26, shininess: 12 }))) : S;
+      const ext = (pts, depth, bevel, holes, uvk) => {
+        const sh = new THREE.Shape(); sh.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) { const p = pts[i]; if (p.length === 4) sh.quadraticCurveTo(p[0], p[1], p[2], p[3]); else sh.lineTo(p[0], p[1]); }
+        sh.closePath();
+        for (const h of holes || []) { const pa = new THREE.Path(); pa.absellipse(h[0], h[1], h[2], h[3], 0, Math.PI * 2, false, 0); sh.holes.push(pa); }
+        const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: !!bevel, bevelThickness: bevel || 0, bevelSize: bevel || 0, bevelSegments: 3, curveSegments: 14 });
+        geo.translate(0, 0, -depth / 2);
+        const uv = geo.attributes.uv, k = uvk || 6; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * k, uv.getY(i) * k);
+        const m = new THREE.Mesh(geo, null); m.rotation.y = -Math.PI / 2; return m;     // shape x -> model +Z (spine), y -> up
+      };
+      // blade: straight spine, tip a touch below the spine line, angled tanto front, straight edge
+      const blade = ext([[0.0165, 0.0], [0.0165, 0.148], [0.0105, 0.181], [-0.0052, 0.168], [-0.0168, 0.152], [-0.0172, 0.014], [-0.012, 0.0]], 0.0042, 0.0007, null, 7);
+      blade.material = bladeMat; inner.add(blade);
+      // bright sharpened bevels along the edge and the tanto front
+      const edgeM = (opts && (opts.blade || camo)) ? bladeMat : (cache.mat.trkEdge || (cache.mat.trkEdge = new THREE.MeshPhongMaterial({ color: 0xf4f7fa, specular: 0xffffff, shininess: 220, envMap: envCube(), reflectivity: 0.45 })));
+      const grind = ext([[-0.0172, 0.016], [-0.0168, 0.151], [-0.005, 0.167], [0.0098, 0.178], [0.0085, 0.171], [-0.0045, 0.161], [-0.0128, 0.147], [-0.013, 0.018]], 0.0052, 0); grind.material = edgeM; inner.add(grind);
+      // tanto ridge line between the front facet and the flat
+      const ridge = ext([[-0.0128, 0.147], [0.0108, 0.152], [0.0108, 0.155], [-0.0128, 0.15]], 0.0051, 0); ridge.material = M.metal; inner.add(ridge);
+      // long fuller near the spine
+      const fuller = ext([[0.0062, 0.026], [0.0098, 0.028], [0.0098, 0.132], [0.0076, 0.136], [0.0062, 0.13]], 0.005, 0); fuller.material = M.dark; inner.add(fuller);
+      // saw-back teeth on the spine toward the tip
+      for (let i = 0; i < 9; i++) { const t = new THREE.Mesh(new THREE.ConeGeometry(0.0026, 0.0058, 4), bladeMat); t.position.set(0, 0.078 + i * 0.0072, 0.0175); t.rotation.set(Math.PI / 2 - 0.5, 0, 0); inner.add(t); }
+      // integral guard: a plate across the ricasso, the lower quillon hooking forward round the finger, a pin hole
+      const guard = ext([[0.0175, 0.007], [0.0175, -0.004], [0.004, -0.007], [-0.02, -0.008], [-0.034, -0.026], [-0.038, -0.035, -0.045, -0.03], [-0.046, -0.022], [-0.034, -0.004], [-0.024, 0.006], [-0.018, 0.009]], 0.0058, 0.0007, [[0.0095, 0.001, 0.0024, 0.0024], [-0.041, -0.027, 0.0022, 0.0022]], 7);
+      guard.material = bladeMat; inner.add(guard);
+      const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0021, 0.0021, 0.0074, 10), M.dark); pin.rotation.z = Math.PI / 2; pin.position.set(0, 0.001, 0.0095); inner.add(pin);
+      // handle: thick rubber slab with finger grooves on the edge side, a hump for the palm on the spine side,
+      // flaring at the butt
+      const hnd = ext([[0.0148, -0.004], [0.0158, -0.04, 0.0142, -0.07], [0.0136, -0.098], [0.0172, -0.122], [0.012, -0.134], [-0.012, -0.134], [-0.019, -0.122],
+        [-0.0148, -0.108, -0.0172, -0.094], [-0.0122, -0.082, -0.0168, -0.068], [-0.0118, -0.056, -0.0165, -0.043], [-0.012, -0.03, -0.0152, -0.018], [-0.0138, -0.004]], 0.0148, 0.0045, [[-0.004, -0.124, 0.0028, 0.0028]], 5);
+      hnd.material = rubber;
+      const hg = new THREE.Group(); hg.rotation.x = 0.13; inner.add(hg); hg.add(hnd);          // the grip angles down from the blade like the reference
+      // texture panels (slightly darker inset) + two screws per side
+      const panelM = cache.mat.trkPanel || (cache.mat.trkPanel = new THREE.MeshLambertMaterial({ color: 0x1f251a }));
+      for (const sx of [-1, 1]) {
+        const pn = new THREE.Mesh(new THREE.BoxGeometry(0.0012, 0.08, 0.0175), camo ? rubber : panelM); pn.position.set(sx * 0.0122, -0.064, 0.0005); hg.add(pn);
+        for (const y of [-0.026, -0.104]) { const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.0026, 0.0026, 0.0016, 10), M.dark); sc.rotation.z = Math.PI / 2; sc.position.set(sx * 0.0128, y, 0.004); hg.add(sc); }
+      }
+      // metal tang visible along the spine side and at the butt
+      const tang = new THREE.Mesh(new THREE.BoxGeometry(0.0046, 0.124, 0.0024), bladeMat); tang.position.set(0, -0.066, 0.0168); tang.rotation.x = 0.03; hg.add(tang);
+      const butt = new THREE.Mesh(new THREE.BoxGeometry(0.0058, 0.0062, 0.026), bladeMat); butt.position.set(0, -0.137, -0.0015); butt.rotation.x = -0.12; hg.add(butt);
+      g.userData.inner = inner; g.userData.blade = blade; g.userData.bayonet = true; g.userData.tracker = true;
+      g.userData.trailTip = new THREE.Vector3(0, 0.178, 0); g.userData.trailMid = new THREE.Vector3(0, 0.11, 0);
+      hands(g, [0, -0.07, 0.0], null, null);
+      anchors(g, 0.16, 0, [0, -0.135, 0]);
+      g.userData.flash.visible = false;
+    },
   };
 
   // ------------------------------------------------------------------ charms
@@ -2246,6 +2303,35 @@ BR.Models = (function () {
       } } },
   };
   for (const w in GRIND_BP) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, GRIND_BP[w]);
+  // ---- v1.13 TRACKER blueprints (original designs). Goldrune: an engraved gold blade (gold gradient,
+  // brushed grain, an etched band of interlocking scrolls + runes) on the olive grip.
+  BLADES.goldrune = () => new THREE.MeshPhongMaterial({ shininess: 170, specular: 0xfff0b0, emissive: 0x2a1a00, side: THREE.DoubleSide, map: bladeTex('goldrune', (c, s) => {
+    const g = c.createLinearGradient(0, 0, s, s * 0.4); g.addColorStop(0, '#8a6514'); g.addColorStop(0.35, '#e8bd4a'); g.addColorStop(0.6, '#f6d878'); g.addColorStop(1, '#a87a1a');
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    for (let i = 0; i < 900; i++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? '255,240,190' : '90,60,10'},${0.05 + Math.random() * 0.12})`; c.fillRect(Math.random() * s, Math.random() * s, 1, 3 + Math.random() * 10); }   // brushed grain
+    // etched band (wraps the u=0 seam so it sits mid-blade): two interlaced scroll lines with rune ticks + dots
+    const band = (cx) => {
+      for (const [col, lw, off] of [['rgba(70,45,5,0.85)', 3.2, 0], ['rgba(255,236,170,0.55)', 1.2, -1.2]]) {
+        c.strokeStyle = col; c.lineWidth = lw;
+        for (const ph of [0, Math.PI]) { c.beginPath(); for (let y = 0; y <= s; y += 2) { const x = cx + off + Math.sin(y / s * Math.PI * 6 + ph) * 9; y ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
+        for (let k = 0; k < 6; k++) { const y = (k + 0.5) / 6 * s; c.beginPath(); c.moveTo(cx + off - 5, y - 6); c.lineTo(cx + off, y); c.lineTo(cx + off + 5, y - 6); c.stroke(); c.beginPath(); c.arc(cx + off, y + 10, 1.8, 0, 7); c.stroke(); }
+      }
+      c.strokeStyle = 'rgba(70,45,5,0.7)'; c.lineWidth = 1.4; for (const dx of [-15, 15]) { c.beginPath(); c.moveTo(cx + dx, 0); c.lineTo(cx + dx, s); c.stroke(); }
+    };
+    band(-2); band(s - 2);
+  }) });
+  BLADES.timber = () => new THREE.MeshPhongMaterial({ shininess: 40, specular: 0x444444, side: THREE.DoubleSide, map: bladeTex('timber', (c, s) => {
+    c.fillStyle = '#5a5a3a'; c.fillRect(0, 0, s, s); const cols = ['#2f3a1e', '#6b5a36', '#1f2316', '#7a7a4a'];
+    for (let i = 0; i < 60; i++) { c.fillStyle = cols[i % 4]; c.beginPath(); const x = Math.random() * s, y = Math.random() * s; c.ellipse(x, y, 8 + Math.random() * 22, 5 + Math.random() * 12, Math.random() * 3, 0, 7); c.fill(); }
+  }) });
+  BLUEPRINTS.tracker = {
+    blackout:    { name: 'Blackout', rarity: 'Rare', price: 450, body: 0x161816, accent: 0x161816, glow: 0x5a6068, blade: 'nightops' },
+    timberline:  { name: 'Timberline', rarity: 'Epic', price: 750, body: 0x3a2a1a, accent: 0x3a2a1a, glow: 0x8a7a4a, blade: 'timber' },
+    goldrune:    { name: 'Goldrune', rarity: 'Legendary', price: 1600, body: 0x2c3524, accent: 0x2c3524, glow: 0xffd24a, blade: 'goldrune' },
+    glacierfang: { name: 'Glacier Fang', rarity: 'Legendary', price: 1500, body: 0xcfe6f2, bodyGloss: 2, accent: 0xe8f6ff, glow: 0xdff6ff, blade: 'glacier' },
+    magmatooth:  { name: 'Magma Tooth', rarity: 'Mythic', price: 2800, body: 0x1a0805, bodyGloss: 1, accent: 0xff6a00, glow: 0xff6a00, blade: 'emberblade', trail: 0xff7a1a, trail2: 0xffd24a, mod: vibrantAura(0xff6a00, 0xffd24a) },
+    aurumprime:  { name: 'Aurum Prime', rarity: 'Exotic', price: 3500, body: 0x1a1206, bodyGloss: 2, accent: 0xffd24a, glow: 0xffd24a, blade: 'solarblade', trail: 0xffd24a, trail2: 0xffffff, mod: vibrantAura(0xffd24a, 0xffffff) },
+  };
   // Signature tracers: every Legendary / Mythic blueprint fires its own tracer (used when that
   // gun's tracer is set to "Blueprint Signature"). Hand-picked styles, the rest derived from the glow.
   const SIG = {

@@ -16,6 +16,7 @@ const WICON_PATHS = {
   knife: 'M28 6a4 4 0 1 1 0.1 0z M24 9l8 2c-2 8-8 12-18 12 7-3 10-8 10-14z',
   butterfly: 'M6 11h22v3H6z M28 10l26-2-4 6H28z M8 15h20v2H8z',
   bayonet: 'M4 10h20v6H4z M24 7h3v12h-3z M27 10h20l9 3-9 3H27z',
+  tracker: 'M3 9h19l2 2-2 5H6z M22 6h3v10l-2 4h-2z M25 9h24l6 4-5 3H25z',
   revolver: 'M10 6h34v5H30v3h-6l-3 9h-8l3-9h-3l-2-3H10z M44 7h12v3H44z M24 11a3 3 0 1 1 0.1 0z',
 };
 // Weapon pictures rendered from the real 3D models (once, at startup, in a throwaway WebGL
@@ -58,14 +59,14 @@ BR.WeaponIcons = {
       };
       for (const id in BR.CONFIG.weapons) {
         const m = BR.Models.weapon(id, 'default', 'none');
-        if (id === 'butterfly' || id === 'bayonet') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
+        if (id === 'butterfly' || id === 'bayonet' || id === 'tracker') m.rotation.x = -Math.PI / 2;          // blade toward the muzzle side
         [this.pic[id], this.sil[id]] = shoot(m, true);
         css.push(`.wsil-${id}{-webkit-mask-image:url(${this.sil[id]});mask-image:url(${this.sil[id]})}`);
       }
       // Release Case contents: blueprints as their own model, camos on a rifle, gloves on a hand
       for (const e of (BR.CaseItems ? BR.CaseItems.all() : [])) {
         let m = null;
-        if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly' || w === 'bayonet') m.rotation.x = -Math.PI / 2; }
+        if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly' || w === 'bayonet' || w === 'tracker') m.rotation.x = -Math.PI / 2; }
         else if (e.cat === 'skins') m = BR.Models.weapon('rifle', e.id, 'none');
         else if (e.cat === 'gloves') { m = BR.Models.hand(e.id, false); m.rotation.set(0, 0, -0.35); }
         if (m) this.cpic[e.cat + ':' + e.id] = shoot(m, false)[0];
@@ -79,7 +80,7 @@ BR.WeaponIcons = {
   // item per frame (keeps the UI smooth), then swapped in for the static picture
   spin: {},
   modelFor(e) {
-    if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); const m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly' || w === 'bayonet') m.rotation.x = -Math.PI / 2; return m; }
+    if (e.cat === 'blueprints') { const [w, b] = e.id.split(':'); const m = BR.Models.weapon(w, 'default', 'none', b); if (w === 'butterfly' || w === 'bayonet' || w === 'tracker') m.rotation.x = -Math.PI / 2; return m; }
     if (e.cat === 'skins') return BR.Models.weapon('rifle', e.id, 'none');
     if (e.cat === 'gloves') { const m = BR.Models.hand(e.id, false); m.rotation.set(0, 0, -0.35); return m; }
     return null;
@@ -460,7 +461,7 @@ BR.HUD = class HUD {
     <div id="inv-tabs" class="seg">
       <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
-    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
+    <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button><button data-m="tracker">TRACKER</button></div>
     <div id="inv-weps" class="chips"></div>
     <div id="inv-grid"></div>
     <div class="shop-foot">
