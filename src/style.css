@@ -1586,3 +1586,35 @@ body.menulite .overlay.menu::before { display: none; }
 body.menulite .menu-main, body.menulite .menu-nav, body.menulite .menu-dock { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .mb-glow, .mb-ring, .mb-grid, .mb-motes i { animation: none !important; } .mb-motes { display: none; } }
 body.menulite .rec { display: none; }
+
+/* ---- v1.19 squads: teammate list, markers, knocked-down overlay, lobby team size picker */
+.squad { position: absolute; left: calc(12px + var(--sl, 0px)); top: calc(250px + var(--st, 0px)); width: 178px; display: flex; flex-direction: column; gap: 4px; pointer-events: none; font-family: var(--ui); z-index: 6; }
+.squad .sq-h { font: 800 9px var(--ui); letter-spacing: .18em; color: rgba(255,255,255,.75); text-shadow: 0 1px 3px #000; margin-bottom: 1px; }
+.sq-row { display: grid; grid-template-columns: 1fr 14px; grid-template-rows: auto 5px; column-gap: 6px; padding: 4px 7px; border-radius: 8px; background: rgba(8,14,30,.55); border-left: 3px solid #3f8cff; }
+.sq-row.me { border-left-color: #ffb224; }
+.sq-row b { font: 700 11px var(--ui); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sq-row i { grid-column: 1; position: relative; height: 5px; border-radius: 3px; background: rgba(255,255,255,.14); overflow: hidden; }
+.sq-row i u, .sq-row i s { position: absolute; inset: 0; transform-origin: left; text-decoration: none; }
+.sq-row i u { background: #f2f4f8; } .sq-row i s { background: #4fb4ff; height: 2px; top: auto; bottom: 0; }
+.sq-row em { grid-column: 2; grid-row: 1 / span 2; align-self: center; font: 900 13px var(--ui); font-style: normal; text-align: center; }
+.sq-row.down { border-left-color: #ff4a4a; animation: sqDown 0.9s infinite; } .sq-row.down i u { background: #ff4a4a; } .sq-row.down em { color: #ff6a5a; }
+.sq-row.out { opacity: .45; border-left-color: #777; } .sq-row.out b { text-decoration: line-through; }
+@keyframes sqDown { 50% { background: rgba(120,16,16,.6); } }
+#sq-marks { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+.sqk { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; margin: -14px 0 0 -40px; width: 80px; }
+.sqk i { width: 11px; height: 11px; transform: rotate(45deg); background: #3f8cff; border: 2px solid #fff; box-shadow: 0 0 8px #3f8cff; }
+.sqk b { margin-top: 3px; font: 800 10px var(--ui); color: #cfe3ff; text-shadow: 0 1px 3px #000; white-space: nowrap; }
+.sqk.down i { background: #ff3b3b; box-shadow: 0 0 10px #ff3b3b; animation: zmkPulse 0.8s infinite; } .sqk.down b { color: #ff9a8a; }
+.downed { position: absolute; left: 50%; bottom: calc(26% + var(--sb, 0px)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 7; font-family: var(--ui); }
+.downed b { font: 900 30px var(--display); letter-spacing: .06em; color: #ff4a4a; text-shadow: 0 0 18px rgba(255,40,40,.6), 0 2px 4px #000; }
+.downed span { font: 700 12px var(--ui); letter-spacing: .12em; color: #fff; text-shadow: 0 1px 3px #000; }
+.downed.rev span { color: #7fc4ff; }
+.downed i { width: 240px; height: 7px; border-radius: 4px; background: rgba(0,0,0,.5); overflow: hidden; border: 1px solid rgba(255,255,255,.25); }
+.downed i u { display: block; height: 100%; background: linear-gradient(90deg, #ff2a2a, #ff7a4a); transform-origin: left; }
+.downed.rev i u { background: linear-gradient(90deg, #3f8cff, #7fd4ff); }
+body:has(#downed:not(.hidden)) #vignette { box-shadow: inset 0 0 160px 60px rgba(160,0,0,.55) !important; opacity: 1 !important; }
+#killfeed b.mate { color: #7fb6ff; }
+.sq-pick { display: flex; gap: 8px; margin-top: 8px; }
+.sq-pick button { flex: 1; padding: 9px 4px; border-radius: 12px; cursor: pointer; font: 800 12px var(--ui); letter-spacing: .14em; color: #fff; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.16); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.sq-pick button small { display: block; font: 600 9px var(--ui); letter-spacing: .08em; opacity: .6; margin-top: 2px; }
+.sq-pick button.sel { background: linear-gradient(160deg, color-mix(in srgb, var(--g, #c084fc) 55%, transparent), rgba(255,255,255,.06)); border-color: var(--g, #c084fc); box-shadow: 0 0 14px color-mix(in srgb, var(--g, #c084fc) 35%, transparent); }

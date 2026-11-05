@@ -77,8 +77,11 @@
       this.models = {};
       this.pos = S3(140, 0.7);        // smoothed pose
       this.rot = S3(140, 0.7);
-      this.kick = S3(260, 0.45);      // recoil (impulses, springs back to 0)
-      this.kickR = S3(220, 0.5);
+      // v1.19 recoil: near-critically damped springs (the gun snaps back and settles without wobbling)
+      // plus a slower 'heat' layer that builds while you hold the trigger and eases off after
+      this.kick = S3(300, 0.86);      // recoil (impulses, springs back to 0)
+      this.kickR = S3(250, 0.84);
+      this.heat = S3(60, 1.0); this.heatT = 0; this.shotN = 0; this.lastShotT = -9;
       this.adsW = 0; this.sprintW = 0; this.bob = 0; this.bobAmt = 0;
       this.drawT = 0; this.drawDur = 0.5; this.inspectT = 0; this.inspectDur = 2;
       this.swingT = 0; this.swingDir = 1; this.shellT = 0; this.flashT = 0;
@@ -246,12 +249,19 @@
     // ---- events from the game -------------------------------------------
     onFire(w) {
       const d = w.def, a = (1 - this.adsW * 0.65) * (d.kick || 1), auto = d.rpm >= 500;
-      const r = (Math.random() - 0.5);
-      this.kick.z.vel += (d.recoil * 9 + 0.35) * a;                   // straight back
-      this.kick.y.vel += (d.recoil * 2.2 + 0.05) * a;
-      this.kickR.x.vel += (d.recoil * 30 + 0.8) * a;                  // muzzle climb
-      this.kickR.z.vel += r * (auto ? 1.2 : 0.6) * a;                 // random roll
-      this.kickR.y.vel += r * (auto ? 0.6 : 0.25) * a;
+      // v1.19: a clean, weighty kick. Straight back into the shoulder + muzzle climb, a small roll/yaw that
+      // follows a smooth per-spray pattern (no random jitter), and for automatics a 'heat' that pushes the
+      // gun back and up a little more the longer you spray, then eases off when you let go.
+      const now = performance.now() / 1000;
+      if (now - this.lastShotT > Math.max(0.25, 60 / d.rpm * 2.5)) { this.shotN = 0; this.sprayPh = Math.random() * 6.283; this.spraySide = Math.random() < 0.5 ? -1 : 1; }
+      this.lastShotT = now; const n = this.shotN++, side = Math.sin(n * 0.9 + (this.sprayPh || 0)) * (this.spraySide || 1);
+      const first = n === 0 ? 1.25 : 1;                                // the first shot lands a touch harder
+      this.kick.z.vel += (d.recoil * 11 + 0.42) * a * first;          // straight back
+      this.kick.y.vel += (d.recoil * 2.6 + 0.05) * a;
+      this.kickR.x.vel += (d.recoil * 34 + 0.9) * a * first;          // muzzle climb
+      this.kickR.z.vel += side * (auto ? 0.55 : 0.4) * a;             // smooth roll pattern
+      this.kickR.y.vel += side * (auto ? 0.3 : 0.12) * a;
+      if (auto) this.heatT = Math.min(1, this.heatT + 0.07 + d.recoil * 2);
       this.flashT = d.suppressed ? 0.025 : 0.05;
       this.inspectT = 0;
       if (d.revolver) this.cylTarget = (this.cylTarget || 0) + Math.PI / 3;          // index one chamber
@@ -313,13 +323,14 @@
       // ---- pose targets ---------------------------------------------------------
       const s = this.scale;
       const sp = m.speedH, run = Mv.runSpeed;
-      this.adsW = U.damp(this.adsW, p.ads ? 1 : 0, 13, dt);
+      this.adsW = U.damp(this.adsW, p.ads ? 1 : 0, w.def.adsRate || 13, dt);
       const reloading = w.reloadT > 0;
       const sprinting = m.onGround && !m.sliding && sp > run * 0.92 && !p.ads && !p.fireHeld && !reloading && this.drawT <= 0 && this.inspectT <= 0;
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = (KP.hx !== undefined ? KP.hx : 0.1) * s; hy = KP.hy !== undefined ? KP.hy : -0.095; hz = KP.hz !== undefined ? KP.hz : -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
+      if (w.id === 'smg') { hx = 0.172 * s; hy = -0.176; hz = -0.515; }     // v1.19: SMG held closer = bigger in the hand, same spot on screen
       if (w.id === 'hunter') { hx = 0.15 * s; hy = -0.165; hz = -0.47; }     // v1.16.2: closer + bigger at the hip, muzzle toward the centre (reference)
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
       if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; } if (w.id === 'tracker') { hx = 0.082 * s; hy = -0.129; hz = -0.47; }     // v1.17.1: a touch farther = smaller on screen, same spot   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
@@ -688,9 +699,13 @@
       R.x.step(rx, dt); R.y.step(ry, dt); R.z.step(rz, dt);
       K.x.step(0, dt); K.y.step(0, dt); K.z.step(0, dt);
       KR.x.step(0, dt); KR.y.step(0, dt); KR.z.step(0, dt);
+      // spray heat: decays once you stop firing, eased through a spring so it never pops
+      if (performance.now() / 1000 - this.lastShotT > 0.12) this.heatT = Math.max(0, this.heatT - dt * 2.4);
+      const HT = this.heat, hk = this.heatT * (1 - A * 0.6);
+      HT.z.step(hk * 0.022, dt); HT.x.step(hk * 0.045, dt);
       const g = this.root;
-      g.position.set(P.x.v + K.x.v + ox, P.y.v + K.y.v + oy, P.z.v + K.z.v + oz);
-      g.rotation.set(R.x.v + KR.x.v + orx, R.y.v + KR.y.v + ory, R.z.v + KR.z.v + orz);
+      g.position.set(P.x.v + K.x.v + ox, P.y.v + K.y.v + oy, P.z.v + K.z.v + HT.z.v + oz);
+      g.rotation.set(R.x.v + KR.x.v + HT.x.v + orx, R.y.v + KR.y.v + ory, R.z.v + KR.z.v + orz);
       g.scale.setScalar(s);
 
       // Revolver: cylinder indexing / spinning, crane closed when not reloading

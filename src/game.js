@@ -251,6 +251,8 @@ BR.Game = class Game {
     const S = this.settings, C = BR.CONFIG;
     this.duel = null; document.body.classList.remove('duel');
     const practiceMode = !!(opts && opts.practice), resMode = !!(opts && opts.resurgence);
+    const squad = practiceMode ? 1 : Math.max(1, Math.min(resMode ? 3 : 4, (opts && opts.squad) | 0 || 1));     // v1.19 solos / duos / trios / squads
+    this.squad = 1; this.teams = 0; this._spec = null;
     this.zonePhases = resMode ? BR.RESURGENCE_PHASES : null;
     this.buildScene(Math.floor(Math.random() * 1e9), false, resMode ? { reef: true } : undefined);     // Resurgence: the Ironreef island
     if (resMode) { this.resurgence = { lastPhase: 3, queue: [], credit: 0, kills: 0, redeploys: 0 }; document.body.classList.add('resurgence'); }
@@ -261,7 +263,8 @@ BR.Game = class Game {
     this.player.yaw = Math.atan2(this.player.pos.x, this.player.pos.z); // face map center
     this.player.pitch = -0.75;                                           // look down at the landing area
     this.actors.push(this.player);
-    const bots = practiceMode ? 0 : resMode ? 23 : Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
+    let bots = practiceMode ? 0 : resMode ? 23 : Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
+    if (squad > 1) bots = Math.ceil(Math.max(bots + 1, squad * 2) / squad) * squad - 1;     // full teams only
     this.practice = bots === 0;
     document.body.classList.toggle('practice', this.practice);
     if (practiceMode) {
@@ -277,6 +280,7 @@ BR.Game = class Game {
       for (const t in pl.ammo) pl.ammo[t] = C.ammoCap[t];
     }
     this.addBots(bots, this.diff);
+    if (squad > 1) BR.Squads.setup(this, squad);
     this.zone.mesh.visible = !this.practice;
     this.total = this.actors.length;
     this.swapItem = null;
@@ -291,7 +295,7 @@ BR.Game = class Game {
     this.hud.show('end', false);
     this.hud.show('pause', false);
     this.hud.show('play', true);
-    this.hud.toast(this.practice ? 'Practice mode: tap SPAWN for guns, items and bots' : resMode ? 'RESURGENCE · you redeploy until the 4th circle closes' : 'Freefall! Tap JUMP to open your parachute', 2800);
+    this.hud.toast(this.practice ? 'Practice mode: tap SPAWN for guns, items and bots' : (squad > 1 ? BR.Squads.NAMES[squad] + ' · ' : '') + (resMode ? 'RESURGENCE · you redeploy until the 4th circle closes' : 'Freefall! Tap JUMP to open your parachute'), 2800);
     this.applyShadows();
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* optional */ }
   }
@@ -338,6 +342,7 @@ BR.Game = class Game {
     const b = new BR.Actor(this, { id: old.id, name: old.name, color: old.color || 0x8899aa });
     b.mover.pos.set(q.x, C.match.dropHeight * 0.55, q.z); b.mover.dropping = true;
     b.brain = new BR.BotBrain(b, this, this.diff); b.brain.dropTarget = { x: q.x, z: q.z };
+    if (old.team !== undefined) { b.team = old.team; b.brain.mateOfPlayer = !!(old.brain && old.brain.mateOfPlayer); if (b.mesh && b.mesh.userData.mat) b.mesh.userData.mat.color.setHex(b.color); }     // v1.19 squads
     this.scene.add(b.mesh);
     const i = this.actors.indexOf(old); if (i >= 0) this.actors.splice(i, 1, b); else this.actors.push(b);
     if (old.mesh && old.mesh.parent) this.scene.remove(old.mesh);
@@ -640,7 +645,7 @@ BR.Game = class Game {
     for (const a of this.actors) if (a.brain && a.alive && !frozen) a.brain.update(dt);
     for (const a of this.actors) a.update(dt);
     for (const a of this.actors) {
-      if (!a.alive || a.mover.dropping || a.zombie) continue;
+      if (!a.alive || a.mover.dropping || a.zombie || a.downed) continue;
       a.pickupT -= dt;
       if (a.pickupT <= 0) {
         a.pickupT = 0.12;
@@ -653,7 +658,7 @@ BR.Game = class Game {
       const dps = this.zone.dps;
       for (const a of this.actors) {
         if (!a.alive || !this.zone.outside(a.pos)) continue;
-        if (a.takeDamage(dps * dt, true)) this.kill(a, null, 'storm');
+        if (a.takeDamage(dps * dt, true)) { if (!BR.Squads.tryDown(this, a, null, 'storm')) this.kill(a, a.knocker && a.knocker.alive ? a.knocker : null, 'storm'); }
         else if (a === this.player) {
           this.zoneHurtT = (this.zoneHurtT || 0) - dt;
           if (this.zoneHurtT <= 0) { this.zoneHurtT = 1; BR.Audio.hurt(); }
@@ -665,6 +670,7 @@ BR.Game = class Game {
       if (!a.alive && a.mesh && a.mesh.parent && this.time - a.deathT > 4) this.scene.remove(a.mesh);
       else if (a.mesh && a.alive) a.mesh.visible = Math.abs(a.pos.x - cp.x) + Math.abs(a.pos.z - cp.z) < 260;
     }
+    if (this.squad > 1) BR.Squads.update(this, dt);
     while (this.recentShots.length && this.time - this.recentShots[0].t > 2) this.recentShots.shift();
     this.loot.update(dt, cp);
     this.fx.update(dt);
@@ -686,8 +692,10 @@ BR.Game = class Game {
     this.simulate(dt);
     this.playerEvents();
 
-    this.chest = p.alive && !p.mover.dropping ? this.loot.nearestChest(p, 2.2) : null;
-    if (this.chest) this.hud.prompt('Open chest');
+    this.reviveTgt = BR.Squads.reviveTarget(this);
+    this.chest = p.alive && !p.downed && !p.mover.dropping ? this.loot.nearestChest(p, 2.2) : null;
+    if (this.reviveTgt) { const t = this.reviveTgt; this.hud.prompt(t.reviver === p ? `Reviving ${t.name}… ${Math.round(t.reviveP / BR.Squads.REVIVE_T * 100)}%` : t.reviver ? `${t.reviver.name} is reviving ${t.name}` : `Revive ${t.name}`, '#5fb4ff'); }
+    else if (this.chest) this.hud.prompt('Open chest');
     else if (p.alive && this.swapItem && !this.swapItem.taken) this.hud.prompt('Swap for ' + BR.RARITY[this.swapItem.rar | 0].name + ' ' + BR.CONFIG.weapons[this.swapItem.wid].name, BR.RARITY[this.swapItem.rar | 0].css);
     else if (!this.zm && !(this.mode && this.mode.prompts)) this.hud.prompt(null);
 
@@ -732,10 +740,18 @@ BR.Game = class Game {
           this.result = null;
           this.hud.toast('Respawned', 900);
         }
-      } else if (!p.alive) { this.state = 'dead'; this.endT = BR.CONFIG.match.endDelay; }
-      else if (!this.practice && this.aliveCount() === 1) {
+      } else if (this.squad > 1 && BR.Squads.teamsAlive(this) <= 1 && BR.Squads.teamAlive(this, p.team) && !p.alive) {
+        // v1.19: you were out, but your team won it
+        this.state = 'won'; this.endT = 3.2;
+        this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time, squad: this.squad, teams: this.teams };
+        this.hud.toast('YOUR TEAM WON', 2400); BR.Audio.victory && BR.Audio.victory();
+      } else if (!p.alive && this.squad > 1 && BR.Squads.teamAlive(this, p.team)) { /* spectating your team */ }
+      else if (!p.alive) { this.state = 'dead'; this.endT = BR.CONFIG.match.endDelay;
+        if (this.squad > 1 && this.result) { this.result.place = BR.Squads.teamsAlive(this) + 1; this.result.squad = this.squad; this.result.teams = this.teams; } }
+      else if (!this.practice && (this.squad > 1 ? BR.Squads.teamsAlive(this) === 1 : this.aliveCount() === 1)) {
         this.state = 'won'; this.endT = 5.4;
-        this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time };
+        this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time, squad: this.squad, teams: this.teams };
+        if (p.downed) { p.downed = false; p.reviver = null; p.mover.prone = false; p.health = Math.max(p.health, 1); }
         // freeze frame first (like the big shooters), then the victory show
         this.freezeT = 1.0; p.fireHeld = false; this.hud.freeze(true); BR.Audio.freeze && BR.Audio.freeze();
       }
@@ -849,6 +865,11 @@ BR.Game = class Game {
 
     p.input.mx = inp.moveX;
     p.input.mz = inp.moveY;
+    // v1.19 knocked down: crawl and look only
+    if (p.downed) { p.fireHeld = false; p.ads = false; inp.ads = false; for (const k of ['jump', 'crouch', 'grenade', 'grapple', 'stim', 'reload', 'swap', 'slot0', 'slot1', 'slot2', 'knife', 'inspect', 'interact']) inp.consume(k);
+      if (inp.consume('pause')) this.pause(); if (inp.consume('map')) this.hud.toggleMap(); return; }
+    if (this.reviveTgt && inp.consume('interact')) { const t = this.reviveTgt; if (!t.reviver) { t.reviver = p; t.reviveP = 0; BR.Audio.click(); } }
+    if (p === (this.reviveTgt && this.reviveTgt.reviver)) { p.fireHeld = false; p.ads = false; inp.ads = false; for (const k of ['jump', 'crouch', 'grenade', 'grapple', 'stim', 'reload']) inp.consume(k); return; }
     if (inp.consume('jump')) p.input.jump = true;
     p.input.jumpHeld = !!inp.jumpHeld;
     if (inp.consume('crouch')) p.input.crouch = true;
@@ -921,7 +942,7 @@ BR.Game = class Game {
     const p = this.player, e = p.eye(this._v5), d = p.aimDir(this._v6);
     let best = null, bestA = 0.1;
     for (const a of this.actors) {
-      if (a === p || !a.alive) continue;
+      if (a === p || !a.alive || (a.team !== undefined && a.team === p.team)) continue;
       const tx = a.pos.x - e.x, ty = a.pos.y + a.mover.h * 0.62 - e.y, tz = a.pos.z - e.z;
       const dist = Math.hypot(tx, ty, tz);
       if (dist > 70 || dist < 0.5) continue;
@@ -1043,10 +1064,12 @@ BR.Game = class Game {
       try { if (navigator.vibrate) navigator.vibrate(25); } catch (e) { /* optional */ }
     }
     if (victim.brain) victim.brain.onDamaged(attacker);
-    if (died) this.kill(victim, attacker, weaponId, head);
+    if (died && !BR.Squads.tryDown(this, victim, attacker, weaponId, head)) this.kill(victim, attacker, weaponId, head);
   }
 
   kill(victim, killer, weaponId, head) {
+    if (weaponId === 'bleed' && killer && victim.downWid) weaponId = victim.downWid;     // finished off: credit the knock
+    victim.downed = false; victim.reviver = null; victim.mover.prone = false;
     victim.alive = false;
     victim.health = 0;
     victim.deathT = this.time;
@@ -1065,7 +1088,7 @@ BR.Game = class Game {
     if (this.mode && this.mode.onKill) { this.mode.onKill(victim, killer, weaponId, head); if (!this.mode.feed) return; }
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const nm = a => `<b class="${a.isPlayer ? 'me' : ''}">${esc(a.name)}</b>`;
-    const how = weaponId === 'storm' ? 'storm' : weaponId === 'shockwave' ? 'Shockwave' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');
+    const how = weaponId === 'bleed' ? 'bled out' : weaponId === 'storm' ? 'storm' : weaponId === 'shockwave' ? 'Shockwave' : (BR.CONFIG.weapons[weaponId] ? BR.CONFIG.weapons[weaponId].name : '') + (head ? ' ✕' : '');
     // your rows use your equipped kill feed banner + rank badge
     const P = BR.Profile.data, mine = (killer && killer.isPlayer) || victim.isPlayer;
     const badge = a => a && a.isPlayer ? BR.Ranks.badge(P.rp || 0) : '';
@@ -1095,9 +1118,10 @@ BR.Game = class Game {
       this.result = {
         win: false, place: this.aliveCount() + 1, total: this.total, kills: victim.kills,
         damage: victim.damageDealt, time: this.time,
-        by: killer ? 'Eliminated by ' + killer.name : 'Lost to the storm',
+        by: killer ? 'Eliminated by ' + killer.name : weaponId === 'bleed' ? 'Bled out' : 'Lost to the storm',
       };
     }
+    if (this.squad > 1) BR.Squads.onDeath(this, victim);
   }
 
   onShot(actor, w) {
@@ -1121,10 +1145,12 @@ BR.Game = class Game {
       // Visible recoil: the view punches up and rolls, then springs back (huge on the sniper)
       const K = w.def.kick || 0, c = this.cam;
       if (K || w.def.recoil) {
+        // v1.19: the punch spring is damped (no bounce); the roll swaps sides shot to shot instead of jittering
         const ads = this.player.ads ? 0.85 : 1;
-        c.punchV = (c.punchV || 0) + (w.def.recoil * 4 + K * 0.9) * ads;
-        c.rollV = (c.rollV || 0) + (Math.random() - 0.5) * (K * 0.35 + w.def.recoil * 2);
-        if (K) { c.kick = Math.max(c.kick, 0.06 * K); c.shake = Math.max(c.shake, 0.1 * K); }
+        c.rollSide = -(c.rollSide || 1);
+        c.punchV = (c.punchV || 0) + (w.def.recoil * 5 + K * 1.1) * ads;
+        c.rollV = (c.rollV || 0) + c.rollSide * (0.6 + Math.random() * 0.4) * (K * 0.3 + w.def.recoil * 1.6);
+        if (K) { c.kick = Math.max(c.kick, 0.05 * K); c.shake = Math.max(c.shake, 0.07 * K); }
       }
     } else {
       if (dist < 90) this.fx.flash(this.muzzlePoint(actor, this._v4));
@@ -1326,14 +1352,16 @@ BR.Game = class Game {
     c.kick = U.damp(c.kick, 0, 9, dt);
     // view punch spring (visual only: aim returns to where it was)
     c.punch = c.punch || 0; c.punchV = c.punchV || 0; c.rollP = c.rollP || 0; c.rollV = c.rollV || 0;
-    c.punchV += (-120 * c.punch - 16 * c.punchV) * dt; c.punch += c.punchV * dt;
-    c.rollV += (-120 * c.rollP - 16 * c.rollV) * dt; c.rollP += c.rollV * dt;
+    { const n = dt > 1 / 90 ? 2 : 1, h = dt / n;                  // v1.19: near-critically damped, sub-stepped
+      for (let i = 0; i < n; i++) { c.punchV += (-150 * c.punch - 21 * c.punchV) * h; c.punch += c.punchV * h; c.rollV += (-150 * c.rollP - 21 * c.rollV) * h; c.rollP += c.rollV * h; } }
     c.shake = Math.max(0, c.shake - dt * 1.2);
     const sp = m.speedH;
     if (m.onGround && !m.sliding) c.bob += dt * sp * 1.35;
     const bobY = m.onGround && !m.sliding ? Math.abs(Math.sin(c.bob)) * Math.min(sp, 9) * 0.006 : 0;
     const sh = c.shake * c.shake;
-    cam.position.set(m.pos.x + (Math.random() - 0.5) * sh, m.pos.y + c.off - c.kick + bobY + (Math.random() - 0.5) * sh, m.pos.z + (Math.random() - 0.5) * sh);
+    // v1.19: smooth shake (layered sines) instead of a new random offset every frame
+    const st = this.time * 1;
+    cam.position.set(m.pos.x + (Math.sin(st * 41.3) + Math.sin(st * 23.1 + 1.7)) * 0.25 * sh, m.pos.y + c.off - c.kick + bobY + (Math.sin(st * 37.7 + 0.6) + Math.sin(st * 19.3 + 2.9)) * 0.25 * sh, m.pos.z + (Math.sin(st * 29.9 + 2.2) + Math.sin(st * 17.1)) * 0.25 * sh);
 
     const right = Math.cos(p.yaw) * m.wallN.x - Math.sin(p.yaw) * m.wallN.z;
     const rollT = m.wallRunning ? -right * C.camera.wallRunRoll : m.sliding ? 0.05 : 0;
@@ -1350,6 +1378,7 @@ BR.Game = class Game {
     if (Math.abs(cam.fov - fovNow) > 0.01) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
 
     const ld = this.lookD || [0, 0];
+    if (p.downed) { this.vmr.hide(); return; }            // v1.19 knocked down: no gun, just crawling
     this.vmr.update(dt, ld[0], ld[1]);
   }
 

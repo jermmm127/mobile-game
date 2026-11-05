@@ -1299,7 +1299,62 @@ const server = http.createServer((req, res) => {
   });
   const run = 5.9, BR_RUN = run;
   const BR_VERSION = (require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'config.js'), 'utf8').match(/version: '([^']+)'/) || [])[1];
+  // v1.19: squads + knockdowns, recoil springs, SMG
+  const v119 = await page.evaluate(() => {
+    const g = BR.game, out = {}; BR.AntiCheat._testing = true; g.settings.bots = 29;
+    g.startMatch({ squad: 3 });
+    const p = g.player, mates = BR.Squads.mates(g);
+    out.setup = g.actors.length % 3 === 0 && g.teams === g.actors.length / 3 && mates.length === 2 && mates.every(m => m.team === 0) && g.actors.filter(a => a.team === 4).length === 3;
+    for (const a of g.actors) { a.mover.dropping = false; a.mover.pos.y = g.world.groundAt(a.pos.x, a.pos.z, 80); }
+    for (let i = 0; i < 20; i++) g.update(1 / 30);
+    const foe = g.actors.find(a => a.team === 1), foe2 = g.actors.find(a => a.team === 1 && a !== foe);
+    g.applyDamage(foe, p, 999, false, foe.pos, 'rifle');
+    out.knocked = foe.alive && foe.downed && foe.mover.prone;
+    const h0 = foe.health; for (let i = 0; i < 30; i++) g.update(1 / 30); out.bleeds = foe.health < h0;
+    foe.fireHeld = true; foe.update(1 / 30); out.noFire = !foe.fireHeld;
+    foe2.mover.pos.set(foe.pos.x + 1, foe.pos.y, foe.pos.z); foe2.brain.target = null;
+    for (let i = 0; i < 200 && foe.downed; i++) g.update(1 / 30);
+    out.botRevive = !foe.downed && foe.alive && foe.health === BR.Squads.REVIVE_HP;
+    g.applyDamage(foe, p, 999, false, foe.pos, 'rifle'); const k0 = p.kills; g.applyDamage(foe, p, 999, false, foe.pos, 'rifle');
+    out.finish = !foe.alive && p.kills === k0 + 1;
+    const team1 = g.actors.filter(a => a.team === 1); for (const a of team1) if (a.alive) g.applyDamage(a, p, 999, false, a.pos, 'rifle');
+    out.wipe = team1.every(a => !a.alive);
+    out.noFF = (() => { const m = mates[0], hp = m.health; g.applyDamage(m, p, 50, false, m.pos, 'rifle'); return m.health === hp; })();
+    const enemy = g.actors.find(a => a.team === 2), m = mates[0];
+    m.mover.pos.set(p.pos.x + 5, p.pos.y, p.pos.z); m.brain.target = null;
+    g.applyDamage(p, enemy, 9999, false, p.pos, 'rifle');
+    out.playerDown = p.alive && p.downed && g.state === 'playing';
+    for (let i = 0; i < 300 && p.downed; i++) { for (const a of g.actors) if (a.team !== 0 && a.brain) a.brain.target = null; g.update(1 / 30); }
+    out.playerRevived = p.alive && !p.downed;
+    const m2 = mates[1]; if (m2.alive) { m2.downed = false; m2.mover.prone = false; m2.mover.pos.set(p.pos.x + 60, p.pos.y, p.pos.z + 60); m2.brain.still = true; }
+    g.applyDamage(m, enemy, 9999, false, m.pos, 'rifle'); m.mover.pos.set(p.pos.x + 1, p.pos.y, p.pos.z); for (const a of g.actors) if (a.brain) a.brain.target = null; g.update(1 / 30);
+    out.prompt = /Revive/.test(document.getElementById('prompt').textContent);
+    g.input.press('interact'); for (let i = 0; i < 160 && m.downed; i++) { for (const a of g.actors) if (a.brain) a.brain.target = null; g.update(1 / 30); }
+    out.youRevive = !m.downed && m.alive;
+    out.panel = !document.getElementById('squad').classList.contains('hidden') && document.querySelectorAll('#squad .sq-row').length === 3;
+    for (const a of g.actors) if (a.team !== 0 && a.alive) g.kill(a, p, 'rifle');
+    g.update(1 / 30);
+    out.teamWin = g.state === 'won' && g.result.win && g.result.squad === 3;
+    // spectate your team: you're out, a teammate is alive
+    g.startMatch({ squad: 2 }); const p2 = g.player, mt = BR.Squads.mates(g)[0];
+    for (const a of g.actors) { a.mover.dropping = false; a.mover.pos.y = g.world.groundAt(a.pos.x, a.pos.z, 80); }
+    g.kill(p2, null, 'storm'); for (let i = 0; i < 10; i++) g.update(1 / 30);
+    out.spectate = g.state === 'playing' && mt.alive && !!g._spec;
+    // Resurgence: trios max, 24 players
+    g.startMatch({ resurgence: true, squad: 4 }); out.resTrios = g.squad === 3 && g.actors.length === 24;
+    g.startMatch({}); out.solo = g.squad === 1 && g.player.team === undefined;
+    out.picker = (() => { BR.selectMode('br'); const n = document.querySelectorAll('#sq-pick button').length; BR.selectMode('resurgence'); const r = document.querySelectorAll('#sq-pick button').length; BR.selectMode('zombies'); const hid = document.getElementById('sq-pick').classList.contains('hidden'); BR.selectMode('br'); return n === 4 && r === 3 && hid; })();
+    // recoil: the kick spring settles without bouncing back past rest
+    g.startMatch({ practice: true }); const v = g.vmr, pl = g.player; pl.slots[0] = BR.Weapons.create('smg'); pl.cur = 0; v.lastWeapon = null; for (let i = 0; i < 30; i++) v.update(1 / 60, 0, 0);
+    v.kick.z.v = 0; v.kick.z.vel = 0; v.onFire(pl.weapon); let peak = 0, under = 0;
+    for (let i = 0; i < 60; i++) { v.update(1 / 60, 0, 0); peak = Math.max(peak, v.kick.z.v); under = Math.min(under, v.kick.z.v); }
+    out.recoil = peak > 0.004 && under > -peak * 0.08;
+    const S = BR.CONFIG.weapons.smg; out.smg = S.rpm === 950 && S.mag === 30 && S.adsRate > 13 && S.speedMult > 1;
+    return out;
+  });
   const checks = [
+    ['v1.19 squads: duos/trios/squads teams + teammates, knockdowns (crawl, no shooting, bleed out), bot + player revives, finishing the downed, team wipes, spectate, team win, Resurgence up to trios, lobby picker', ['setup', 'knocked', 'bleeds', 'noFire', 'botRevive', 'finish', 'wipe', 'noFF', 'playerDown', 'playerRevived', 'prompt', 'youRevive', 'panel', 'teamWin', 'spectate', 'resTrios', 'solo', 'picker'].every(k => v119[k])],
+    ['v1.19 recoil springs settle without bouncing; SMG retuned (950 rpm, 30 rounds, fast ADS + mobility)', v119.recoil && v119.smg],
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
     ['crouch while running slides with a boost', mech.slide > run + 3],
     ['omni-slide goes where the stick points', mech.slideSideways],
@@ -1466,7 +1521,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

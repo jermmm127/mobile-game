@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.19.0', date: '2026-11-05', title: 'Squads + knockdowns', notes: [
+    'Battle Royale now has Solos, Duos, Trios and Squads, and Resurgence has Solos, Duos and Trios. Pick your team size under the mode card in the lobby. Your teammates drop with you, stick with you, show as blue markers through walls, and appear in a team list on the left.',
+    'Knockdowns: in any team mode, reaching 0 HP knocks you down instead of killing you. You crawl slowly and can\'t shoot, aim or use items, and you bleed out in 30 seconds unless a teammate revives you (stand next to them and tap Revive: 3.5 s). Enemies can keep shooting downed players to finish them faster. When nobody on a team is left standing, the whole team is eliminated.',
+    'If you\'re out but your team is still alive, you spectate them, and their win counts as yours.',
+    'SMG retuned as a close-range shredder: 950 rpm, 30-round mag, very fast to aim, faster to move with, light recoil, strong hip fire and shorter range. It also sits bigger in your hands.',
+    'Recoil feels heavier and cleaner on every gun: a solid kick that settles without wobbling, a smooth side pattern instead of random jitter, a gun that pushes back further the longer you spray, and smoother screen shake.',
+  ] },
   { v: '1.18.2', date: '2026-11-05', title: 'Karambit hold', notes: [
     'New karambit idle pose: the handle runs through the fist with the ring by your thumb, the back of the hand faces you, and the blade sweeps out to the right of the fist and hooks up.',
     'Your empty left fist now shows at the bottom left while you hold the karambit. It drops out of view during the draw and inspect twirls.',

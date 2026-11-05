@@ -203,6 +203,9 @@ BR.HUD = class HUD {
   <div id="speedo"><b>0.0</b><i>M/S</i></div>
   <div id="toast"></div>
   <div id="killflash"></div>
+  <div id="squad" class="squad hidden"></div>
+  <div id="sq-marks"></div>
+  <div id="downed" class="downed hidden"><b>YOU'RE DOWN</b><span id="dn-sub">Crawl to cover · a teammate can revive you</span><i><u id="dn-bar"></u></i></div>
   <div id="rs-chip" class="rs-chip"><i></i><b>RESPAWNS ON</b><span>until circle 4</span></div>
   <div id="rs-count" class="rs-count hidden"><b>REDEPLOYING IN</b><span>9</span><i>Kills shorten your next timer</i></div>
   <div id="zm-hud" class="hidden">
@@ -301,6 +304,7 @@ BR.HUD = class HUD {
         </button>
         <button id="btn-go" class="play-big"><span>PLAY</span><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></button>
       </div>
+      <div id="sq-pick" class="sq-pick hidden"></div>
       <div class="modes legacy-modes" hidden aria-hidden="true">
         <button id="btn-play" class="mode hero">
           <span class="m-tag">BATTLE ROYALE</span>
@@ -803,6 +807,7 @@ BR.HUD = class HUD {
       this.set('dlow', $('d-time').parentNode, D.phase === 'fight' && D.t < 10, (el, v) => el.classList.toggle('low', v));
     }
     this.set('alive', e.alive, game.aliveCount());
+    this.squadHud(game);
     this.set('kills', e.kills, p.kills);
     const z = game.zone;
     let lbl, t;
@@ -1041,6 +1046,45 @@ BR.HUD = class HUD {
       if (el._d !== d) { el._d = d; el.querySelector('b').textContent = d + 'm'; }
     }
   }
+  // v1.19 squads: teammate list (health, downed, out), markers over teammates, the downed overlay
+  squadHud(game) {
+    const $ = this.$, on = BR.Squads && BR.Squads.on(game), p = game.player;
+    this.set('sqOn', $('squad'), !!on, (el, v) => el.classList.toggle('hidden', !v));
+    const dn = $('downed');
+    this.set('dnOn', dn, !!(on && p.alive && p.downed), (el, v) => el.classList.toggle('hidden', !v));
+    if (!on) { if (this._sqk) for (const el of this._sqk) el.style.display = 'none'; return; }
+    if (p.downed) {
+      const S = BR.Squads, rv = p.reviver;
+      this.set('dnBar', dn, Math.round((rv ? p.reviveP / S.REVIVE_T : p.health / S.DOWN_HP) * 100), (el, v) => { $('dn-bar').style.transform = `scaleX(${v / 100})`; });
+      this.set('dnSub', dn, rv ? 'BEING REVIVED BY ' + rv.name.toUpperCase() : 'Crawl to cover · bleeding out', (el, v) => { el.classList.toggle('rev', !!rv); $('dn-sub').textContent = v; });
+    }
+    const mates = BR.Squads.mates(game), A = BR.CONFIG.actor;
+    this._sqT = (this._sqT || 0) + 1;
+    if (this._sqT % 6 === 0) {
+      const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const row = a => { const st = !a.alive ? 'out' : a.downed ? 'down' : '';
+        const hp = a.alive ? (a.downed ? a.health / BR.Squads.DOWN_HP : a.health / A.maxHealth) : 0, sh = a.alive && !a.downed ? a.shield / A.maxShield : 0;
+        return `<div class="sq-row ${st}${a.isPlayer ? ' me' : ''}"><b>${esc(a.isPlayer ? 'YOU' : a.name)}</b><i><u style="transform:scaleX(${hp.toFixed(2)})"></u><s style="transform:scaleX(${sh.toFixed(2)})"></s></i><em>${st === 'out' ? '✕' : st === 'down' ? '✚' : ''}</em></div>`; };
+      const html = `<div class="sq-h">${BR.Squads.NAMES[game.squad]} · ${BR.Squads.teamsAlive(game)} TEAMS LEFT</div>` + [p].concat(mates).map(row).join('');
+      if (html !== this._sqHtml) { this._sqHtml = html; $('squad').innerHTML = html; }
+    }
+    // markers over teammates (through walls), red + REVIVE when they're down
+    const box = $('sq-marks'), pool = this._sqk || (this._sqk = []), cam = game.camera;
+    while (pool.length < mates.length) { const d = document.createElement('div'); d.className = 'sqk'; d.innerHTML = '<i></i><b></b>'; box.appendChild(d); pool.push(d); }
+    const W = window.innerWidth, H = window.innerHeight, v = this._sqv || (this._sqv = new THREE.Vector3());
+    cam.updateMatrixWorld(); cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
+    for (let i = 0; i < pool.length; i++) {
+      const el = pool[i], a = mates[i];
+      if (!a || !a.alive || a.mover.dropping && p.mover.dropping) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
+      v.set(a.pos.x, a.pos.y + a.mover.h + 0.45, a.pos.z).project(cam);
+      if (v.z > 1) { el.style.display = 'none'; continue; }
+      const x = (v.x * 0.5 + 0.5) * W, y = (-v.y * 0.5 + 0.5) * H;
+      el.style.display = ''; el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+      el.classList.toggle('down', !!a.downed);
+      const d = Math.round(a.pos.distanceTo(p.pos)), t = a.downed ? `REVIVE ${d}m` : (d > 12 ? `${a.name} ${d}m` : a.name);
+      if (el._t !== t) { el._t = t; el.querySelector('b').textContent = t; }
+    }
+  }
   // Resurgence: respawn status chip + the redeploy countdown while you're down
   resurgence(on, t) {
     const c = this.$('rs-chip'), k = this.$('rs-count');
@@ -1275,7 +1319,7 @@ BR.HUD = class HUD {
       $('end-eyebrow').textContent = r.zombies ? 'YOU DIED · ZOMBIES' : r.duel ? (r.win ? 'DUEL WON' : 'DUEL LOST') : r.win ? 'VICTORY' : 'ELIMINATED';
       $('end-place').textContent = r.zombies ? `ROUND ${r.round}` : r.duel ? `${r.score[0]} – ${r.score[1]}` : r.win ? '#1' : '#' + r.place;
       $('btn-again').textContent = r.zombies ? 'PLAY AGAIN' : r.duel ? 'REMATCH' : 'QUEUE NEW MATCH';
-      $('end-sub').textContent = r.zombies ? `Survived ${Math.max(0, r.round - 1)} rounds · ${r.kills} zombies · ${r.bosses || 0} bosses · ${(r.points || 0).toLocaleString()} points` : r.duel ? r.by : r.win ? `Last one standing out of ${r.total}.` : `${r.by} · out of ${r.total}`;
+      $('end-sub').textContent = r.zombies ? `Survived ${Math.max(0, r.round - 1)} rounds · ${r.kills} zombies · ${r.bosses || 0} bosses · ${(r.points || 0).toLocaleString()} points` : r.duel ? r.by : r.win ? (r.squad > 1 ? `${BR.Squads.NAMES[r.squad]} · last team standing out of ${r.teams}.` : `Last one standing out of ${r.total}.`) : `${r.by} · out of ${r.squad > 1 ? r.teams + ' teams' : r.total}`;
     }
     if (BR.game && BR.game.resurgence && !r.overdrive) $('end-eyebrow').textContent = 'RESURGENCE · ' + $('end-eyebrow').textContent;
     $('end-kills').textContent = r.kills;

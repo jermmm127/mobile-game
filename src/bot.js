@@ -77,6 +77,7 @@ BR.BotBrain = class BotBrain {
       return;
     }
     this.landedT = (this.landedT || 0) + dt;
+    if (BR.Squads && BR.Squads.botTick(this, dt)) { this.unstick(dt); return; }      // v1.19: downed crawl / reviving a teammate
 
     this.thinkT -= dt;
     if (this.thinkT <= 0) { this.thinkT = 0.22 + Math.random() * 0.1; this.think(); }
@@ -146,9 +147,9 @@ BR.BotBrain = class BotBrain {
     let best = null, bestD = engage;
     const fx = -Math.sin(a.yaw), fz = -Math.cos(a.yaw);
     for (const o of g.actors) {
-      if (o === a || !o.alive || o.mover.dropping) continue;
+      if (o === a || !o.alive || o.mover.dropping || (a.team !== undefined && o.team === a.team)) continue;
       const dx = o.pos.x - a.pos.x, dz = o.pos.z - a.pos.z;
-      const dist = Math.hypot(dx, dz);
+      const dist = Math.hypot(dx, dz) * (o.downed ? 1.6 : 1);          // standing enemies first, then finish the downed
       if (dist > bestD) continue;
       const cos = (dx * fx + dz * fz) / (dist || 1);
       if (dist > 10 && Math.acos(BR.util.clamp(cos, -1, 1)) > d.fov * 0.5) continue;

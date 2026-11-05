@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.18.2',
+  version: '1.19.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -155,7 +155,10 @@ BR.CONFIG = {
     tracker: { name: 'Tracker', melee: true, ammo: null, dmg: 50, backstab: 110, pellets: 1, rpm: 130, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.5, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1d1e20, speedMult: 1.2 },
     knife:   { name: 'Karambit', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1b1d21, speedMult: 1.2 },
     pistol:  { name: 'Pistol',  ammo: 'light',  dmg: 24, pellets: 1, rpm: 380, mag: 12, reload: 1.1, spread: 0.012, ads: 0.4, bloom: 0.010, bloomMax: 0.03, range: 55,  head: 1.8, recoil: 0.012, zoom: 1.2, tier: 0, color: 0x26282c },
-    smg:     { name: 'SMG',     ammo: 'light',  dmg: 15, pellets: 1, rpm: 1100, mag: 35, reload: 1.6, spread: 0.030, ads: 0.6, bloom: 0.0035, bloomMax: 0.03, range: 40,  head: 1.5, recoil: 0.0095, recoilH: 0.012, zoom: 1.3, tier: 1, color: 0x2f3237 },
+    // v1.19 SMG, tuned to the Superi 46's profile: a fast 950 rpm close-range shredder with a 30-round mag, very
+    // fast to aim (adsRate) and to move with, a light, mostly vertical recoil with a small side bounce, strong
+    // hip fire, low headshot bonus and a short effective range (damage drops off past ~18 m)
+    smg:     { name: 'SMG',     ammo: 'light',  dmg: 20, pellets: 1, rpm: 950, mag: 30, reload: 1.9, spread: 0.024, ads: 0.42, bloom: 0.0028, bloomMax: 0.022, range: 18,  head: 1.3, recoil: 0.0078, recoilH: 0.0055, zoom: 1.3, tier: 1, color: 0x2f3237, speedMult: 1.08, adsRate: 20 },
     // Wide horizontal pellet line (tightens when aiming), shell-by-shell reload you can cancel by firing
     // v1.18.1 Mastiff-style: 8 heavy pellets in a wide horizontal line that tightens a lot when you aim,
     // a slow, heavy pump, shell-by-shell reload you can cancel by firing, and a longer reach than a normal shotgun

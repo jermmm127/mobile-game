@@ -346,9 +346,10 @@
   let playOpts = null;
   const play = opts => {
     BR.Audio.init(); tryFullscreen();
-    playOpts = opts && opts.resurgence ? { resurgence: true } : null;
+    playOpts = opts ? { resurgence: !!opts.resurgence, squad: opts.squad | 0 || 1 } : null;
     if (qTimer) return;
-    const total = playOpts ? 24 : Math.max(1, (settings.bots | 0) + 1);
+    const sq = playOpts ? playOpts.squad : 1, base = playOpts && playOpts.resurgence ? 24 : Math.max(1, (settings.bots | 0) + 1);
+    const total = sq > 1 ? Math.ceil(Math.max(base, sq * 2) / sq) * sq : base;
     game.hud.show('end', false); game.hud.show('pause', false);
     const q = $('queue');
     q.classList.remove('found');
@@ -466,7 +467,7 @@
     else if (game.result && game.result.zombies) { BR.Audio.init(); game.startZombies(); }
     else if (game.result && game.result.overdrive) overdrive();
     else if (game.result && game.result.arena) { game.toMenu(); if (!game.result.online && BR.Lobby) { BR.Lobby.preset = game.result.preset; BR.Lobby.play(); } else BR.Lobby && BR.Lobby.open(game.result.preset); }
-    else play(game.resurgence ? { resurgence: true } : null);
+    else play({ resurgence: !!game.resurgence, squad: game.squad || 1 });
   });
 
   // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts
@@ -623,8 +624,8 @@
     aim: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke-width="2"/>',
   };
   const MODES = {
-    br:         { name: 'BATTLE ROYALE', sub: 'Solo · 30 players · one life', cat: 'BATTLE ROYALE', rk: true, tags: ['30 PLAYERS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play() },
-    resurgence: { name: 'RESURGENCE', sub: 'Redeploy until the 4th circle', rk: true, cat: 'BATTLE ROYALE', tags: ['NEW', '24 PLAYERS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true }) },
+    br:         { name: 'BATTLE ROYALE', sub: 'Solos · Duos · Trios · Squads', cat: 'BATTLE ROYALE', rk: true, tags: ['30 PLAYERS', 'SQUADS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play({ squad: squadFor('br') }) },
+    resurgence: { name: 'RESURGENCE', sub: 'Solos · Duos · Trios · redeploys', rk: true, cat: 'BATTLE ROYALE', tags: ['24 PLAYERS', 'TRIOS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true, squad: squadFor('resurgence') }) },
     duels:      { name: 'DUELS 1V1 · 2V2', sub: 'AI teammate or friends online', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE', '2V2'], art: 'linear-gradient(120deg,#1f4fb8 0 46%,#ffd24a 48% 52%,#b8302a 54% 100%)', glow: '#ffd24a', go: () => BR.Lobby.open('duel') },
     shotgun:    { name: 'SHOTGUN DUELS', sub: 'Breachers only · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff9a1f,#6a2a10 55%,#1a0a06)', glow: '#ff9a1f', go: () => BR.Lobby.open('shotgun') },
     sniper:     { name: 'SNIPER DUELS', sub: 'Snipers + hunting rifles · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#9fe8ff,#1a4a6a 55%,#06121c)', glow: '#9fe8ff', go: () => BR.Lobby.open('sniper') },
@@ -635,6 +636,17 @@
     practice:   { name: 'PRACTICE', sub: 'Spawn anything · no bots', cat: 'TRAINING', tags: ['SOLO'], art: 'linear-gradient(160deg,#4fdc8a,#14583a 55%,#071a12)', glow: '#4fdc8a', go: () => practice() },
     aim:        { name: 'AIM TRAINER', sub: 'Gridshot · Flick · Tracking · Strafe', cat: 'TRAINING', tags: ['NEW', 'SCORES'], art: 'radial-gradient(120% 120% at 80% 0%,#45e0ff,#0b3a56 55%,#050d18)', glow: '#45e0ff', go: () => aimTrainer() },
   };
+  // v1.19 team size per mode (Battle Royale: solos to squads; Resurgence: solos to trios)
+  const squadFor = id => { const S = BR.Squads.SIZES[id] || [1], v = (settings.squads || {})[id] | 0; return S.includes(v) ? v : 1; };
+  const renderSquadPick = () => {
+    const el = $('sq-pick'), S = BR.Squads.SIZES[settings.mode];
+    el.classList.toggle('hidden', !S);
+    if (!S) return;
+    el.style.setProperty('--g', MODES[settings.mode].glow);
+    const cur = squadFor(settings.mode), sub = { 1: 'just you', 2: '+1 teammate', 3: '+2 teammates', 4: '+3 teammates' };
+    el.innerHTML = S.map(n => `<button data-sq="${n}" class="${n === cur ? 'sel' : ''}">${BR.Squads.NAMES[n]}<small>${sub[n]}</small></button>`).join('');
+  };
+  $('sq-pick').addEventListener('click', e => { const b = e.target.closest('[data-sq]'); if (!b) return; settings.squads = Object.assign({}, settings.squads, { [settings.mode]: +b.dataset.sq }); save(); BR.Audio.init(); BR.Audio.click(); renderSquadPick(); renderLobby(); });
   const CATS = ['BATTLE ROYALE', 'COMPETITIVE', 'CASUAL', 'SURVIVAL', 'TRAINING'];
   if (!MODES[settings.mode]) settings.mode = 'br';          // (the classic 1v1 Duel was retired in v1.15: Duels 1v1 · 2v2 replaces it)
   // v1.15 Ranked / Casual: every mode except Zombies, Overdrive and Training has both queues.
@@ -643,7 +655,7 @@
   const rankedNow = id => !!(settings.ranked && MODES[id] && MODES[id].rk && rankedOk());
   BR.rankedNow = () => rankedNow(settings.mode);
   const art = (id, big) => { const M = MODES[id]; return `<span class="mart${big ? ' big' : ''}" style="background:${M.art};--g:${M.glow}"><i class="mart-grid"></i><svg viewBox="0 0 24 24">${ICO[id]}</svg></span>`; };
-  const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = M.sub; $('mode-cur').style.setProperty('--g', M.glow);
+  const renderLobby = () => { const M = MODES[settings.mode]; $('mc-art').innerHTML = art(settings.mode); $('mc-name').textContent = M.name; $('mc-sub').textContent = BR.Squads.SIZES[settings.mode] ? BR.Squads.NAMES[squadFor(settings.mode)] + (settings.mode === 'br' ? ' · 30 players · one life' : ' · redeploy until circle 4') : M.sub; $('mode-cur').style.setProperty('--g', M.glow); renderSquadPick();
     const q = $('mode-cur').querySelector('.mc-tag'); q.innerHTML = M.rk ? (rankedNow(settings.mode) ? '<em class="q-rk">RANKED</em> GAME MODE' : '<em class="q-cs">CASUAL</em> GAME MODE') : 'GAME MODE'; };
   const renderDiscover = () => {
     const rk = !!settings.ranked && rankedOk();

@@ -180,7 +180,7 @@ BR.Mover = class Mover {
         this.friction(M.slideFriction, dt);
       } else {
         this.friction(M.friction, dt);
-        this.accelerate(wx, wz, (crouchy ? M.crouchSpeed : run) * frac, M.accelGround, dt);
+        this.accelerate(wx, wz, (this.prone ? M.crouchSpeed * 0.42 : crouchy ? M.crouchSpeed : run) * frac, M.accelGround, dt);     // v1.19 prone = knocked down, crawling
       }
     } else {
       this.accelerate(wx, wz, run * frac, M.accelAir, dt);
@@ -213,7 +213,7 @@ BR.Mover = class Mover {
 
     // ---- body height --------------------------------------------------------
     const A = BR.CONFIG.actor;
-    const targetH = this.sliding ? A.slideHeight : this.crouched ? A.crouchHeight : this.standH;
+    const targetH = this.prone ? 0.62 : this.sliding ? A.slideHeight : this.crouched ? A.crouchHeight : this.standH;
     if (targetH < this.h) this.h = targetH;
     else if (targetH > this.h) {
       const p = this.pos, r = this.r;

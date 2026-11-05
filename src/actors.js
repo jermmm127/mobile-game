@@ -143,7 +143,7 @@ BR.Actor = class Actor {
   // Stim shot: speed boost + heal ticks. Returns true if it was used.
   tryStim() {
     const C = BR.CONFIG.stim;
-    if (!this.alive || this.stimCd > 0 || this.mover.dropping) return false;
+    if (!this.alive || this.downed || this.stimCd > 0 || this.mover.dropping) return false;
     this.stimCd = C.cooldown;
     this.stimT = C.speedTime;
     this.stimHealT = C.healTime;
@@ -154,7 +154,7 @@ BR.Actor = class Actor {
   // Fire the grapple along the aim. Returns true if it hooked something.
   tryGrapple() {
     const G = BR.CONFIG.move.grapple, m = this.mover;
-    if (this.grappleCd > 0 || m.grapple || m.dropping) return false;
+    if (this.downed || this.grappleCd > 0 || m.grapple || m.dropping) return false;
     const e = this.eye(this._ge || (this._ge = new THREE.Vector3()));
     const d = this.aimDir(this._gd || (this._gd = new THREE.Vector3()));
     // Anything solid works: buildings, rocks, the ground, tree canopies, other players
@@ -180,6 +180,17 @@ BR.Actor = class Actor {
   update(dt) {
     if (this.netProxy) { this.netProxy.apply(this, dt); return; }     // v1.12: a remote player / remote bot (net.js)
     if (!this.alive) return;
+    if (this.downed) {
+      // v1.19 knocked down: crawl only (no jumping, shooting, aiming, items or reloads)
+      const m = this.mover, inp = this.input;
+      inp.jump = false; inp.crouch = false; inp.speedMult = 1; this.fireHeld = false; this.ads = false;
+      m.prone = true; m.sliding = false; m.crouched = true;
+      if (m.grapple) m.releaseGrapple();
+      m.update(dt, inp, this.yaw);
+      for (const w of this.slots) if (w) w.reloadT = 0;
+      if (this.mesh) this.syncMesh(dt);
+      return;
+    }
     const w = this.weapon;
     this.input.speedMult = w && w.def.speedMult ? w.def.speedMult : 1;
     if (this.zSlowT > 0) this.input.speedMult *= 0.55;          // slowed by a zombie boss (scream / roar)
@@ -322,7 +333,11 @@ BR.Actor = class Actor {
     u.t += dt * sp * 1.45;
     // targets: [hipL, kneeL, hipR, kneeR, lean, bodyY, bodyX]
     let hL = 0, kL = 0, hR = 0, kR = 0, lean = 0, bodyY = 0, bodyX = 0, armsUp = 0, armsOut = 0, hipYaw = 0, hipRoll = 0, hipShift = 0;
-    if (m.dropping && !m.chute) {                 // freefall: belly down, limbs spread
+    let crawl = 0;
+    if (this.downed) {                            // v1.19 knocked down: prone, crawling on the elbows
+      const c = Math.sin(u.t * 1.6);
+      bodyX = -1.38; bodyY = 0.24; hL = 0.2 + c * 0.35; kL = 0.4 + Math.max(0, c) * 0.9; hR = 0.2 - c * 0.35; kR = 0.4 + Math.max(0, -c) * 0.9; armsUp = 1; crawl = c;
+    } else if (m.dropping && !m.chute) {                 // freefall: belly down, limbs spread
       bodyX = -1.4; bodyY = 1.0; hL = 0.3; kL = 0.6; hR = 0.25; kR = 0.5; armsOut = 1.1;
     } else if (m.dropping) {                      // under canopy: holding the lines, legs dangling
       const sw = Math.sin(performance.now() / 420) * 0.15;
@@ -366,12 +381,13 @@ BR.Actor = class Actor {
     if (u.gun.userData.knife) tL.set(-0.2, 0.08, -0.08);           // off hand guards while holding the knife
     const up = Math.max(armsUp, 0), out = Math.min(armsOut, 1);
     if (up > 0) { tR.lerp(_ikV.set(0.2, 1.08, 0.02), up); tL.lerp(_ikC.set(-0.2, 1.08, 0.02), up); }
+    if (crawl) { tR.y += crawl * 0.12; tL.y -= crawl * 0.12; tR.z -= 0.12; tL.z -= 0.12; }
     if (out > 0) { tR.lerp(_ikV.set(0.62, 0.58, 0.05), out); tL.lerp(_ikC.set(-0.62, 0.58, 0.05), out); }
     if (!u.hR) { u.hR = tR.clone(); u.hL = tL.clone(); }
     const kk = 1 - Math.exp(-dt * 18);
     u.hR.lerp(tR, kk); u.hL.lerp(tL, kk);
     solveArm(u.AR, u.hR, 1); solveArm(u.AL, u.hL, -1);
-    u.gun.visible = !m.dropping;
+    u.gun.visible = !m.dropping && !this.downed;
     u.chute.visible = !!(m.dropping && m.chute);
     if (u.chute.visible) u.chute.rotation.z = Math.sin(performance.now() / 700) * 0.06;
     // Show the gun this bot is actually holding

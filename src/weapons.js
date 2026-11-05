@@ -185,10 +185,10 @@ BR.Weapons = {
         const side = Math.min(1, n / 6);
         actor.recoilDrift = Math.sin(n * 0.42 + actor.sprayPhase) * actor.sprayDir;
         actor.yaw += d.recoilH * ads * (side * actor.recoilDrift * 0.9 + (Math.random() - 0.5) * 0.35);
-        actor.pitch += (Math.random() - 0.5) * d.recoil * 0.1 * ads;
       } else {
-        v = d.recoil * (0.85 + Math.random() * 0.3) * ads;
-        actor.yaw += (Math.random() - 0.5) * d.recoil * 0.4;
+        // v1.19: semi-autos and heavies climb straight with a small, smooth side drift (no random yaw jitter)
+        v = d.recoil * (0.92 + Math.random() * 0.16) * ads;
+        actor.yaw += Math.sin(n * 1.3 + actor.sprayPhase) * actor.sprayDir * d.recoil * 0.16 * ads;
       }
       actor.recoil += v; actor.recoilPull = (actor.recoilPull || 0) + v;
     }
