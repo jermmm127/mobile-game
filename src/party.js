@@ -278,7 +278,7 @@
 BR.PartyStage = (function () {
   const $ = id => document.getElementById(id);
   const S = { members: [], figs: [], key: '' };
-  const SLOT_X = [0, -1.3, 1.3, -2.6], SLOT_Z = [0, 0.3, 0.3, 0.6];
+  const SLOT_X = [0, -1.15, 1.15, 2.2], SLOT_Z = [0, 0.45, 0.45, 1.0];          // v1.21.1: you in front, party fanned out behind
   const order = list => { const me = list.find(m => m.me) || list[0], rest = list.filter(m => m !== me); return [me].concat(rest).filter(Boolean).slice(0, 4); };
   const init = () => {
     const cv = $('pt-stage'); if (!cv || S.r) return !!S.r;
@@ -294,7 +294,7 @@ BR.PartyStage = (function () {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.018, 8, 48), new THREE.MeshBasicMaterial({ color: i ? 0x8a5cff : 0xffc24a })); ring.rotation.x = Math.PI / 2; g.add(ring);
       S.scene.add(g); return g; });
     S.cam = new THREE.PerspectiveCamera(30, 2, 0.1, 50);
-    S.cam.position.set(-0.45, 1.3, 5.7); S.cam.lookAt(-0.45, 0.98, -0.3);
+    S.cam.position.set(0.45, 1.2, 7.3); S.cam.lookAt(0.45, 0.95, -0.4);
     return true;
   };
   // a menu figure: the in-game character (actors.js) holding the member's gun in their finish

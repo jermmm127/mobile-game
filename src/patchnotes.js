@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.21.1', date: '2026-11-05', title: 'Bigger party stage', notes: [
+    'Main menu: your party now takes the whole right half of the screen. The characters are much bigger and fanned out, with you in front.',
+    'The mode card, PLAY button, team-size buttons and menu buttons are smaller and sit in a compact column on the left. Tap the mode card to change modes.',
+  ] },
   { v: '1.21.0', date: '2026-11-05', title: 'New models, District, vaulting', notes: [
     'New models: Sniper, Revolver (the cylinder swings out and spins on reloads), Shockwave Launcher (the drum comes off on reloads), plus all four knives: Karambit, Butterfly (the handles still flip), M9 Bayonet and Tracker. All camos and blueprints work on them.',
     'Sniper scope: when you aim, the rifle\'s own scope now comes up to your eye and lines up with the crosshair before the scope view opens, so the reticle sits exactly in the model\'s scope.',
