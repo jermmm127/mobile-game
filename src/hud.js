@@ -565,7 +565,7 @@ BR.HUD = class HUD {
     <button class="mbtn sm hot sp-locker" id="sp-locker">LOCKER · SWAP SKINS, BLUEPRINTS + KNIFE</button>
     <div class="sp-sec">WEAPONS</div>
     <div class="sp-rar" id="sp-rar"><span>RARITY</span>${(BR.RARITY || []).map((r, i) => `<button data-r="${i}" style="--rc:${r.css}"${i === 0 ? ' class="sel"' : ''}>${r.name.toUpperCase()}</button>`).join('')}</div>
-    <div class="sp-slots" id="sp-slots"><span>PUT IN</span><button data-slot="0"><b>SLOT 1</b><i>EMPTY</i></button><button data-slot="1"><b>SLOT 2</b><i>EMPTY</i></button></div>
+    <div class="sp-slots" id="sp-slots" style="display:none"><span>PUT IN</span><button data-slot="0"><b>SLOT 1</b><i>EMPTY</i></button><button data-slot="1"><b>SLOT 2</b><i>EMPTY</i></button></div>
     <div class="sp-grid" id="sp-weapons"></div>
     <div class="sp-sec">ITEMS</div>
     <div class="sp-grid">

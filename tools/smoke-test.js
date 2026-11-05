@@ -393,10 +393,10 @@ const server = http.createServer((req, res) => {
     o.final = g.duel.score.join('-');
     // mythic blueprints animate
     const m = BR.Models.weapon('rifle', 'default', 'none', 'neonviper');
-    const before = JSON.stringify(m.children.map(c => c.rotation.x.toFixed(3)));
+    const rots = () => { const r = []; m.traverse(c => r.push(c.rotation.x.toFixed(3))); return JSON.stringify(r); }, before = rots();     // (v1.23: parts sit inside fit groups)
     BR.Models.animate(m, 2.5);
     o.mythic = Object.values(BR.Models.BLUEPRINTS).reduce((n, w) => n + Object.values(w).filter(b => b.rarity === 'Mythic').length, 0);
-    o.mythicAnim = (m.userData.anim || []).length > 0 && JSON.stringify(m.children.map(c => c.rotation.x.toFixed(3))) !== before;
+    o.mythicAnim = (m.userData.anim || []).length > 0 && rots() !== before;
     g.settings.bots = 19; g.startMatch();       // back to a battle royale for the next check
     return o;
   });
@@ -480,13 +480,12 @@ const server = http.createServer((req, res) => {
       out.icons = { sil: ids.every(id => WI.sil[id] && WI.sil[id].length > 500), pic: ids.every(id => WI.pic[id]),
         slot: !!document.querySelector('.slot .sicon .wsil'), spawnCards: document.querySelectorAll('#sp-weapons .gcard img').length,
         duelCards: document.querySelectorAll('#dm-g0 .gcard img').length, hunterRecoil: C.weapons.hunter.recoil, hunterKick: C.weapons.hunter.kick }; }
-    // spawn menu: pick a slot, then a gun goes into that slot (two-gun loadout)
-    { p.slots[0] = null; p.slots[1] = null; g.state = 'playing'; g.openSpawnMenu();
+    // spawn menu (v1.23): a picked gun drops on the ground in front of you (not equipped); walking over it picks it up
+    { p.slots[0] = null; p.slots[1] = null; g.state = 'playing'; g.openSpawnMenu(); const n0 = g.loot.items.length;
       const card = id => document.querySelector('#sp-weapons .gcard[data-arg="' + id + '"]');
-      card('sniper').click(); card('smg').click(); const a = p.slots.map(x => x && x.id).join();
-      document.querySelector('#sp-slots button[data-slot="0"]').click(); card('shotgun').click(); const b2 = p.slots.map(x => x && x.id).join();
-      const badges = document.querySelectorAll('#sp-weapons .gbadge').length; g.closeSpawnMenu();
-      out.spawnSlots = { a, b: b2, badges }; }
+      card('sniper').click(); const dropped = g.loot.items.length === n0 + 1 && g.loot.items[g.loot.items.length - 1].wid === 'sniper', a = p.slots.map(x => x && x.id).join();
+      const it = g.loot.items[g.loot.items.length - 1]; g.closeSpawnMenu(); it.air = false; p.mover.pos.set(it.pos.x, it.pos.y, it.pos.z); p.pickupT = 0; g.update(1 / 30); g.update(1 / 30);
+      out.spawnSlots = { a, dropped, picked: p.slots.some(x => x && x.id === 'sniper') }; }
     // weapon-slot opacity in the HUD editor
     const sa = document.getElementById('ed-slot-alpha'); sa.value = 0.3; sa.dispatchEvent(new Event('input'));
     out.slotAlpha = parseFloat(getComputedStyle(document.querySelector('#play > .slot:not(.empty)')).opacity);
@@ -969,7 +968,7 @@ const server = http.createServer((req, res) => {
       M = play('tdm', 4); v.tdm = g.actors.length === 8; run(120);
       const f2 = g.actors.find(a => a.team !== g.player.team && a.alive); g.applyDamage(f2, g.player, 999, true, f2.pos, 'rifle'); v.tdmScore = M.score[g.player.team] === 1;
       run(30 * 4); v.respawn = f2.alive;
-      M.score[g.player.team] = 30; run(3); v.tdmEnd = M.ended; run(90); v.tdmResult = g.state === 'end' && /TEAM DEATHMATCH/.test(document.getElementById('end-eyebrow').textContent);
+      M.score[g.player.team] = 30; run(3); v.tdmEnd = M.ended; run(260); v.tdmResult = g.state === 'end' && /TEAM DEATHMATCH/.test(document.getElementById('end-eyebrow').textContent);
       g.toMenu(); M = play('ffa', 6); v.ffa = g.actors.length === 6 && new Set(g.actors.map(a => a.team)).size === 6; g.toMenu();
       v.discover = document.querySelectorAll('#discover [data-m="tdm"], #discover [data-m="ffa"], #discover [data-m="shotgun"], #discover [data-m="sniper"], #discover [data-m="duels"]').length >= 0 && typeof BR.Lobby.open === 'function';
       // shield cell model
@@ -1032,8 +1031,8 @@ const server = http.createServer((req, res) => {
         g.toMenu();
       }
       // fair odds: every map rolls about a third of the time
-      L.preset = 'duel'; const tally = {}; for (let i = 0; i < 30000; i++) { const m = L.rollMap(); tally[m] = (tally[m] || 0) + 1; }
-      v.fair = Object.keys(tally).length === 3 && Object.values(tally).every(n => Math.abs(n / 30000 - 1 / 3) < 0.02);
+      L.preset = 'duel'; const tally = {}, NP = L.pool('duel').length; for (let i = 0; i < 30000; i++) { const m = L.rollMap(); tally[m] = (tally[m] || 0) + 1; }
+      v.fair = NP >= 3 && Object.keys(tally).length === NP && Object.values(tally).every(n => Math.abs(n / 30000 - 1 / NP) < 0.02);
       // the roll overlay lands on the chosen map
       L.skipRoll = false; let rolled = false; L.showRoll('cargo', () => { rolled = true; });
       const cards = document.querySelectorAll('#mr-strip .mr-card');
@@ -1270,7 +1269,7 @@ const server = http.createServer((req, res) => {
       // light menu: no world behind it
       g.toMenu(); v.lightMenu = g.state === 'menu' && !g.scene && document.body.classList.contains('menulite') && getComputedStyle(document.querySelector('.menu-bg')).display === 'block';
       g.startMatch({ practice: true }); v.menuOff = !document.body.classList.contains('menulite') && !!g.scene; g.toMenu();
-      { const sg = BR.Models.weapon('shotgun', 'default', 'none', null), d = BR.CONFIG.weapons.shotgun; v.mastiff = !!sg.userData.pump && sg.userData.pump.children.length === 1 && d.pattern === 'line' && d.pellets === 8 && d.ads <= 0.4 && d.rpm < 60 && d.shellReload; }
+      { const sg = BR.Models.weapon('shotgun', 'default', 'none', null), d = BR.CONFIG.weapons.shotgun; v.mastiff = !!sg.userData.pump && sg.userData.pump.children.length === 1 && d.pattern === 'line' && d.pellets === 8 && d.dmg * d.pellets === 112 && d.ads <= 0.4 && d.rpm === 66 && d.mag === 6 && d.shellReload; }     // v1.23 Apex Mastiff numbers
       out.v118 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
@@ -1367,7 +1366,7 @@ const server = http.createServer((req, res) => {
     BR.Lobby.skipRoll = true; BR.Lobby.preset = 'ffa'; BR.Lobby.size = 6; const pool = BR.Lobby.pool('ffa').map(m => m.id).sort().join();
     g.toMenu(); BR.Lobby.play({ map: 'district' }); await new Promise(r => setTimeout(r, 300)); for (let i = 0; i < 10; i++) g.update(1 / 30);
     const A = g.actors.filter(a => a.alive); let md = 1e9; for (const a of A) for (const o of A) if (a !== o) md = Math.min(md, a.pos.distanceTo(o.pos));
-    out.ffa = pool === 'district,killhouse' && g.world.mapId === 'district' && g.world.size >= 120 && md > 15;
+    out.ffa = pool === 'district,killhouse,suburb' && g.world.mapId === 'district' && g.world.size >= 120 && md > 15;
     // window vault (Killhouse north window)
     g.toMenu(); BR.Lobby.preset = 'duel'; BR.Lobby.size = 1; BR.Lobby.play({ map: 'killhouse' }); await new Promise(r => setTimeout(r, 300));
     const m = g.player.mover; g.mode.frozen = false; m.pos.set(0, 0, 7.9); m.vel.set(0, 0, 0); g.player.yaw = 0; for (let i = 0; i < 6; i++) g.update(1 / 30);
@@ -1380,6 +1379,39 @@ const server = http.createServer((req, res) => {
     // imports
     const ud = id => BR.Models.weapon(id, 'default', 'none', null).userData;
     out.imports = ['sniper', 'revolver', 'launcher', 'knife', 'bayonet', 'tracker', 'butterfly'].every(id => ud(id).imported === id) && !!ud('revolver').cylinder && !!ud('revolver').crane && !!ud('butterfly').handleA && !!ud('bayonet').inner && !!ud('launcher').mag;
+    return out;
+  });
+  // v1.23: blueprints seated on the imported models, Overdrive blueprints, factory black, Mastiff blast, kill ammo packs,
+  // pause while dead, new maps, sound engine
+  const v123 = await page.evaluate(async () => {
+    const g = BR.game, out = {}, M = BR.Models; BR.AntiCheat._testing = true; const L = BR.Lobby, keepL = { skipRoll: L.skipRoll, preset: L.preset, size: L.size };
+    const m = M.weapon('rifle', 'default', 'none', 'hyperdrive'); let wr = 0, rb = 0; m.traverse(o => { if (o.userData.fitted && o.isGroup) wr++; if (o.userData.fitted && o.isMesh) rb++; });
+    out.fit = wr > 5 && rb > 0;
+    out.overdrive = ['pistol', 'smg', 'shotgun', 'rifle', 'holoar', 'sniper', 'hunter', 'revolver', 'lmg', 'dmr', 'launcher'].every(w => Object.keys(M.BLUEPRINTS[w]).filter(k => k.startsWith('od_')).length === 2)
+      && ['knife', 'bayonet', 'tracker', 'butterfly'].every(w => Object.keys(M.BLUEPRINTS[w]).some(k => k.startsWith('od_')));
+    const od = M.weapon('pistol', 'default', 'none', 'od_neontokyo'); let veins = 0; od.traverse(o => { if (o.isMesh && o.userData.fitted && o.material.map) veins++; }); out.veins = veins >= 2 && od.userData.skinFx >= 2;
+    out.factory = ['pistol', 'smg', 'sniper', 'revolver', 'dmr', 'launcher'].every(id => BR.IMPORTED[id].finish === 'factory');
+    const bf = M.weapon('butterfly'), bb = bf.userData.bladeMesh.geometry; bb.computeBoundingBox(); out.trailTip = bf.userData.trailTip.y <= bb.boundingBox.max.y + 1e-4 && !!M.weapon('knife').userData.trailSpace;
+    // Mastiff: a point-blank blast lands all 8 pellets
+    BR.Lobby.skipRoll = true; BR.Lobby.preset = 'duel'; BR.Lobby.size = 1; BR.Lobby.play({ map: 'skyline' }); await new Promise(r => setTimeout(r, 300));
+    out.skyline = g.world.mapId === 'skyline' && g.world.ffaSpots.length >= 8;
+    const p = g.player, e = g.actors.find(a => a !== p); if (g.mode) g.mode.frozen = false;
+    p.mover.pos.set(-6, 0, 4.5); e.mover.pos.set(-2, 0, 4.5); p.mover.vel.set(0, 0, 0); e.mover.vel.set(0, 0, 0); g.update(1 / 60);
+    const eye = p.eye(new THREE.Vector3()), d = new THREE.Vector3(e.pos.x, e.pos.y + e.mover.h * 0.55, e.pos.z).sub(eye).normalize(); p.yaw = Math.atan2(-d.x, -d.z); p.pitch = Math.asin(d.y);
+    const w = BR.Weapons.create('shotgun'); p.slots[0] = w; p.cur = 0; w.mag = 6; w.cool = 0; let got = 0; const ad = g.applyDamage.bind(g);
+    g.applyDamage = (v, a, dmg, ...r) => { if (v === e) got += dmg; return ad(v, a, dmg, ...r); }; e.health = 5000; if (g.mode) { g.mode.frozen = false; g.mode.phase = 'fight'; } BR.Weapons.tryFire(g, p); out.shotDmg = Math.round(got); g.applyDamage = ad;
+    out.mastiff = Math.round(got) >= 98; const sd = out.shotDmg; delete out.shotDmg; window.__sd = sd;
+    // kill ammo pack
+    g.toMenu(); BR.Lobby.preset = 'tdm'; BR.Lobby.size = 4; BR.Lobby.play({ map: 'suburb' }); await new Promise(r => setTimeout(r, 300)); for (let i = 0; i < 60; i++) g.update(1 / 30);
+    out.suburb = g.world.mapId === 'suburb' && g.world.ffaSpots.length >= 12;
+    const P2 = g.player, foe = g.actors.find(a => a.team !== P2.team && a.alive), gun = P2.guns().find(Boolean); P2.ammo[gun.def.ammo] = 0;
+    foe.mover.pos.set(P2.pos.x + 1.5, P2.pos.y, P2.pos.z); g.kill(foe, P2, gun.id, false);
+    const pack = g.loot.items.find(i => i.kind === 'scav'); for (let i = 0; i < 60; i++) g.update(1 / 30); if (pack) P2.mover.pos.copy(pack.pos); for (let i = 0; i < 6; i++) g.update(1 / 30);
+    out.ammoPack = !!pack && pack.taken && P2.ammo[gun.def.ammo] > 0;
+    // pause while dead
+    g.kill(P2, foe, 'rifle', false); g.update(1 / 30); g.input.press('pause'); g.update(1 / 30); out.deadPause = g.state === 'paused'; g.resume();
+    out.sound = typeof BR.Audio.mech === 'function' && typeof BR.Audio.step === 'function' && !!BR.Audio.GUNS.shotgun;
+    g.toMenu(); BR.AntiCheat._testing = false; Object.assign(L, keepL);
     return out;
   });
   // v1.20: reloads never throw (the Breacher froze the game), new imports, launcher rules, friends + party
@@ -1404,6 +1436,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.23 blueprints seated on the new models (fit groups + surface ribbons), Overdrive blueprints with energy veins, factory black guns, knife trail tips, Mastiff full blast, kill ammo packs, pause while dead, Cul-de-Sac + Skyline, sound engine', Object.values(v123).every(Boolean), v123],
     ['v1.21 knock = the kill, finishing = assist, give up when knocked, District FFA map + spread spawns, window vault, tracking runner, imported sniper / revolver / launcher / knives', ['knockCredit', 'giveUp', 'ffa', 'vault', 'runner', 'imports'].every(k => v121[k])],
     ['v1.20 every gun reloads without errors (the Breacher reload froze the game), Pistol / DMR / Kar98k imports (bolt cycles), launcher only in Sniper Duels picker (+ BR loot), friends + party UI', v120.reloads && v120.imports && v120.sniperPicker && v120.duelLists && v120.launcher && v120.party],
     ['v1.19 squads: duos/trios/squads teams + teammates, knockdowns (crawl, no shooting, bleed out), bot + player revives, finishing the downed, team wipes, spectate, team win, Resurgence up to trios, lobby picker', ['setup', 'knocked', 'bleeds', 'noFire', 'botRevive', 'finish', 'wipe', 'noFF', 'playerDown', 'playerRevived', 'prompt', 'youRevive', 'panel', 'teamWin', 'spectate', 'resTrios', 'solo', 'picker'].every(k => v119[k])],
@@ -1491,7 +1524,7 @@ const server = http.createServer((req, res) => {
     ['reload button inspects with a knife or a full mag, reloads otherwise', v15.reloadInspect.knife && v15.reloadInspect.full && v15.reloadInspect.fullNoReload && v15.reloadInspect.reloads],
     ['weapon slots + spawn/duel menus use pictures of the real models', v15.icons.sil && v15.icons.pic && v15.icons.slot && v15.icons.spawnCards >= 8 && v15.icons.duelCards >= 8],
     ['hunting rifle has more recoil', v15.icons.hunterRecoil >= 0.05 && v15.icons.hunterKick > 1],
-    ['spawn menu fills slot 1 and slot 2 (pick the slot, then the gun)', v15.spawnSlots.a === 'sniper,smg,knife' && v15.spawnSlots.b === 'shotgun,smg,knife' && v15.spawnSlots.badges === 2],
+    ['spawn menu drops the gun on the ground (no auto-equip); walking over it picks it up', v15.spawnSlots.dropped && v15.spawnSlots.a === ',,knife' && v15.spawnSlots.picked],
     ['weapon buttons opacity can be lowered (saved)', Math.abs(v15.slotAlpha - 0.3) < 0.02 && v15.saved === 0.3],
     ['walls stop bullets both ways and knives (battle royale)', !walls.br.throughPlayer && !walls.br.throughBot && !walls.br.knifeThrough && walls.br.clearPlayer && walls.br.clearBot && walls.br.knifeClear],
     ['walls stop bullets both ways and knives (1v1 duel)', !walls.duel.throughPlayer && !walls.duel.throughBot && !walls.duel.knifeThrough && walls.duel.clearPlayer && walls.duel.clearBot && walls.duel.knifeClear],
@@ -1574,7 +1607,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

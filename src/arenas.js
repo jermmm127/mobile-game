@@ -270,3 +270,131 @@ Object.assign(BR.World.prototype, {
     this.groundCols = [0x7f7a70, 0x77736a, 0x8a8478];
   },
 });
+
+// =============================================================================
+// v1.23 two more original arena maps
+//  * generateSuburb(): "Cul-de-Sac" — two two-storey houses face each other across a dead-end street with a
+//    round island at the end. Front yards with low fences, back gardens, side alleys, a garage on each house,
+//    parked cars and a box truck in the street for cover. Upstairs bedrooms look down the street through windows.
+//    Mirrored end to end (team spawns behind each house).
+//  * generateSkyline(): "Skyline" — a small rooftop for duels: AC units, a raised skylight block in the middle,
+//    a water tank on stilts you can stand under, stair huts at each end and a parapet all round.
+// =============================================================================
+Object.assign(BR.World.prototype, {
+  arenaCar(x, z, along, col) {
+    const L = 4.4, W = 1.9, B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    if (along) { B(x - L / 2, 0.25, z - W / 2, x + L / 2, 1.05, z + W / 2, col); B(x - 1.2, 1.05, z - W / 2 + 0.12, x + 0.9, 1.6, z + W / 2 - 0.12, 0x2b3440);
+      for (const sx of [-1.4, 1.4]) for (const sz of [-1, 1]) this.addBox(x + sx - 0.33, 0, z + sz * (W / 2) - 0.12, x + sx + 0.33, 0.62, z + sz * (W / 2) + 0.12, 0x1b1c1f, { decor: true }); }
+    else { B(x - W / 2, 0.25, z - L / 2, x + W / 2, 1.05, z + L / 2, col); B(x - W / 2 + 0.12, 1.05, z - 1.2, x + W / 2 - 0.12, 1.6, z + 0.9, 0x2b3440);
+      for (const sz of [-1.4, 1.4]) for (const sx of [-1, 1]) this.addBox(x + sx * (W / 2) - 0.12, 0, z + sz - 0.33, x + sx * (W / 2) + 0.12, 0.62, z + sz + 0.33, 0x1b1c1f, { decor: true }); }
+  },
+
+  generateSuburb() {
+    const X = 36, Z = 24, WH = 9, H1 = 3.2, H2 = 6.2;
+    const CON = 0x8f8676, CON2 = 0x766e60, TRIM = 0xf1ece2, ROOF = 0x5a3a33, GRASS = 0x5f8a43, ROAD = 0x4b4d52, FENCE = 0xe9e3d6, BLUE = 0x2f6fd8, RED = 0xd8443a;
+    const SIDING = [0x8fb3c9, 0xd9b36c], STEEL = 0x4a5160;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(Math.min(x0, x1), y0, Math.min(z0, z1), Math.max(x0, x1), y1, Math.max(z0, z1), c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => B(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    this.pois = [{ x: 0, z: 0, name: 'Cul-de-Sac', type: 'arena' }]; this.towns = [];
+    this.spawns = [{ x: -31, z: 0, yaw: -Math.PI / 2 }, { x: 31, z: 0, yaw: Math.PI / 2 }];
+    this.arenaShell(X, Z, WH, CON, CON2);
+    // the street (runs north-south down the middle) with a turning circle island at the north end
+    Dc(-6, 0, -Z, 6, 0.012, Z, ROAD); for (let z = -Z + 1; z < Z - 1; z += 3) Dc(-0.1, 0.012, z, 0.1, 0.02, z + 1.5, 0xf2d24a);
+    B(-3, 0, 13, 3, 0.35, 19, 0x9a948a); Dc(-2.6, 0.35, 13.4, 2.6, 0.42, 18.6, GRASS); B(-0.35, 0.35, 15.6, 0.35, 3.2, 16.4, 0x6b4a32); Dc(-1.4, 3.0, 14.6, 1.4, 4.4, 17.4, 0x3f6e33);   // tree
+    for (const sx of [-1, 1]) {
+      const c = SIDING[sx < 0 ? 0 : 1], tc = sx < 0 ? BLUE : RED, hx = sx * 17;       // house centre x
+      // lawns + sidewalk kerb
+      Dc(sx * 6, 0, -Z, sx * 9, 0.03, Z, 0xb8b2a6); Dc(sx * 9, 0, -Z, sx * 26, 0.02, Z, GRASS);
+      // ---- the house: 14 (x) x 12 (z), two storeys; front door faces the street
+      const x0 = hx - 7, x1 = hx + 7, fx = sx < 0 ? x1 : x0, bx = sx < 0 ? x0 : x1;      // front wall (street side) / back wall
+      this.arenaWallZ(-6, 6, fx, H1, c, [[-4.6, -2.8, 'window'], [-0.8, 0.8, 'door'], [2.8, 4.6, 'window']]);
+      this.arenaWallZ(-6, 6, bx, H1, c, [[-3.8, -2.4, 'window'], [1.2, 2.6, 'door'], [3.6, 5, 'window']]);
+      this.arenaWallX(x0, x1, -6, H1, c, [[hx - 4.5, hx - 3, 'window'], [hx + 2.4, hx + 3.9, 'window']]);
+      this.arenaWallX(x0, x1, 6, H1, c, [[hx - 1, hx + 1, 'door'], [hx + 3.6, hx + 5, 'window']]);
+      this.arenaWallX(x0, x1, 0.8, H1, c, [[hx - 4.6, hx - 3.2, 'door'], [hx + 1.4, hx + 2.8, 'door']]);                   // ground floor: kitchen / living room
+      // upstairs: floor over the whole house except the stair well, walls with windows down the street
+      B(x0, H1, -6, x1, H1 + 0.25, 6, TRIM, {}); 
+      const up = (a, b, z, gaps) => { let p = a; for (const [g0, g1] of gaps) { if (g0 > p) B(p, H1 + 0.25, z - 0.17, g0, H2, z + 0.17, c); B(g0, H1 + 0.25, z - 0.17, g1, H1 + 1.25, z + 0.17, c); B(g0, H1 + 2.35, z - 0.17, g1, H2, z + 0.17, c); p = g1; } if (b > p) B(p, H1 + 0.25, z - 0.17, b, H2, z + 0.17, c); };
+      const upZ = (a, b, x, gaps) => { let p = a; for (const [g0, g1] of gaps) { if (g0 > p) B(x - 0.17, H1 + 0.25, p, x + 0.17, H2, g0, c); B(x - 0.17, H1 + 0.25, g0, x + 0.17, H1 + 1.25, g1, c); B(x - 0.17, H1 + 2.35, g0, x + 0.17, H2, g1, c); p = g1; } if (b > p) B(x - 0.17, H1 + 0.25, p, x + 0.17, H2, b, c); };
+      upZ(-6, 6, fx, [[-4.8, -2.4], [2.4, 4.8]]); upZ(-6, 6, bx, [[-1.2, 1.2]]);
+      up(x0, x1, -6, [[hx - 2, hx]]); up(x0, x1, 6, [[hx + 1, hx + 3]]);
+      Dc(x0 - 0.4, H2, -6.4, x1 + 0.4, H2 + 0.35, 6.4, ROOF);                                                      // flat roof edge (the roof itself is open: no skybox to hide)
+      // stairs up along the north wall inside (front half), rising toward the street
+      for (let i = 0; i < 8; i++) { const sxp = sx < 0 ? x0 + 1 + i * 0.8 : x1 - 1 - i * 0.8; B(sxp, 0, 3.4, sxp + sx * 0.8, (i + 1) * 0.42, 5.8, CON2); }
+      Dc(x0 - 0.2, H1, -6.2, x1 + 0.2, H1 + 0.1, -5.8, TRIM); Dc(x0 - 0.2, H1, 5.8, x1 + 0.2, H1 + 0.1, 6.2, TRIM);
+      // furniture cover
+      this.arenaCrate(hx - sx * 3.5, -3.4, 1.0); B(hx + sx * 2 - 1.2, 0, -3.2, hx + sx * 2 + 1.2, 0.9, -2.2, 0x6b4a32);     // sofa
+      B(hx - 1, H1 + 0.25, -4.6, hx + 1, H1 + 0.95, -2.6, 0xe9e3d6);                                                 // bed upstairs
+      // ---- garage on the south side of each house (open door to the street)
+      const g0 = -Z + 0.5, g1 = -9;
+      this.arenaWallZ(g0, g1, sx < 0 ? x1 - 2 : x0 + 2, 3, c, [[g0 + 1.2, g1 - 1.2, 'door']]);
+      B(sx < 0 ? x1 - 9 : x0 + 9, 0, g1 - 0.17, sx < 0 ? x1 - 2 : x0 + 2, 3, g1 + 0.17, c);
+      Dc(sx < 0 ? x1 - 9.2 : x0 + 9.2, 3, g0, sx < 0 ? x1 - 1.8 : x0 + 1.8, 3.2, g1 + 0.2, ROOF);
+      this.arenaCar(hx + sx * 0.5, -17, false, sx < 0 ? 0xc94f4f : 0x3f6fae);
+      // ---- front yard: white picket fence with a gate, a mailbox
+      for (let z = -9; z <= 12; z += 0.6) if (Math.abs(z) > 1.4) B(sx * 9.3 - 0.06, 0, z - 0.06, sx * 9.3 + 0.06, 1.0, z + 0.06, FENCE);
+      Dc(sx * 9.3 - 0.04, 0.7, -9, sx * 9.3 + 0.04, 0.8, 12, FENCE);
+      B(sx * 8.4 - 0.08, 0, 2.2, sx * 8.4 + 0.08, 1.1, 2.4, STEEL); Dc(sx * 8.2, 1.1, 2.0, sx * 8.6, 1.4, 2.6, tc);
+      // ---- back garden: a shed, a hedge line, a trampoline-ish low platform
+      B(sx * 29 - 1.6, 0, 12, sx * 29 + 1.6, 2.6, 16, 0x7a5a3a); B(sx * 27 - 0.5, 0, -12, sx * 27 + 0.5, 1.4, -4, 0x3f6e33);
+      B(sx * 30 - 1.5, 0, -14, sx * 30 + 1.5, 0.7, -11, STEEL);
+      // spawn markings
+      Dc(sx * (X - 0.02), 1.0, -Z, sx * (X - 0.12), 2.2, Z, tc);
+      for (const [a, b, c2, d] of [[29, 35, -3.4, -3.1], [29, 35, 3.1, 3.4], [29, 29.3, -3.4, 3.4]]) Dc(sx * a, 0, c2, sx * b, 0.015, d, tc);
+    }
+    // the street: parked cars and a box truck slanted across the middle
+    this.arenaCar(-3.6, -6, false, 0xe6e2da); this.arenaCar(3.6, 7, false, 0x2b2d31);
+    B(-1.2, 0, -2.6, 1.2, 3.0, 4.2, 0xf0ede6); B(-1.2, 0, 4.2, 1.2, 2.1, 6.0, 0x3f6fae); Dc(-1.25, 2.4, -2.4, 1.25, 2.7, 3.9, 0xd8443a);
+    for (const sx of [-1, 1]) B(sx * 4.5 - 0.6, 0, 20, sx * 4.5 + 0.6, 0.9, 21.2, 0x6b6e75);                        // bins at the circle
+    this.ffaSpots = [[-31, 0], [31, 0], [-31, -18], [31, 18], [-31, 18], [31, -18], [-17, -3], [17, 3], [-17, 3.5], [17, -3.5], [-3, -18], [3, 18], [0, 10], [0, -10], [-11, 14], [11, -14], [-20, -17], [20, 17]];
+    this.groundCols = [0x6f8a52, 0x67804c, 0x78935a];
+  },
+
+  generateSkyline() {
+    const X = 19, Z = 14, WH = 1.15;
+    const ROOF = 0x55585f, PAR = 0x7b7f87, AC = 0x9aa0a8, GLASS = 0x6fa8c8, STEEL = 0x3c4048, Y = 0xf2b234, BLUE = 0x2f6fd8, RED = 0xd8443a;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(Math.min(x0, x1), y0, Math.min(z0, z1), Math.max(x0, x1), y1, Math.max(z0, z1), c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => B(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    this.pois = [{ x: 0, z: 0, name: 'Skyline', type: 'arena' }]; this.towns = [];
+    this.spawns = [{ x: -15.5, z: 0, yaw: -Math.PI / 2 }, { x: 15.5, z: 0, yaw: Math.PI / 2 }];
+    // parapet (waist high, you can see the city) + tall invisible bounds so nobody falls off
+    B(-X - 1, 0, -Z - 1, X + 1, WH, -Z, PAR, { tag: 'edge' }); B(-X - 1, 0, Z, X + 1, WH, Z + 1, PAR, { tag: 'edge' });
+    B(-X - 1, 0, -Z, -X, WH, Z, PAR, { tag: 'edge' }); B(X, 0, -Z, X + 1, WH, Z, PAR, { tag: 'edge' });
+    B(-X - 1, WH, -Z - 1, X + 1, 14, -Z - 0.6, PAR, { tag: 'edge', hidden: true }); B(-X - 1, WH, Z + 0.6, X + 1, 14, Z + 1, PAR, { tag: 'edge', hidden: true });
+    B(-X - 1, WH, -Z, -X - 0.6, 14, Z, PAR, { tag: 'edge', hidden: true }); B(X + 0.6, WH, -Z, X + 1, 14, Z, PAR, { tag: 'edge', hidden: true });
+    Dc(-X - 1, WH, -Z - 1, X + 1, WH + 0.06, -Z, Y); Dc(-X - 1, WH, Z, X + 1, WH + 0.06, Z + 1, Y);
+    // the skylight block in the middle (climb it from the crates) with glass panes on top
+    B(-3, 0, -2.4, 3, 1.6, 2.4, ROOF); for (const x of [-2, 0, 2]) Dc(x - 0.85, 1.6, -2, x + 0.85, 1.68, 2, GLASS);
+    this.arenaCrate(-3.8, 2.6, 1.0); this.arenaCrate(3.8, -2.6, 1.0);
+    for (const sx of [-1, 1]) {
+      const tc = sx < 0 ? BLUE : RED;
+      // stair hut at each end (the spawn) with a door facing the middle
+      this.arenaWallZ(-3, 3, sx * 13, 3, PAR, [[-1, 1, 'door']]); B(sx * 13, 0, -3.17, sx * 17.5, 3, -2.83, PAR); B(sx * 13, 0, 2.83, sx * 17.5, 3, 3.17, PAR);
+      Dc(sx * 12.8, 3, -3.3, sx * 17.7, 3.25, 3.3, STEEL); Dc(sx * 12.82, 2.4, -1.1, sx * 12.86, 2.6, 1.1, tc);
+      // AC units (two sizes), vent pipes
+      B(sx * 8 - 1.3, 0, sx * 7 - 1, sx * 8 + 1.3, 1.5, sx * 7 + 1, AC); Dc(sx * 8 - 0.9, 1.5, sx * 7 - 0.6, sx * 8 + 0.9, 1.56, sx * 7 + 0.6, STEEL);
+      B(sx * 8 - 0.9, 0, sx * -8 - 0.9, sx * 8 + 0.9, 1.1, sx * -8 + 0.9, AC);
+      B(sx * 4 - 0.25, 0, sx * 10 - 0.25, sx * 4 + 0.25, 2.2, sx * 10 + 0.25, STEEL);
+      // low duct running along each side
+      B(sx * 2 - 4, 0, sx * -11.6, sx * 2 + 4, 0.75, sx * -10.6, STEEL);
+      Dc(sx * (X - 0.02), 0.2, -Z, sx * (X - 0.08), 0.9, Z, tc);
+    }
+    // water tank on stilts (stand under it, or climb the ladder side of the crates to its deck)
+    for (const [x, z] of [[-2, 8.5], [2, 8.5], [-2, 12], [2, 12]]) B(x - 0.15, 0, z - 0.15, x + 0.15, 2.6, z + 0.15, STEEL);
+    B(-2.4, 2.6, 8.1, 2.4, 2.8, 12.4, STEEL); B(-1.8, 2.8, 8.7, 1.8, 5.4, 11.8, 0x7a5a3a); Dc(-1.9, 3.6, 8.6, 1.9, 3.7, 11.9, STEEL); Dc(-1.9, 4.6, 8.6, 1.9, 4.7, 11.9, STEEL);
+    this.arenaCrate(3.4, 9, 1.2); this.arenaCrate(3.4, 10.4, 2.4);
+    // roof markings
+    for (let x = -10; x <= 10; x += 2.5) Dc(x - 0.6, 0, -0.08, x + 0.6, 0.012, 0.08, 0xe8e4dc);
+    Dc(-6.5, 0, -6.5, 6.5, 0.01, 6.5, 0x4c4f56);
+    // the city around: towers of every height past the parapet (decor), lit window bands, a few antennas
+    const R = BR.util.rng(4242), TW = [0x3d4350, 0x4a4f5c, 0x2f3440, 0x5a5f6a, 0x6b6258];
+    for (let i = 0; i < 46; i++) {
+      const a = i / 46 * Math.PI * 2 + R() * 0.1, r = 30 + R() * 14, cx = Math.cos(a) * r * 1.25, cz = Math.sin(a) * r, w = 3 + R() * 4, d = 3 + R() * 4, h = 4 + R() * 26, col = TW[i % TW.length];
+      Dc(cx - w, 0, cz - d, cx + w, h, cz + d, col);
+      for (let y = 2.5; y < h - 1; y += 2.6) Dc(cx - w - 0.03, y, cz - d - 0.03, cx + w + 0.03, y + 0.5, cz + d + 0.03, R() < 0.5 ? 0xffd88a : 0x9fc8e8);
+      if (R() < 0.25) Dc(cx - 0.1, h, cz - 0.1, cx + 0.1, h + 5, cz + 0.1, STEEL);
+    }
+    this.ffaSpots = [[-15.5, 0], [15.5, 0], [-10, -10], [10, 10], [-10, 10], [10, -10], [0, -8], [0, 5], [-6, 0], [6, 0]];
+    this.groundCols = [0x55585f, 0x4f5258, 0x5b5e65];
+  },
+});

@@ -113,6 +113,7 @@ BR.Weapons = {
         pd.copy(dir).addScaledVector(u, Math.cos(a) * rr).addScaledVector(v, Math.sin(a) * rr).normalize();
       }
       const hit = game.hitscan(actor, eye, pd, maxRange);
+      if (d.pelletAssist && !hit.actor && !hit.target) (this._miss || (this._miss = [])).push({ d: pd.clone(), t: hit.t });
       if (actor.isPlayer && game.zm) game.zm.shotAt(eye, pd, hit.t);
       end.copy(eye).addScaledVector(pd, hit.t);
       if (hit.target) {                                              // a custom-mode target (aim trainer / Overdrive)
@@ -142,6 +143,18 @@ BR.Weapons = {
       }
       if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
       if (game.mode && game.mode.netShot && p < 3) game.mode.netShot(actor, muzzle, end, w.id, p === 0);      // online: show this shot on the other screens
+    }
+    // v1.23: a shotgun blast lands as one: a pellet that only grazes past someone the blast already hit (and didn't hit a
+    // wall first) still counts on them, so a well-placed shot deals its full damage instead of 2 stray pellets
+    if (this._miss && this._miss.length) {
+      for (const m of this._miss) {
+        let best = null, bd = d.pelletAssist;
+        hits.forEach((h, victim) => { const c = victim.pos, cy = c.y + (victim.mover ? victim.mover.h * 0.55 : 0.9), dx = c.x - eye.x, dy = cy - eye.y, dz = c.z - eye.z;
+          const along = dx * m.d.x + dy * m.d.y + dz * m.d.z; if (along <= 0 || along > d.range * 1.3 || m.t < along - 0.3) return;
+          const off = Math.sqrt(Math.max(0, dx * dx + dy * dy + dz * dz - along * along)); if (off < bd) { bd = off; best = h; } });
+        if (best) best.dmg += d.dmg;
+      }
+      this._miss.length = 0;
     }
     hits.forEach((h, victim) => game.applyDamage(victim, actor, h.dmg, h.head, h, w.id));
     if (this._thits && this._thits.size) { if (game.mode && game.mode.hitTarget) this._thits.forEach((h, t) => game.mode.hitTarget(t, h.dmg, h.head, h, w)); this._thits.clear(); }

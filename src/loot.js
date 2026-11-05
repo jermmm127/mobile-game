@@ -132,6 +132,12 @@ BR.Loot = class Loot {
       g.userData.ring = ring;
     } else if (item.kind === 'ammo') {
       g.add(new THREE.Mesh(G.ammo, this.mat('a_' + item.ammoType, AMMO_COLORS[item.ammoType])));
+    } else if (item.kind === 'scav') {                                   // ammo pack: olive canvas pouch, brass rounds, a pulsing ring
+      g.add(new THREE.Mesh(G.ammo, this.mat('scav', 0x4b5a32)));
+      const lid = new THREE.Mesh(G.ammo, this.mat('scavlid', 0x2d3520)); lid.scale.set(1.04, 0.25, 1.04); lid.position.y = 0.14; g.add(lid);
+      for (let i = 0; i < 4; i++) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.14, 8), this.mat('brass', 0xd4a63a)); r.position.set(-0.09 + i * 0.06, 0.2, 0); g.add(r); }
+      const ring = new THREE.Mesh(G.ring, this.mat('ringScav', 0xffd24a, true)); ring.rotation.x = -Math.PI / 2; ring.position.y = -0.3; g.add(ring); g.userData.ring = ring;
+      g.scale.setScalar(0.8);
     } else if (item.kind === 'shock') {
       const n = BR.Shockwave.model(); n.scale.setScalar(2.6); g.add(n); g.userData.nade = n;
       const ring = new THREE.Mesh(G.ring, this.mat('ringShock', 0xb04bff, true)); ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4; g.add(ring); g.userData.ring = ring;
@@ -178,6 +184,7 @@ BR.Loot = class Loot {
     const doCull = this.cullT <= 0;
     if (doCull) this.cullT = 0.3;
     const W = this.game.world;
+    for (let i = this.items.length - 1; i >= 0; i--) { const it = this.items[i]; if (it.kind === 'scav' && t - it.t0 > 25) this.remove(it); }   // kill ammo packs fade after 25 s
     for (const it of this.items) {
       if (it.air) this.toss(it, dt, W);
       if (doCull) {
@@ -238,6 +245,14 @@ BR.Loot = class Loot {
       if (it.kind === 'ammo') {
         const cap = C.ammoCap[it.ammoType];
         if (actor.ammo[it.ammoType] < cap) { actor.ammo[it.ammoType] = Math.min(cap, actor.ammo[it.ammoType] + it.amount); took = true; }
+      } else if (it.kind === 'scav') {
+        // v1.23 ammo pack from a kill: ammo for whatever gun you have out (the killer's for the first 10 s)
+        if (it.owner && it.owner !== actor && it.owner.alive && this.game.time - it.t0 < 10) continue;
+        const gun = actor.weapon && !actor.weapon.def.melee ? actor.weapon : actor.guns().find(w => w && !w.def.melee);
+        if (gun) { const def = gun.def, cap = C.ammoCap[def.ammo];
+          if (actor.ammo[def.ammo] < cap) { actor.ammo[def.ammo] = Math.min(cap, actor.ammo[def.ammo] + Math.max(def.mag * 2, C.ammoPickup[def.ammo] || 0)); took = true; }
+          else if (gun.mag < def.mag) { gun.mag = def.mag; took = true; }
+          if (took) it.gunName = def.name; }
       } else if (it.kind === 'shock') { if ((actor.nades || 0) < C.shockwave.maxCarry) { actor.nades = (actor.nades || 0) + it.amount; took = true; } }
       else if (it.kind === 'heal') took = actor.heal(it.amount);
       else if (it.kind === 'shield') took = actor.addShield(it.amount);

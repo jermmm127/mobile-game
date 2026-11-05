@@ -46,7 +46,7 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [], rockFill: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.mapId === 'district') this.generateDistrict(); else if (this.arena) this.generateArena(); else this.generate();
+    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.mapId === 'district') this.generateDistrict(); else if (this.mapId === 'suburb') this.generateSuburb(); else if (this.mapId === 'skyline') this.generateSkyline(); else if (this.arena) this.generateArena(); else this.generate();
   }
 
   // ------------------------------------------------------------------ zombies: Hollow Graves

@@ -540,6 +540,10 @@ BR.Game = class Game {
       p.cur = slot;
       p.ammo[def.ammo] = C.ammoCap[def.ammo];
       this.hud.toast(BR.RARITY[rar | 0].name + ' ' + def.name, 900);
+    } else if (kind === 'dropweapon') {                     // v1.23 spawn menu: the gun lands on the ground in front of you; walk over it to grab it
+      const def = C.weapons[arg], q = this.frontPoint(2.2), a = p.yaw;
+      this.loot.add({ kind: 'weapon', wid: arg, rar: rar | 0, mag: def.mag, reserve: C.ammoCap[def.ammo] }, q.x, q.y + 1.2, q.z, new THREE.Vector3(-Math.sin(a) * 1.2, 3.2, -Math.cos(a) * 1.2));
+      this.hud.toast(BR.RARITY[rar | 0].name + ' ' + def.name + ' dropped · walk over it to pick it up', 1300);
     } else if (kind === 'ammo') { for (const t in p.ammo) p.ammo[t] = C.ammoCap[t]; this.hud.toast('Ammo full', 900); }
     else if (kind === 'nades') { p.nades = C.shockwave.maxCarry; this.hud.toast('Shockwave grenades ×' + p.nades, 900); }
     else if (kind === 'heal') { p.health = C.actor.maxHealth; p.shield = C.actor.maxShield; this.hud.toast('Health + shield full', 900); }
@@ -692,7 +696,11 @@ BR.Game = class Game {
     if (this.zm && this.zm.cut) { this.zm.updateCut(dt); return; }      // zombies boss intro cutscene
     if (BR.AntiCheat) BR.AntiCheat.tick(this, dt);
     if (p.alive && this.state === 'playing') this.controlPlayer(dt);
-    else p.fireHeld = false;
+    else {
+      p.fireHeld = false;
+      // v1.23: the menu (and map) still work while you're dead / waiting to respawn
+      if (this.state === 'playing') { if (this.input.consume('pause')) this.pause(); if (this.input.consume('map')) this.hud.toggleMap(); }
+    }
     this.simulate(dt);
     this.playerEvents();
 
@@ -884,7 +892,7 @@ BR.Game = class Game {
     // Reload button: knives and full mags inspect instead
     if (inp.consume('reload') && w) {
       if (w.def.melee || (w.mag >= w.def.mag && !(w.reloadT > 0))) this.startInspect();
-      else if (BR.Weapons.startReload(w, p)) BR.Audio.reload();
+      else if (BR.Weapons.startReload(w, p)) BR.Audio.mech(w.def.shellReload ? 'grab' : 'grab');
     }
     const sw = i => { if (i === p.cur) this.startInspect(); else if (p.switchTo(i)) inp.ads = false; };
     if (inp.consume('swap')) {
@@ -964,6 +972,11 @@ BR.Game = class Game {
     if (ev.jump || ev.walljump) BR.Audio.jump();
     if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); this.vmr.onLand(m.landSpeed); }
     if (ev.slide) BR.Audio.slide();
+    // v1.23 footsteps: one per stride on the ground (longer strides when sprinting, quiet when crouched)
+    const sp = Math.hypot(m.vel.x, m.vel.z), lp = this._stepP || (this._stepP = p.pos.clone());
+    if (m.onGround && !m.sliding && sp > 1.2) { this._stepD = (this._stepD || 0) + Math.hypot(p.pos.x - lp.x, p.pos.z - lp.z); const stride = 1.1 + sp * 0.12;
+      if (this._stepD > stride) { this._stepD = 0; BR.Audio.step && BR.Audio.step(sp, m.crouched); } } else this._stepD = 0.6;
+    lp.copy(p.pos);
     if (ev.wallrun) BR.Audio.wallrun();
     if (ev.chute) { BR.Audio.chute(); this.hud.toast('Parachute deployed', 900); this.cam.kick = 0.25; }
     if (ev.pad) { BR.Audio.pad(); this.cam.shake = Math.max(this.cam.shake, 0.15); }
@@ -1056,7 +1069,7 @@ BR.Game = class Game {
     if (attacker && attacker === this.player) {
       this.hud.hitmarker(head, died);
       this.hud.damageNumber(this._v3, dmg, head, victim, shieldHit);
-      if (!died) BR.Audio.hit(head);
+      if (!died) BR.Audio.hit(head, shieldHit);
       // impact sparks: gold crit burst on the head, team-colour/shield-blue on the body
       this.fx.burst(this._v3, head ? [0xffd24a, 0xffffff, 0xff9a1f] : shieldHit ? [0x6fc8ff, 0xffffff] : [0xff4a5a, 0xffffff], head ? 14 : 7, head ? 7 : 4.5, head ? 0.07 : 0.05, head ? 0.45 : 0.3);
       // v1.22: a coloured shock ring + hot pop where your round lands (gold crit, blue shield, red body; bigger on the kill)
@@ -1094,6 +1107,10 @@ BR.Game = class Game {
       BR.Profile.addGrind('kill', 1, { w: weaponId, head: !!head, melee: !!(wd && wd.melee), zombie: !!victim.zombie });
     }
     if (!this.zm && !(this.mode && this.mode.noDrops)) this.loot.dropAll(victim);
+    // v1.23: every kill drops an ammo pack for the killer (ammo for whatever they have equipped when they walk over it)
+    if (!this.zm && !this.demo && killer && killer !== victim && killer.alive && !victim.zombie) {
+      const p = victim.pos; this.loot.add({ kind: 'scav', owner: killer, t0: this.time }, p.x, p.y + 0.9, p.z, new THREE.Vector3((Math.random() - 0.5) * 2, 4, (Math.random() - 0.5) * 2));
+    }
     victim.dieVisual();
     if (this.demo) return;
     if (this.zm) { this.zm.onKill(victim, killer, weaponId, head); return; }
@@ -1188,7 +1205,7 @@ BR.Game = class Game {
     BR.Audio.swish(hit);
   }
 
-  onShellLoaded() { this.vmr.onShell(); BR.Audio.reload(); }
+  onShellLoaded() { this.vmr.onShell(); BR.Audio.mech('shell'); }
 
   onPickup(actor, item) {
     if (actor !== this.player) return;
@@ -1197,6 +1214,7 @@ BR.Game = class Game {
     let label = '';
     if (item.kind === 'weapon') label = BR.RARITY[item.rar | 0].name + ' ' + C.weapons[item.wid].name;
     else if (item.kind === 'ammo') label = `+${item.amount} ${item.ammoType} ammo`;
+    else if (item.kind === 'scav') label = `+AMMO · ${item.gunName || 'weapon'}`;
     else if (item.kind === 'heal') label = `+${item.amount} health`;
     else label = `+${item.amount} shield`;
     this.hud.toast(label, 1000);

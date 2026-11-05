@@ -142,3 +142,6 @@ Object.assign(BR.IMPORTED, {
     grip: [0, -0.07, 0.0], muzzle: [0, 0.14], charm: [0, -0.13, 0],
   },
 });
+// v1.23: every gun wears the black factory finish by default (sculpted detail kept, paint and mismatched colours dropped);
+// knives keep their own steel and grips
+for (const id of Object.keys(BR.IMPORTED)) if (!['knife', 'bayonet', 'tracker', 'butterfly'].includes(id)) BR.IMPORTED[id].finish = 'factory';

@@ -5,6 +5,20 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.23.0', date: '2026-11-05', title: 'Overdrive, sound + new maps', notes: [
+    'Blueprints fixed for the new gun and knife models: every glow strip, panel, fin, gem and side decal now sits on the real model instead of floating beside it. Strips follow the gun\'s surface, small parts rest on it, a replacement drum mag sits on the real mag, and bulky shrouds that covered the new models\' detail are gone. Animated parts still move as designed.',
+    'Knife blueprints: auras hug the new blades instead of turning into big glowing sheets, blade decals sit on the blade, and the blade trail starts at the real tip, follows the Karambit through its flips, and is longer and brighter with a white-hot edge.',
+    'New OVERDRIVE blueprints, 2 for every gun plus 1 for every knife: Event Horizon, Supernova, Cryo Pulse, Toxic Storm, Neon Tokyo, Magma Core, Storm Surge and Infinity (Exotic, full rainbow). Each has a living animated finish, energy veins traced along the gun with pulses racing to the muzzle, a spinning twin-ring reactor at the muzzle, a rim glow and sparkles.',
+    'Every gun now comes in a clean black factory finish by default.',
+    'Shotgun: all 8 pellets count. A point-blank blast now does 112 damage (8 x 14) instead of about 29, because the pellet line is much tighter and pellets that just graze someone you hit still land. Retuned to Mastiff-style stats: 66 rpm, 6 shells, 1.25x headshots, shell-by-shell reload.',
+    'Kills drop an ammo pack. Walk over it to get ammo for whatever gun you have out. The killer gets it first; after 10 s anyone can take it.',
+    'Practice: guns from the SPAWN menu drop on the ground in front of you. Walk over them to pick them up.',
+    'The pause menu and map now work while you are dead and waiting to respawn.',
+    'Sound overhaul: every gunshot is layered (a sharp crack, a low punch you feel, a blast that rolls off, the gun\'s own action clack) with a reverb tail. Distant shots arrive late, muffled and echoing. Realistic reloads (mag out, mag in, charging handle, bolt, pump, revolver crane and shells), footsteps, landings, knife whooshes, hits that sound different on shields and heads, and a cleaner kill confirm.',
+    'Every mode gets the victory show: winning a Duel, TDM or Free For All now plays the freeze frame, the celebration and the fireworks like Battle Royale.',
+    'New map, Cul-de-Sac (TDM + Free For All): two two-storey houses face each other across a dead-end street, with front yards, picket fences, garages, back gardens, parked cars and a box truck. Upstairs windows look down the street.',
+    'New duel map, Skyline: a rooftop among skyscrapers with AC units, a skylight block, a water tank on stilts and stair huts at each end.',
+  ] },
   { v: '1.22.0', date: '2026-11-05', title: 'VFX revamp', notes: [
     'New muzzle flash on every gun: a bright star burst with flame tongues that changes shape and size every shot. Shotguns and heavy guns flash bigger; suppressors keep it small.',
     'Shell casings: brass flies out of the gun as you shoot. Pump and bolt guns kick theirs out when you cycle, and shotguns throw red shells.',

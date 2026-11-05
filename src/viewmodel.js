@@ -202,7 +202,7 @@
       if (this.bfTrail) { this.scene.remove(this.bfTrail.mesh); this.bfTrail.mesh.geometry.dispose(); this.bfTrail = null; }
       { const mel = BR.Profile.melee(), bpId = (eq.blueprints || {})[mel], B = bpId && BR.Models.BLUEPRINTS[mel] && BR.Models.BLUEPRINTS[mel][bpId];
         if (B && B.trail && this.models[mel] && this.models[mel].userData.model.userData.trailTip) {
-          const N = 11, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), idx = [];
+          const N = 16, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), idx = [];
           for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
           geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
           const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
@@ -316,7 +316,7 @@
         this.lastWeapon = w;
         this.drawDur = this.drawT = w.id === 'tracker' ? 0.9 : def.melee ? 1.05 : 0.55;
         this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0; this.pumpT = 0; this.pumpDelay = 0;
-        if (def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
+        if (def.melee) BR.Audio.unsheathe(); else BR.Audio.mech('draw');
       }
       this.drawT = Math.max(0, this.drawT - dt);
       this.inspectT = Math.max(0, this.inspectT - dt);
@@ -547,8 +547,8 @@
         oz += boltBack * 0.015;
         rightTarget = { w: reach * (1 - ret) };
         const passed = x => this.lastBoltK < x && k >= x;
-        if (passed(0.32)) { BR.Audio.click(); }
-        if (passed(0.5)) { BR.Audio.reload(); this.pos.z.vel += 0.25; }
+        if (passed(0.32)) { BR.Audio.mech('boltup'); }
+        if (passed(0.5)) { BR.Audio.mech('boltback'); this.pos.z.vel += 0.25; }
         this.lastBoltK = k;
       } else this.lastBoltK = 0;
       if (ud.bolt) { ud.bolt.rotation.z = boltLift * 1.05; ud.bolt.position.z = ud.boltZ0 + boltBack * 0.075; }
@@ -560,8 +560,8 @@
         const tilt = win(k, 0, 0.2, 0.7, 1) * (1 - A * 0.5);
         orz += 0.12 * tilt; orx -= 0.05 * tilt; oy -= 0.008 * tilt; oz += pumpBack * 0.012;
         const passed = x => this.lastPumpK < x && k >= x;
-        if (passed(0.3)) BR.Audio.click();
-        if (passed(0.75)) { BR.Audio.reload(); this.pos.z.vel -= 0.2; }
+        if (passed(0.3)) BR.Audio.mech('pumpback');
+        if (passed(0.75)) { BR.Audio.mech('pumpfwd'); this.pos.z.vel -= 0.2; }
         this.lastPumpK = k;
       } else this.lastPumpK = 0;
       if (ud.pump) ud.pump.position.z = pumpBack * 0.07;
@@ -659,10 +659,10 @@
           else if (k < 0.7) leftTarget = handAt.clone();
           else leftTarget = new THREE.Vector3(-0.02, 0.05, -0.03).lerp(fore || handAt, smooth((k - 0.72) / 0.2));   // palm flicks it shut
           const passed = x => this.lastReloadK < x && k >= x;
-          if (passed(0.12)) { BR.Audio.click(); this.rot.z.vel += 0.8; }
-          if (passed(0.22)) { BR.Audio.reload(); this.pos.y.vel += 0.4; }
-          if (passed(0.6)) { BR.Audio.click(); this.pos.z.vel -= 0.3; }
-          if (passed(0.76)) { BR.Audio.reload(); this.rot.z.vel -= 1.6; }
+          if (passed(0.12)) { BR.Audio.mech('crane'); this.rot.z.vel += 0.8; }
+          if (passed(0.22)) { BR.Audio.mech('eject'); this.pos.y.vel += 0.4; }
+          if (passed(0.6)) { BR.Audio.mech('load'); this.pos.z.vel -= 0.3; }
+          if (passed(0.76)) { BR.Audio.mech('close'); this.rot.z.vel -= 1.6; }
           this.lastReloadK = k;
         } else {
           // Magazine: tilt, mag out, hand to pouch, new mag in, slap, (rifles) charge
@@ -690,9 +690,9 @@
           } else leftTarget = magAt.clone().lerp(fore || magAt, smooth((k - 0.72) / 0.2));
           // one-shot jolts + sounds when passing key moments
           const passed = x => this.lastReloadK < x && k >= x;
-          if (passed(0.22)) { BR.Audio.click(); this.rot.z.vel -= 0.6; }
-          if (passed(0.68)) { BR.Audio.reload(); this.pos.y.vel += 0.5; this.rot.x.vel -= 1.2; }
-          if (passed(0.86) && ud.charge) { BR.Audio.reload(); this.pos.z.vel += 0.5; }
+          if (passed(0.22)) { BR.Audio.mech('magout'); this.rot.z.vel -= 0.6; }
+          if (passed(0.68)) { BR.Audio.mech('magin'); this.pos.y.vel += 0.5; this.rot.x.vel -= 1.2; }
+          if (passed(0.86) && ud.charge) { BR.Audio.mech('rack'); this.pos.z.vel += 0.5; }
           this.lastReloadK = k;
         }
       } else this.lastReloadK = 0;
@@ -1083,11 +1083,11 @@
     stepTrail(dt) {
       const T = this.bfTrail, f = this._trailFrame, m = T.mesh;
       if (!f) { m.visible = false; T.tips.length = T.mids.length = 0; return; }
-      const inner = f.model.userData.inner || f.model; inner.updateMatrixWorld(true);
+      const inner = f.model.userData.trailSpace || f.model.userData.inner || f.model; inner.updateMatrixWorld(true);      // (v1.23: the blade's own group, so flips carry the trail)
       const tip = inner.localToWorld((f.model.userData.trailTip || new THREE.Vector3(0, 0.138, -0.003)).clone()), mid = inner.localToWorld((f.model.userData.trailMid || new THREE.Vector3(0, 0.085, -0.003)).clone());
       const last = T.tips[0], speed = last ? tip.distanceTo(last) / Math.max(dt, 1e-3) : 0;
       T.tips.unshift(tip); T.mids.unshift(mid); if (T.tips.length > T.N) { T.tips.length = T.N; T.mids.length = T.N; }
-      T.on += ((speed > 0.6 ? 1 : 0) - T.on) * Math.min(1, dt * 10);      // shows while the blade is whipping round
+      T.on += ((speed > 0.45 ? 1 : 0) - T.on) * Math.min(1, dt * 10);      // shows while the blade is whipping round
       const pos = m.geometry.attributes.position.array, col = m.geometry.attributes.color.array, n = T.tips.length;
       for (let i = 0; i < T.N; i++) {
         const a = T.tips[Math.min(i, n - 1)], b = T.mids[Math.min(i, n - 1)], f1 = Math.max(0, 1 - i / (T.N - 1)), k = f1 * f1 * T.on;
@@ -1095,8 +1095,8 @@
         // head colour -> tail colour along the ribbon (or a rainbow that cycles over time)
         const C = this._tc || (this._tc = new THREE.Color()), u = i / (T.N - 1);
         if (T.rainbow) C.setHSL((performance.now() / 1400 + u * 0.8) % 1, 1, 0.6); else C.copy(T.color).lerp(T.color2, u);
-        const g2 = k * 0.85;
-        col.set([C.r * g2, C.g * g2, C.b * g2, C.r * g2 * 0.25, C.g * g2 * 0.25, C.b * g2 * 0.25], i * 6);
+        const g2 = k * 1.1, hot = Math.max(0, 1 - u * 3) * k * 0.6;                   // white-hot right behind the edge, the colour trailing off
+        col.set([Math.min(1, C.r * g2 + hot), Math.min(1, C.g * g2 + hot), Math.min(1, C.b * g2 + hot), C.r * g2 * 0.18, C.g * g2 * 0.18, C.b * g2 * 0.18], i * 6);
       }
       m.geometry.attributes.position.needsUpdate = true; m.geometry.attributes.color.needsUpdate = true;
       m.visible = T.on > 0.02 && n > 2;

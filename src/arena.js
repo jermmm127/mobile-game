@@ -319,6 +319,11 @@
         score: m.score, ffa: this.P.kind === 'ffa', ranked: this.ranked, map: this.mapId, rank, total: Object.keys(st).length, online: !!this.net, place: win ? 1 : 2,
         by: this.P.kind === 'ffa' ? `#${rank} of ${Object.keys(st).length} · ${me.kills} kills` : `${TEAM_NAME[0]} ${m.score[0]} – ${m.score[1]} ${TEAM_NAME[1]}` };
       g.state = 'dead'; g.endT = 2.4;
+      if (win && g.player.alive && g.startVictory) {
+        // v1.23: every mode gets the victory show: freeze frame, then the celebration orbit, fireworks and fanfare
+        g.state = 'won'; g.endT = 5.4; g.player.fireHeld = false; g.freezeT = 1.0; g.hud.freeze(true); BR.Audio.freeze && BR.Audio.freeze();
+        return;
+      }
       g.hud.duelBanner(m.winTeam === -1 ? 'DRAW' : win ? 'VICTORY' : 'DEFEAT', g.result.by, win ? 'win' : m.winTeam === -1 ? 'info' : 'lose');
       if (win) BR.Audio.victory && BR.Audio.victory();
     }

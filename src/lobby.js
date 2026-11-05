@@ -32,9 +32,11 @@
     { id: 'killhouse', name: 'KILLHOUSE', sub: '3 lanes · training house', art: 'linear-gradient(150deg,#e3d6bc,#8f8676 50%,#2c2823)' },
     { id: 'cargo', name: 'CARGO', sub: 'Tiny container grid', art: 'linear-gradient(150deg,#4f8fc8,#763a35 50%,#1a1d22)' },
     { id: 'district', name: 'DISTRICT', sub: 'Big town block · houses + plaza', art: 'linear-gradient(150deg,#e6c79a,#7a4a3a 50%,#24201c)', big: true },
+    { id: 'suburb', name: 'CUL-DE-SAC', sub: 'Two houses · one street', art: 'linear-gradient(150deg,#9fd0e8,#6f8a52 50%,#2a2420)', mid: true },
+    { id: 'skyline', name: 'SKYLINE', sub: 'Rooftop duel · AC units + water tank', art: 'linear-gradient(150deg,#ffb36b,#5b5e65 50%,#1a1c22)' },
   ];
   // v1.21: Free For All plays on the big maps (District, Killhouse); TDM adds District to its pool; duels keep the small ones
-  L.pool = preset => preset === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse') : preset === 'tdm' ? L.MAPS : L.MAPS.filter(m => !m.big);
+  L.pool = preset => preset === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse' || m.id === 'suburb') : preset === 'tdm' ? L.MAPS.filter(m => m.id !== 'skyline') : L.MAPS.filter(m => !m.big && !m.mid);     // v1.23: Cul-de-Sac in TDM/FFA, Skyline in duels
   L.rollMap = () => { const P = L.pool(L.preset); return P[Math.floor(Math.random() * P.length)].id; };
   L.play = (opts) => {
     const g = BR.game; BR.Audio.init();

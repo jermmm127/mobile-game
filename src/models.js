@@ -1722,7 +1722,7 @@ BR.Models = (function () {
       let mat = std ? p.mat : S;
       if (std && C.finish === 'factory') {                    // keep the model's sculpted detail (normal map), drop its paint
         const key = 'factory:' + id; mat = cache.mat[key] || (cache.mat[key] = new THREE.MeshPhongMaterial({ color: C.factoryColor || 0x2b2e33, normalMap: p.mat.normalMap, normalScale: p.mat.normalScale, specular: 0x5a6068, shininess: 38, specularMap: DETAIL.finish(), envMap: BR.weaponEnv(), reflectivity: 0.08, side: THREE.DoubleSide }));
-        textured = true;
+        cache.mat[key].userData.real = true; textured = true;
       } else if (std && !p.mat.map) mat = S;
       else if (std) textured = true;
       if (p.key === 'blade') mat = bladeMat;
@@ -1744,12 +1744,13 @@ BR.Models = (function () {
     if (C.knife) {
       const bv = [], v = new THREE.Vector3();
       for (const m of by.blade) { const P = m.geometry.attributes.position; for (let i = 0; i < P.count; i += 3) bv.push(v.fromBufferAttribute(P, i).clone()); }
-      let tip = new THREE.Vector3(0, 0.15, 0); for (const q of bv) if (q.length() > tip.length()) tip = q;
+      let tip = new THREE.Vector3(0, 0.15, 0), tl = -1; for (const q of bv) if (q.length() > tl) { tl = q.length(); tip = q; }     // (v1.23: the real blade tip, not a fixed 15 cm floor)
       let mid = tip.clone().multiplyScalar(0.55), best = 1e9; for (const q of bv) { const d = Math.abs(q.length() - tip.length() * 0.55); if (d < best) { best = d; mid = q; } }
       g.userData.trailTip = tip.clone(); g.userData.trailMid = mid.clone(); if (by.blade[0]) g.userData.bladeMesh = by.blade[0];     // (blueprint auras hug this mesh)
       if (C.knife === 'baylike' || C.knife === 'karambit') {
         const inner = new THREE.Group(); g.add(inner); for (const m of g.children.slice()) if (m.isMesh) inner.attach(m);
         g.userData.blade = C.knife === 'baylike' ? (by.blade[0] || inner) : inner;      // (the blade mesh: camo / blueprint checks read its material)
+        g.userData.trailSpace = inner;                                            // v1.23: the trail follows the blade through flips
         if (C.knife === 'baylike') { g.userData.inner = inner; g.userData.bayonet = true; if (id === 'tracker') g.userData.tracker = true; }
       } else if (C.knife === 'butterfly') {
         const mk = (list, at) => { const h = new THREE.Group(); h.position.set(...at); g.add(h); h.updateMatrixWorld(true); for (const m of list) h.attach(m); return h; };
@@ -1789,8 +1790,9 @@ BR.Models = (function () {
     g.userData.imported = id;
     return true;
   }
+  const PROC = {};                                           // v1.23: the original procedural builders (blueprint fitting reference)
   for (const id of Object.keys(BR.IMPORTED || {})) {
-    const proc = BUILD[id]; if (!proc) continue;
+    const proc = BUILD[id]; if (!proc) continue; PROC[id] = proc;
     BUILD[id] = (g, S, M, opts) => importedBuild(id, g, S, M, opts) || proc(g, S, M, opts);
   }
 
@@ -1907,6 +1909,204 @@ BR.Models = (function () {
   // ---- Mythic helpers: animated parts. Each pushes fn(t) onto g.userData.anim; the viewmodel
   // and the shop call BR.Models.animate(model, t) every frame.
   const anim = (g, fn) => (g.userData.anim || (g.userData.anim = [])).push(fn);
+  // ---- v1.23 BLUEPRINT FIT: blueprint add-ons (glow strips, panels, brakes, gems, flames...) were designed on the old
+  // procedural guns and knives. On the imported models every piece a blueprint adds is mapped from the procedural
+  // model's space onto the imported one (anchored on stock end, grip and muzzle; knives on blade and handle), then
+  // seated on the real surface: thin strips are re-laid as ribbons that follow the model's contours, small parts that
+  // would float are pulled onto the nearest surface. Each piece is wrapped in a fit group, so animated parts still
+  // move as designed (their animation runs in the old space, the wrapper maps it).
+  const FIT = {};
+  const ROLE_KEYS = ['inner', 'mag', 'pump', 'bolt', 'handleA', 'handleB', 'crane', 'cylinder', 'muzzle', 'charm'];
+  const SNAP_ROLES = { handleA: 1, handleB: 1, mag: 1, pump: 1, bolt: 1, cylinder: 1 };
+  const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+  const relMat = (g, o) => { g.updateMatrixWorld(true); return new THREE.Matrix4().copy(g.matrixWorld).invert().multiply(o.matrixWorld); };
+  function roleOf(g, o) { const u = g.userData; for (let p = o; p && p !== g; p = p.parent) for (const k of ROLE_KEYS) if (u[k] === p) return k; return null; }
+  function fitRef(g, keep, bladeTest) {
+    g.updateMatrixWorld(true);
+    const u = g.userData, box = new THREE.Box3(), blade = new THREE.Box3(), b = new THREE.Box3(), roles = {};
+    g.traverse(o => {
+      if (!o.isMesh || (keep && !keep.has(o)) || o === u.flash || o.userData.isFlash || o.userData.noUV || (o.material && o.material.transparent && o.material.opacity < 0.5 && !bladeTest(o))) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      b.copy(o.geometry.boundingBox).applyMatrix4(relMat(g, o)); box.union(b); if (bladeTest(o)) blade.union(b);
+    });
+    for (const k of ROLE_KEYS) if (u[k] && u[k].isObject3D) roles[k] = relMat(g, u[k]);
+    const mz = u.muzzle ? new THREE.Vector3().setFromMatrixPosition(relMat(g, u.muzzle)) : new THREE.Vector3(0, 0, box.min.z);
+    const vol = b => { const z = b.getSize(new THREE.Vector3()); return z.x * z.y * z.z; };
+    return { box, blade: blade.isEmpty() || vol(blade) > vol(box) * 0.8 ? null : blade, roles, muzzle: mz, grip: u.grip ? u.grip.clone() : new THREE.Vector3(0, -0.05, 0.1), tip: u.trailTip ? u.trailTip.clone() : null };
+  }
+  function procRef(id) {
+    const key = 'p' + id; if (FIT[key] !== undefined) return FIT[key];
+    if (!PROC[id]) return (FIT[key] = null);
+    const g = new THREE.Group(), M = MAT();
+    try { PROC[id](g, skinMaterial('default', BR.CONFIG.weapons[id].color), M, {}); } catch (e) { return (FIT[key] = null); }
+    const u = g.userData, bl = u.blade && u.blade !== g && u.blade !== u.inner ? u.blade : null;
+    const under = (o, r) => { for (let q = o; q; q = q.parent) if (q === r) return true; return false; };
+    return (FIT[key] = fitRef(g, null, o => o.material === M.blade || (bl && under(o, bl))));
+  }
+  // surface samples of the imported model (g-space points + outward normals + role), in a spatial hash
+  function impRef(id, g, keep) {
+    const key = 'i' + id; if (FIT[key]) return FIT[key];
+    const C = BR.IMPORTED[id], u = g.userData;
+    const R = fitRef(g, keep, o => o === u.bladeMesh);
+    R.muzzle.set(0, C.muzzle[0], C.muzzle[1]);
+    if (u.mag) { const mb = new THREE.Box3(), t = new THREE.Box3(); u.mag.traverse(o => { if (o.isMesh && keep.has(o)) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); mb.union(t.copy(o.geometry.boundingBox).applyMatrix4(relMat(g, o))); } }); if (!mb.isEmpty()) R.magBox = mb; }
+    const tris = []; let area = 0;
+    const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), nn = new THREE.Vector3(), nv = new THREE.Vector3();
+    g.traverse(o => {
+      if (!o.isMesh || !keep.has(o) || o === u.flash || o.userData.isFlash || o.userData.noUV || (o.material && o.material.transparent && o.material.opacity < 0.5 && o !== u.bladeMesh)) return;
+      const role = o === u.bladeMesh ? 'blade' : roleOf(g, o) || 'body', M = relMat(g, o), P = o.geometry.attributes.position, N = o.geometry.attributes.normal, I = o.geometry.index;
+      const nm = new THREE.Matrix3().getNormalMatrix(M), cnt = I ? I.count : P.count;
+      for (let t = 0; t + 2 < cnt; t += 3) {
+        const ia = I ? I.getX(t) : t, ib = I ? I.getX(t + 1) : t + 1, ic = I ? I.getX(t + 2) : t + 2;
+        va.fromBufferAttribute(P, ia).applyMatrix4(M); vb.fromBufferAttribute(P, ib).applyMatrix4(M); vc.fromBufferAttribute(P, ic).applyMatrix4(M);
+        e1.subVectors(vb, va); e2.subVectors(vc, va); nn.crossVectors(e1, e2); const A = nn.length() / 2; if (A < 1e-9) continue;
+        nn.normalize();
+        if (N) { nv.fromBufferAttribute(N, ia).add(e1.fromBufferAttribute(N, ib)).add(e2.fromBufferAttribute(N, ic)).applyMatrix3(nm); if (nv.dot(nn) < 0) nn.negate(); }
+        tris.push([va.clone(), vb.clone(), vc.clone(), nn.clone(), A, role]); area += A;
+      }
+    });
+    const step = Math.max(0.0028, Math.sqrt(area / 45000)), cell = 0.008, hash = new Map(), pts = [], rng = BR.util.rng(991);
+    const add = (p, n, role) => { const i = pts.length; pts.push({ p, n, role }); const k = Math.floor(p.x / cell) + ',' + Math.floor(p.y / cell) + ',' + Math.floor(p.z / cell); let a = hash.get(k); if (!a) hash.set(k, a = []); a.push(i); };
+    for (const [a, b, c, n, A, role] of tris) {
+      const m = Math.min(40, Math.max(1, Math.round(A / (step * step))));
+      for (let i = 0; i < m; i++) { let r1 = i ? rng() : 1 / 3, r2 = i ? rng() : 1 / 3; if (r1 + r2 > 1) { r1 = 1 - r1; r2 = 1 - r2; }
+        add(new THREE.Vector3().copy(a).addScaledVector(e1.subVectors(b, a), r1).addScaledVector(e2.subVectors(c, a), r2), n, role); }
+    }
+    R.pts = pts; R.hash = hash; R.cell = cell;
+    return (FIT[key] = R);
+  }
+  function nearestSurf(R, p, maxR, role) {
+    const c = R.cell, cx = Math.floor(p.x / c), cy = Math.floor(p.y / c), cz = Math.floor(p.z / c), rr = Math.ceil(maxR / c);
+    let best = null, bd = maxR * maxR, bestAny = null, bda = maxR * maxR;
+    for (let r = 0; r <= rr; r++) {
+      for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) for (let dz = -r; dz <= r; dz++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== r) continue;
+        const a = R.hash.get((cx + dx) + ',' + (cy + dy) + ',' + (cz + dz)); if (!a) continue;
+        for (const i of a) { const q = R.pts[i], d = q.p.distanceToSquared(p); if (d < bda) { bda = d; bestAny = q; } if ((!role || q.role === role) && d < bd) { bd = d; best = q; } }
+      }
+      if ((role ? best : bestAny) && (r * c) * (r * c) > (role ? bd : bda)) break;
+    }
+    return role && best ? best : role && !SNAP_ROLES[role] ? bestAny : best || (role ? null : bestAny);
+  }
+  // proc g-space point -> imported g-space point + local scale
+  function fitMap(id, P, I, c) {
+    const p = new THREE.Vector3(), s = new THREE.Vector3(1, 1, 1);
+    if (BR.CONFIG.weapons[id].melee) {
+      const inB = P.blade && I.blade && P.blade.clone().expandByScalar(0.016).containsPoint(c), A = inB ? P.blade : P.box, B = inB ? I.blade : I.box;
+      for (const ax of ['x', 'y', 'z']) {
+        const a0 = A.min[ax], a1 = A.max[ax], b0 = B.min[ax], b1 = B.max[ax], k = (c[ax] - a0) / Math.max(1e-4, a1 - a0);
+        const flip = ax === 'y' && P.tip && I.tip && Math.sign(P.tip.y) !== Math.sign(I.tip.y);
+        p[ax] = flip ? b1 - k * (b1 - b0) : b0 + k * (b1 - b0);
+        s[ax] = clampN((b1 - b0) / Math.max(1e-4, a1 - a0), ax === 'x' ? 0.6 : 0.45, 2.2);
+      }
+      return { p, s };
+    }
+    const segs = [[P.box.max.z, I.box.max.z], [P.grip.z, I.grip.z], [P.muzzle.z, I.muzzle.z]].filter((v, i, a) => !i || a[i - 1][0] - v[0] > 0.02);
+    const seg = (a, b) => { const sl = clampN((b[1] - a[1]) / (b[0] - a[0]), 0.5, 1.8); return [a[1] + (c.z - a[0]) * sl, sl]; };
+    let z;
+    if (segs.length < 2) z = [c.z - P.muzzle.z + I.muzzle.z, 1];
+    else if (c.z >= segs[1][0]) z = seg(segs[0], segs[1]);
+    else { let i = 1; while (i < segs.length - 1 && c.z < segs[i + 1][0]) i++; z = i < segs.length - 1 ? seg(segs[i], segs[i + 1]) : seg(segs[i - 1], segs[i]); }
+    const W = (b) => Math.max(0.01, b.max.x - b.min.x), H = (b) => Math.max(0.01, b.max.y - b.min.y);
+    s.set(clampN(W(I.box) / W(P.box), 0.6, 1.5), clampN(H(I.box) / H(P.box), 0.65, 1.5), z[1]);
+    const m = (s.x + s.y + s.z) / 3; s.set(clampN(s.x, m * 0.75, m * 1.25), clampN(s.y, m * 0.75, m * 1.25), clampN(s.z, m * 0.75, m * 1.25));
+    p.set(c.x * s.x, I.muzzle.y + (c.y - P.muzzle.y) * s.y, z[0]);
+    return { p, s };
+  }
+  // a thin strip re-laid on the surface: samples along its long axis, each seated on the nearest surface point
+  // an energy-flow material: bright pulses race along a ribbon, tinted live from the blueprint's own glow material
+  function flowMat(g, src) {
+    const T = canvasTex('flowpulse', (c, S) => { const gr = c.createLinearGradient(0, 0, S, 0); gr.addColorStop(0, 'rgba(255,255,255,0.18)'); gr.addColorStop(0.55, 'rgba(255,255,255,0.35)'); gr.addColorStop(0.86, '#fff'); gr.addColorStop(0.9, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0.18)'); c.fillStyle = gr; c.fillRect(0, 0, S, S); }, 64);
+    const map = T.clone(); map.needsUpdate = true; map.wrapS = THREE.RepeatWrapping; map.repeat.set(4, 1);
+    const m = new THREE.MeshBasicMaterial({ map, color: src.color ? src.color.clone() : 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    anim(g, t => { map.offset.x = -(t * 1.6) % 1; if (src.color) m.color.copy(src.color); });
+    return m;
+  }
+  function ribbonOn(I, center, axis, len, wAxis, w, mat, role) {
+    const K = Math.max(2, Math.ceil(len / 0.005)), seats = [];
+    for (let i = 0; i <= K; i++) {
+      const p = center.clone().addScaledVector(axis, (i / K - 0.5) * len), q = nearestSurf(I, p, 0.05, role);
+      seats.push(q ? { q: q.p.clone().addScaledVector(q.n, w > 0.012 ? 0.0022 : 0.0011), n: q.n.clone() } : null);
+    }
+    return ribbonSeats(seats, w, mat, len / K, axis, wAxis);
+  }
+  // a ribbon through surface seats ({q: point, n: normal} or null for a gap), smoothed, w wide
+  function ribbonSeats(seats, w, mat, step, axis, wAxis) {
+    const K = seats.length - 1, pos = [], uvs = [], len = step * K; wAxis = wAxis || new THREE.Vector3(0, 1, 0);
+    for (let it = 0; it < (w > 0.012 ? 4 : 2); it++) {                                // smooth the seats so the ribbon reads as one clean line, not a scribble
+      const prev = seats.map(x => x && { q: x.q.clone(), n: x.n.clone() });
+      for (let i = 0; i <= K; i++) { if (!prev[i]) continue; let c = 1; const q = prev[i].q.clone(), n = prev[i].n.clone();
+        for (const j of [i - 1, i + 1]) if (prev[j] && prev[j].q.distanceTo(prev[i].q) < len / K * 3) { q.add(prev[j].q); n.add(prev[j].n); c++; }
+        seats[i].q.copy(q.divideScalar(c)); seats[i].n.copy(n.normalize()); }
+    }
+    for (let i = 0; i < K; i++) {
+      const a = seats[i], b = seats[i + 1]; if (!a || !b || a.q.distanceTo(b.q) > len / K * 3.5) continue;
+      const corner = (s) => { const wv = wAxis.clone().addScaledVector(s.n, -wAxis.dot(s.n)); if (wv.lengthSq() < 1e-6) wv.crossVectors(s.n, axis); wv.normalize().multiplyScalar(w / 2); return [s.q.clone().add(wv), s.q.clone().sub(wv)]; };
+      const [a0, a1] = corner(a), [b0, b1] = corner(b), ua = i / K, ub = (i + 1) / K;
+      const U = [[ua, 0], [ua, 1], [ub, 0], [ub, 1]], V = [a0, a1, b0, b1];
+      for (const t of [[0, 1, 2], [1, 3, 2], [0, 2, 1], [1, 2, 3]]) for (const j of t) { pos.push(V[j].x, V[j].y, V[j].z); uvs.push(U[j][0], U[j][1]); }
+    }
+    if (!pos.length) return null;
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mat); m.userData.noUV = true; m.userData.fitted = true; return m;
+  }
+  function fitMods(g, id, keep, native) {
+    if (!g.userData.imported || !BR.IMPORTED[id]) return;
+    const P = native ? null : procRef(id); if (!P && !native) return;
+    const I = impRef(id, g, keep), geos = new Set();
+    g.traverse(o => { if (keep.has(o) && o.geometry) geos.add(o.geometry); });
+    g.updateMatrixWorld(true);
+    const added = []; g.traverse(o => { if (!keep.has(o) && keep.has(o.parent) && !o.userData.fitted && !(o.geometry && geos.has(o.geometry))) added.push(o); });
+    const bb = new THREE.Box3(), sz = new THREE.Vector3(), ctr = new THREE.Vector3(), AX = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+    // which add-ons are animated (their animation moves them): those are never re-laid as static ribbons
+    const moving = new Set(), snap = o => o.position.toArray().concat(o.scale.toArray(), o.rotation.toArray().slice(0, 3)).join(',');
+    if (g.userData.anim) { const all = []; g.traverse(o => { if (!keep.has(o)) all.push([o, snap(o)]); }); g.userData.anim.forEach(f => f(2.345)); g.userData.anim.forEach(f => f(0.71));
+      for (const [o, s0] of all) if (snap(o) !== s0) for (let q = o; q && !keep.has(q); q = q.parent) moving.add(q); }
+    const fits = [], melee = !!BR.CONFIG.weapons[id].melee;
+    const put = (e) => { e.Wg.matrix.copy(e.Pinv).multiply(e.pre).multiply(e.base); e.Wg.updateMatrixWorld(true); };
+    for (const o of added) {
+      const par = o.parent, role = roleOf(g, par), Pi = relMat(g, par);
+      const Mpp = role && P && P.roles[role] && I.roles[role] ? P.roles[role].clone().multiply(I.roles[role].clone().invert()).multiply(Pi) : Pi.clone();
+      bb.setFromObject(o); if (bb.isEmpty()) bb.setFromCenterAndSize(new THREE.Vector3().setFromMatrixPosition(o.matrixWorld), new THREE.Vector3());
+      const cLocal = par.worldToLocal(bb.getCenter(new THREE.Vector3())), cP = cLocal.clone().applyMatrix4(Mpp);
+      let A = new THREE.Matrix4();
+      if (!native) { const { p, s } = fitMap(id, P, I, cP); A.makeTranslation(p.x, p.y, p.z).multiply(new THREE.Matrix4().makeScale(s.x, s.y, s.z)).multiply(new THREE.Matrix4().makeTranslation(-cP.x, -cP.y, -cP.z)); }
+      const Wg = new THREE.Group(); Wg.matrixAutoUpdate = false; Wg.userData.fitted = true; par.add(Wg); Wg.add(o);
+      const e = { o, Wg, Pinv: Pi.clone().invert(), base: native ? Pi.clone() : A.multiply(Mpp), pre: new THREE.Matrix4(), par, role };
+      put(e);
+      if (o.isSprite || o.isLine) continue;
+      bb.setFromObject(o); bb.getSize(sz);
+      const ds = [sz.x, sz.y, sz.z].sort((x, y) => x - y);
+      if (o.isMesh && role !== 'mag' && ds[2] > 0.12 && ds[1] > 0.03 && !melee) { o.visible = false; o.userData.fitHidden = true; continue; }   // a blocky shroud would bury the real model's detail
+      fits.push(e);
+    }
+    // a replacement drum / mag (all its pieces together) is centred on the real magazine
+    const mags = fits.filter(e => e.role === 'mag');
+    if (mags.length && I.magBox) {
+      const u = new THREE.Box3(); for (const e of mags) u.union(bb.setFromObject(e.o));
+      const mc = I.magBox.getCenter(new THREE.Vector3()), uc = u.getCenter(new THREE.Vector3());
+      for (const e of mags) { e.pre.makeTranslation(mc.x - uc.x, Math.max(0, I.magBox.max.y - u.max.y - 0.01), mc.z - uc.z); put(e); e.done = u.getSize(sz).length() > 0.06; }
+    }
+    for (const e of fits) {
+      if (e.done) continue;
+      const { o, Pinv, par, role } = e;
+      bb.setFromObject(o); bb.getSize(sz); bb.getCenter(ctr); if (bb.isEmpty()) continue;
+      const order = [0, 1, 2].sort((x, y) => sz.getComponent(x) - sz.getComponent(y)), d0 = sz.getComponent(order[0]), d1 = sz.getComponent(order[1]), d2 = sz.getComponent(order[2]);
+      const sr = SNAP_ROLES[role] ? role : null;
+      if (o.isMesh && d0 <= 0.0075 && d2 >= 0.035 && (d2 > 3.5 * d1 || order[0] === 0) && o.geometry.attributes.position.count < 600) {          // a glow strip / pinstripe / panel: lay it on the surface
+        const mv = moving.has(o), rm = mv ? flowMat(g, o.material) : o.material;    // (a moving streak becomes a flowing one)
+        const rb = ribbonOn(I, ctr, AX[order[2]], mv ? Math.min(I.box.max.z - I.muzzle.z, Math.max(d2, 0.2)) : d2, AX[order[1]], Math.max(d1, 0.0026), rm, sr);
+        if (rb) { rb.matrixAutoUpdate = false; rb.matrix.copy(Pinv); par.add(rb); o.visible = false; o.userData.fitHidden = true; continue; }
+      }
+      const q = nearestSurf(I, ctr, 0.15, sr); if (!q) continue;
+      const slack = moving.has(o) ? 0.02 : 0.003;                                    // (animated parts may hover a little by design)
+      const dv = ctr.clone().sub(q.p), dist = dv.length(), dir = dist > 1e-5 ? dv.divideScalar(dist) : q.n.clone(), out = dir.dot(q.n) > -0.2;
+      const hx = d => Math.abs(d.x) * sz.x / 2 + Math.abs(d.y) * sz.y / 2 + Math.abs(d.z) * sz.z / 2, h = hx(dir);
+      if (out && dist > h + slack) { const m = -(dist - h - 0.0006); e.pre.makeTranslation(dir.x * m, dir.y * m, dir.z * m); put(e); }     // floating: seat it on the surface
+      else if (d0 <= 0.0075 && Math.abs(q.n.getComponent(order[0])) > 0.7) { const sd = (out ? dist : -dist) * Math.max(0.2, Math.abs(dir.dot(q.n))), hn = hx(q.n);                      // a decal sunk into the body: lift it out
+        if (sd < hn * 0.6) { const m = hn + 0.0008 - sd; e.pre.makeTranslation(q.n.x * m, q.n.y * m, q.n.z * m); put(e); } }
+    }
+  }
   // v1.22 SKIN VFX: Legendary / Mythic / Exotic camos and Mythic / Exotic blueprints get a living glow: an additive rim
   // shell hugging the weapon that breathes, a slow light sweep along it, and sparkles drifting round it in the skin's
   // colour (Exotic cycles through the rainbow). Knife blueprints that already carry their own aura keep it.
@@ -1916,7 +2116,7 @@ BR.Models = (function () {
     const sk = skin && skin !== 'default' ? SKINS[skin] : null;
     let tier = 0, col = null;
     if (sk && FX_TIER[sk.rarity]) { tier = FX_TIER[sk.rarity]; col = swatchColor(sk.swatch); }
-    else if (bp && !bp.mod && (bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) { tier = FX_TIER[bp.rarity]; col = bp.glow; }
+    else if (bp && (!bp.mod || bp.fx) && (bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) { tier = FX_TIER[bp.rarity]; col = bp.glow; }
     if (!tier || col === null || col === undefined || !(BR.Effects && BR.Effects.tex)) return;
     let src = null, n = 0;
     g.traverse(o => { if (o.isMesh && !o.userData.isFlash && o.geometry && o.geometry.attributes.position && o.geometry.attributes.position.count > n && !(o.material && o.material.transparent)) { n = o.geometry.attributes.position.count; src = o; } });
@@ -2499,7 +2699,7 @@ BR.Models = (function () {
   const bodyInfo = g => {
     g.updateMatrixWorld(true);
     const box = new THREE.Box3();
-    g.traverse(o => { if (o.isMesh && o !== g.userData.flash) box.expandByObject(o); });
+    g.traverse(o => { if (o.isMesh && o !== g.userData.flash && !o.userData.isFlash) box.expandByObject(o); });
     const mz = g.userData.muzzle ? g.userData.muzzle.position : new THREE.Vector3(0, 0.04, box.min.z);
     return { box, mz, hw: Math.min(0.045, (box.max.x - box.min.x) / 2), by: mz.y, z0: mz.z, z1: box.max.z, len: box.max.z - mz.z };
   };
@@ -2573,6 +2773,7 @@ BR.Models = (function () {
   for (const [w, id, name, theme, body, accent, glow, rarity, price, reload] of S2) {
     const e = { name, rarity, body, bodyGloss: 2, accent, accentGloss: 2, glow, mod: S2THEME[theme], reload: { style: reload, fx: glow }, season: 2 };
     if (price === 'nova') { e.caseOnly = true; e.case = 'nova'; } else e.price = price;
+    e.fit = 'native';                                    // (measured off the live model: only seated, never remapped)
     (S2BP[w] = S2BP[w] || {})[id] = e;
   }
   // Season 2 knives: animated blades
@@ -2590,12 +2791,21 @@ BR.Models = (function () {
         c.strokeStyle = '#d08bff'; c.lineWidth = 1.2; c.shadowColor = '#b04bff'; c.shadowBlur = 6; c.stroke(); }
     }) });
   // aura: additive shells hugging the blade that breathe, plus motes drifting off it
+  // v1.23 aura shells on the imported blades: grow mostly through the blade's thickness, a little across it and barely
+  // along it, about the blade's own centre (they were scaled about the grip, which blew them up into big sheets)
+  const auraScale = (blade, sc) => {
+    if (!blade.geometry.boundingBox) blade.geometry.computeBoundingBox();
+    const s = blade.geometry.boundingBox.getSize(new THREE.Vector3()), ax = ['x', 'y', 'z'].sort((a, b) => s[a] - s[b]), out = new THREE.Vector3();
+    out[ax[0]] = 1 + (sc - 1) * 5; out[ax[1]] = 1 + (sc - 1) * 0.55; out[ax[2]] = 1 + (sc - 1) * 0.16; return out;
+  };
+  const auraCentre = (m, blade) => { const c = blade.geometry.boundingBox.getCenter(new THREE.Vector3()); const k = m.scale.clone().divide(blade.scale);
+    m.position.add(c.clone().multiply(blade.scale).applyEuler(blade.rotation).sub(c.clone().multiply(blade.scale).multiply(k).applyEuler(blade.rotation))); };
   const nightshadeAura = (g, k, P) => {
     const blade = g.userData.blade, par = blade.parent;
     const shells = [[1.16, 0.55, 0xb04bff], [1.38, 0.22, 0x7b2cff]].map(([sc, op, c]) => {
       const m = new THREE.Mesh(blade.geometry, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide }));
-      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.set(sc * 1.8, sc, sc);      // thicker sideways so it reads as a glow
-      m.position.y -= 0.07 * (sc - 1); par.add(m); return m; });
+      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.copy(blade.scale).multiply(auraScale(blade, sc)); auraCentre(m, blade);     // thicker sideways so it reads as a glow
+      m.userData.fitted = true; m.userData.isFlash = true; par.add(m); return m; });
     anim(g, t => shells.forEach((m, i) => { const b = 0.5 + 0.5 * Math.sin(t * 3.2 + i); m.material.opacity = (i ? 0.14 : 0.4) + b * (i ? 0.12 : 0.25); m.material.color.setHSL(0.76 + 0.03 * Math.sin(t * 1.3 + i), 1, 0.55); }));
     const motes = [], mm = new THREE.MeshBasicMaterial({ color: 0xd8a8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.0028, 0), mm); par.add(m); motes.push({ m, o: Math.random(), x: (Math.random() - 0.5) * 0.02 }); }
@@ -2612,12 +2822,12 @@ BR.Models = (function () {
     const par = blade.parent, A = new THREE.Color(cA), Bc = new THREE.Color(cB), tmp = new THREE.Color();
     const shells = [[1.14, 0.6], [1.32, 0.3], [1.6, 0.14]].map(([sc, op]) => {
       const m = new THREE.Mesh(blade.geometry, new THREE.MeshBasicMaterial({ color: cA, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide }));
-      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.copy(blade.scale).multiply(new THREE.Vector3(sc * 1.25, sc, sc * 3));
-      par.add(m); return { m, op }; });
+      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.copy(blade.scale).multiply(auraScale(blade, sc)); auraCentre(m, blade);
+      m.userData.fitted = true; m.userData.isFlash = true; par.add(m); return { m, op }; });
     const sp = () => new THREE.SpriteMaterial({ map: BR.Effects ? BR.Effects.tex().dot : null, color: cA, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     const box = new THREE.Box3().setFromObject(blade), ctr = blade.parent.worldToLocal(box.getCenter(new THREE.Vector3())), size = box.getSize(new THREE.Vector3()), len = Math.max(size.x, size.y, size.z);
-    const halo = new THREE.Sprite(sp()); halo.position.copy(ctr); halo.scale.setScalar(len * 1.4); par.add(halo);
-    const motes = []; for (let i = 0; i < 14; i++) { const s = new THREE.Sprite(sp()); par.add(s); motes.push({ s, o: Math.random(), a: Math.random() * 6.28 }); }
+    const halo = new THREE.Sprite(sp()); halo.position.copy(ctr); halo.scale.setScalar(len * 1.4); halo.userData.fitted = true; par.add(halo);
+    const motes = []; for (let i = 0; i < 14; i++) { const s = new THREE.Sprite(sp()); s.userData.fitted = true; par.add(s); motes.push({ s, o: Math.random(), a: Math.random() * 6.28 }); }
     anim(g, t => {
       const k = 0.5 + 0.5 * Math.sin(t * 3);
       if (rainbow) tmp.setHSL((t * 0.35) % 1, 1, 0.6); else tmp.copy(A).lerp(Bc, k);
@@ -2752,6 +2962,64 @@ BR.Models = (function () {
       } } },
   };
   for (const w in GRIND_BP) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, GRIND_BP[w]);
+  // ---- v1.23 OVERDRIVE blueprints (original designs, made for the imported models): a living animated finish, energy
+  // veins traced along both sides of the real model (circuit-style steps, pulses racing toward the muzzle), a spinning
+  // twin-ring reactor at the muzzle, a breathing rim glow and sparkles. Every colour shifts through the theme's palette.
+  const OVERDRIVE_THEMES = {
+    eventhorizon: { name: 'Event Horizon', tex: 'voidrift', cols: [0xb04bff, 0xff3df2, 0x5a8bff], emi: 0.85 },
+    supernova:    { name: 'Supernova', tex: 'g_starforge', cols: [0xffd24a, 0xff6a00, 0xfff4c0], emi: 0.8 },
+    cryopulse:    { name: 'Cryo Pulse', tex: 'tidewater', cols: [0x6fe8ff, 0xffffff, 0x2f7bff], emi: 0.7 },
+    toxicstorm:   { name: 'Toxic Storm', tex: 'acid', cols: [0x7dff3a, 0xe8ff3a, 0x1fdc8c], emi: 0.8 },
+    neontokyo:    { name: 'Neon Tokyo', tex: 'hyperspace', cols: [0xff2fa8, 0x1de9ff, 0xb04bff], emi: 0.9 },
+    magmacore:    { name: 'Magma Core', tex: 'molten', cols: [0xff3a00, 0xffb000, 0xff6a00], emi: 1 },
+    stormsurge:   { name: 'Storm Surge', tex: 'electric', cols: [0x9fd8ff, 0xffffff, 0x4a6bff], emi: 0.9 },
+    infinity:     { name: 'Infinity', tex: 'prism', cols: [0xff3df2, 0x1de9ff, 0xffe14d], emi: 0.75, rainbow: true },
+  };
+  function overdriveMod(th) {
+    return (g, k, P) => {
+      const C = th.cols.map(c => new THREE.Color(c)), tmp = new THREE.Color();
+      const live = (i) => { const m = liveGlow(th.cols[i % th.cols.length]); anim(g, t => { if (th.rainbow) m.color.setHSL((t * 0.15 + i * 0.21) % 1, 1, 0.6); else { const f = 0.5 + 0.5 * Math.sin(t * 1.7 + i * 2.1); m.color.copy(C[i % C.length]).lerp(C[(i + 1) % C.length], f); } }); return m; };
+      if (!P.camo) {                                                         // the living finish
+        const mat = new THREE.MeshPhongMaterial({ map: TEX[th.tex](), emissive: 0xffffff, emissiveMap: TEX[th.tex](), emissiveIntensity: th.emi * 0.55, specular: 0xffffff, shininess: 120, envMap: BR.weaponEnv(), reflectivity: 0.25 });
+        g.traverse(o => { if (o.isMesh && o.material === P.B) o.material = mat; });
+        mat.userData.finish = 'overdrive';
+        anim(g, t => { mat.emissiveIntensity = th.emi * (0.45 + 0.2 * Math.sin(t * 2.2)); });
+      }
+      if (!g.userData.imported || !P.keep) return;
+      const I = impRef(P.id, g, P.keep), melee = !!BR.CONFIG.weapons[P.id].melee, rng = BR.util.rng(hsh(th.name + P.id)), B = I.box;
+      // energy veins: a far-out guide line along each side, stepping up / down like a circuit trace, seated on the surface
+      const lines = melee ? [] : [[1, 0.62], [1, 0.36], [-1, 0.62], [-1, 0.36]];
+      const z0 = Math.min(B.max.z - 0.02, I.grip.z + 0.25), z1 = I.muzzle.z + 0.02, top = Math.max(I.muzzle.y, I.grip.y), H = B.max.y - B.min.y;
+      lines.forEach(([side, lv], li) => {
+        let y = I.grip.y + (top - I.grip.y + 0.05) * lv, nextStep = z0 - 0.04 - rng() * 0.08; const seats = [];
+        for (let z = z0; z > z1; z -= 0.005) {
+          if (z < nextStep) { y += (rng() < 0.5 ? -1 : 1) * H * 0.05; y = clampN(y, I.grip.y - 0.01, B.max.y - 0.012); nextStep = z - 0.05 - rng() * 0.1; }
+          const q = nearestSurf(I, new THREE.Vector3(side * (B.max.x + 0.004), y, z), 0.05);
+          seats.push(q && Math.sign(q.p.x || side) === side && Math.abs(q.p.y - y) < 0.03 ? { q: q.p.clone().addScaledVector(q.n, 0.0012), n: q.n.clone() } : null);
+        }
+        const rb = ribbonSeats(seats, 0.0032, flowMat(g, live(li)), 0.03, new THREE.Vector3(0, 0, -1)); if (rb) g.add(rb);
+      });
+      // twin-ring reactor at the muzzle (or round the blade for knives) + a soft halo
+      const ctr = melee ? (I.blade || B).getCenter(new THREE.Vector3()) : I.muzzle.clone().add(new THREE.Vector3(0, 0, 0.03));
+      const R0 = melee ? 0.03 : Math.max(0.022, Math.min(0.045, (B.max.x - B.min.x) * 0.7));
+      const r1 = ring(g, R0, 0.0022, live(0), ctr.x, ctr.y, ctr.z), r2 = ring(g, R0 * 1.3, 0.0016, live(1), ctr.x, ctr.y, ctr.z);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: BR.Effects ? BR.Effects.tex().soft : null, color: th.cols[0], transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+      halo.position.copy(ctr); halo.scale.setScalar(R0 * 4); g.add(halo);
+      for (const o of [r1, r2, halo]) { o.userData.isFlash = true; o.userData.noUV = true; }
+      anim(g, t => { r1.rotation.set(t * 2.2, t * 1.3, 0); r2.rotation.set(-t * 1.6, 0, t * 2.4); const s = 1 + 0.08 * Math.sin(t * 6); r1.scale.setScalar(s); r2.scale.setScalar(2 - s);
+        halo.material.opacity = 0.35 + 0.25 * Math.sin(t * 4); if (th.rainbow) halo.material.color.setHSL((t * 0.15) % 1, 1, 0.6); else halo.material.color.copy(C[0]).lerp(C[1], 0.5 + 0.5 * Math.sin(t * 1.7)); });
+    };
+  }
+  const OVERDRIVE_SETS = {
+    pistol: ['neontokyo', 'supernova'], smg: ['toxicstorm', 'eventhorizon'], shotgun: ['magmacore', 'cryopulse'], rifle: ['eventhorizon', 'infinity'],
+    holoar: ['stormsurge', 'neontokyo'], sniper: ['cryopulse', 'infinity'], hunter: ['supernova', 'eventhorizon'], revolver: ['magmacore', 'stormsurge'],
+    lmg: ['toxicstorm', 'supernova'], dmr: ['neontokyo', 'magmacore'], launcher: ['infinity', 'stormsurge'],
+  };
+  for (const w in OVERDRIVE_SETS) OVERDRIVE_SETS[w].forEach((key, i) => {
+    const th = OVERDRIVE_THEMES[key], exotic = key === 'infinity';
+    (BLUEPRINTS[w] = BLUEPRINTS[w] || {})['od_' + key] = { name: th.name, rarity: exotic ? 'Exotic' : 'Mythic', price: exotic ? 4000 : 3200, season: 3, fx: true, fit: 'own',
+      body: 0x101018, bodyGloss: 2, accent: th.cols[1], accentGloss: 2, glow: th.cols[0], mod: overdriveMod(th) };
+  });
   // ---- v1.13 TRACKER blueprints (original designs). Goldrune: an engraved gold blade (gold gradient,
   // brushed grain, an etched band of interlocking scrolls + runes) on the olive grip.
   BLADES.goldrune = () => new THREE.MeshPhongMaterial({ shininess: 170, specular: 0xfff0b0, emissive: 0x2a1a00, side: THREE.DoubleSide, map: bladeTex('goldrune', (c, s) => {
@@ -2780,7 +3048,17 @@ BR.Models = (function () {
     glacierfang: { name: 'Glacier Fang', rarity: 'Legendary', price: 1500, body: 0xcfe6f2, bodyGloss: 2, accent: 0xe8f6ff, glow: 0xdff6ff, blade: 'glacier' },
     magmatooth:  { name: 'Magma Tooth', rarity: 'Mythic', price: 2800, body: 0x1a0805, bodyGloss: 1, accent: 0xff6a00, glow: 0xff6a00, blade: 'emberblade', trail: 0xff7a1a, trail2: 0xffd24a, mod: vibrantAura(0xff6a00, 0xffd24a) },
     aurumprime:  { name: 'Aurum Prime', rarity: 'Exotic', price: 3500, body: 0x1a1206, bodyGloss: 2, accent: 0xffd24a, glow: 0xffd24a, blade: 'solarblade', trail: 0xffd24a, trail2: 0xffffff, mod: vibrantAura(0xffd24a, 0xffffff) },
+  };  // knives: a living blade, the aura, a long two-tone trail
+  BLADES.od_void = animBlade('voidrift', 0.9); BLADES.od_nova = animBlade('g_starforge', 0.9); BLADES.od_cryo = animBlade('tidewater', 0.8); BLADES.od_prism = animBlade('prism', 0.8);
+  const OD_KNIVES = {
+    knife: { od_eventhorizon: ['Event Horizon', 'od_void', 0xb04bff, 0xff3df2, 'Mythic'] },
+    bayonet: { od_supernova: ['Supernova', 'od_nova', 0xffd24a, 0xff6a00, 'Mythic'] },
+    tracker: { od_cryopulse: ['Cryo Pulse', 'od_cryo', 0x6fe8ff, 0xffffff, 'Mythic'] },
+    butterfly: { od_infinity: ['Infinity', 'od_prism', 0xff3df2, 0x1de9ff, 'Exotic'] },
   };
+  for (const w in OD_KNIVES) for (const id in OD_KNIVES[w]) { const [name, blade, a, b, rarity] = OD_KNIVES[w][id];
+    (BLUEPRINTS[w] = BLUEPRINTS[w] || {})[id] = { name, rarity, price: rarity === 'Exotic' ? 4200 : 3400, season: 3, body: 0x0c0a14, bodyGloss: 2, accent: b, glow: a, blade, trail: rarity === 'Exotic' ? -1 : a, trail2: b, mod: vibrantAura(a, b, rarity === 'Exotic') }; }
+
   // Signature tracers: every Legendary / Mythic blueprint fires its own tracer (used when that
   // gun's tracer is set to "Blueprint Signature"). Hand-picked styles, the rest derived from the glow.
   const SIG = {
@@ -3048,7 +3326,7 @@ BR.Models = (function () {
     g.updateMatrixWorld(true);
     const buckets = new Map();
     g.traverse(o => {
-      if (!o.isMesh || !test(o) || !o.parent || o.geometry.attributes.position.count > 8000) return;
+      if (!o.isMesh || !o.visible || !test(o) || !o.parent || o.geometry.attributes.position.count > 8000) return;
       const e = new THREE.EdgesGeometry(o.geometry, threshold); e.applyMatrix4(o.matrix);
       if (!buckets.has(o.parent)) buckets.set(o.parent, []);
       buckets.get(o.parent).push(e.attributes.position.array);
@@ -3134,7 +3412,11 @@ BR.Models = (function () {
       ROUND = true;
       try {
         (BUILD[id] || BUILD.pistol)(g, S, MAT(), opts);
-        if (bp && bp.mod) bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT() });
+        if (bp && bp.mod) {
+          const keep = g.userData.imported ? new Set() : null; if (keep) g.traverse(o => keep.add(o));
+          bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT(), camo: !!opts.camo, keep, id });
+          if (keep && bp.fit !== 'own') fitMods(g, id, keep, bp.fit === 'native');                                     // v1.23: seat the add-ons on the imported model
+        }
         if (bp && !opts.camo) bpUpgrade(g, id, bpId, bp, S, opts);          // v1.16 finishes + edge lines
         realPass(g, !bp && !opts.camo);                                        // v1.17 surface detail
         skinFx(g, skin, bp);                                                   // v1.22 rarity glow + sparkles

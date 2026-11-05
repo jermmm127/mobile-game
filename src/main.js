@@ -449,9 +449,8 @@
     if (!b) return;
     if (b.dataset.sp === 'weapon') {
       const p = game.player;
-      game.practiceSpawn('weapon', b.dataset.arg, spSlot, spRar);
-      if (spSlot === 0 && p && !p.slots[1]) spSlot = 1;        // first gun in -> second slot next
-      BR.renderSpawnSlots(); BR.Audio.pickup();
+      game.practiceSpawn('dropweapon', b.dataset.arg, spSlot, spRar);       // v1.23: dropped on the ground, not auto-equipped
+      void p; BR.renderSpawnSlots(); BR.Audio.pickup(); setTimeout(() => game.closeSpawnMenu && game.closeSpawnMenu(), 220);   // back to the game so you can grab it
       b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);
       return;
     }

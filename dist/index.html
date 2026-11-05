@@ -1729,7 +1729,7 @@ body.menulite #menu .mc-change { display: none; }      /* the whole card opens t
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.22.0',
+  version: '1.23.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1884,7 +1884,7 @@ BR.CONFIG = {
     // Wide horizontal pellet line (tightens when aiming), shell-by-shell reload you can cancel by firing
     // v1.18.1 Mastiff-style: 8 heavy pellets in a wide horizontal line that tightens a lot when you aim,
     // a slow, heavy pump, shell-by-shell reload you can cancel by firing, and a longer reach than a normal shotgun
-    shotgun: { name: 'Breacher', ammo: 'shells', dmg: 15, pellets: 8, pattern: 'line', rpm: 56, mag: 5, reload: 0.5, shellReload: true, spread: 0.085, ads: 0.35, bloom: 0, bloomMax: 0, range: 30, head: 1.25, recoil: 0.06, kick: 1.4, zoom: 1.15, tier: 1, color: 0x22252a, knockback: 13, pump: true },
+    shotgun: { name: 'Breacher', ammo: 'shells', dmg: 14, pellets: 8, pattern: 'line', rpm: 66, mag: 6, reload: 0.375, shellReload: true, spread: 0.042, ads: 0.4, pelletAssist: 0.42, bloom: 0, bloomMax: 0, range: 22, head: 1.25, recoil: 0.06, kick: 1.4, zoom: 1.15, tier: 1, color: 0x22252a, knockback: 13, pump: true },     // v1.23 Mastiff stats: 8 x 14 = 112 a blast, 1.25x heads, 66 rpm, 6 shells
     rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 45, reload: 2.4, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.015, recoilH: 0.018, zoom: 1.5, tier: 2, color: 0x2e3136 },
     holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, recoilH: 0.009, zoom: 1.75, tier: 2, color: 0x33363c, suppressed: true, holo: true },
     // Lightweight bolt-action with open iron sights: accurate from the hip (easy no-scopes), moves fast
@@ -2011,6 +2011,20 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.23.0', date: '2026-11-05', title: 'Overdrive, sound + new maps', notes: [
+    'Blueprints fixed for the new gun and knife models: every glow strip, panel, fin, gem and side decal now sits on the real model instead of floating beside it. Strips follow the gun\'s surface, small parts rest on it, a replacement drum mag sits on the real mag, and bulky shrouds that covered the new models\' detail are gone. Animated parts still move as designed.',
+    'Knife blueprints: auras hug the new blades instead of turning into big glowing sheets, blade decals sit on the blade, and the blade trail starts at the real tip, follows the Karambit through its flips, and is longer and brighter with a white-hot edge.',
+    'New OVERDRIVE blueprints, 2 for every gun plus 1 for every knife: Event Horizon, Supernova, Cryo Pulse, Toxic Storm, Neon Tokyo, Magma Core, Storm Surge and Infinity (Exotic, full rainbow). Each has a living animated finish, energy veins traced along the gun with pulses racing to the muzzle, a spinning twin-ring reactor at the muzzle, a rim glow and sparkles.',
+    'Every gun now comes in a clean black factory finish by default.',
+    'Shotgun: all 8 pellets count. A point-blank blast now does 112 damage (8 x 14) instead of about 29, because the pellet line is much tighter and pellets that just graze someone you hit still land. Retuned to Mastiff-style stats: 66 rpm, 6 shells, 1.25x headshots, shell-by-shell reload.',
+    'Kills drop an ammo pack. Walk over it to get ammo for whatever gun you have out. The killer gets it first; after 10 s anyone can take it.',
+    'Practice: guns from the SPAWN menu drop on the ground in front of you. Walk over them to pick them up.',
+    'The pause menu and map now work while you are dead and waiting to respawn.',
+    'Sound overhaul: every gunshot is layered (a sharp crack, a low punch you feel, a blast that rolls off, the gun\'s own action clack) with a reverb tail. Distant shots arrive late, muffled and echoing. Realistic reloads (mag out, mag in, charging handle, bolt, pump, revolver crane and shells), footsteps, landings, knife whooshes, hits that sound different on shields and heads, and a cleaner kill confirm.',
+    'Every mode gets the victory show: winning a Duel, TDM or Free For All now plays the freeze frame, the celebration and the fireworks like Battle Royale.',
+    'New map, Cul-de-Sac (TDM + Free For All): two two-storey houses face each other across a dead-end street, with front yards, picket fences, garages, back gardens, parked cars and a box truck. Upstairs windows look down the street.',
+    'New duel map, Skyline: a rooftop among skyscrapers with AC units, a skylight block, a water tank on stilts and stair huts at each end.',
+  ] },
   { v: '1.22.0', date: '2026-11-05', title: 'VFX revamp', notes: [
     'New muzzle flash on every gun: a bright star burst with flame tongues that changes shape and size every shot. Shotguns and heavy guns flash bigger; suppressors keep it small.',
     'Shell casings: brass flies out of the gun as you shoot. Pump and bolt guns kick theirs out when you cycle, and shotguns throw red shells.',
@@ -2389,96 +2403,182 @@ BR.Audio = {
   volume: 0.6,
   voices: 0,
 
+  // v1.23 SOUND ENGINE: everything still synthesized, but layered like real recordings: a dry bus through a soft
+  // compressor plus a send into a generated convolution reverb (an outdoor slap + tail), distance delay (speed of sound)
+  // and air absorption (far sounds lose their highs), noise filters that sweep instead of sitting still, and
+  // saturation on the low punch so it reads as pressure, not a beep.
   init() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); return; }
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
-      this.ctx = new AC();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = this.volume;
-      this.master.connect(this.ctx.destination);
-      const len = this.ctx.sampleRate * 1.0;
-      this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const c = this.ctx = new AC();
+      this.master = c.createGain(); this.master.gain.value = this.volume;
+      const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.18;
+      this.bus = c.createGain(); this.bus.gain.value = 1; this.bus.connect(comp); comp.connect(this.master); this.master.connect(c.destination);
+      const len = c.sampleRate * 1.0;
+      this.noise = c.createBuffer(1, len, c.sampleRate);
       const d = this.noise.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      // reverb: early reflections + a decaying diffuse tail, slightly different per ear
+      const rl = Math.floor(c.sampleRate * 1.8), ir = c.createBuffer(2, rl, c.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const o = ir.getChannelData(ch);
+        for (let i = 0; i < rl; i++) { const t = i / c.sampleRate; o[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rl, 2.6) * (t < 0.012 ? 0 : 0.55); }
+        for (const [tt, g] of [[0.017, 0.6], [0.031, 0.45], [0.052, 0.35], [0.083, 0.25], [0.12, 0.18]]) { const i = Math.floor((tt + ch * 0.003) * c.sampleRate); o[i] += g; o[i + 1] -= g * 0.5; } }
+      this.verb = c.createConvolver(); this.verb.buffer = ir;
+      const vlp = c.createBiquadFilter(); vlp.type = 'lowpass'; vlp.frequency.value = 5200;
+      this.verbIn = c.createGain(); this.verbIn.gain.value = 0.55; this.verbIn.connect(vlp); vlp.connect(this.verb); this.verb.connect(comp);
+      // saturation curve for punch layers
+      const n = 1024, curve = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; curve[i] = Math.tanh(x * 2.4) / Math.tanh(2.4); } this.curve = curve;
     } catch (e) { this.ctx = null; }
   },
 
   setVolume(v) { this.volume = v; if (this.master) this.master.gain.value = v; },
 
-  ok() { return this.ctx && this.ctx.state === 'running' && this.voices < 28; },
+  ok() { return this.ctx && this.ctx.state === 'running' && this.voices < 56; },
 
-  // Generic noise burst through a filter. Used for guns, landings, whooshes.
-  burst(freq, q, dur, vol, pan, type) {
-    if (!this.ok() || vol < 0.01) return;
-    const c = this.ctx, t = c.currentTime;
-    const src = c.createBufferSource();
-    src.buffer = this.noise;
-    const f = c.createBiquadFilter();
-    f.type = type || 'lowpass';
-    f.frequency.value = freq;
-    f.Q.value = q;
-    const g = c.createGain();
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    src.connect(f); f.connect(g);
-    let out = g;
-    if (c.createStereoPanner && pan) { const p = c.createStereoPanner(); p.pan.value = pan; g.connect(p); out = p; }
-    out.connect(this.master);
-    src.start(t, Math.random() * 0.2);
-    src.stop(t + dur + 0.02);
-    this.voices++;
-    src.onended = () => { this.voices--; };
+  // routing helper: gain -> (pan) -> dry bus + reverb send
+  _out(node, pan, rev) {
+    const c = this.ctx; let out = node;
+    if (c.createStereoPanner && pan) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); out.connect(p); out = p; }
+    out.connect(this.bus || this.master);
+    if (rev && this.verbIn) { const s = c.createGain(); s.gain.value = rev; out.connect(s); s.connect(this.verbIn); }
+  },
+  _done(src) { this.voices++; src.onended = () => { this.voices--; }; },
+  // noise layer: filter sweeps f0 -> f1 (exponential), attack then exponential decay
+  nz(o) {
+    if (this._k) o.vol *= this._k;
+    if (!this.ok() || o.vol < 0.004) return;
+    const c = this.ctx, t = c.currentTime + (o.at || 0), dur = o.dur;
+    const src = c.createBufferSource(); src.buffer = this.noise; if (o.rate) src.playbackRate.value = o.rate;
+    const f = c.createBiquadFilter(); f.type = o.type || 'lowpass'; f.Q.value = o.q || 0.7;
+    f.frequency.setValueAtTime(o.f0, t); f.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1 || o.f0), t + dur * (o.sweep || 1));
+    const g = c.createGain(), a = o.attack || 0.001;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.vol, t + a); g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+    src.connect(f); let last = f;
+    if (o.hp) { const h = c.createBiquadFilter(); h.type = 'highpass'; h.frequency.value = o.hp; last.connect(h); last = h; }
+    last.connect(g); this._out(g, o.pan, o.rev);
+    src.start(t, Math.random() * 0.7); src.stop(t + dur + 0.03); this._done(src);
+  },
+  // oscillator layer (optionally saturated): pitch sweeps f0 -> f1
+  osc(o) {
+    if (this._k) o.vol *= this._k;
+    if (!this.ok() || o.vol < 0.004) return;
+    const c = this.ctx, t = c.currentTime + (o.at || 0), dur = o.dur;
+    const s = c.createOscillator(); s.type = o.type || 'sine';
+    s.frequency.setValueAtTime(o.f0, t); s.frequency.exponentialRampToValueAtTime(Math.max(1, o.f1 || o.f0), t + dur * (o.sweep || 1));
+    const g = c.createGain(), a = o.attack || 0.002;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.vol, t + a); g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+    let last = s;
+    if (o.drive && this.curve) { const w = c.createWaveShaper(); w.curve = this.curve; const pre = c.createGain(); pre.gain.value = o.drive; s.connect(pre); pre.connect(w); last = w; }
+    if (o.lp) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; last.connect(f); last = f; }
+    last.connect(g); this._out(g, o.pan, o.rev);
+    s.start(t); s.stop(t + dur + 0.03); this._done(s);
+  },
+  // a short metallic hit: a click of noise plus a few inharmonic ringing partials (brass, steel, mag springs)
+  metal(f, vol, dur, at, pan, rev) {
+    this.nz({ f0: f * 1.6, q: 2.2, type: 'bandpass', dur: 0.03, vol: vol, at, pan, rev: rev || 0.08 });
+    for (const [k, v] of [[1, 1], [2.76, 0.55], [5.4, 0.3]]) this.osc({ f0: f * k, f1: f * k * 0.995, dur: dur * (1.2 - k * 0.12), vol: vol * 0.22 * v, at, pan, rev: rev || 0.08 });
   },
 
-  tone(f0, f1, dur, vol, type) {
-    if (!this.ok()) return;
-    const c = this.ctx, t = c.currentTime;
-    const o = c.createOscillator();
-    o.type = type || 'sine';
-    o.frequency.setValueAtTime(f0, t);
-    o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t + dur);
-    const g = c.createGain();
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g); g.connect(this.master);
-    o.start(t); o.stop(t + dur + 0.02);
-    this.voices++;
-    o.onended = () => { this.voices--; };
-  },
+  // Old generic primitives (kept for the zombie / UI sounds), now through the new bus with a touch of room
+  burst(freq, q, dur, vol, pan, type) { this.nz({ f0: freq, q, dur, vol, pan, type: type || 'lowpass', rev: 0.12 }); },
+  tone(f0, f1, dur, vol, type) { this.osc({ f0, f1, dur, vol, type, attack: 0.003, rev: 0.06 }); },
 
+  // ---- guns: per-gun recipe. crack = supersonic snap brightness, body = low punch Hz, boom = blast noise length,
+  // tail = reverb amount, mech = action clack (bolt carrier / slide) and its pitch
+  GUNS: {
+    pistol:   { vol: 0.62, crack: 5200, body: 150, bodyDur: 0.09, boom: 0.16, lp0: 7000, lp1: 900, tail: 0.32, mech: 3400 },
+    smg:      { vol: 0.5,  crack: 6000, body: 170, bodyDur: 0.06, boom: 0.1,  lp0: 7500, lp1: 1200, tail: 0.24, mech: 3800 },
+    rifle:    { vol: 0.66, crack: 5600, body: 120, bodyDur: 0.1,  boom: 0.2,  lp0: 6500, lp1: 700, tail: 0.38, mech: 3000 },
+    holoar:   { vol: 0.6,  crack: 6200, body: 130, bodyDur: 0.09, boom: 0.17, lp0: 7200, lp1: 800, tail: 0.34, mech: 3300 },
+    lmg:      { vol: 0.7,  crack: 5000, body: 105, bodyDur: 0.12, boom: 0.24, lp0: 6000, lp1: 600, tail: 0.42, mech: 2600 },
+    dmr:      { vol: 0.78, crack: 5400, body: 95,  bodyDur: 0.14, boom: 0.32, lp0: 6200, lp1: 520, tail: 0.5, mech: 2800 },
+    revolver: { vol: 0.86, crack: 4400, body: 90,  bodyDur: 0.16, boom: 0.36, lp0: 5600, lp1: 480, tail: 0.55, mech: 2200 },
+    shotgun:  { vol: 0.95, crack: 3600, body: 70,  bodyDur: 0.2,  boom: 0.42, lp0: 4800, lp1: 380, tail: 0.6, mech: 0 },
+    sniper:   { vol: 1.0,  crack: 4800, body: 62,  bodyDur: 0.24, boom: 0.6,  lp0: 5200, lp1: 320, tail: 0.75, mech: 0 },
+    hunter:   { vol: 0.92, crack: 5000, body: 75,  bodyDur: 0.2,  boom: 0.48, lp0: 5600, lp1: 420, tail: 0.65, mech: 0 },
+  },
   shot(id, dist, pan, suppressed) {
-    const near = 1 / (1 + dist / 18);
-    if (id === 'hunter') id = 'sniper';
-    if (id === 'launcher') { this.tone(95, 38, 0.22, 0.55 * near, 'sine'); this.burst(900 * (0.4 + 0.6 * near), 0.7, 0.18, 0.35 * near, pan); return; }      // v1.17.2 hollow thump
-    if (id === 'lmg') { this.burst(2700 * (0.4 + 0.6 * near), 0.8, 0.17, 0.62 * near, pan); if (dist < 8) this.tone(120, 40, 0.14, 0.32 * near, 'sine'); return; }
-    if (id === 'dmr') { this.burst(2900 * (0.4 + 0.6 * near), 0.85, 0.26, 0.72 * near, pan); if (dist < 8) this.tone(140, 42, 0.2, 0.38 * near, 'sine'); return; }
-    if (id === 'revolver') { this.burst(1900 * (0.4 + 0.6 * near), 0.9, 0.3, 0.7 * near, pan); if (dist < 8) this.tone(130, 40, 0.25, 0.4 * near, 'sine'); return; }
-    const v = id === 'sniper' ? 0.9 : id === 'shotgun' ? 0.8 : id === 'rifle' ? 0.55 : id === 'smg' ? 0.38 : 0.45;
-    const freq = (id === 'sniper' ? 2600 : id === 'shotgun' ? 1600 : id === 'smg' ? 4200 : 3200) * (0.4 + 0.6 * near);
-    const dur = id === 'sniper' ? 0.45 : id === 'shotgun' ? 0.32 : 0.14;
-    if (suppressed) { this.burst(freq * 0.35, 1.2, dur * 0.8, v * near * 0.45, pan); return; }
-    this.burst(freq, 0.8, dur, v * near, pan);
-    if (dist < 8) this.tone(160, 45, dur * 0.8, v * 0.5 * near, 'sine');
+    if (!this.ok()) return;
+    dist = dist || 0;
+    const near = 1 / (1 + dist / 22), far = Math.min(1, dist / 90), delay = Math.min(0.35, dist / 343);
+    const air = 1 - 0.85 * far;                                         // distant shots lose their highs
+    if (id === 'launcher') {                                           // hollow thump, compressed-gas hiss
+      this.osc({ f0: 110, f1: 42, dur: 0.28, vol: 0.7 * near, drive: 2, at: delay, pan, rev: 0.3 });
+      this.nz({ f0: 2600 * air, f1: 400, dur: 0.3, vol: 0.32 * near, at: delay, pan, rev: 0.35 });
+      this.nz({ type: 'highpass', f0: 5000, dur: 0.18, vol: 0.08 * near, at: delay + 0.03, pan });
+      return;
+    }
+    const G = this.GUNS[id] || this.GUNS.rifle, j = 0.93 + Math.random() * 0.14, v = G.vol * near * 1.3;
+    if (suppressed) {                                                  // a suppressed "thup": low pop, cloth-like hiss, loud action
+      this.osc({ f0: G.body * 1.5 * j, f1: G.body * 0.7, dur: 0.07, vol: v * 0.5, drive: 1.5, at: delay, pan, rev: 0.12 });
+      this.nz({ f0: 2400 * air * j, f1: 500, dur: 0.09, vol: v * 0.42, q: 0.9, at: delay, pan, rev: 0.15 });
+      if (dist < 12) this.metal(G.mech * j, 0.1 * near, 0.05, delay + 0.012, pan);
+      return;
+    }
+    // 1) the crack: a very short bright transient
+    if (dist < 60) this.nz({ type: 'highpass', f0: G.crack * j, dur: 0.018, vol: v * 0.55 * air, at: delay, pan, attack: 0.0005 });
+    // 2) the punch: saturated low sine dropping in pitch (felt more than heard)
+    this.osc({ f0: G.body * 2.2 * j, f1: G.body * 0.55, sweep: 0.5, dur: G.bodyDur * (1 + far), vol: v * (0.85 - far * 0.5), drive: 2.8, lp: 900, at: delay, pan, rev: 0.1 });
+    // 3) the blast: wide-band noise whose lowpass sweeps down fast (the "boom")
+    this.nz({ f0: G.lp0 * air * j, f1: G.lp1, sweep: 0.45, dur: G.boom * (1 + far * 0.8), vol: v * 0.8, q: 0.6, at: delay, pan, rev: G.tail * (0.6 + far) });
+    // 4) mid-range body grit
+    this.nz({ type: 'bandpass', f0: 1400 * j, f1: 600, dur: G.boom * 0.6, vol: v * 0.35, q: 1.1, at: delay, pan, rev: 0.1 });
+    // 5) the action: bolt carrier / slide clack right behind the shot (close only)
+    if (G.mech && dist < 10) this.metal(G.mech * j, 0.07 * near, 0.04, delay + 0.035, pan);
+    // 6) far away: a delayed echo off the terrain
+    if (dist > 25) this.nz({ f0: 1200 * air, f1: 300, dur: G.boom * 2.2, vol: v * 0.25, at: delay + 0.18 + Math.random() * 0.1, pan: -pan * 0.5, rev: 0.6 });
   },
-
-  // Hits: a crisp tick + low thump; headshots add a bright metallic "ting" (two inharmonic partials)
-  hit(head) {
-    this.tone(head ? 1450 : 1150, head ? 1250 : 950, 0.035, head ? 0.16 : 0.14, 'square');
-    this.burst(2600, 1.4, 0.04, 0.12, 0, 'bandpass');
-    this.tone(170, 70, 0.07, 0.18, 'sine');
-    if (head) { this.tone(2637, 2600, 0.32, 0.2, 'sine'); this.tone(3951, 3900, 0.22, 0.1, 'sine'); this.tone(5274, 5200, 0.12, 0.05, 'sine'); }
+  // weapon handling foley: mag out / in, charging handle, bolts, pump, revolver crane, shells, draw
+  mech(kind) {
+    const r = () => 0.94 + Math.random() * 0.12;
+    this._k = 1.9; try { this._mech(kind, r); } finally { this._k = 1; }
   },
-  // Kills: punchy thump + rising two-note chime (bigger on a headshot kill)
-  // streak raises the chime a step per kill in the streak
+  _mech(kind, r) {
+    switch (kind) {
+      case 'magout': this.metal(1900 * r(), 0.12, 0.05); this.nz({ type: 'bandpass', f0: 900, f1: 500, dur: 0.12, vol: 0.06, at: 0.02, q: 1.4 }); break;
+      case 'magin': this.metal(1500 * r(), 0.16, 0.06); this.osc({ f0: 300, f1: 140, dur: 0.06, vol: 0.12, drive: 1.5 }); this.metal(3200 * r(), 0.07, 0.03, 0.045); break;
+      case 'rack': this.metal(2600 * r(), 0.12, 0.05); this.nz({ type: 'bandpass', f0: 3000, f1: 1800, dur: 0.07, vol: 0.06, q: 2 }); this.metal(2100 * r(), 0.16, 0.06, 0.09); this.osc({ f0: 220, f1: 110, dur: 0.05, vol: 0.1, at: 0.09, drive: 1.5 }); break;
+      case 'boltup': this.metal(2300 * r(), 0.1, 0.04); this.nz({ type: 'bandpass', f0: 2600, f1: 1400, dur: 0.1, vol: 0.05, q: 2, at: 0.02 }); break;
+      case 'boltback': this.metal(1800 * r(), 0.14, 0.06); this.nz({ type: 'bandpass', f0: 1900, f1: 3200, dur: 0.12, vol: 0.06, q: 1.6 }); this.metal(2400 * r(), 0.12, 0.05, 0.13); break;
+      case 'pumpback': this.nz({ type: 'bandpass', f0: 1600, f1: 900, dur: 0.1, vol: 0.12, q: 1.2 }); this.metal(1300 * r(), 0.14, 0.06); break;
+      case 'pumpfwd': this.nz({ type: 'bandpass', f0: 900, f1: 1700, dur: 0.08, vol: 0.1, q: 1.2 }); this.metal(1700 * r(), 0.18, 0.07, 0.05); this.osc({ f0: 180, f1: 90, dur: 0.06, vol: 0.12, at: 0.05, drive: 1.6 }); break;
+      case 'shell': this.nz({ type: 'bandpass', f0: 1200, f1: 700, dur: 0.06, vol: 0.08, q: 1.4 }); this.metal(2200 * r(), 0.1, 0.05, 0.03); break;
+      case 'crane': this.metal(2800 * r(), 0.11, 0.08); break;
+      case 'eject': for (let i = 0; i < 4; i++) this.metal((3600 + Math.random() * 800) * r(), 0.05, 0.12, 0.25 + i * 0.05 + Math.random() * 0.03); this.nz({ type: 'bandpass', f0: 2400, dur: 0.08, vol: 0.06, q: 1.5 }); break;
+      case 'load': this.metal(2000 * r(), 0.1, 0.05); this.nz({ type: 'bandpass', f0: 1500, f1: 900, dur: 0.08, vol: 0.05, q: 1.4, at: 0.02 }); break;
+      case 'close': this.metal(2400 * r(), 0.18, 0.08); this.osc({ f0: 260, f1: 130, dur: 0.05, vol: 0.1, drive: 1.5 }); break;
+      case 'grab': this.nz({ type: 'bandpass', f0: 700, f1: 1200, dur: 0.14, vol: 0.06, q: 0.8 }); this.metal(1600 * r(), 0.05, 0.04, 0.06); break;
+      case 'draw': this.nz({ type: 'bandpass', f0: 600, f1: 1400, dur: 0.16, vol: 0.06, q: 0.7 }); this.metal(2000 * r(), 0.08, 0.05, 0.12); break;
+      default: this.metal(2000 * r(), 0.1, 0.05);
+    }
+  },
+  reload() { this.mech('magin'); },
+  // footsteps: heel thud + gritty scuff, alternating feet, quieter crouched, rhythm from the game
+  step(speed, crouch) { const v = Math.min(0.2, 0.06 + (speed || 5) * 0.018) * (crouch ? 0.45 : 1), r = 0.9 + Math.random() * 0.2;
+    this._foot = -(this._foot || 0.25);
+    this.osc({ f0: 110 * r, f1: 60, dur: 0.06, vol: v * 1.3, drive: 1.6, pan: this._foot * 0.2 });
+    this.nz({ type: 'bandpass', f0: 1700 * r, f1: 900, dur: 0.07, vol: v * 0.7, q: 0.8, rate: 0.75, at: 0.01, pan: this._foot * 0.2 }); },
+  // Hits: a tight, dry "tick" plus a meaty low thud (body); shields crack like a ceramic plate; headshots add a hard
+  // helmet "tink". Short and clean so rapid fire doesn't smear.
+  hit(head, shield) {
+    this._k = 1.7; try { this._hit(head, shield); } finally { this._k = 1; }
+  },
+  _hit(head, shield) {
+    this.nz({ type: 'bandpass', f0: 3400, f1: 2400, dur: 0.035, vol: 0.2, q: 1.6 });
+    this.osc({ f0: 240, f1: 90, dur: 0.07, vol: 0.2, drive: 2 });
+    if (shield) this.nz({ type: 'highpass', f0: 4500, dur: 0.06, vol: 0.1, at: 0.005 });
+    if (head) this.metal(3100, 0.2, 0.18, 0.004);
+  },
+  // Kills: a deep body drop + a single bright confirm ping (higher on a streak, a doubled ping on a headshot)
   kill(head, streak) {
-    const st = Math.pow(1.122, Math.min((streak || 1) - 1, 5));
-    this.tone(150, 38, 0.32, 0.42, 'sine'); this.burst(900, 0.8, 0.12, 0.22); this.burst(5200, 1.6, 0.06, 0.08, 0, 'bandpass');
-    this.tone(880 * st, 880 * st, 0.09, 0.16, 'triangle');
-    setTimeout(() => { this.tone(1320 * st, 1320 * st, 0.18, 0.16, 'triangle'); this.tone(2640 * st, 2630 * st, 0.12, 0.05, 'sine'); }, 70);
-    if (head) setTimeout(() => { this.tone(1760 * st, 1760 * st, 0.26, 0.14, 'triangle'); this.tone(3520, 3500, 0.34, 0.08, 'sine'); }, 140);
-    if (streak >= 2) setTimeout(() => { this.tone(1980 * st, 1990 * st, 0.3, 0.12, 'square'); this.tone(990 * st, 995 * st, 0.3, 0.1, 'triangle'); }, 200);
+    const st = Math.pow(1.06, Math.min((streak || 1) - 1, 6));
+    this.osc({ f0: 160, f1: 40, dur: 0.35, vol: 0.5, drive: 2.5, rev: 0.15 });
+    this.nz({ f0: 1800, f1: 200, dur: 0.22, vol: 0.18, rev: 0.2 });
+    this.osc({ f0: 1760 * st, f1: 1750 * st, dur: 0.22, vol: 0.09, type: 'triangle', at: 0.03, rev: 0.25 });
+    this.osc({ f0: 3520 * st, f1: 3500 * st, dur: 0.14, vol: 0.03, at: 0.03, rev: 0.25 });
+    if (head) this.osc({ f0: 2637 * st, f1: 2630 * st, dur: 0.2, vol: 0.07, type: 'triangle', at: 0.1, rev: 0.25 });
   },
   // victory fanfare: a rising arpeggio into a bright held chord with a shimmer on top
   victory() {
@@ -2510,31 +2610,43 @@ BR.Audio = {
   zBell() { for (let i = 0; i < 3; i++) setTimeout(() => { this.tone(392, 390, 2.2, 0.25, 'sine'); this.tone(784, 780, 1.6, 0.1, 'sine'); this.tone(1176, 1170, 1.0, 0.05, 'sine'); }, i * 900); },
   // firework pop (louder close up)
   pop(v) { this.burst(1400 + Math.random() * 1200, 0.9, 0.25, (v || 0.3) * 0.6); this.tone(220 + Math.random() * 80, 60, 0.3, (v || 0.3) * 0.5, 'sine'); setTimeout(() => this.burst(7000, 1.5, 0.4, (v || 0.3) * 0.18, 0, 'bandpass'), 90); },
-  hurt() { this.burst(400, 1, 0.18, 0.35); this.tone(110, 60, 0.15, 0.25); },
-  pickup() { this.tone(660, 990, 0.09, 0.12, 'sine'); },
+  hurt() { this.osc({ f0: 140, f1: 55, dur: 0.16, vol: 0.4, drive: 2.5 }); this.nz({ f0: 900, f1: 200, dur: 0.18, vol: 0.2 }); this.nz({ type: 'highpass', f0: 3000, dur: 0.05, vol: 0.06 });
+  },
+  pickup() { this.nz({ type: 'bandpass', f0: 700, f1: 1500, dur: 0.12, vol: 0.08, q: 0.8 }); this.metal(2400 + Math.random() * 400, 0.06, 0.05, 0.05);
+  },
   click() { this.tone(1800, 1700, 0.03, 0.08, 'square'); },
-  jump() { this.burst(900, 0.7, 0.08, 0.06, 0, 'bandpass'); },
-  land(speed) { this.burst(300, 0.9, 0.12, Math.min(0.35, speed * 0.02)); },
-  slide() { this.burst(1800, 0.6, 0.35, 0.09, 0, 'bandpass'); },
+  jump() { this.nz({ type: 'bandpass', f0: 500, f1: 900, dur: 0.1, vol: 0.06, q: 0.8 }); this.nz({ type: 'bandpass', f0: 2500, dur: 0.05, vol: 0.03, q: 1 });
+  },
+  land(speed) { const v = Math.min(0.5, (speed || 4) * 0.035); this.osc({ f0: 120, f1: 50, dur: 0.12, vol: v, drive: 2 }); this.nz({ f0: 1200, f1: 250, dur: 0.16, vol: v * 0.6 }); this.nz({ type: 'bandpass', f0: 2600, dur: 0.12, vol: v * 0.25, q: 0.7, rate: 0.7 });
+  },
+  slide() { this.nz({ type: 'bandpass', f0: 1800, f1: 700, dur: 0.5, vol: 0.12, q: 0.7, attack: 0.03, rate: 0.6 }); this.nz({ f0: 500, f1: 200, dur: 0.4, vol: 0.08, attack: 0.02 });
+  },
   wallrun() { this.burst(1200, 0.5, 0.25, 0.06, 0, 'bandpass'); },
   zone() { this.tone(220, 180, 0.6, 0.18, 'sawtooth'); },
   tech() { this.tone(700, 1400, 0.12, 0.12, 'triangle'); this.tone(1050, 2100, 0.16, 0.08, 'sine'); },
   chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
-  grapple() { this.tone(300, 1200, 0.12, 0.14, 'sawtooth'); this.burst(2400, 0.6, 0.15, 0.08, 0, 'bandpass'); },
-  stim() { this.burst(6000, 1.5, 0.18, 0.15, 0, 'highpass'); this.tone(500, 1400, 0.18, 0.12, 'sine'); setTimeout(() => this.tone(1400, 1800, 0.12, 0.06, 'sine'), 120); },
+  grapple() { this.metal(1800, 0.12, 0.05); this.nz({ type: 'bandpass', f0: 1500, f1: 5000, dur: 0.22, vol: 0.08, q: 4 });
+  },
+  stim() { this.metal(3000, 0.06, 0.04); this.nz({ type: 'highpass', f0: 5000, dur: 0.2, vol: 0.08, at: 0.04 }); this.osc({ f0: 600, f1: 1200, dur: 0.25, vol: 0.05, at: 0.1, rev: 0.3 });
+  },
   // Shockwave: deep whoomp + rising zap + airy shimmer
   shockwave(dist) {
     const v = Math.max(0.15, 1 - (dist || 0) / 60);
     this.tone(90, 30, 0.55, 0.6 * v, 'sine'); this.burst(600, 0.7, 0.45, 0.45 * v, 0, 'lowpass');
     this.tone(300, 1800, 0.35, 0.18 * v, 'sawtooth'); this.burst(5000, 2, 0.5, 0.12 * v, 0, 'highpass');
   },
-  throwNade() { this.burst(2400, 1.2, 0.12, 0.1, 0, 'bandpass'); this.tone(900, 1500, 0.06, 0.06, 'square'); },
+  throwNade() { this.metal(3400, 0.06, 0.04); this.nz({ type: 'bandpass', f0: 600, f1: 2000, dur: 0.18, vol: 0.1, q: 1.2, at: 0.05 });
+  },
   pad() { this.tone(200, 900, 0.3, 0.2, 'square'); },
-  blast() { this.burst(500, 0.6, 0.5, 0.5); this.tone(90, 35, 0.35, 0.45, 'sine'); },
-  swish(hit) { this.burst(3000, 0.8, 0.14, 0.12, 0, 'bandpass'); if (hit) this.tone(220, 120, 0.1, 0.25, 'square'); },
-  unsheathe() { this.burst(5000, 2, 0.25, 0.08, 0, 'bandpass'); this.tone(2400, 3600, 0.2, 0.04, 'sine'); },
+  blast() { this.osc({ f0: 110, f1: 32, dur: 0.6, vol: 0.7, drive: 3, rev: 0.3 }); this.nz({ f0: 4000, f1: 200, sweep: 0.4, dur: 0.7, vol: 0.5, rev: 0.6 }); this.nz({ type: 'highpass', f0: 3000, dur: 0.4, vol: 0.08, at: 0.05, rate: 0.5 });
+  },
+  swish(hit) { this.nz({ type: 'bandpass', f0: 700, f1: 3200, sweep: 0.55, dur: 0.17, vol: 0.14, q: 1.4, attack: 0.04 }); if (hit) { this.osc({ f0: 200, f1: 70, dur: 0.1, vol: 0.32, drive: 2.5 }); this.nz({ f0: 2200, f1: 400, dur: 0.1, vol: 0.18 }); }
+  },
+  unsheathe() { this.nz({ type: 'bandpass', f0: 3000, f1: 6500, dur: 0.32, vol: 0.07, q: 3, attack: 0.05 }); this.metal(4200, 0.06, 0.3, 0.28);
+  },
   coin() { this.tone(988, 988, 0.08, 0.12, 'square'); setTimeout(() => this.tone(1319, 1319, 0.2, 0.12, 'square'), 80); },
-  chute() { this.burst(700, 0.5, 0.6, 0.35, 0, 'lowpass'); this.burst(2400, 1, 0.25, 0.1, 0, 'bandpass'); },
+  chute() { this.nz({ f0: 900, f1: 300, dur: 0.7, vol: 0.4, attack: 0.04, rev: 0.15 }); this.nz({ type: 'bandpass', f0: 1600, dur: 0.3, vol: 0.12, q: 0.8, rate: 0.5 });
+  },
   reload() { this.tone(500, 300, 0.05, 0.08, 'square'); },
 };
 
@@ -2588,7 +2700,7 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [], rockFill: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.mapId === 'district') this.generateDistrict(); else if (this.arena) this.generateArena(); else this.generate();
+    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.mapId === 'district') this.generateDistrict(); else if (this.mapId === 'suburb') this.generateSuburb(); else if (this.mapId === 'skyline') this.generateSkyline(); else if (this.arena) this.generateArena(); else this.generate();
   }
 
   // ------------------------------------------------------------------ zombies: Hollow Graves
@@ -4758,6 +4870,134 @@ Object.assign(BR.World.prototype, {
   },
 });
 
+// =============================================================================
+// v1.23 two more original arena maps
+//  * generateSuburb(): "Cul-de-Sac" — two two-storey houses face each other across a dead-end street with a
+//    round island at the end. Front yards with low fences, back gardens, side alleys, a garage on each house,
+//    parked cars and a box truck in the street for cover. Upstairs bedrooms look down the street through windows.
+//    Mirrored end to end (team spawns behind each house).
+//  * generateSkyline(): "Skyline" — a small rooftop for duels: AC units, a raised skylight block in the middle,
+//    a water tank on stilts you can stand under, stair huts at each end and a parapet all round.
+// =============================================================================
+Object.assign(BR.World.prototype, {
+  arenaCar(x, z, along, col) {
+    const L = 4.4, W = 1.9, B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    if (along) { B(x - L / 2, 0.25, z - W / 2, x + L / 2, 1.05, z + W / 2, col); B(x - 1.2, 1.05, z - W / 2 + 0.12, x + 0.9, 1.6, z + W / 2 - 0.12, 0x2b3440);
+      for (const sx of [-1.4, 1.4]) for (const sz of [-1, 1]) this.addBox(x + sx - 0.33, 0, z + sz * (W / 2) - 0.12, x + sx + 0.33, 0.62, z + sz * (W / 2) + 0.12, 0x1b1c1f, { decor: true }); }
+    else { B(x - W / 2, 0.25, z - L / 2, x + W / 2, 1.05, z + L / 2, col); B(x - W / 2 + 0.12, 1.05, z - 1.2, x + W / 2 - 0.12, 1.6, z + 0.9, 0x2b3440);
+      for (const sz of [-1.4, 1.4]) for (const sx of [-1, 1]) this.addBox(x + sx * (W / 2) - 0.12, 0, z + sz - 0.33, x + sx * (W / 2) + 0.12, 0.62, z + sz + 0.33, 0x1b1c1f, { decor: true }); }
+  },
+
+  generateSuburb() {
+    const X = 36, Z = 24, WH = 9, H1 = 3.2, H2 = 6.2;
+    const CON = 0x8f8676, CON2 = 0x766e60, TRIM = 0xf1ece2, ROOF = 0x5a3a33, GRASS = 0x5f8a43, ROAD = 0x4b4d52, FENCE = 0xe9e3d6, BLUE = 0x2f6fd8, RED = 0xd8443a;
+    const SIDING = [0x8fb3c9, 0xd9b36c], STEEL = 0x4a5160;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(Math.min(x0, x1), y0, Math.min(z0, z1), Math.max(x0, x1), y1, Math.max(z0, z1), c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => B(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    this.pois = [{ x: 0, z: 0, name: 'Cul-de-Sac', type: 'arena' }]; this.towns = [];
+    this.spawns = [{ x: -31, z: 0, yaw: -Math.PI / 2 }, { x: 31, z: 0, yaw: Math.PI / 2 }];
+    this.arenaShell(X, Z, WH, CON, CON2);
+    // the street (runs north-south down the middle) with a turning circle island at the north end
+    Dc(-6, 0, -Z, 6, 0.012, Z, ROAD); for (let z = -Z + 1; z < Z - 1; z += 3) Dc(-0.1, 0.012, z, 0.1, 0.02, z + 1.5, 0xf2d24a);
+    B(-3, 0, 13, 3, 0.35, 19, 0x9a948a); Dc(-2.6, 0.35, 13.4, 2.6, 0.42, 18.6, GRASS); B(-0.35, 0.35, 15.6, 0.35, 3.2, 16.4, 0x6b4a32); Dc(-1.4, 3.0, 14.6, 1.4, 4.4, 17.4, 0x3f6e33);   // tree
+    for (const sx of [-1, 1]) {
+      const c = SIDING[sx < 0 ? 0 : 1], tc = sx < 0 ? BLUE : RED, hx = sx * 17;       // house centre x
+      // lawns + sidewalk kerb
+      Dc(sx * 6, 0, -Z, sx * 9, 0.03, Z, 0xb8b2a6); Dc(sx * 9, 0, -Z, sx * 26, 0.02, Z, GRASS);
+      // ---- the house: 14 (x) x 12 (z), two storeys; front door faces the street
+      const x0 = hx - 7, x1 = hx + 7, fx = sx < 0 ? x1 : x0, bx = sx < 0 ? x0 : x1;      // front wall (street side) / back wall
+      this.arenaWallZ(-6, 6, fx, H1, c, [[-4.6, -2.8, 'window'], [-0.8, 0.8, 'door'], [2.8, 4.6, 'window']]);
+      this.arenaWallZ(-6, 6, bx, H1, c, [[-3.8, -2.4, 'window'], [1.2, 2.6, 'door'], [3.6, 5, 'window']]);
+      this.arenaWallX(x0, x1, -6, H1, c, [[hx - 4.5, hx - 3, 'window'], [hx + 2.4, hx + 3.9, 'window']]);
+      this.arenaWallX(x0, x1, 6, H1, c, [[hx - 1, hx + 1, 'door'], [hx + 3.6, hx + 5, 'window']]);
+      this.arenaWallX(x0, x1, 0.8, H1, c, [[hx - 4.6, hx - 3.2, 'door'], [hx + 1.4, hx + 2.8, 'door']]);                   // ground floor: kitchen / living room
+      // upstairs: floor over the whole house except the stair well, walls with windows down the street
+      B(x0, H1, -6, x1, H1 + 0.25, 6, TRIM, {}); 
+      const up = (a, b, z, gaps) => { let p = a; for (const [g0, g1] of gaps) { if (g0 > p) B(p, H1 + 0.25, z - 0.17, g0, H2, z + 0.17, c); B(g0, H1 + 0.25, z - 0.17, g1, H1 + 1.25, z + 0.17, c); B(g0, H1 + 2.35, z - 0.17, g1, H2, z + 0.17, c); p = g1; } if (b > p) B(p, H1 + 0.25, z - 0.17, b, H2, z + 0.17, c); };
+      const upZ = (a, b, x, gaps) => { let p = a; for (const [g0, g1] of gaps) { if (g0 > p) B(x - 0.17, H1 + 0.25, p, x + 0.17, H2, g0, c); B(x - 0.17, H1 + 0.25, g0, x + 0.17, H1 + 1.25, g1, c); B(x - 0.17, H1 + 2.35, g0, x + 0.17, H2, g1, c); p = g1; } if (b > p) B(x - 0.17, H1 + 0.25, p, x + 0.17, H2, b, c); };
+      upZ(-6, 6, fx, [[-4.8, -2.4], [2.4, 4.8]]); upZ(-6, 6, bx, [[-1.2, 1.2]]);
+      up(x0, x1, -6, [[hx - 2, hx]]); up(x0, x1, 6, [[hx + 1, hx + 3]]);
+      Dc(x0 - 0.4, H2, -6.4, x1 + 0.4, H2 + 0.35, 6.4, ROOF);                                                      // flat roof edge (the roof itself is open: no skybox to hide)
+      // stairs up along the north wall inside (front half), rising toward the street
+      for (let i = 0; i < 8; i++) { const sxp = sx < 0 ? x0 + 1 + i * 0.8 : x1 - 1 - i * 0.8; B(sxp, 0, 3.4, sxp + sx * 0.8, (i + 1) * 0.42, 5.8, CON2); }
+      Dc(x0 - 0.2, H1, -6.2, x1 + 0.2, H1 + 0.1, -5.8, TRIM); Dc(x0 - 0.2, H1, 5.8, x1 + 0.2, H1 + 0.1, 6.2, TRIM);
+      // furniture cover
+      this.arenaCrate(hx - sx * 3.5, -3.4, 1.0); B(hx + sx * 2 - 1.2, 0, -3.2, hx + sx * 2 + 1.2, 0.9, -2.2, 0x6b4a32);     // sofa
+      B(hx - 1, H1 + 0.25, -4.6, hx + 1, H1 + 0.95, -2.6, 0xe9e3d6);                                                 // bed upstairs
+      // ---- garage on the south side of each house (open door to the street)
+      const g0 = -Z + 0.5, g1 = -9;
+      this.arenaWallZ(g0, g1, sx < 0 ? x1 - 2 : x0 + 2, 3, c, [[g0 + 1.2, g1 - 1.2, 'door']]);
+      B(sx < 0 ? x1 - 9 : x0 + 9, 0, g1 - 0.17, sx < 0 ? x1 - 2 : x0 + 2, 3, g1 + 0.17, c);
+      Dc(sx < 0 ? x1 - 9.2 : x0 + 9.2, 3, g0, sx < 0 ? x1 - 1.8 : x0 + 1.8, 3.2, g1 + 0.2, ROOF);
+      this.arenaCar(hx + sx * 0.5, -17, false, sx < 0 ? 0xc94f4f : 0x3f6fae);
+      // ---- front yard: white picket fence with a gate, a mailbox
+      for (let z = -9; z <= 12; z += 0.6) if (Math.abs(z) > 1.4) B(sx * 9.3 - 0.06, 0, z - 0.06, sx * 9.3 + 0.06, 1.0, z + 0.06, FENCE);
+      Dc(sx * 9.3 - 0.04, 0.7, -9, sx * 9.3 + 0.04, 0.8, 12, FENCE);
+      B(sx * 8.4 - 0.08, 0, 2.2, sx * 8.4 + 0.08, 1.1, 2.4, STEEL); Dc(sx * 8.2, 1.1, 2.0, sx * 8.6, 1.4, 2.6, tc);
+      // ---- back garden: a shed, a hedge line, a trampoline-ish low platform
+      B(sx * 29 - 1.6, 0, 12, sx * 29 + 1.6, 2.6, 16, 0x7a5a3a); B(sx * 27 - 0.5, 0, -12, sx * 27 + 0.5, 1.4, -4, 0x3f6e33);
+      B(sx * 30 - 1.5, 0, -14, sx * 30 + 1.5, 0.7, -11, STEEL);
+      // spawn markings
+      Dc(sx * (X - 0.02), 1.0, -Z, sx * (X - 0.12), 2.2, Z, tc);
+      for (const [a, b, c2, d] of [[29, 35, -3.4, -3.1], [29, 35, 3.1, 3.4], [29, 29.3, -3.4, 3.4]]) Dc(sx * a, 0, c2, sx * b, 0.015, d, tc);
+    }
+    // the street: parked cars and a box truck slanted across the middle
+    this.arenaCar(-3.6, -6, false, 0xe6e2da); this.arenaCar(3.6, 7, false, 0x2b2d31);
+    B(-1.2, 0, -2.6, 1.2, 3.0, 4.2, 0xf0ede6); B(-1.2, 0, 4.2, 1.2, 2.1, 6.0, 0x3f6fae); Dc(-1.25, 2.4, -2.4, 1.25, 2.7, 3.9, 0xd8443a);
+    for (const sx of [-1, 1]) B(sx * 4.5 - 0.6, 0, 20, sx * 4.5 + 0.6, 0.9, 21.2, 0x6b6e75);                        // bins at the circle
+    this.ffaSpots = [[-31, 0], [31, 0], [-31, -18], [31, 18], [-31, 18], [31, -18], [-17, -3], [17, 3], [-17, 3.5], [17, -3.5], [-3, -18], [3, 18], [0, 10], [0, -10], [-11, 14], [11, -14], [-20, -17], [20, 17]];
+    this.groundCols = [0x6f8a52, 0x67804c, 0x78935a];
+  },
+
+  generateSkyline() {
+    const X = 19, Z = 14, WH = 1.15;
+    const ROOF = 0x55585f, PAR = 0x7b7f87, AC = 0x9aa0a8, GLASS = 0x6fa8c8, STEEL = 0x3c4048, Y = 0xf2b234, BLUE = 0x2f6fd8, RED = 0xd8443a;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(Math.min(x0, x1), y0, Math.min(z0, z1), Math.max(x0, x1), y1, Math.max(z0, z1), c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => B(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    this.pois = [{ x: 0, z: 0, name: 'Skyline', type: 'arena' }]; this.towns = [];
+    this.spawns = [{ x: -15.5, z: 0, yaw: -Math.PI / 2 }, { x: 15.5, z: 0, yaw: Math.PI / 2 }];
+    // parapet (waist high, you can see the city) + tall invisible bounds so nobody falls off
+    B(-X - 1, 0, -Z - 1, X + 1, WH, -Z, PAR, { tag: 'edge' }); B(-X - 1, 0, Z, X + 1, WH, Z + 1, PAR, { tag: 'edge' });
+    B(-X - 1, 0, -Z, -X, WH, Z, PAR, { tag: 'edge' }); B(X, 0, -Z, X + 1, WH, Z, PAR, { tag: 'edge' });
+    B(-X - 1, WH, -Z - 1, X + 1, 14, -Z - 0.6, PAR, { tag: 'edge', hidden: true }); B(-X - 1, WH, Z + 0.6, X + 1, 14, Z + 1, PAR, { tag: 'edge', hidden: true });
+    B(-X - 1, WH, -Z, -X - 0.6, 14, Z, PAR, { tag: 'edge', hidden: true }); B(X + 0.6, WH, -Z, X + 1, 14, Z, PAR, { tag: 'edge', hidden: true });
+    Dc(-X - 1, WH, -Z - 1, X + 1, WH + 0.06, -Z, Y); Dc(-X - 1, WH, Z, X + 1, WH + 0.06, Z + 1, Y);
+    // the skylight block in the middle (climb it from the crates) with glass panes on top
+    B(-3, 0, -2.4, 3, 1.6, 2.4, ROOF); for (const x of [-2, 0, 2]) Dc(x - 0.85, 1.6, -2, x + 0.85, 1.68, 2, GLASS);
+    this.arenaCrate(-3.8, 2.6, 1.0); this.arenaCrate(3.8, -2.6, 1.0);
+    for (const sx of [-1, 1]) {
+      const tc = sx < 0 ? BLUE : RED;
+      // stair hut at each end (the spawn) with a door facing the middle
+      this.arenaWallZ(-3, 3, sx * 13, 3, PAR, [[-1, 1, 'door']]); B(sx * 13, 0, -3.17, sx * 17.5, 3, -2.83, PAR); B(sx * 13, 0, 2.83, sx * 17.5, 3, 3.17, PAR);
+      Dc(sx * 12.8, 3, -3.3, sx * 17.7, 3.25, 3.3, STEEL); Dc(sx * 12.82, 2.4, -1.1, sx * 12.86, 2.6, 1.1, tc);
+      // AC units (two sizes), vent pipes
+      B(sx * 8 - 1.3, 0, sx * 7 - 1, sx * 8 + 1.3, 1.5, sx * 7 + 1, AC); Dc(sx * 8 - 0.9, 1.5, sx * 7 - 0.6, sx * 8 + 0.9, 1.56, sx * 7 + 0.6, STEEL);
+      B(sx * 8 - 0.9, 0, sx * -8 - 0.9, sx * 8 + 0.9, 1.1, sx * -8 + 0.9, AC);
+      B(sx * 4 - 0.25, 0, sx * 10 - 0.25, sx * 4 + 0.25, 2.2, sx * 10 + 0.25, STEEL);
+      // low duct running along each side
+      B(sx * 2 - 4, 0, sx * -11.6, sx * 2 + 4, 0.75, sx * -10.6, STEEL);
+      Dc(sx * (X - 0.02), 0.2, -Z, sx * (X - 0.08), 0.9, Z, tc);
+    }
+    // water tank on stilts (stand under it, or climb the ladder side of the crates to its deck)
+    for (const [x, z] of [[-2, 8.5], [2, 8.5], [-2, 12], [2, 12]]) B(x - 0.15, 0, z - 0.15, x + 0.15, 2.6, z + 0.15, STEEL);
+    B(-2.4, 2.6, 8.1, 2.4, 2.8, 12.4, STEEL); B(-1.8, 2.8, 8.7, 1.8, 5.4, 11.8, 0x7a5a3a); Dc(-1.9, 3.6, 8.6, 1.9, 3.7, 11.9, STEEL); Dc(-1.9, 4.6, 8.6, 1.9, 4.7, 11.9, STEEL);
+    this.arenaCrate(3.4, 9, 1.2); this.arenaCrate(3.4, 10.4, 2.4);
+    // roof markings
+    for (let x = -10; x <= 10; x += 2.5) Dc(x - 0.6, 0, -0.08, x + 0.6, 0.012, 0.08, 0xe8e4dc);
+    Dc(-6.5, 0, -6.5, 6.5, 0.01, 6.5, 0x4c4f56);
+    // the city around: towers of every height past the parapet (decor), lit window bands, a few antennas
+    const R = BR.util.rng(4242), TW = [0x3d4350, 0x4a4f5c, 0x2f3440, 0x5a5f6a, 0x6b6258];
+    for (let i = 0; i < 46; i++) {
+      const a = i / 46 * Math.PI * 2 + R() * 0.1, r = 30 + R() * 14, cx = Math.cos(a) * r * 1.25, cz = Math.sin(a) * r, w = 3 + R() * 4, d = 3 + R() * 4, h = 4 + R() * 26, col = TW[i % TW.length];
+      Dc(cx - w, 0, cz - d, cx + w, h, cz + d, col);
+      for (let y = 2.5; y < h - 1; y += 2.6) Dc(cx - w - 0.03, y, cz - d - 0.03, cx + w + 0.03, y + 0.5, cz + d + 0.03, R() < 0.5 ? 0xffd88a : 0x9fc8e8);
+      if (R() < 0.25) Dc(cx - 0.1, h, cz - 0.1, cx + 0.1, h + 5, cz + 0.1, STEEL);
+    }
+    this.ffaSpots = [[-15.5, 0], [15.5, 0], [-10, -10], [10, 10], [-10, 10], [10, -10], [0, -8], [0, 5], [-6, 0], [6, 0]];
+    this.groundCols = [0x55585f, 0x4f5258, 0x5b5e65];
+  },
+});
+
 </script>
 <script>
 'use strict';
@@ -5374,6 +5614,7 @@ BR.Weapons = {
         pd.copy(dir).addScaledVector(u, Math.cos(a) * rr).addScaledVector(v, Math.sin(a) * rr).normalize();
       }
       const hit = game.hitscan(actor, eye, pd, maxRange);
+      if (d.pelletAssist && !hit.actor && !hit.target) (this._miss || (this._miss = [])).push({ d: pd.clone(), t: hit.t });
       if (actor.isPlayer && game.zm) game.zm.shotAt(eye, pd, hit.t);
       end.copy(eye).addScaledVector(pd, hit.t);
       if (hit.target) {                                              // a custom-mode target (aim trainer / Overdrive)
@@ -5403,6 +5644,18 @@ BR.Weapons = {
       }
       if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
       if (game.mode && game.mode.netShot && p < 3) game.mode.netShot(actor, muzzle, end, w.id, p === 0);      // online: show this shot on the other screens
+    }
+    // v1.23: a shotgun blast lands as one: a pellet that only grazes past someone the blast already hit (and didn't hit a
+    // wall first) still counts on them, so a well-placed shot deals its full damage instead of 2 stray pellets
+    if (this._miss && this._miss.length) {
+      for (const m of this._miss) {
+        let best = null, bd = d.pelletAssist;
+        hits.forEach((h, victim) => { const c = victim.pos, cy = c.y + (victim.mover ? victim.mover.h * 0.55 : 0.9), dx = c.x - eye.x, dy = cy - eye.y, dz = c.z - eye.z;
+          const along = dx * m.d.x + dy * m.d.y + dz * m.d.z; if (along <= 0 || along > d.range * 1.3 || m.t < along - 0.3) return;
+          const off = Math.sqrt(Math.max(0, dx * dx + dy * dy + dz * dz - along * along)); if (off < bd) { bd = off; best = h; } });
+        if (best) best.dmg += d.dmg;
+      }
+      this._miss.length = 0;
     }
     hits.forEach((h, victim) => game.applyDamage(victim, actor, h.dmg, h.head, h, w.id));
     if (this._thits && this._thits.size) { if (game.mode && game.mode.hitTarget) this._thits.forEach((h, t) => game.mode.hitTarget(t, h.dmg, h.head, h, w)); this._thits.clear(); }
@@ -5657,6 +5910,9 @@ Object.assign(BR.IMPORTED, {
     grip: [0, -0.07, 0.0], muzzle: [0, 0.14], charm: [0, -0.13, 0],
   },
 });
+// v1.23: every gun wears the black factory finish by default (sculpted detail kept, paint and mismatched colours dropped);
+// knives keep their own steel and grips
+for (const id of Object.keys(BR.IMPORTED)) if (!['knife', 'bayonet', 'tracker', 'butterfly'].includes(id)) BR.IMPORTED[id].finish = 'factory';
 
 </script>
 <script>
@@ -7474,7 +7730,7 @@ BR.Models = (function () {
       let mat = std ? p.mat : S;
       if (std && C.finish === 'factory') {                    // keep the model's sculpted detail (normal map), drop its paint
         const key = 'factory:' + id; mat = cache.mat[key] || (cache.mat[key] = new THREE.MeshPhongMaterial({ color: C.factoryColor || 0x2b2e33, normalMap: p.mat.normalMap, normalScale: p.mat.normalScale, specular: 0x5a6068, shininess: 38, specularMap: DETAIL.finish(), envMap: BR.weaponEnv(), reflectivity: 0.08, side: THREE.DoubleSide }));
-        textured = true;
+        cache.mat[key].userData.real = true; textured = true;
       } else if (std && !p.mat.map) mat = S;
       else if (std) textured = true;
       if (p.key === 'blade') mat = bladeMat;
@@ -7496,12 +7752,13 @@ BR.Models = (function () {
     if (C.knife) {
       const bv = [], v = new THREE.Vector3();
       for (const m of by.blade) { const P = m.geometry.attributes.position; for (let i = 0; i < P.count; i += 3) bv.push(v.fromBufferAttribute(P, i).clone()); }
-      let tip = new THREE.Vector3(0, 0.15, 0); for (const q of bv) if (q.length() > tip.length()) tip = q;
+      let tip = new THREE.Vector3(0, 0.15, 0), tl = -1; for (const q of bv) if (q.length() > tl) { tl = q.length(); tip = q; }     // (v1.23: the real blade tip, not a fixed 15 cm floor)
       let mid = tip.clone().multiplyScalar(0.55), best = 1e9; for (const q of bv) { const d = Math.abs(q.length() - tip.length() * 0.55); if (d < best) { best = d; mid = q; } }
       g.userData.trailTip = tip.clone(); g.userData.trailMid = mid.clone(); if (by.blade[0]) g.userData.bladeMesh = by.blade[0];     // (blueprint auras hug this mesh)
       if (C.knife === 'baylike' || C.knife === 'karambit') {
         const inner = new THREE.Group(); g.add(inner); for (const m of g.children.slice()) if (m.isMesh) inner.attach(m);
         g.userData.blade = C.knife === 'baylike' ? (by.blade[0] || inner) : inner;      // (the blade mesh: camo / blueprint checks read its material)
+        g.userData.trailSpace = inner;                                            // v1.23: the trail follows the blade through flips
         if (C.knife === 'baylike') { g.userData.inner = inner; g.userData.bayonet = true; if (id === 'tracker') g.userData.tracker = true; }
       } else if (C.knife === 'butterfly') {
         const mk = (list, at) => { const h = new THREE.Group(); h.position.set(...at); g.add(h); h.updateMatrixWorld(true); for (const m of list) h.attach(m); return h; };
@@ -7541,8 +7798,9 @@ BR.Models = (function () {
     g.userData.imported = id;
     return true;
   }
+  const PROC = {};                                           // v1.23: the original procedural builders (blueprint fitting reference)
   for (const id of Object.keys(BR.IMPORTED || {})) {
-    const proc = BUILD[id]; if (!proc) continue;
+    const proc = BUILD[id]; if (!proc) continue; PROC[id] = proc;
     BUILD[id] = (g, S, M, opts) => importedBuild(id, g, S, M, opts) || proc(g, S, M, opts);
   }
 
@@ -7659,6 +7917,204 @@ BR.Models = (function () {
   // ---- Mythic helpers: animated parts. Each pushes fn(t) onto g.userData.anim; the viewmodel
   // and the shop call BR.Models.animate(model, t) every frame.
   const anim = (g, fn) => (g.userData.anim || (g.userData.anim = [])).push(fn);
+  // ---- v1.23 BLUEPRINT FIT: blueprint add-ons (glow strips, panels, brakes, gems, flames...) were designed on the old
+  // procedural guns and knives. On the imported models every piece a blueprint adds is mapped from the procedural
+  // model's space onto the imported one (anchored on stock end, grip and muzzle; knives on blade and handle), then
+  // seated on the real surface: thin strips are re-laid as ribbons that follow the model's contours, small parts that
+  // would float are pulled onto the nearest surface. Each piece is wrapped in a fit group, so animated parts still
+  // move as designed (their animation runs in the old space, the wrapper maps it).
+  const FIT = {};
+  const ROLE_KEYS = ['inner', 'mag', 'pump', 'bolt', 'handleA', 'handleB', 'crane', 'cylinder', 'muzzle', 'charm'];
+  const SNAP_ROLES = { handleA: 1, handleB: 1, mag: 1, pump: 1, bolt: 1, cylinder: 1 };
+  const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+  const relMat = (g, o) => { g.updateMatrixWorld(true); return new THREE.Matrix4().copy(g.matrixWorld).invert().multiply(o.matrixWorld); };
+  function roleOf(g, o) { const u = g.userData; for (let p = o; p && p !== g; p = p.parent) for (const k of ROLE_KEYS) if (u[k] === p) return k; return null; }
+  function fitRef(g, keep, bladeTest) {
+    g.updateMatrixWorld(true);
+    const u = g.userData, box = new THREE.Box3(), blade = new THREE.Box3(), b = new THREE.Box3(), roles = {};
+    g.traverse(o => {
+      if (!o.isMesh || (keep && !keep.has(o)) || o === u.flash || o.userData.isFlash || o.userData.noUV || (o.material && o.material.transparent && o.material.opacity < 0.5 && !bladeTest(o))) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      b.copy(o.geometry.boundingBox).applyMatrix4(relMat(g, o)); box.union(b); if (bladeTest(o)) blade.union(b);
+    });
+    for (const k of ROLE_KEYS) if (u[k] && u[k].isObject3D) roles[k] = relMat(g, u[k]);
+    const mz = u.muzzle ? new THREE.Vector3().setFromMatrixPosition(relMat(g, u.muzzle)) : new THREE.Vector3(0, 0, box.min.z);
+    const vol = b => { const z = b.getSize(new THREE.Vector3()); return z.x * z.y * z.z; };
+    return { box, blade: blade.isEmpty() || vol(blade) > vol(box) * 0.8 ? null : blade, roles, muzzle: mz, grip: u.grip ? u.grip.clone() : new THREE.Vector3(0, -0.05, 0.1), tip: u.trailTip ? u.trailTip.clone() : null };
+  }
+  function procRef(id) {
+    const key = 'p' + id; if (FIT[key] !== undefined) return FIT[key];
+    if (!PROC[id]) return (FIT[key] = null);
+    const g = new THREE.Group(), M = MAT();
+    try { PROC[id](g, skinMaterial('default', BR.CONFIG.weapons[id].color), M, {}); } catch (e) { return (FIT[key] = null); }
+    const u = g.userData, bl = u.blade && u.blade !== g && u.blade !== u.inner ? u.blade : null;
+    const under = (o, r) => { for (let q = o; q; q = q.parent) if (q === r) return true; return false; };
+    return (FIT[key] = fitRef(g, null, o => o.material === M.blade || (bl && under(o, bl))));
+  }
+  // surface samples of the imported model (g-space points + outward normals + role), in a spatial hash
+  function impRef(id, g, keep) {
+    const key = 'i' + id; if (FIT[key]) return FIT[key];
+    const C = BR.IMPORTED[id], u = g.userData;
+    const R = fitRef(g, keep, o => o === u.bladeMesh);
+    R.muzzle.set(0, C.muzzle[0], C.muzzle[1]);
+    if (u.mag) { const mb = new THREE.Box3(), t = new THREE.Box3(); u.mag.traverse(o => { if (o.isMesh && keep.has(o)) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); mb.union(t.copy(o.geometry.boundingBox).applyMatrix4(relMat(g, o))); } }); if (!mb.isEmpty()) R.magBox = mb; }
+    const tris = []; let area = 0;
+    const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), nn = new THREE.Vector3(), nv = new THREE.Vector3();
+    g.traverse(o => {
+      if (!o.isMesh || !keep.has(o) || o === u.flash || o.userData.isFlash || o.userData.noUV || (o.material && o.material.transparent && o.material.opacity < 0.5 && o !== u.bladeMesh)) return;
+      const role = o === u.bladeMesh ? 'blade' : roleOf(g, o) || 'body', M = relMat(g, o), P = o.geometry.attributes.position, N = o.geometry.attributes.normal, I = o.geometry.index;
+      const nm = new THREE.Matrix3().getNormalMatrix(M), cnt = I ? I.count : P.count;
+      for (let t = 0; t + 2 < cnt; t += 3) {
+        const ia = I ? I.getX(t) : t, ib = I ? I.getX(t + 1) : t + 1, ic = I ? I.getX(t + 2) : t + 2;
+        va.fromBufferAttribute(P, ia).applyMatrix4(M); vb.fromBufferAttribute(P, ib).applyMatrix4(M); vc.fromBufferAttribute(P, ic).applyMatrix4(M);
+        e1.subVectors(vb, va); e2.subVectors(vc, va); nn.crossVectors(e1, e2); const A = nn.length() / 2; if (A < 1e-9) continue;
+        nn.normalize();
+        if (N) { nv.fromBufferAttribute(N, ia).add(e1.fromBufferAttribute(N, ib)).add(e2.fromBufferAttribute(N, ic)).applyMatrix3(nm); if (nv.dot(nn) < 0) nn.negate(); }
+        tris.push([va.clone(), vb.clone(), vc.clone(), nn.clone(), A, role]); area += A;
+      }
+    });
+    const step = Math.max(0.0028, Math.sqrt(area / 45000)), cell = 0.008, hash = new Map(), pts = [], rng = BR.util.rng(991);
+    const add = (p, n, role) => { const i = pts.length; pts.push({ p, n, role }); const k = Math.floor(p.x / cell) + ',' + Math.floor(p.y / cell) + ',' + Math.floor(p.z / cell); let a = hash.get(k); if (!a) hash.set(k, a = []); a.push(i); };
+    for (const [a, b, c, n, A, role] of tris) {
+      const m = Math.min(40, Math.max(1, Math.round(A / (step * step))));
+      for (let i = 0; i < m; i++) { let r1 = i ? rng() : 1 / 3, r2 = i ? rng() : 1 / 3; if (r1 + r2 > 1) { r1 = 1 - r1; r2 = 1 - r2; }
+        add(new THREE.Vector3().copy(a).addScaledVector(e1.subVectors(b, a), r1).addScaledVector(e2.subVectors(c, a), r2), n, role); }
+    }
+    R.pts = pts; R.hash = hash; R.cell = cell;
+    return (FIT[key] = R);
+  }
+  function nearestSurf(R, p, maxR, role) {
+    const c = R.cell, cx = Math.floor(p.x / c), cy = Math.floor(p.y / c), cz = Math.floor(p.z / c), rr = Math.ceil(maxR / c);
+    let best = null, bd = maxR * maxR, bestAny = null, bda = maxR * maxR;
+    for (let r = 0; r <= rr; r++) {
+      for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) for (let dz = -r; dz <= r; dz++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== r) continue;
+        const a = R.hash.get((cx + dx) + ',' + (cy + dy) + ',' + (cz + dz)); if (!a) continue;
+        for (const i of a) { const q = R.pts[i], d = q.p.distanceToSquared(p); if (d < bda) { bda = d; bestAny = q; } if ((!role || q.role === role) && d < bd) { bd = d; best = q; } }
+      }
+      if ((role ? best : bestAny) && (r * c) * (r * c) > (role ? bd : bda)) break;
+    }
+    return role && best ? best : role && !SNAP_ROLES[role] ? bestAny : best || (role ? null : bestAny);
+  }
+  // proc g-space point -> imported g-space point + local scale
+  function fitMap(id, P, I, c) {
+    const p = new THREE.Vector3(), s = new THREE.Vector3(1, 1, 1);
+    if (BR.CONFIG.weapons[id].melee) {
+      const inB = P.blade && I.blade && P.blade.clone().expandByScalar(0.016).containsPoint(c), A = inB ? P.blade : P.box, B = inB ? I.blade : I.box;
+      for (const ax of ['x', 'y', 'z']) {
+        const a0 = A.min[ax], a1 = A.max[ax], b0 = B.min[ax], b1 = B.max[ax], k = (c[ax] - a0) / Math.max(1e-4, a1 - a0);
+        const flip = ax === 'y' && P.tip && I.tip && Math.sign(P.tip.y) !== Math.sign(I.tip.y);
+        p[ax] = flip ? b1 - k * (b1 - b0) : b0 + k * (b1 - b0);
+        s[ax] = clampN((b1 - b0) / Math.max(1e-4, a1 - a0), ax === 'x' ? 0.6 : 0.45, 2.2);
+      }
+      return { p, s };
+    }
+    const segs = [[P.box.max.z, I.box.max.z], [P.grip.z, I.grip.z], [P.muzzle.z, I.muzzle.z]].filter((v, i, a) => !i || a[i - 1][0] - v[0] > 0.02);
+    const seg = (a, b) => { const sl = clampN((b[1] - a[1]) / (b[0] - a[0]), 0.5, 1.8); return [a[1] + (c.z - a[0]) * sl, sl]; };
+    let z;
+    if (segs.length < 2) z = [c.z - P.muzzle.z + I.muzzle.z, 1];
+    else if (c.z >= segs[1][0]) z = seg(segs[0], segs[1]);
+    else { let i = 1; while (i < segs.length - 1 && c.z < segs[i + 1][0]) i++; z = i < segs.length - 1 ? seg(segs[i], segs[i + 1]) : seg(segs[i - 1], segs[i]); }
+    const W = (b) => Math.max(0.01, b.max.x - b.min.x), H = (b) => Math.max(0.01, b.max.y - b.min.y);
+    s.set(clampN(W(I.box) / W(P.box), 0.6, 1.5), clampN(H(I.box) / H(P.box), 0.65, 1.5), z[1]);
+    const m = (s.x + s.y + s.z) / 3; s.set(clampN(s.x, m * 0.75, m * 1.25), clampN(s.y, m * 0.75, m * 1.25), clampN(s.z, m * 0.75, m * 1.25));
+    p.set(c.x * s.x, I.muzzle.y + (c.y - P.muzzle.y) * s.y, z[0]);
+    return { p, s };
+  }
+  // a thin strip re-laid on the surface: samples along its long axis, each seated on the nearest surface point
+  // an energy-flow material: bright pulses race along a ribbon, tinted live from the blueprint's own glow material
+  function flowMat(g, src) {
+    const T = canvasTex('flowpulse', (c, S) => { const gr = c.createLinearGradient(0, 0, S, 0); gr.addColorStop(0, 'rgba(255,255,255,0.18)'); gr.addColorStop(0.55, 'rgba(255,255,255,0.35)'); gr.addColorStop(0.86, '#fff'); gr.addColorStop(0.9, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0.18)'); c.fillStyle = gr; c.fillRect(0, 0, S, S); }, 64);
+    const map = T.clone(); map.needsUpdate = true; map.wrapS = THREE.RepeatWrapping; map.repeat.set(4, 1);
+    const m = new THREE.MeshBasicMaterial({ map, color: src.color ? src.color.clone() : 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    anim(g, t => { map.offset.x = -(t * 1.6) % 1; if (src.color) m.color.copy(src.color); });
+    return m;
+  }
+  function ribbonOn(I, center, axis, len, wAxis, w, mat, role) {
+    const K = Math.max(2, Math.ceil(len / 0.005)), seats = [];
+    for (let i = 0; i <= K; i++) {
+      const p = center.clone().addScaledVector(axis, (i / K - 0.5) * len), q = nearestSurf(I, p, 0.05, role);
+      seats.push(q ? { q: q.p.clone().addScaledVector(q.n, w > 0.012 ? 0.0022 : 0.0011), n: q.n.clone() } : null);
+    }
+    return ribbonSeats(seats, w, mat, len / K, axis, wAxis);
+  }
+  // a ribbon through surface seats ({q: point, n: normal} or null for a gap), smoothed, w wide
+  function ribbonSeats(seats, w, mat, step, axis, wAxis) {
+    const K = seats.length - 1, pos = [], uvs = [], len = step * K; wAxis = wAxis || new THREE.Vector3(0, 1, 0);
+    for (let it = 0; it < (w > 0.012 ? 4 : 2); it++) {                                // smooth the seats so the ribbon reads as one clean line, not a scribble
+      const prev = seats.map(x => x && { q: x.q.clone(), n: x.n.clone() });
+      for (let i = 0; i <= K; i++) { if (!prev[i]) continue; let c = 1; const q = prev[i].q.clone(), n = prev[i].n.clone();
+        for (const j of [i - 1, i + 1]) if (prev[j] && prev[j].q.distanceTo(prev[i].q) < len / K * 3) { q.add(prev[j].q); n.add(prev[j].n); c++; }
+        seats[i].q.copy(q.divideScalar(c)); seats[i].n.copy(n.normalize()); }
+    }
+    for (let i = 0; i < K; i++) {
+      const a = seats[i], b = seats[i + 1]; if (!a || !b || a.q.distanceTo(b.q) > len / K * 3.5) continue;
+      const corner = (s) => { const wv = wAxis.clone().addScaledVector(s.n, -wAxis.dot(s.n)); if (wv.lengthSq() < 1e-6) wv.crossVectors(s.n, axis); wv.normalize().multiplyScalar(w / 2); return [s.q.clone().add(wv), s.q.clone().sub(wv)]; };
+      const [a0, a1] = corner(a), [b0, b1] = corner(b), ua = i / K, ub = (i + 1) / K;
+      const U = [[ua, 0], [ua, 1], [ub, 0], [ub, 1]], V = [a0, a1, b0, b1];
+      for (const t of [[0, 1, 2], [1, 3, 2], [0, 2, 1], [1, 2, 3]]) for (const j of t) { pos.push(V[j].x, V[j].y, V[j].z); uvs.push(U[j][0], U[j][1]); }
+    }
+    if (!pos.length) return null;
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mat); m.userData.noUV = true; m.userData.fitted = true; return m;
+  }
+  function fitMods(g, id, keep, native) {
+    if (!g.userData.imported || !BR.IMPORTED[id]) return;
+    const P = native ? null : procRef(id); if (!P && !native) return;
+    const I = impRef(id, g, keep), geos = new Set();
+    g.traverse(o => { if (keep.has(o) && o.geometry) geos.add(o.geometry); });
+    g.updateMatrixWorld(true);
+    const added = []; g.traverse(o => { if (!keep.has(o) && keep.has(o.parent) && !o.userData.fitted && !(o.geometry && geos.has(o.geometry))) added.push(o); });
+    const bb = new THREE.Box3(), sz = new THREE.Vector3(), ctr = new THREE.Vector3(), AX = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+    // which add-ons are animated (their animation moves them): those are never re-laid as static ribbons
+    const moving = new Set(), snap = o => o.position.toArray().concat(o.scale.toArray(), o.rotation.toArray().slice(0, 3)).join(',');
+    if (g.userData.anim) { const all = []; g.traverse(o => { if (!keep.has(o)) all.push([o, snap(o)]); }); g.userData.anim.forEach(f => f(2.345)); g.userData.anim.forEach(f => f(0.71));
+      for (const [o, s0] of all) if (snap(o) !== s0) for (let q = o; q && !keep.has(q); q = q.parent) moving.add(q); }
+    const fits = [], melee = !!BR.CONFIG.weapons[id].melee;
+    const put = (e) => { e.Wg.matrix.copy(e.Pinv).multiply(e.pre).multiply(e.base); e.Wg.updateMatrixWorld(true); };
+    for (const o of added) {
+      const par = o.parent, role = roleOf(g, par), Pi = relMat(g, par);
+      const Mpp = role && P && P.roles[role] && I.roles[role] ? P.roles[role].clone().multiply(I.roles[role].clone().invert()).multiply(Pi) : Pi.clone();
+      bb.setFromObject(o); if (bb.isEmpty()) bb.setFromCenterAndSize(new THREE.Vector3().setFromMatrixPosition(o.matrixWorld), new THREE.Vector3());
+      const cLocal = par.worldToLocal(bb.getCenter(new THREE.Vector3())), cP = cLocal.clone().applyMatrix4(Mpp);
+      let A = new THREE.Matrix4();
+      if (!native) { const { p, s } = fitMap(id, P, I, cP); A.makeTranslation(p.x, p.y, p.z).multiply(new THREE.Matrix4().makeScale(s.x, s.y, s.z)).multiply(new THREE.Matrix4().makeTranslation(-cP.x, -cP.y, -cP.z)); }
+      const Wg = new THREE.Group(); Wg.matrixAutoUpdate = false; Wg.userData.fitted = true; par.add(Wg); Wg.add(o);
+      const e = { o, Wg, Pinv: Pi.clone().invert(), base: native ? Pi.clone() : A.multiply(Mpp), pre: new THREE.Matrix4(), par, role };
+      put(e);
+      if (o.isSprite || o.isLine) continue;
+      bb.setFromObject(o); bb.getSize(sz);
+      const ds = [sz.x, sz.y, sz.z].sort((x, y) => x - y);
+      if (o.isMesh && role !== 'mag' && ds[2] > 0.12 && ds[1] > 0.03 && !melee) { o.visible = false; o.userData.fitHidden = true; continue; }   // a blocky shroud would bury the real model's detail
+      fits.push(e);
+    }
+    // a replacement drum / mag (all its pieces together) is centred on the real magazine
+    const mags = fits.filter(e => e.role === 'mag');
+    if (mags.length && I.magBox) {
+      const u = new THREE.Box3(); for (const e of mags) u.union(bb.setFromObject(e.o));
+      const mc = I.magBox.getCenter(new THREE.Vector3()), uc = u.getCenter(new THREE.Vector3());
+      for (const e of mags) { e.pre.makeTranslation(mc.x - uc.x, Math.max(0, I.magBox.max.y - u.max.y - 0.01), mc.z - uc.z); put(e); e.done = u.getSize(sz).length() > 0.06; }
+    }
+    for (const e of fits) {
+      if (e.done) continue;
+      const { o, Pinv, par, role } = e;
+      bb.setFromObject(o); bb.getSize(sz); bb.getCenter(ctr); if (bb.isEmpty()) continue;
+      const order = [0, 1, 2].sort((x, y) => sz.getComponent(x) - sz.getComponent(y)), d0 = sz.getComponent(order[0]), d1 = sz.getComponent(order[1]), d2 = sz.getComponent(order[2]);
+      const sr = SNAP_ROLES[role] ? role : null;
+      if (o.isMesh && d0 <= 0.0075 && d2 >= 0.035 && (d2 > 3.5 * d1 || order[0] === 0) && o.geometry.attributes.position.count < 600) {          // a glow strip / pinstripe / panel: lay it on the surface
+        const mv = moving.has(o), rm = mv ? flowMat(g, o.material) : o.material;    // (a moving streak becomes a flowing one)
+        const rb = ribbonOn(I, ctr, AX[order[2]], mv ? Math.min(I.box.max.z - I.muzzle.z, Math.max(d2, 0.2)) : d2, AX[order[1]], Math.max(d1, 0.0026), rm, sr);
+        if (rb) { rb.matrixAutoUpdate = false; rb.matrix.copy(Pinv); par.add(rb); o.visible = false; o.userData.fitHidden = true; continue; }
+      }
+      const q = nearestSurf(I, ctr, 0.15, sr); if (!q) continue;
+      const slack = moving.has(o) ? 0.02 : 0.003;                                    // (animated parts may hover a little by design)
+      const dv = ctr.clone().sub(q.p), dist = dv.length(), dir = dist > 1e-5 ? dv.divideScalar(dist) : q.n.clone(), out = dir.dot(q.n) > -0.2;
+      const hx = d => Math.abs(d.x) * sz.x / 2 + Math.abs(d.y) * sz.y / 2 + Math.abs(d.z) * sz.z / 2, h = hx(dir);
+      if (out && dist > h + slack) { const m = -(dist - h - 0.0006); e.pre.makeTranslation(dir.x * m, dir.y * m, dir.z * m); put(e); }     // floating: seat it on the surface
+      else if (d0 <= 0.0075 && Math.abs(q.n.getComponent(order[0])) > 0.7) { const sd = (out ? dist : -dist) * Math.max(0.2, Math.abs(dir.dot(q.n))), hn = hx(q.n);                      // a decal sunk into the body: lift it out
+        if (sd < hn * 0.6) { const m = hn + 0.0008 - sd; e.pre.makeTranslation(q.n.x * m, q.n.y * m, q.n.z * m); put(e); } }
+    }
+  }
   // v1.22 SKIN VFX: Legendary / Mythic / Exotic camos and Mythic / Exotic blueprints get a living glow: an additive rim
   // shell hugging the weapon that breathes, a slow light sweep along it, and sparkles drifting round it in the skin's
   // colour (Exotic cycles through the rainbow). Knife blueprints that already carry their own aura keep it.
@@ -7668,7 +8124,7 @@ BR.Models = (function () {
     const sk = skin && skin !== 'default' ? SKINS[skin] : null;
     let tier = 0, col = null;
     if (sk && FX_TIER[sk.rarity]) { tier = FX_TIER[sk.rarity]; col = swatchColor(sk.swatch); }
-    else if (bp && !bp.mod && (bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) { tier = FX_TIER[bp.rarity]; col = bp.glow; }
+    else if (bp && (!bp.mod || bp.fx) && (bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) { tier = FX_TIER[bp.rarity]; col = bp.glow; }
     if (!tier || col === null || col === undefined || !(BR.Effects && BR.Effects.tex)) return;
     let src = null, n = 0;
     g.traverse(o => { if (o.isMesh && !o.userData.isFlash && o.geometry && o.geometry.attributes.position && o.geometry.attributes.position.count > n && !(o.material && o.material.transparent)) { n = o.geometry.attributes.position.count; src = o; } });
@@ -8251,7 +8707,7 @@ BR.Models = (function () {
   const bodyInfo = g => {
     g.updateMatrixWorld(true);
     const box = new THREE.Box3();
-    g.traverse(o => { if (o.isMesh && o !== g.userData.flash) box.expandByObject(o); });
+    g.traverse(o => { if (o.isMesh && o !== g.userData.flash && !o.userData.isFlash) box.expandByObject(o); });
     const mz = g.userData.muzzle ? g.userData.muzzle.position : new THREE.Vector3(0, 0.04, box.min.z);
     return { box, mz, hw: Math.min(0.045, (box.max.x - box.min.x) / 2), by: mz.y, z0: mz.z, z1: box.max.z, len: box.max.z - mz.z };
   };
@@ -8325,6 +8781,7 @@ BR.Models = (function () {
   for (const [w, id, name, theme, body, accent, glow, rarity, price, reload] of S2) {
     const e = { name, rarity, body, bodyGloss: 2, accent, accentGloss: 2, glow, mod: S2THEME[theme], reload: { style: reload, fx: glow }, season: 2 };
     if (price === 'nova') { e.caseOnly = true; e.case = 'nova'; } else e.price = price;
+    e.fit = 'native';                                    // (measured off the live model: only seated, never remapped)
     (S2BP[w] = S2BP[w] || {})[id] = e;
   }
   // Season 2 knives: animated blades
@@ -8342,12 +8799,21 @@ BR.Models = (function () {
         c.strokeStyle = '#d08bff'; c.lineWidth = 1.2; c.shadowColor = '#b04bff'; c.shadowBlur = 6; c.stroke(); }
     }) });
   // aura: additive shells hugging the blade that breathe, plus motes drifting off it
+  // v1.23 aura shells on the imported blades: grow mostly through the blade's thickness, a little across it and barely
+  // along it, about the blade's own centre (they were scaled about the grip, which blew them up into big sheets)
+  const auraScale = (blade, sc) => {
+    if (!blade.geometry.boundingBox) blade.geometry.computeBoundingBox();
+    const s = blade.geometry.boundingBox.getSize(new THREE.Vector3()), ax = ['x', 'y', 'z'].sort((a, b) => s[a] - s[b]), out = new THREE.Vector3();
+    out[ax[0]] = 1 + (sc - 1) * 5; out[ax[1]] = 1 + (sc - 1) * 0.55; out[ax[2]] = 1 + (sc - 1) * 0.16; return out;
+  };
+  const auraCentre = (m, blade) => { const c = blade.geometry.boundingBox.getCenter(new THREE.Vector3()); const k = m.scale.clone().divide(blade.scale);
+    m.position.add(c.clone().multiply(blade.scale).applyEuler(blade.rotation).sub(c.clone().multiply(blade.scale).multiply(k).applyEuler(blade.rotation))); };
   const nightshadeAura = (g, k, P) => {
     const blade = g.userData.blade, par = blade.parent;
     const shells = [[1.16, 0.55, 0xb04bff], [1.38, 0.22, 0x7b2cff]].map(([sc, op, c]) => {
       const m = new THREE.Mesh(blade.geometry, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide }));
-      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.set(sc * 1.8, sc, sc);      // thicker sideways so it reads as a glow
-      m.position.y -= 0.07 * (sc - 1); par.add(m); return m; });
+      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.copy(blade.scale).multiply(auraScale(blade, sc)); auraCentre(m, blade);     // thicker sideways so it reads as a glow
+      m.userData.fitted = true; m.userData.isFlash = true; par.add(m); return m; });
     anim(g, t => shells.forEach((m, i) => { const b = 0.5 + 0.5 * Math.sin(t * 3.2 + i); m.material.opacity = (i ? 0.14 : 0.4) + b * (i ? 0.12 : 0.25); m.material.color.setHSL(0.76 + 0.03 * Math.sin(t * 1.3 + i), 1, 0.55); }));
     const motes = [], mm = new THREE.MeshBasicMaterial({ color: 0xd8a8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.0028, 0), mm); par.add(m); motes.push({ m, o: Math.random(), x: (Math.random() - 0.5) * 0.02 }); }
@@ -8364,12 +8830,12 @@ BR.Models = (function () {
     const par = blade.parent, A = new THREE.Color(cA), Bc = new THREE.Color(cB), tmp = new THREE.Color();
     const shells = [[1.14, 0.6], [1.32, 0.3], [1.6, 0.14]].map(([sc, op]) => {
       const m = new THREE.Mesh(blade.geometry, new THREE.MeshBasicMaterial({ color: cA, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide }));
-      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.copy(blade.scale).multiply(new THREE.Vector3(sc * 1.25, sc, sc * 3));
-      par.add(m); return { m, op }; });
+      m.position.copy(blade.position); m.rotation.copy(blade.rotation); m.scale.copy(blade.scale).multiply(auraScale(blade, sc)); auraCentre(m, blade);
+      m.userData.fitted = true; m.userData.isFlash = true; par.add(m); return { m, op }; });
     const sp = () => new THREE.SpriteMaterial({ map: BR.Effects ? BR.Effects.tex().dot : null, color: cA, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     const box = new THREE.Box3().setFromObject(blade), ctr = blade.parent.worldToLocal(box.getCenter(new THREE.Vector3())), size = box.getSize(new THREE.Vector3()), len = Math.max(size.x, size.y, size.z);
-    const halo = new THREE.Sprite(sp()); halo.position.copy(ctr); halo.scale.setScalar(len * 1.4); par.add(halo);
-    const motes = []; for (let i = 0; i < 14; i++) { const s = new THREE.Sprite(sp()); par.add(s); motes.push({ s, o: Math.random(), a: Math.random() * 6.28 }); }
+    const halo = new THREE.Sprite(sp()); halo.position.copy(ctr); halo.scale.setScalar(len * 1.4); halo.userData.fitted = true; par.add(halo);
+    const motes = []; for (let i = 0; i < 14; i++) { const s = new THREE.Sprite(sp()); s.userData.fitted = true; par.add(s); motes.push({ s, o: Math.random(), a: Math.random() * 6.28 }); }
     anim(g, t => {
       const k = 0.5 + 0.5 * Math.sin(t * 3);
       if (rainbow) tmp.setHSL((t * 0.35) % 1, 1, 0.6); else tmp.copy(A).lerp(Bc, k);
@@ -8504,6 +8970,64 @@ BR.Models = (function () {
       } } },
   };
   for (const w in GRIND_BP) BLUEPRINTS[w] = Object.assign(BLUEPRINTS[w] || {}, GRIND_BP[w]);
+  // ---- v1.23 OVERDRIVE blueprints (original designs, made for the imported models): a living animated finish, energy
+  // veins traced along both sides of the real model (circuit-style steps, pulses racing toward the muzzle), a spinning
+  // twin-ring reactor at the muzzle, a breathing rim glow and sparkles. Every colour shifts through the theme's palette.
+  const OVERDRIVE_THEMES = {
+    eventhorizon: { name: 'Event Horizon', tex: 'voidrift', cols: [0xb04bff, 0xff3df2, 0x5a8bff], emi: 0.85 },
+    supernova:    { name: 'Supernova', tex: 'g_starforge', cols: [0xffd24a, 0xff6a00, 0xfff4c0], emi: 0.8 },
+    cryopulse:    { name: 'Cryo Pulse', tex: 'tidewater', cols: [0x6fe8ff, 0xffffff, 0x2f7bff], emi: 0.7 },
+    toxicstorm:   { name: 'Toxic Storm', tex: 'acid', cols: [0x7dff3a, 0xe8ff3a, 0x1fdc8c], emi: 0.8 },
+    neontokyo:    { name: 'Neon Tokyo', tex: 'hyperspace', cols: [0xff2fa8, 0x1de9ff, 0xb04bff], emi: 0.9 },
+    magmacore:    { name: 'Magma Core', tex: 'molten', cols: [0xff3a00, 0xffb000, 0xff6a00], emi: 1 },
+    stormsurge:   { name: 'Storm Surge', tex: 'electric', cols: [0x9fd8ff, 0xffffff, 0x4a6bff], emi: 0.9 },
+    infinity:     { name: 'Infinity', tex: 'prism', cols: [0xff3df2, 0x1de9ff, 0xffe14d], emi: 0.75, rainbow: true },
+  };
+  function overdriveMod(th) {
+    return (g, k, P) => {
+      const C = th.cols.map(c => new THREE.Color(c)), tmp = new THREE.Color();
+      const live = (i) => { const m = liveGlow(th.cols[i % th.cols.length]); anim(g, t => { if (th.rainbow) m.color.setHSL((t * 0.15 + i * 0.21) % 1, 1, 0.6); else { const f = 0.5 + 0.5 * Math.sin(t * 1.7 + i * 2.1); m.color.copy(C[i % C.length]).lerp(C[(i + 1) % C.length], f); } }); return m; };
+      if (!P.camo) {                                                         // the living finish
+        const mat = new THREE.MeshPhongMaterial({ map: TEX[th.tex](), emissive: 0xffffff, emissiveMap: TEX[th.tex](), emissiveIntensity: th.emi * 0.55, specular: 0xffffff, shininess: 120, envMap: BR.weaponEnv(), reflectivity: 0.25 });
+        g.traverse(o => { if (o.isMesh && o.material === P.B) o.material = mat; });
+        mat.userData.finish = 'overdrive';
+        anim(g, t => { mat.emissiveIntensity = th.emi * (0.45 + 0.2 * Math.sin(t * 2.2)); });
+      }
+      if (!g.userData.imported || !P.keep) return;
+      const I = impRef(P.id, g, P.keep), melee = !!BR.CONFIG.weapons[P.id].melee, rng = BR.util.rng(hsh(th.name + P.id)), B = I.box;
+      // energy veins: a far-out guide line along each side, stepping up / down like a circuit trace, seated on the surface
+      const lines = melee ? [] : [[1, 0.62], [1, 0.36], [-1, 0.62], [-1, 0.36]];
+      const z0 = Math.min(B.max.z - 0.02, I.grip.z + 0.25), z1 = I.muzzle.z + 0.02, top = Math.max(I.muzzle.y, I.grip.y), H = B.max.y - B.min.y;
+      lines.forEach(([side, lv], li) => {
+        let y = I.grip.y + (top - I.grip.y + 0.05) * lv, nextStep = z0 - 0.04 - rng() * 0.08; const seats = [];
+        for (let z = z0; z > z1; z -= 0.005) {
+          if (z < nextStep) { y += (rng() < 0.5 ? -1 : 1) * H * 0.05; y = clampN(y, I.grip.y - 0.01, B.max.y - 0.012); nextStep = z - 0.05 - rng() * 0.1; }
+          const q = nearestSurf(I, new THREE.Vector3(side * (B.max.x + 0.004), y, z), 0.05);
+          seats.push(q && Math.sign(q.p.x || side) === side && Math.abs(q.p.y - y) < 0.03 ? { q: q.p.clone().addScaledVector(q.n, 0.0012), n: q.n.clone() } : null);
+        }
+        const rb = ribbonSeats(seats, 0.0032, flowMat(g, live(li)), 0.03, new THREE.Vector3(0, 0, -1)); if (rb) g.add(rb);
+      });
+      // twin-ring reactor at the muzzle (or round the blade for knives) + a soft halo
+      const ctr = melee ? (I.blade || B).getCenter(new THREE.Vector3()) : I.muzzle.clone().add(new THREE.Vector3(0, 0, 0.03));
+      const R0 = melee ? 0.03 : Math.max(0.022, Math.min(0.045, (B.max.x - B.min.x) * 0.7));
+      const r1 = ring(g, R0, 0.0022, live(0), ctr.x, ctr.y, ctr.z), r2 = ring(g, R0 * 1.3, 0.0016, live(1), ctr.x, ctr.y, ctr.z);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: BR.Effects ? BR.Effects.tex().soft : null, color: th.cols[0], transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+      halo.position.copy(ctr); halo.scale.setScalar(R0 * 4); g.add(halo);
+      for (const o of [r1, r2, halo]) { o.userData.isFlash = true; o.userData.noUV = true; }
+      anim(g, t => { r1.rotation.set(t * 2.2, t * 1.3, 0); r2.rotation.set(-t * 1.6, 0, t * 2.4); const s = 1 + 0.08 * Math.sin(t * 6); r1.scale.setScalar(s); r2.scale.setScalar(2 - s);
+        halo.material.opacity = 0.35 + 0.25 * Math.sin(t * 4); if (th.rainbow) halo.material.color.setHSL((t * 0.15) % 1, 1, 0.6); else halo.material.color.copy(C[0]).lerp(C[1], 0.5 + 0.5 * Math.sin(t * 1.7)); });
+    };
+  }
+  const OVERDRIVE_SETS = {
+    pistol: ['neontokyo', 'supernova'], smg: ['toxicstorm', 'eventhorizon'], shotgun: ['magmacore', 'cryopulse'], rifle: ['eventhorizon', 'infinity'],
+    holoar: ['stormsurge', 'neontokyo'], sniper: ['cryopulse', 'infinity'], hunter: ['supernova', 'eventhorizon'], revolver: ['magmacore', 'stormsurge'],
+    lmg: ['toxicstorm', 'supernova'], dmr: ['neontokyo', 'magmacore'], launcher: ['infinity', 'stormsurge'],
+  };
+  for (const w in OVERDRIVE_SETS) OVERDRIVE_SETS[w].forEach((key, i) => {
+    const th = OVERDRIVE_THEMES[key], exotic = key === 'infinity';
+    (BLUEPRINTS[w] = BLUEPRINTS[w] || {})['od_' + key] = { name: th.name, rarity: exotic ? 'Exotic' : 'Mythic', price: exotic ? 4000 : 3200, season: 3, fx: true, fit: 'own',
+      body: 0x101018, bodyGloss: 2, accent: th.cols[1], accentGloss: 2, glow: th.cols[0], mod: overdriveMod(th) };
+  });
   // ---- v1.13 TRACKER blueprints (original designs). Goldrune: an engraved gold blade (gold gradient,
   // brushed grain, an etched band of interlocking scrolls + runes) on the olive grip.
   BLADES.goldrune = () => new THREE.MeshPhongMaterial({ shininess: 170, specular: 0xfff0b0, emissive: 0x2a1a00, side: THREE.DoubleSide, map: bladeTex('goldrune', (c, s) => {
@@ -8532,7 +9056,17 @@ BR.Models = (function () {
     glacierfang: { name: 'Glacier Fang', rarity: 'Legendary', price: 1500, body: 0xcfe6f2, bodyGloss: 2, accent: 0xe8f6ff, glow: 0xdff6ff, blade: 'glacier' },
     magmatooth:  { name: 'Magma Tooth', rarity: 'Mythic', price: 2800, body: 0x1a0805, bodyGloss: 1, accent: 0xff6a00, glow: 0xff6a00, blade: 'emberblade', trail: 0xff7a1a, trail2: 0xffd24a, mod: vibrantAura(0xff6a00, 0xffd24a) },
     aurumprime:  { name: 'Aurum Prime', rarity: 'Exotic', price: 3500, body: 0x1a1206, bodyGloss: 2, accent: 0xffd24a, glow: 0xffd24a, blade: 'solarblade', trail: 0xffd24a, trail2: 0xffffff, mod: vibrantAura(0xffd24a, 0xffffff) },
+  };  // knives: a living blade, the aura, a long two-tone trail
+  BLADES.od_void = animBlade('voidrift', 0.9); BLADES.od_nova = animBlade('g_starforge', 0.9); BLADES.od_cryo = animBlade('tidewater', 0.8); BLADES.od_prism = animBlade('prism', 0.8);
+  const OD_KNIVES = {
+    knife: { od_eventhorizon: ['Event Horizon', 'od_void', 0xb04bff, 0xff3df2, 'Mythic'] },
+    bayonet: { od_supernova: ['Supernova', 'od_nova', 0xffd24a, 0xff6a00, 'Mythic'] },
+    tracker: { od_cryopulse: ['Cryo Pulse', 'od_cryo', 0x6fe8ff, 0xffffff, 'Mythic'] },
+    butterfly: { od_infinity: ['Infinity', 'od_prism', 0xff3df2, 0x1de9ff, 'Exotic'] },
   };
+  for (const w in OD_KNIVES) for (const id in OD_KNIVES[w]) { const [name, blade, a, b, rarity] = OD_KNIVES[w][id];
+    (BLUEPRINTS[w] = BLUEPRINTS[w] || {})[id] = { name, rarity, price: rarity === 'Exotic' ? 4200 : 3400, season: 3, body: 0x0c0a14, bodyGloss: 2, accent: b, glow: a, blade, trail: rarity === 'Exotic' ? -1 : a, trail2: b, mod: vibrantAura(a, b, rarity === 'Exotic') }; }
+
   // Signature tracers: every Legendary / Mythic blueprint fires its own tracer (used when that
   // gun's tracer is set to "Blueprint Signature"). Hand-picked styles, the rest derived from the glow.
   const SIG = {
@@ -8800,7 +9334,7 @@ BR.Models = (function () {
     g.updateMatrixWorld(true);
     const buckets = new Map();
     g.traverse(o => {
-      if (!o.isMesh || !test(o) || !o.parent || o.geometry.attributes.position.count > 8000) return;
+      if (!o.isMesh || !o.visible || !test(o) || !o.parent || o.geometry.attributes.position.count > 8000) return;
       const e = new THREE.EdgesGeometry(o.geometry, threshold); e.applyMatrix4(o.matrix);
       if (!buckets.has(o.parent)) buckets.set(o.parent, []);
       buckets.get(o.parent).push(e.attributes.position.array);
@@ -8886,7 +9420,11 @@ BR.Models = (function () {
       ROUND = true;
       try {
         (BUILD[id] || BUILD.pistol)(g, S, MAT(), opts);
-        if (bp && bp.mod) bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT() });
+        if (bp && bp.mod) {
+          const keep = g.userData.imported ? new Set() : null; if (keep) g.traverse(o => keep.add(o));
+          bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT(), camo: !!opts.camo, keep, id });
+          if (keep && bp.fit !== 'own') fitMods(g, id, keep, bp.fit === 'native');                                     // v1.23: seat the add-ons on the imported model
+        }
         if (bp && !opts.camo) bpUpgrade(g, id, bpId, bp, S, opts);          // v1.16 finishes + edge lines
         realPass(g, !bp && !opts.camo);                                        // v1.17 surface detail
         skinFx(g, skin, bp);                                                   // v1.22 rarity glow + sparkles
@@ -9135,7 +9673,7 @@ BR.Models = (function () {
       if (this.bfTrail) { this.scene.remove(this.bfTrail.mesh); this.bfTrail.mesh.geometry.dispose(); this.bfTrail = null; }
       { const mel = BR.Profile.melee(), bpId = (eq.blueprints || {})[mel], B = bpId && BR.Models.BLUEPRINTS[mel] && BR.Models.BLUEPRINTS[mel][bpId];
         if (B && B.trail && this.models[mel] && this.models[mel].userData.model.userData.trailTip) {
-          const N = 11, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), idx = [];
+          const N = 16, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), idx = [];
           for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
           geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
           const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
@@ -9249,7 +9787,7 @@ BR.Models = (function () {
         this.lastWeapon = w;
         this.drawDur = this.drawT = w.id === 'tracker' ? 0.9 : def.melee ? 1.05 : 0.55;
         this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0; this.pumpT = 0; this.pumpDelay = 0;
-        if (def.melee) BR.Audio.unsheathe(); else BR.Audio.reload();
+        if (def.melee) BR.Audio.unsheathe(); else BR.Audio.mech('draw');
       }
       this.drawT = Math.max(0, this.drawT - dt);
       this.inspectT = Math.max(0, this.inspectT - dt);
@@ -9480,8 +10018,8 @@ BR.Models = (function () {
         oz += boltBack * 0.015;
         rightTarget = { w: reach * (1 - ret) };
         const passed = x => this.lastBoltK < x && k >= x;
-        if (passed(0.32)) { BR.Audio.click(); }
-        if (passed(0.5)) { BR.Audio.reload(); this.pos.z.vel += 0.25; }
+        if (passed(0.32)) { BR.Audio.mech('boltup'); }
+        if (passed(0.5)) { BR.Audio.mech('boltback'); this.pos.z.vel += 0.25; }
         this.lastBoltK = k;
       } else this.lastBoltK = 0;
       if (ud.bolt) { ud.bolt.rotation.z = boltLift * 1.05; ud.bolt.position.z = ud.boltZ0 + boltBack * 0.075; }
@@ -9493,8 +10031,8 @@ BR.Models = (function () {
         const tilt = win(k, 0, 0.2, 0.7, 1) * (1 - A * 0.5);
         orz += 0.12 * tilt; orx -= 0.05 * tilt; oy -= 0.008 * tilt; oz += pumpBack * 0.012;
         const passed = x => this.lastPumpK < x && k >= x;
-        if (passed(0.3)) BR.Audio.click();
-        if (passed(0.75)) { BR.Audio.reload(); this.pos.z.vel -= 0.2; }
+        if (passed(0.3)) BR.Audio.mech('pumpback');
+        if (passed(0.75)) { BR.Audio.mech('pumpfwd'); this.pos.z.vel -= 0.2; }
         this.lastPumpK = k;
       } else this.lastPumpK = 0;
       if (ud.pump) ud.pump.position.z = pumpBack * 0.07;
@@ -9592,10 +10130,10 @@ BR.Models = (function () {
           else if (k < 0.7) leftTarget = handAt.clone();
           else leftTarget = new THREE.Vector3(-0.02, 0.05, -0.03).lerp(fore || handAt, smooth((k - 0.72) / 0.2));   // palm flicks it shut
           const passed = x => this.lastReloadK < x && k >= x;
-          if (passed(0.12)) { BR.Audio.click(); this.rot.z.vel += 0.8; }
-          if (passed(0.22)) { BR.Audio.reload(); this.pos.y.vel += 0.4; }
-          if (passed(0.6)) { BR.Audio.click(); this.pos.z.vel -= 0.3; }
-          if (passed(0.76)) { BR.Audio.reload(); this.rot.z.vel -= 1.6; }
+          if (passed(0.12)) { BR.Audio.mech('crane'); this.rot.z.vel += 0.8; }
+          if (passed(0.22)) { BR.Audio.mech('eject'); this.pos.y.vel += 0.4; }
+          if (passed(0.6)) { BR.Audio.mech('load'); this.pos.z.vel -= 0.3; }
+          if (passed(0.76)) { BR.Audio.mech('close'); this.rot.z.vel -= 1.6; }
           this.lastReloadK = k;
         } else {
           // Magazine: tilt, mag out, hand to pouch, new mag in, slap, (rifles) charge
@@ -9623,9 +10161,9 @@ BR.Models = (function () {
           } else leftTarget = magAt.clone().lerp(fore || magAt, smooth((k - 0.72) / 0.2));
           // one-shot jolts + sounds when passing key moments
           const passed = x => this.lastReloadK < x && k >= x;
-          if (passed(0.22)) { BR.Audio.click(); this.rot.z.vel -= 0.6; }
-          if (passed(0.68)) { BR.Audio.reload(); this.pos.y.vel += 0.5; this.rot.x.vel -= 1.2; }
-          if (passed(0.86) && ud.charge) { BR.Audio.reload(); this.pos.z.vel += 0.5; }
+          if (passed(0.22)) { BR.Audio.mech('magout'); this.rot.z.vel -= 0.6; }
+          if (passed(0.68)) { BR.Audio.mech('magin'); this.pos.y.vel += 0.5; this.rot.x.vel -= 1.2; }
+          if (passed(0.86) && ud.charge) { BR.Audio.mech('rack'); this.pos.z.vel += 0.5; }
           this.lastReloadK = k;
         }
       } else this.lastReloadK = 0;
@@ -10016,11 +10554,11 @@ BR.Models = (function () {
     stepTrail(dt) {
       const T = this.bfTrail, f = this._trailFrame, m = T.mesh;
       if (!f) { m.visible = false; T.tips.length = T.mids.length = 0; return; }
-      const inner = f.model.userData.inner || f.model; inner.updateMatrixWorld(true);
+      const inner = f.model.userData.trailSpace || f.model.userData.inner || f.model; inner.updateMatrixWorld(true);      // (v1.23: the blade's own group, so flips carry the trail)
       const tip = inner.localToWorld((f.model.userData.trailTip || new THREE.Vector3(0, 0.138, -0.003)).clone()), mid = inner.localToWorld((f.model.userData.trailMid || new THREE.Vector3(0, 0.085, -0.003)).clone());
       const last = T.tips[0], speed = last ? tip.distanceTo(last) / Math.max(dt, 1e-3) : 0;
       T.tips.unshift(tip); T.mids.unshift(mid); if (T.tips.length > T.N) { T.tips.length = T.N; T.mids.length = T.N; }
-      T.on += ((speed > 0.6 ? 1 : 0) - T.on) * Math.min(1, dt * 10);      // shows while the blade is whipping round
+      T.on += ((speed > 0.45 ? 1 : 0) - T.on) * Math.min(1, dt * 10);      // shows while the blade is whipping round
       const pos = m.geometry.attributes.position.array, col = m.geometry.attributes.color.array, n = T.tips.length;
       for (let i = 0; i < T.N; i++) {
         const a = T.tips[Math.min(i, n - 1)], b = T.mids[Math.min(i, n - 1)], f1 = Math.max(0, 1 - i / (T.N - 1)), k = f1 * f1 * T.on;
@@ -10028,8 +10566,8 @@ BR.Models = (function () {
         // head colour -> tail colour along the ribbon (or a rainbow that cycles over time)
         const C = this._tc || (this._tc = new THREE.Color()), u = i / (T.N - 1);
         if (T.rainbow) C.setHSL((performance.now() / 1400 + u * 0.8) % 1, 1, 0.6); else C.copy(T.color).lerp(T.color2, u);
-        const g2 = k * 0.85;
-        col.set([C.r * g2, C.g * g2, C.b * g2, C.r * g2 * 0.25, C.g * g2 * 0.25, C.b * g2 * 0.25], i * 6);
+        const g2 = k * 1.1, hot = Math.max(0, 1 - u * 3) * k * 0.6;                   // white-hot right behind the edge, the colour trailing off
+        col.set([Math.min(1, C.r * g2 + hot), Math.min(1, C.g * g2 + hot), Math.min(1, C.b * g2 + hot), C.r * g2 * 0.18, C.g * g2 * 0.18, C.b * g2 * 0.18], i * 6);
       }
       m.geometry.attributes.position.needsUpdate = true; m.geometry.attributes.color.needsUpdate = true;
       m.visible = T.on > 0.02 && n > 2;
@@ -13729,6 +14267,11 @@ BR.Squads = {
         score: m.score, ffa: this.P.kind === 'ffa', ranked: this.ranked, map: this.mapId, rank, total: Object.keys(st).length, online: !!this.net, place: win ? 1 : 2,
         by: this.P.kind === 'ffa' ? `#${rank} of ${Object.keys(st).length} · ${me.kills} kills` : `${TEAM_NAME[0]} ${m.score[0]} – ${m.score[1]} ${TEAM_NAME[1]}` };
       g.state = 'dead'; g.endT = 2.4;
+      if (win && g.player.alive && g.startVictory) {
+        // v1.23: every mode gets the victory show: freeze frame, then the celebration orbit, fireworks and fanfare
+        g.state = 'won'; g.endT = 5.4; g.player.fireHeld = false; g.freezeT = 1.0; g.hud.freeze(true); BR.Audio.freeze && BR.Audio.freeze();
+        return;
+      }
       g.hud.duelBanner(m.winTeam === -1 ? 'DRAW' : win ? 'VICTORY' : 'DEFEAT', g.result.by, win ? 'win' : m.winTeam === -1 ? 'info' : 'lose');
       if (win) BR.Audio.victory && BR.Audio.victory();
     }
@@ -13933,6 +14476,12 @@ BR.Loot = class Loot {
       g.userData.ring = ring;
     } else if (item.kind === 'ammo') {
       g.add(new THREE.Mesh(G.ammo, this.mat('a_' + item.ammoType, AMMO_COLORS[item.ammoType])));
+    } else if (item.kind === 'scav') {                                   // ammo pack: olive canvas pouch, brass rounds, a pulsing ring
+      g.add(new THREE.Mesh(G.ammo, this.mat('scav', 0x4b5a32)));
+      const lid = new THREE.Mesh(G.ammo, this.mat('scavlid', 0x2d3520)); lid.scale.set(1.04, 0.25, 1.04); lid.position.y = 0.14; g.add(lid);
+      for (let i = 0; i < 4; i++) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.14, 8), this.mat('brass', 0xd4a63a)); r.position.set(-0.09 + i * 0.06, 0.2, 0); g.add(r); }
+      const ring = new THREE.Mesh(G.ring, this.mat('ringScav', 0xffd24a, true)); ring.rotation.x = -Math.PI / 2; ring.position.y = -0.3; g.add(ring); g.userData.ring = ring;
+      g.scale.setScalar(0.8);
     } else if (item.kind === 'shock') {
       const n = BR.Shockwave.model(); n.scale.setScalar(2.6); g.add(n); g.userData.nade = n;
       const ring = new THREE.Mesh(G.ring, this.mat('ringShock', 0xb04bff, true)); ring.rotation.x = -Math.PI / 2; ring.position.y = -0.4; g.add(ring); g.userData.ring = ring;
@@ -13979,6 +14528,7 @@ BR.Loot = class Loot {
     const doCull = this.cullT <= 0;
     if (doCull) this.cullT = 0.3;
     const W = this.game.world;
+    for (let i = this.items.length - 1; i >= 0; i--) { const it = this.items[i]; if (it.kind === 'scav' && t - it.t0 > 25) this.remove(it); }   // kill ammo packs fade after 25 s
     for (const it of this.items) {
       if (it.air) this.toss(it, dt, W);
       if (doCull) {
@@ -14039,6 +14589,14 @@ BR.Loot = class Loot {
       if (it.kind === 'ammo') {
         const cap = C.ammoCap[it.ammoType];
         if (actor.ammo[it.ammoType] < cap) { actor.ammo[it.ammoType] = Math.min(cap, actor.ammo[it.ammoType] + it.amount); took = true; }
+      } else if (it.kind === 'scav') {
+        // v1.23 ammo pack from a kill: ammo for whatever gun you have out (the killer's for the first 10 s)
+        if (it.owner && it.owner !== actor && it.owner.alive && this.game.time - it.t0 < 10) continue;
+        const gun = actor.weapon && !actor.weapon.def.melee ? actor.weapon : actor.guns().find(w => w && !w.def.melee);
+        if (gun) { const def = gun.def, cap = C.ammoCap[def.ammo];
+          if (actor.ammo[def.ammo] < cap) { actor.ammo[def.ammo] = Math.min(cap, actor.ammo[def.ammo] + Math.max(def.mag * 2, C.ammoPickup[def.ammo] || 0)); took = true; }
+          else if (gun.mag < def.mag) { gun.mag = def.mag; took = true; }
+          if (took) it.gunName = def.name; }
       } else if (it.kind === 'shock') { if ((actor.nades || 0) < C.shockwave.maxCarry) { actor.nades = (actor.nades || 0) + it.amount; took = true; } }
       else if (it.kind === 'heal') took = actor.heal(it.amount);
       else if (it.kind === 'shield') took = actor.addShield(it.amount);
@@ -17313,7 +17871,7 @@ BR.HUD = class HUD {
     <button class="mbtn sm hot sp-locker" id="sp-locker">LOCKER · SWAP SKINS, BLUEPRINTS + KNIFE</button>
     <div class="sp-sec">WEAPONS</div>
     <div class="sp-rar" id="sp-rar"><span>RARITY</span>${(BR.RARITY || []).map((r, i) => `<button data-r="${i}" style="--rc:${r.css}"${i === 0 ? ' class="sel"' : ''}>${r.name.toUpperCase()}</button>`).join('')}</div>
-    <div class="sp-slots" id="sp-slots"><span>PUT IN</span><button data-slot="0"><b>SLOT 1</b><i>EMPTY</i></button><button data-slot="1"><b>SLOT 2</b><i>EMPTY</i></button></div>
+    <div class="sp-slots" id="sp-slots" style="display:none"><span>PUT IN</span><button data-slot="0"><b>SLOT 1</b><i>EMPTY</i></button><button data-slot="1"><b>SLOT 2</b><i>EMPTY</i></button></div>
     <div class="sp-grid" id="sp-weapons"></div>
     <div class="sp-sec">ITEMS</div>
     <div class="sp-grid">
@@ -18658,6 +19216,10 @@ BR.Game = class Game {
       p.cur = slot;
       p.ammo[def.ammo] = C.ammoCap[def.ammo];
       this.hud.toast(BR.RARITY[rar | 0].name + ' ' + def.name, 900);
+    } else if (kind === 'dropweapon') {                     // v1.23 spawn menu: the gun lands on the ground in front of you; walk over it to grab it
+      const def = C.weapons[arg], q = this.frontPoint(2.2), a = p.yaw;
+      this.loot.add({ kind: 'weapon', wid: arg, rar: rar | 0, mag: def.mag, reserve: C.ammoCap[def.ammo] }, q.x, q.y + 1.2, q.z, new THREE.Vector3(-Math.sin(a) * 1.2, 3.2, -Math.cos(a) * 1.2));
+      this.hud.toast(BR.RARITY[rar | 0].name + ' ' + def.name + ' dropped · walk over it to pick it up', 1300);
     } else if (kind === 'ammo') { for (const t in p.ammo) p.ammo[t] = C.ammoCap[t]; this.hud.toast('Ammo full', 900); }
     else if (kind === 'nades') { p.nades = C.shockwave.maxCarry; this.hud.toast('Shockwave grenades ×' + p.nades, 900); }
     else if (kind === 'heal') { p.health = C.actor.maxHealth; p.shield = C.actor.maxShield; this.hud.toast('Health + shield full', 900); }
@@ -18810,7 +19372,11 @@ BR.Game = class Game {
     if (this.zm && this.zm.cut) { this.zm.updateCut(dt); return; }      // zombies boss intro cutscene
     if (BR.AntiCheat) BR.AntiCheat.tick(this, dt);
     if (p.alive && this.state === 'playing') this.controlPlayer(dt);
-    else p.fireHeld = false;
+    else {
+      p.fireHeld = false;
+      // v1.23: the menu (and map) still work while you're dead / waiting to respawn
+      if (this.state === 'playing') { if (this.input.consume('pause')) this.pause(); if (this.input.consume('map')) this.hud.toggleMap(); }
+    }
     this.simulate(dt);
     this.playerEvents();
 
@@ -19002,7 +19568,7 @@ BR.Game = class Game {
     // Reload button: knives and full mags inspect instead
     if (inp.consume('reload') && w) {
       if (w.def.melee || (w.mag >= w.def.mag && !(w.reloadT > 0))) this.startInspect();
-      else if (BR.Weapons.startReload(w, p)) BR.Audio.reload();
+      else if (BR.Weapons.startReload(w, p)) BR.Audio.mech(w.def.shellReload ? 'grab' : 'grab');
     }
     const sw = i => { if (i === p.cur) this.startInspect(); else if (p.switchTo(i)) inp.ads = false; };
     if (inp.consume('swap')) {
@@ -19082,6 +19648,11 @@ BR.Game = class Game {
     if (ev.jump || ev.walljump) BR.Audio.jump();
     if (ev.land) { BR.Audio.land(m.landSpeed); this.cam.kick = Math.min(0.3, m.landSpeed * 0.018); this.vmr.onLand(m.landSpeed); }
     if (ev.slide) BR.Audio.slide();
+    // v1.23 footsteps: one per stride on the ground (longer strides when sprinting, quiet when crouched)
+    const sp = Math.hypot(m.vel.x, m.vel.z), lp = this._stepP || (this._stepP = p.pos.clone());
+    if (m.onGround && !m.sliding && sp > 1.2) { this._stepD = (this._stepD || 0) + Math.hypot(p.pos.x - lp.x, p.pos.z - lp.z); const stride = 1.1 + sp * 0.12;
+      if (this._stepD > stride) { this._stepD = 0; BR.Audio.step && BR.Audio.step(sp, m.crouched); } } else this._stepD = 0.6;
+    lp.copy(p.pos);
     if (ev.wallrun) BR.Audio.wallrun();
     if (ev.chute) { BR.Audio.chute(); this.hud.toast('Parachute deployed', 900); this.cam.kick = 0.25; }
     if (ev.pad) { BR.Audio.pad(); this.cam.shake = Math.max(this.cam.shake, 0.15); }
@@ -19174,7 +19745,7 @@ BR.Game = class Game {
     if (attacker && attacker === this.player) {
       this.hud.hitmarker(head, died);
       this.hud.damageNumber(this._v3, dmg, head, victim, shieldHit);
-      if (!died) BR.Audio.hit(head);
+      if (!died) BR.Audio.hit(head, shieldHit);
       // impact sparks: gold crit burst on the head, team-colour/shield-blue on the body
       this.fx.burst(this._v3, head ? [0xffd24a, 0xffffff, 0xff9a1f] : shieldHit ? [0x6fc8ff, 0xffffff] : [0xff4a5a, 0xffffff], head ? 14 : 7, head ? 7 : 4.5, head ? 0.07 : 0.05, head ? 0.45 : 0.3);
       // v1.22: a coloured shock ring + hot pop where your round lands (gold crit, blue shield, red body; bigger on the kill)
@@ -19212,6 +19783,10 @@ BR.Game = class Game {
       BR.Profile.addGrind('kill', 1, { w: weaponId, head: !!head, melee: !!(wd && wd.melee), zombie: !!victim.zombie });
     }
     if (!this.zm && !(this.mode && this.mode.noDrops)) this.loot.dropAll(victim);
+    // v1.23: every kill drops an ammo pack for the killer (ammo for whatever they have equipped when they walk over it)
+    if (!this.zm && !this.demo && killer && killer !== victim && killer.alive && !victim.zombie) {
+      const p = victim.pos; this.loot.add({ kind: 'scav', owner: killer, t0: this.time }, p.x, p.y + 0.9, p.z, new THREE.Vector3((Math.random() - 0.5) * 2, 4, (Math.random() - 0.5) * 2));
+    }
     victim.dieVisual();
     if (this.demo) return;
     if (this.zm) { this.zm.onKill(victim, killer, weaponId, head); return; }
@@ -19306,7 +19881,7 @@ BR.Game = class Game {
     BR.Audio.swish(hit);
   }
 
-  onShellLoaded() { this.vmr.onShell(); BR.Audio.reload(); }
+  onShellLoaded() { this.vmr.onShell(); BR.Audio.mech('shell'); }
 
   onPickup(actor, item) {
     if (actor !== this.player) return;
@@ -19315,6 +19890,7 @@ BR.Game = class Game {
     let label = '';
     if (item.kind === 'weapon') label = BR.RARITY[item.rar | 0].name + ' ' + C.weapons[item.wid].name;
     else if (item.kind === 'ammo') label = `+${item.amount} ${item.ammoType} ammo`;
+    else if (item.kind === 'scav') label = `+AMMO · ${item.gunName || 'weapon'}`;
     else if (item.kind === 'heal') label = `+${item.amount} health`;
     else label = `+${item.amount} shield`;
     this.hud.toast(label, 1000);
@@ -19994,9 +20570,8 @@ BR.Game = class Game {
     if (!b) return;
     if (b.dataset.sp === 'weapon') {
       const p = game.player;
-      game.practiceSpawn('weapon', b.dataset.arg, spSlot, spRar);
-      if (spSlot === 0 && p && !p.slots[1]) spSlot = 1;        // first gun in -> second slot next
-      BR.renderSpawnSlots(); BR.Audio.pickup();
+      game.practiceSpawn('dropweapon', b.dataset.arg, spSlot, spRar);       // v1.23: dropped on the ground, not auto-equipped
+      void p; BR.renderSpawnSlots(); BR.Audio.pickup(); setTimeout(() => game.closeSpawnMenu && game.closeSpawnMenu(), 220);   // back to the game so you can grab it
       b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 300);
       return;
     }
@@ -20297,9 +20872,11 @@ BR.Game = class Game {
     { id: 'killhouse', name: 'KILLHOUSE', sub: '3 lanes · training house', art: 'linear-gradient(150deg,#e3d6bc,#8f8676 50%,#2c2823)' },
     { id: 'cargo', name: 'CARGO', sub: 'Tiny container grid', art: 'linear-gradient(150deg,#4f8fc8,#763a35 50%,#1a1d22)' },
     { id: 'district', name: 'DISTRICT', sub: 'Big town block · houses + plaza', art: 'linear-gradient(150deg,#e6c79a,#7a4a3a 50%,#24201c)', big: true },
+    { id: 'suburb', name: 'CUL-DE-SAC', sub: 'Two houses · one street', art: 'linear-gradient(150deg,#9fd0e8,#6f8a52 50%,#2a2420)', mid: true },
+    { id: 'skyline', name: 'SKYLINE', sub: 'Rooftop duel · AC units + water tank', art: 'linear-gradient(150deg,#ffb36b,#5b5e65 50%,#1a1c22)' },
   ];
   // v1.21: Free For All plays on the big maps (District, Killhouse); TDM adds District to its pool; duels keep the small ones
-  L.pool = preset => preset === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse') : preset === 'tdm' ? L.MAPS : L.MAPS.filter(m => !m.big);
+  L.pool = preset => preset === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse' || m.id === 'suburb') : preset === 'tdm' ? L.MAPS.filter(m => m.id !== 'skyline') : L.MAPS.filter(m => !m.big && !m.mid);     // v1.23: Cul-de-Sac in TDM/FFA, Skyline in duels
   L.rollMap = () => { const P = L.pool(L.preset); return P[Math.floor(Math.random() * P.length)].id; };
   L.play = (opts) => {
     const g = BR.game; BR.Audio.init();
