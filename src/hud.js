@@ -278,6 +278,8 @@ BR.HUD = class HUD {
 </div>
 
 <div id="menu" class="overlay menu">
+  <div class="menu-bg" aria-hidden="true"><i class="mb-glow g1"></i><i class="mb-glow g2"></i><i class="mb-glow g3"></i><i class="mb-ring"></i>
+    <div class="mb-floor"><div class="mb-grid"></div></div><div class="mb-motes">${Array.from({ length: 22 }, (_, i) => `<i style="--x:${(i * 41) % 100};--d:${(i * 7) % 11};--s:${0.5 + (i % 4) * 0.35};--t:${9 + (i % 5) * 2.5}"></i>`).join('')}</div><i class="mb-shade"></i></div>
   <div class="m-aurora"><i></i><i></i><i></i></div>
   <div class="m-motes">${Array.from({ length: 22 }, (_, i) => `<i style="--x:${(i * 41) % 100};--d:${(i * 7) % 11};--s:${0.6 + (i % 5) * 0.25}"></i>`).join('')}</div>
   <div class="film"><i class="lb top"></i><i class="lb bot"></i><i class="scan"></i><i class="grain"></i><i class="cutflash"></i></div>

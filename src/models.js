@@ -1086,7 +1086,7 @@ BR.Models = (function () {
       // Standard finish: an original black / white / mint "splatter" camo over the whole rifle.
       const k = kit(g), I = v => v, prof = profiler(g, I, I);
       const def = BR.CONFIG.weapons.hunter, std = S === cache.mat['default|' + def.color];
-      const camo = std ? hunterCamo() : S, steel = std ? camo : M.dark;
+      const camo = std ? skinMaterial('default', 0x24272c) : S, steel = std ? camo : M.dark;     // v1.18: black factory finish (was the mint splatter camo)
       const BY = 0.046;
       const camoMeshes = [];
       const C = m => { camoMeshes.push(m); return m; };
@@ -1151,7 +1151,7 @@ BR.Models = (function () {
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.0011, 0.0016, 0.9, 6, 1, true), beamM); beam.rotation.x = Math.PI / 2; beam.position.set(0.022, 0.018, -0.975); beam.userData.noMerge = true; g.add(beam);
       g.userData.laser = beam;
       // camo wraps every major part: planar UVs in model space so the pattern flows across parts
-      if (std) for (const m of camoMeshes) camoUV(m, 2.6);
+      // (v1.18: the factory finish is box-mapped in realPass like every other gun)
       hands(g, [0, -0.06, 0.19], [0, -0.008, -0.2], [0.055, 0.03, 0.14]);
       anchors(g, -0.632, BY, [-0.035, -0.02, 0.24]);
     },
@@ -1692,15 +1692,36 @@ BR.Models = (function () {
     const parts = importedParts(id); if (!parts) return false;
     const C = BR.IMPORTED[id], def = BR.CONFIG.weapons[id], std = S === cache.mat['default|' + def.color];
     const magMeshes = [];
+    let textured = false;
     for (const p of parts) {
-      const m = new THREE.Mesh(p.geo, std ? p.mat : S);       // a camo / blueprint body replaces the model's own texture
+      // finish: a camo / blueprint body replaces the model's own texture. Untextured models (and ones
+      // set to finish: 'factory') wear the game's own worn black factory finish (box-mapped in realPass).
+      let mat = std ? p.mat : S;
+      if (std && C.finish === 'factory') {                    // keep the model's sculpted detail (normal map), drop its paint
+        const key = 'factory:' + id; mat = cache.mat[key] || (cache.mat[key] = new THREE.MeshPhongMaterial({ color: C.factoryColor || 0x2b2e33, normalMap: p.mat.normalMap, normalScale: p.mat.normalScale, specular: 0x5a6068, shininess: 38, specularMap: DETAIL.finish(), envMap: BR.weaponEnv(), reflectivity: 0.08, side: THREE.DoubleSide }));
+        textured = true;
+      } else if (std && !p.mat.map) mat = S;
+      else if (std) textured = true;
+      const m = new THREE.Mesh(p.geo, mat);
       g.add(m); if (p.key === 'mag') magMeshes.push(m);
     }
     if (magMeshes.length) magGroup(g, magMeshes);
+    g.userData.importedTextured = textured;
+    // holographic sight (v1.18): clear glass + the ring-and-dot reticle inside the model's own sight window
+    if (C.holo) {
+      const H = C.holo, glass = new THREE.Mesh(new THREE.PlaneGeometry(H.w, H.h), M.lens); glass.position.set(0, H.y, H.z); g.add(glass);
+      const ret = new THREE.Group(); ret.position.set(0, H.y, H.z + 0.002); g.add(ret);
+      ret.add(new THREE.Mesh(new THREE.RingGeometry(0.0064, 0.0072, 64), M.reticle));
+      ret.add(new THREE.Mesh(new THREE.RingGeometry(0.0059, 0.0077, 64), M.dotHalo2));
+      ret.add(new THREE.Mesh(new THREE.CircleGeometry(0.0011, 16), M.reticle));
+      const hh = new THREE.Mesh(new THREE.CircleGeometry(0.0022, 16), M.dotHalo); hh.position.z = -0.0002; ret.add(hh);
+      for (const o of [glass, ret]) o.userData.noUV = true;
+      g.userData.holoReticle = ret;
+    }
     // aim point: the model's own iron sights; a small dot on the front post helps line it up
     const sg = new THREE.Object3D(); sg.position.set(0, C.sight.y, C.sight.rearZ); g.add(sg);
     g.userData.sight = sg; g.userData.sightDist = C.sight.dist;
-    if (C.sight.frontZ !== undefined) { const dot = new THREE.Mesh(new THREE.BoxGeometry(0.0035, 0.0035, 0.0035), M.sightDot); dot.position.set(0, C.sight.y - 0.0035, C.sight.frontZ); g.add(dot); }
+    if (C.sight.frontZ !== undefined && !C.holo && !C.sight.noDot) { const dot = new THREE.Mesh(new THREE.BoxGeometry(0.0035, 0.0035, 0.0035), M.sightDot); dot.position.set(0, C.sight.y - 0.0035, C.sight.frontZ); g.add(dot); }
     hands(g, C.grip, C.fore, C.charge);
     anchors(g, C.muzzle[1], C.muzzle[0], C.charm);
     g.userData.imported = id;
@@ -2964,9 +2985,11 @@ BR.Models = (function () {
     geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   }
   function realPass(g, edges) {
-    if (g.userData.imported) return;
+    if (g.userData.imported && g.userData.importedTextured) return;
+    const imp = !!g.userData.imported;
+    if (imp) edges = false;                                   // sculpted imports already carry their own edges
     g.updateMatrixWorld(true);
-    g.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.real && !o.userData.noUV && o.geometry.attributes.position.count < 20000) boxUV(o, 6.5); });
+    g.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.real && !o.userData.noUV && o.geometry.attributes.position.count < (imp ? 200000 : 20000)) boxUV(o, 6.5); });
     if (edges) edgeLines(g, o => o.parent === g && o.material && o.material.userData && o.material.userData.real, 0xffffff, 0.1, false, 38);     // main body only: one extra draw call
   }
   return {

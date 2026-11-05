@@ -114,6 +114,11 @@
           m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, -1, 0), new THREE.Vector3(1, 0, 0)));
           m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, -0.25, 0.32, 'YXZ')));
           m.scale.setScalar(0.8);
+          // (v1.18) the fist grips it the other way and the blade turns the other way: the knife rolls a half
+          // turn round the forearm's axis through the middle of the handle (the hand follows the handle)
+          { m.updateMatrix(); const Zf = new THREE.Vector3(0.6, -0.78, -0.05).normalize(), Rq = new THREE.Quaternion().setFromAxisAngle(Zf, Math.PI);
+            const C = new THREE.Vector3(0, 0.023, 0.052).applyMatrix4(m.matrix);
+            m.quaternion.premultiply(Rq); m.position.sub(C).applyQuaternion(Rq).add(C); }
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
           const P = new THREE.Vector3(0, 0.066, 0.12).applyMatrix4(m.matrix);   // ring centre

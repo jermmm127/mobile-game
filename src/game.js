@@ -156,6 +156,7 @@ BR.Game = class Game {
     this.endMode();
     this.resurgence = null; document.body.classList.remove('resurgence');
     if (this.scene) this.disposeScene();
+    document.body.classList.remove('menulite');
     const fogCol = 0xbfcfda;                                    // matches the sky dome's horizon band
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(fogCol);
@@ -215,7 +216,18 @@ BR.Game = class Game {
   }
 
   // The menu background: a real bot match filmed by a cinematic camera.
+  // v1.18: the main menu no longer runs a bot match behind it (lighter: no world, no AI, no 3D frames).
+  // It frees the last match's scene and shows the animated purple CSS background instead.
   startDemo() {
+    if (this.zm) { this.zm.dispose(); this.zm = null; document.body.classList.remove('zombies'); }
+    this.endMode();
+    this.resurgence = null; document.body.classList.remove('resurgence');
+    if (this.scene) this.disposeScene();
+    this.scene = null; this.world = null; this.actors.length = 0; this.demo = null;
+    if (this.loot && this.loot.clear) try { this.loot.clear(); } catch (e) { /* nothing to clear */ }
+    document.body.classList.add('menulite');
+  }
+  startDemoMatch() {
     this.buildScene(Math.floor(Math.random() * 1e9), true);
     this.diff = BR.CONFIG.difficulty.normal;
     this.practice = false;
@@ -616,7 +628,7 @@ BR.Game = class Game {
     // victory: starts in slow motion and eases back to full speed
     if (this.victory) { this.victory.rt += dt; const k = Math.min(1, this.victory.rt / 1.8); dt *= 0.25 + 0.75 * k * k; }
     if (this.state === 'playing' || this.state === 'dead' || this.state === 'won') this.update(dt);
-    else if (this.state === 'menu') this.updateDemo(dt);
+    else if (this.state === 'menu') { if (this.scene) this.updateDemo(dt); }
     else if (this.state === 'shop') this.updateShop(dt);
     this.render();
   }
@@ -1350,6 +1362,7 @@ BR.Game = class Game {
   }
 
   render() {
+    if (this.state === 'menu' && !this.scene) return;            // v1.18 light menu: nothing 3D to draw
     BR.Models.tick(performance.now() / 1000);       // animated camo / glove textures
     const r = this.renderer;
     r.clear();

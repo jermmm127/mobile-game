@@ -1553,3 +1553,36 @@ body.arenamode #topbar { display: none !important; }
 .panel.acct label.acct-remember { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 9px; margin: 4px 0 2px; letter-spacing: normal; text-transform: none; color: var(--text); font: 600 14px var(--ui); cursor: pointer; }
 .acct-remember input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; grid-row: span 2; }
 .acct-remember small { font: 500 11px var(--ui); color: var(--muted); }
+
+/* v1.18 light main menu: no bot match behind it, an animated purple background in the title's palette.
+   Only transforms / opacity animate (GPU-cheap), and it stops for prefers-reduced-motion. */
+body.menulite:not(.shopping) #view { visibility: hidden; }
+body.menulite { background: #0b0418; }
+.menu-bg { display: none; position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background: radial-gradient(120% 90% at 70% 0%, #2a0a5e 0%, #160634 38%, #0b0418 70%), #0b0418; }
+body.menulite .menu-bg { display: block; }
+.mb-glow { position: absolute; border-radius: 50%; will-change: transform; }
+.mb-glow.g1 { width: 70vmax; height: 70vmax; left: 38%; top: -28%; background: radial-gradient(closest-side, rgba(178,107,255,.55), rgba(124,58,237,.18) 55%, transparent 72%); animation: mbDrift1 18s ease-in-out infinite alternate; }
+.mb-glow.g2 { width: 60vmax; height: 60vmax; left: -18%; top: 30%; background: radial-gradient(closest-side, rgba(233,213,255,.28), rgba(178,107,255,.12) 50%, transparent 72%); animation: mbDrift2 22s ease-in-out infinite alternate; }
+.mb-glow.g3 { width: 50vmax; height: 50vmax; right: -14%; bottom: -30%; background: radial-gradient(closest-side, rgba(255,92,240,.32), rgba(124,58,237,.14) 55%, transparent 72%); animation: mbDrift3 16s ease-in-out infinite alternate; }
+@keyframes mbDrift1 { from { transform: translate(0, 0) scale(1); } to { transform: translate(-8vw, 6vh) scale(1.12); } }
+@keyframes mbDrift2 { from { transform: translate(0, 0) scale(1.05); } to { transform: translate(10vw, -8vh) scale(0.92); } }
+@keyframes mbDrift3 { from { transform: translate(0, 0) scale(0.95); } to { transform: translate(-6vw, -10vh) scale(1.1); } }
+.mb-ring { position: absolute; left: 62%; top: 42%; width: 46vmin; height: 46vmin; margin: -23vmin 0 0 -23vmin; border-radius: 50%;
+  border: 2px solid rgba(233,213,255,.18); box-shadow: 0 0 40px rgba(178,107,255,.35), inset 0 0 40px rgba(178,107,255,.25); animation: mbPulse 6s ease-in-out infinite; }
+@keyframes mbPulse { 0%, 100% { transform: scale(0.94); opacity: .55; } 50% { transform: scale(1.04); opacity: .9; } }
+.mb-floor { position: absolute; left: -50%; right: -50%; bottom: -10%; height: 62%; perspective: 340px; perspective-origin: 50% 0%; }
+.mb-grid { position: absolute; inset: 0; transform: rotateX(68deg); transform-origin: 50% 0%; will-change: background-position;
+  background-image: linear-gradient(rgba(178,107,255,.55) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(178,107,255,.45) 1.5px, transparent 1.5px);
+  background-size: 64px 64px; animation: mbScroll 3.2s linear infinite;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 35%, #000 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 35%, #000 100%); }
+@keyframes mbScroll { from { background-position: 0 0, 0 0; } to { background-position: 0 64px, 0 0; } }
+.mb-motes i { position: absolute; bottom: -4vh; left: calc(var(--x) * 1%); width: calc(var(--s) * 6px); height: calc(var(--s) * 6px); border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #e9d5ff 35%, rgba(178,107,255,0) 70%); opacity: 0; will-change: transform, opacity;
+  animation: mbRise calc(var(--t) * 1s) linear infinite; animation-delay: calc(var(--d) * -1.3s); }
+@keyframes mbRise { 0% { transform: translateY(0) scale(.6); opacity: 0; } 12% { opacity: .9; } 80% { opacity: .5; } 100% { transform: translateY(-110vh) scale(1.2); opacity: 0; } }
+.mb-shade { position: absolute; inset: 0; background: radial-gradient(130% 100% at 0% 100%, rgba(11,4,24,.85) 0%, rgba(11,4,24,.35) 45%, transparent 70%); }
+body.menulite .overlay.menu::before { display: none; }
+body.menulite .menu-main, body.menulite .menu-nav, body.menulite .menu-dock { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .mb-glow, .mb-ring, .mb-grid, .mb-motes i { animation: none !important; } .mb-motes { display: none; } }
+body.menulite .rec { display: none; }

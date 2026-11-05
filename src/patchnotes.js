@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.18.0', date: '2026-11-05', title: 'New Holo AR, SMG + LMG, lighter menu', notes: [
+    'New detailed models for the Holo AR (an M4-pattern carbine with a suppressor and a holographic sight), the SMG (a pistol-calibre carbine with flip-up iron sights) and the LMG (a belt-fed machine gun with a box mag, bipod and ACOG). They wear the worn black factory finish, every camo and blueprint works on them, and their magazines come out on reloads.',
+    'Holo AR: the red ring-and-dot reticle now sits inside the new holographic sight\'s window, dead on the aim point. LMG: aiming lines up with the new ACOG\'s lens before the scope view takes over.',
+    'Rifle: the green paint is gone. It keeps all its sculpted detail in a plain black factory finish. Hunting Rifle: the mint splatter camo is replaced by the black factory finish.',
+    'Karambit: the fist now grips it the other way round and the blade turns the other way in the idle hold.',
+    'The main menu is much lighter: no bot match runs behind it any more (faster loading, less battery). Instead there\'s an animated purple background in the logo\'s colours, with drifting glows, a pulsing ring, a neon grid floor and rising sparks.',
+  ] },
   { v: '1.17.2', date: '2026-11-05', title: 'Shockwave Launcher', notes: [
     'New weapon: the SHOCKWAVE LAUNCHER. It fires the purple shockwave grenade from a 4-round drum, faster and flatter than a throw. It bursts on contact for up to 42 damage and launches everyone caught in the blast.',
     'Fire it at your feet to rocket-jump (about 15 m straight up), or shoot walls and floors to fling yourself across the map. You never take damage from your own blast.',

@@ -541,7 +541,7 @@ const server = http.createServer((req, res) => {
     const g = BR.game, C = BR.CONFIG, P = BR.Profile, M = BR.Models, out = {};
     out.mapSize = C.map.size; out.run = C.move.runSpeed;
     // new weapons exist, build, fire and reload
-    out.newGuns = ['lmg', 'dmr'].every(id => C.weapons[id] && M.weapon(id).children.length > 10 && BR.WeaponIcons.sil[id]);
+    out.newGuns = ['lmg', 'dmr'].every(id => C.weapons[id] && (M.weapon(id).children.length > 10 || M.weapon(id).userData.imported) && BR.WeaponIcons.sil[id]);     // (v1.18: the LMG is an imported model)
     g.startMatch({ practice: true }); const p = g.player; p.mover.dropping = false; p.takeDamage = () => false;
     g.practiceSpawn('weapon', 'lmg', 0); g.practiceSpawn('weapon', 'dmr', 1);
     let fired = 0; for (const k of [0, 1]) { p.cur = k; p.weapon.cool = 0; if (BR.Weapons.tryFire(g, p)) fired++; }
@@ -686,7 +686,7 @@ const server = http.createServer((req, res) => {
       await new Promise(r => setTimeout(r, 1300));
       for (let i = 0; i < 60 * 3; i++) fx.update(1 / 60);
       const left = fx.fins.length - base;
-      const M = BR.Models.weapon('smg', 'default', 'none'); let env = 0, bump = 0; M.traverse(o => { if (o.material && o.material.envMap) env++; if (o.material && (o.material.bumpMap || o.material.normalMap)) bump++; });   // (v1.17: normal maps; v1.16.3: the rifle is an imported model now, checked separately)
+      const M = BR.Models.weapon('dmr', 'default', 'none'); let env = 0, bump = 0; M.traverse(o => { if (o.material && o.material.envMap) env++; if (o.material && (o.material.bumpMap || o.material.normalMap)) bump++; });   // (v1.17: normal maps; v1.16.3: the rifle is an imported model now, checked separately)
       const bm = g.vmr.models.bayonet.userData.model.userData;
       out.v180 = { auraOk, trails, fins, left, env, bump, grip: !!(bm.armVec && bm.armVecUp && bm.wristRoll && bm.gripY), shop: ['sakura', 'prismburst', 'supernova'].every(k => BR.FINISHERS[k] && BR.FINISHERS[k].price), nova: ['thunderstrike', 'dragonsoul'].every(k => BR.FINISHERS[k].caseOnly && BR.FINISHERS[k].case === 'nova') }; }
     // v1.8.2: PC keybinds for every action
@@ -1195,7 +1195,8 @@ const server = http.createServer((req, res) => {
     // v1.16.3: imported .glb rifle (built-in reader, placed with BR.IMPORTED, magazine split for reloads)
     { const v = {}, m = BR.Models.weapon('rifle', 'default', 'none', null); let tris = 0, tex = false, nmap = false;
       const bx = new THREE.Box3(); m.updateMatrixWorld(true);
-      m.traverse(o => { if (!o.isMesh || o === m.userData.flash || o.geometry.type === 'BoxGeometry') return; if (o.material.map) tex = true; if (o.material.normalMap) nmap = true; tris += o.geometry.attributes.position.count / 3; bx.expandByObject(o); });
+      m.traverse(o => { if (!o.isMesh || o === m.userData.flash || o.geometry.type === 'BoxGeometry') return; if (o.material.map || BR.IMPORTED.rifle.finish === 'factory') tex = true;      // (v1.18: factory finish = sculpted normal map, no paint)
+        if (o.material.normalMap) nmap = true; tris += o.geometry.attributes.position.count / 3; bx.expandByObject(o); });
       const len = bx.max.z - bx.min.z;
       v.imported = m.userData.imported === 'rifle' && tex && nmap && tris > 4000 && len > 1.1 && len < 1.35;
       v.anchors = Math.abs(m.userData.muzzle.position.z - bx.min.z) < 0.03 && !!m.userData.sight && m.userData.grip.z > m.userData.fore.z;
@@ -1205,12 +1206,12 @@ const server = http.createServer((req, res) => {
       out.v1163 = v; }
     // v1.17: detailed surfaces on every procedural weapon, knife and glove
     { const v = {}; let real = 0, uvOk = 0, edges = 0, n = 0;
-      for (const id of ['holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'sniper', 'pistol', 'revolver', 'tracker', 'bayonet', 'knife', 'butterfly']) {
+      for (const id of ['shotgun', 'dmr', 'sniper', 'pistol', 'revolver', 'tracker', 'bayonet', 'knife', 'butterfly']) {      // (v1.18: holoar / smg / lmg are imported models)
         const m = BR.Models.weapon(id, 'default', 'none', null); n++; let r = 0, e = 0, u = true;
         m.traverse(o => { if (o.isMesh && o.material.userData && o.material.userData.real) { r++; if (!o.material.map || !o.material.normalMap || !o.geometry.attributes.uv) u = false; } if (o.isLineSegments) e++; });
         if (r > 3) real++; if (u) uvOk++; if (e) edges++;
       }
-      v.weapons = real === n && uvOk === n && edges >= 8;      // edge highlights on the guns' main bodies (knife parts live in sub-groups)
+      v.weapons = real === n && uvOk === n && edges >= 5;      // edge highlights on the guns' main bodies (knife parts live in sub-groups)
       const h = BR.Models.hand('default', false); let fab = false; h.traverse(o => { if (o.isMesh && o.material.normalMap && o.material.map) fab = true; }); v.gloves = fab;
       const w = BR.Models.worldWeapon('smg'); v.world = w.isMesh;
       out.v117 = v; }
@@ -1241,8 +1242,11 @@ const server = http.createServer((req, res) => {
       const foe = g.actors.find(a => a !== p && a.alive); foe.mover.dropping = false; foe.brain = null; foe.shield = 0; foe.health = 100;
       foe.mover.pos.set(p.pos.x, p.pos.y, p.pos.z - 7); foe.mover.vel.set(0, 0, 0); p.yaw = 0; p.pitch = -0.02; for (let i = 0; i < 3; i++) g.update(1 / 60);
       foe.mover.pos.set(p.pos.x, p.pos.y, p.pos.z - 7); foe.mover.vel.set(0, 0, 0);
+      // (open sky, both pinned: no random building or hill in the way)
+      const pin = () => { p.mover.pos.set(0, 150, 0); p.mover.vel.set(0, 0, 0); foe.mover.pos.set(0, 150, -7); foe.mover.vel.set(0, 0, 0); };
+      pin(); p.yaw = 0; p.pitch = 0;
       const n0 = g.shock.nades.length, fired = BR.Weapons.tryFire(g, p); v.fires = fired && g.shock.nades.length === n0 + 1 && p.weapon.mag === 3;
-      const pin = () => { foe.mover.pos.set(p.pos.x, p.pos.y, p.pos.z - 7); foe.mover.vel.set(0, 0, 0); };
+
       for (let i = 0; i < 40; i++) { pin(); g.update(1 / 60); }
       v.blast = foe.health < 100 && foe.health > 100 - BR.CONFIG.weapons.launcher.blastDamage - 1;
       p.mover.pos.set(30, g.world.groundAt(30, 30, 8), 30); p.mover.vel.set(0, 0, 0); p.health = 100; for (let i = 0; i < 30; i++) g.update(1 / 60);      // (the first blast threw us too: stand on open ground again)
@@ -1251,6 +1255,20 @@ const server = http.createServer((req, res) => {
       v.loadout = !!BR.WeaponIcons.pic.launcher && !!BR.Models.BLUEPRINTS.launcher.voidbloom;
       AC._testing = keepT; g.toMenu();
       out.v1172 = v; }
+    // v1.18: imported Holo AR / SMG / LMG (factory finish, aligned optics), black factory Rifle + Hunting Rifle, light menu, karambit grip
+    { const v = {}, ids = ['holoar', 'smg', 'lmg'];
+      v.imports = ids.every(id => { const m = BR.Models.weapon(id, 'default', 'none', null); let real = 0, uv = true; m.traverse(o => { if (o.isMesh && o.material.userData && o.material.userData.real) { real++; if (!o.geometry.attributes.uv) uv = false; } });
+        return m.userData.imported === id && real >= 1 && uv && !!m.userData.mag && !!m.userData.sight; });
+      const ho = BR.Models.weapon('holoar', 'default', 'none', null), ret = ho.userData.holoReticle, sg = ho.userData.sight.position;
+      v.holo = !!ret && Math.abs(ret.position.y - sg.y) < 0.001 && Math.abs(ret.position.x) < 0.001;
+      const lm = BR.Models.weapon('lmg', 'default', 'none', null); v.acog = BR.CONFIG.weapons.lmg.optic === 'acog' && Math.abs(lm.userData.sight.position.y - 0.134) < 0.002;
+      const camo = BR.Models.weapon('holoar', 'chrome', 'none', null); let ch = false; camo.traverse(o => { if (o.isMesh && o.material === camo.children[0].material && !(o.material.userData && o.material.userData.real)) ch = true; }); v.camo = ch;
+      const rf = BR.Models.weapon('rifle', 'default', 'none', null); let green = false, nm = false; rf.traverse(o => { if (o.isMesh && o.material.map) green = true; if (o.isMesh && o.material.normalMap) nm = true; }); v.rifleBlack = !green && nm;
+      const hu = BR.Models.weapon('hunter', 'default', 'none', null); let mint = false; hu.traverse(o => { if (o.isMesh && o.material.map && o.material.map.image && o.material.map === (BR.Models._huCamoTex || null)) mint = true; }); v.hunterBlack = !mint;
+      // light menu: no world behind it
+      g.toMenu(); v.lightMenu = g.state === 'menu' && !g.scene && document.body.classList.contains('menulite') && getComputedStyle(document.querySelector('.menu-bg')).display === 'block';
+      g.startMatch({ practice: true }); v.menuOff = !document.body.classList.contains('menulite') && !!g.scene; g.toMenu();
+      out.v118 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1427,6 +1445,7 @@ const server = http.createServer((req, res) => {
     ['v1.17 every procedural weapon + knife has worn textures, normal maps and real-scale UVs, guns get edge highlights; gloves get fabric', v17.v117.weapons && v17.v117.gloves && v17.v117.world],
     ['v1.17.1 Remember me: checked keeps you signed in across visits, unchecked only for the tab session; works from the form', v17.v1171.box && v17.v1171.remembered && v17.v1171.sessionOnly && v17.v1171.sameTab && v17.v1171.newVisit && v17.v1171.form],
     ['v1.17.2 Shockwave Launcher: fires a grenade from the drum, the blast damages enemies (capped), firing at your feet rocket-jumps you unhurt; icon + blueprints', v17.v1172.fires && v17.v1172.blast && v17.v1172.rocketJump && v17.v1172.loadout],
+    ['v1.18 imported Holo AR / SMG / LMG (factory finish, magazines, holo reticle + ACOG aligned, camos apply), black factory Rifle + Hunting Rifle, light menu with no match behind it', v17.v118.imports && v17.v118.holo && v17.v118.acog && v17.v118.camo && v17.v118.rifleBlack && v17.v118.hunterBlack && v17.v118.lightMenu && v17.v118.menuOff],
     ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
     ['v1.15.1 level 20 takes about 30 average Battle Royale matches; each level needs more XP than the last', v17.v114.pace],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],

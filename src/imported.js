@@ -19,3 +19,34 @@ BR.IMPORTED = {
     shininess: 40, reflect: 0.1,
   },
 };
+
+// v1.18: three more imports (untextured sculpts -> the game's worn black factory finish)
+Object.assign(BR.IMPORTED, {
+  // "tactical M416" -> Holo AR. Holo window centre (model) x 0.11..0.22, y 0.295.
+  holoar: {
+    scale: 0.64, offset: [0, -0.043, -0.183],
+    magBox: { x: [-0.065, 0.17], y: [-1, 0.06] },
+    grip: [0, -0.075, 0.06], fore: [0, -0.01, -0.36], charge: [0.04, 0.085, 0.0],
+    sight: { y: 0.146, rearZ: -0.077, dist: 0.44 },
+    holo: { y: 0.146, z: -0.11, w: 0.038, h: 0.032 },
+    muzzle: [0.046, -0.792], charm: [-0.04, -0.02, 0.15],
+  },
+  // "tactical PCC" -> SMG (a pistol-calibre carbine: longer than the old compact SMG). Flip-up irons.
+  smg: {
+    scale: 0.42, offset: [0, -0.053, -0.087],
+    magBox: { x: [-0.12, 0.13], y: [-1, 0.09] },
+    grip: [0, -0.07, 0.035], fore: [0, -0.015, -0.25], charge: [0.035, 0.06, -0.02],
+    sight: { y: 0.074, rearZ: -0.003, frontZ: -0.381, dist: 0.37, noDot: true },
+    muzzle: [0.01, -0.487], charm: [-0.03, -0.02, 0.12],
+  },
+  // "tactical LMG + ACOG" -> LMG. ACOG axis (model) y 0.28, objective x 0.07, eyepiece x 0.44.
+  lmg: {
+    scale: 0.635, offset: [0, -0.043, -0.196],
+    magBox: { x: [-0.08, 0.22], y: [-1, -0.005] },
+    grip: [0, -0.075, 0.09], fore: [0, -0.05, -0.36], charge: [0.05, 0.05, -0.05],
+    sight: { y: 0.134, rearZ: -0.037, dist: 0.36, noDot: true },
+    muzzle: [0.0205, -0.801], charm: [-0.05, -0.02, 0.17],
+  },
+});
+// v1.18: the Rifle keeps its sculpted detail (normal map) but loses its green paint: black factory finish
+BR.IMPORTED.rifle.finish = 'factory';
