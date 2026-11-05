@@ -1029,6 +1029,53 @@ BR.Models = (function () {
     // checkering, raised comb and black butt pad; round blued receiver with a bolt and
     // shroud, tapered barrel with a band, open sights (rear notch + ramped front post),
     // steel trigger guard and floorplate, sling swivels.
+    // v1.17.2 Shockwave Launcher: chunky revolving grenade launcher. Wide barrel with three glowing
+    // purple coil rings and a heavy muzzle ring, a 4-round drum (the "mag" for reloads) with glowing
+    // grenade noses in its chambers, receiver with a vented top rail and an open reflex-style sight,
+    // angled pistol grip + vertical foregrip, skeleton stock with a rubber pad, purple accent strips.
+    launcher(g, S, M) {
+      const k = kit(g), glow = glowMat(0xb04bff), hot = glowMat(0xffb8ff);
+      // receiver + rear housing
+      k.box(0.064, 0.07, 0.22, 0, 0.032, 0.0, S);
+      k.box(0.058, 0.05, 0.08, 0, 0.026, 0.14, S);
+      for (const sx of [-1, 1]) { k.box(0.003, 0.008, 0.16, sx * 0.0325, 0.04, -0.01, glow); k.box(0.002, 0.03, 0.05, sx * 0.0326, 0.02, 0.06, M.dark); }
+      // vented top rail + open reflex sight frame (sight line from irons)
+      k.box(0.026, 0.008, 0.22, 0, 0.071, -0.04, M.dark);
+      for (let i = 0; i < 9; i++) k.box(0.027, 0.004, 0.006, 0, 0.0765, -0.13 + i * 0.022, M.metal);
+      k.box(0.036, 0.006, 0.05, 0, 0.081, -0.02, M.dark);
+      for (const sx of [-1, 1]) k.box(0.004, 0.032, 0.04, sx * 0.017, 0.1, -0.02, M.dark);
+      k.box(0.038, 0.005, 0.04, 0, 0.118, -0.02, M.dark);
+      irons(g, M, 0.1, 0.03, -0.2, false);
+      k.box(0.01, 0.02, 0.012, 0, 0.08, -0.2, M.dark);                        // front post base on the barrel
+      g.userData.sightDist = 0.36;
+      // barrel: wide tube, coil rings, muzzle ring, bore
+      k.cyl(0.033, 0.34, 0, 0.038, -0.3, S, 'z', 24);
+      for (const z of [-0.24, -0.32, -0.4]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.0055, 10, 28), glow); r.position.set(0, 0.038, z); g.add(r); }
+      k.cyl(0.04, 0.03, 0, 0.038, -0.475, M.metal, 'z', 24);
+      k.cyl(0.026, 0.004, 0, 0.038, -0.492, M.grip, 'z', 20);
+      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; k.box(0.006, 0.006, 0.02, Math.cos(a) * 0.036, 0.038 + Math.sin(a) * 0.036, -0.47, M.dark); }
+      // 4-round drum under the barrel root, with glowing grenade noses in the chambers
+      const drumParts = [];
+      drumParts.push(k.cyl(0.054, 0.13, 0, -0.02, -0.11, M.dark, 'z', 28));
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + 0.39; drumParts.push(k.box(0.008, 0.008, 0.12, Math.cos(a) * 0.053, -0.02 + Math.sin(a) * 0.053, -0.11, M.metal)); }
+      for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.79, x = Math.cos(a) * 0.03, y = -0.02 + Math.sin(a) * 0.03;
+        drumParts.push(k.cyl(0.016, 0.006, x, y, -0.178, M.grip, 'z', 16));
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), i % 2 ? hot : glow); nose.position.set(x, y, -0.18); g.add(nose); drumParts.push(nose); }
+      drumParts.push(k.cyl(0.012, 0.15, 0, -0.02, -0.11, M.metal, 'z', 14));
+      magGroup(g, drumParts);
+      // grip, trigger guard + trigger, vertical foregrip
+      const grip = k.box(0.032, 0.11, 0.046, 0, -0.055, 0.09, M.grip); grip.rotation.x = 0.28;
+      k.box(0.006, 0.004, 0.06, 0, -0.03, 0.045, M.dark); k.box(0.006, 0.03, 0.004, 0, -0.016, 0.016, M.dark);
+      k.box(0.004, 0.02, 0.006, 0, -0.012, 0.045, M.metal);
+      k.cyl(0.016, 0.09, 0, -0.056, -0.3, M.grip, 'y', 16); k.box(0.03, 0.012, 0.05, 0, -0.012, -0.3, M.dark);
+      // skeleton stock + pad
+      k.box(0.02, 0.018, 0.17, 0, 0.034, 0.25, M.dark); k.box(0.02, 0.018, 0.15, 0, -0.03, 0.25, M.dark);
+      k.box(0.018, 0.08, 0.018, 0, 0.002, 0.33, M.dark);
+      k.box(0.034, 0.1, 0.022, 0, 0.0, 0.345, M.grip);
+      k.box(0.004, 0.06, 0.004, 0.012, 0.002, 0.33, glow);
+      hands(g, [0, -0.07, 0.1], [0, -0.07, -0.3], [0.05, 0.03, 0.0]);
+      anchors(g, -0.5, 0.038, [-0.036, -0.01, 0.1]);
+    },
     hunter(g, S, M) {
       // v1.16.2 Hunting Rifle: a Mauser-pattern bolt action (the 98k layout). Full-length one-piece stock
       // running almost to the muzzle with a top handguard over the barrel, two barrel bands and a nose
@@ -2392,6 +2439,8 @@ BR.Models = (function () {
     ['pistol', 'venom', 'Venom Rush', 'toxic', 0x10200a, 0x7dff3a, 0x7dff3a, 'Legendary', 1300, 'orbit'],
     ['lmg', 'forgeheart', 'Forgeheart', 'crown', 0x1c0d06, 0x4a1e0a, 0xff8a1f, 'Mythic', 2400, 'slam'],
     ['dmr', 'lightspeed', 'Lightspeed', 'hyperdrive', 0x050510, 0xff3df2, 0xff3df2, 'Exotic', 'nova', 'warp'],
+    ['launcher', 'voidbloom', 'Void Bloom', 'hyperdrive', 0x0b0616, 0xb04bff, 0xff5cf0, 'Mythic', 2500, 'orbit'],          // v1.17.2
+    ['launcher', 'solarburst', 'Solar Burst', 'crown', 0x1a0806, 0x3a1208, 0xff7a00, 'Legendary', 1400, 'slam'],
   ];
   const S2BP = {};
   for (const [w, id, name, theme, body, accent, glow, rarity, price, reload] of S2) {

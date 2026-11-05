@@ -1593,7 +1593,7 @@ body.arenamode #topbar { display: none !important; }
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.17.1',
+  version: '1.17.2',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -1753,6 +1753,10 @@ BR.CONFIG = {
     lmg:     { name: 'LMG', ammo: 'heavy', dmg: 20, pellets: 1, rpm: 720, mag: 80, reload: 3.6, spread: 0.03, ads: 0.32, bloom: 0.004, bloomMax: 0.045, range: 90, head: 1.5, recoil: 0.012, recoilH: 0.02, kick: 0.6, zoom: 2.0, optic: 'acog', tier: 2, color: 0x3a3d33, speedMult: 0.9 },
     // Designated marksman rifle: semi-auto, hard-hitting, low-power prism optic
     dmr:     { name: 'DMR', ammo: 'heavy', dmg: 44, pellets: 1, rpm: 240, mag: 12, reload: 2.3, spread: 0.012, ads: 0.15, bloom: 0.012, bloomMax: 0.04, range: 200, head: 2.0, recoil: 0.03, kick: 0.9, zoom: 2.6, tier: 2, color: 0x5a5448, optic: 'prism' },
+    // v1.17.2 Shockwave Launcher: lobs the purple shockwave grenade from a 4-round drum. Faster + flatter
+    // than a thrown one, bursts on contact for more damage, and launches anyone caught in it (you too:
+    // fire at your feet to rocket-jump). Shares shells with the Breacher.
+    launcher: { name: 'Shockwave Launcher', ammo: 'shells', dmg: 0, pellets: 1, rpm: 80, mag: 4, reload: 2.9, spread: 0.008, ads: 0.6, bloom: 0, bloomMax: 0, range: 60, head: 1, recoil: 0.045, kick: 1.6, zoom: 1.3, tier: 2, color: 0x2a2433, launcher: true, launchSpeed: 38, blastDamage: 42 },
     sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4 },
   },
 
@@ -1760,8 +1764,8 @@ BR.CONFIG = {
   loot: {
     tables: [
       { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, revolver: 4, dmr: 2, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
-      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, revolver: 8, lmg: 6, dmr: 6, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
-      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, revolver: 9, lmg: 10, dmr: 9, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
+      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, revolver: 8, lmg: 6, dmr: 6, launcher: 3, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
+      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, revolver: 9, lmg: 10, dmr: 9, launcher: 6, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
     ],
     healAmount: 50,
     shieldAmount: 50,
@@ -1866,6 +1870,12 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.17.2', date: '2026-11-05', title: 'Shockwave Launcher', notes: [
+    'New weapon: the SHOCKWAVE LAUNCHER. It fires the purple shockwave grenade from a 4-round drum, faster and flatter than a throw. It bursts on contact for up to 42 damage and launches everyone caught in the blast.',
+    'Fire it at your feet to rocket-jump (about 15 m straight up), or shoot walls and floors to fling yourself across the map. You never take damage from your own blast.',
+    'Uses shells (shared with the Breacher). Found in buildings and on roofs and towers, in the Mystery Box, the Loadout screen and the Duels loadout picker. All camos work on it.',
+    'Model: a chunky revolving launcher with three glowing purple coil rings on the barrel, glowing grenade noses in the drum, a reflex sight, vertical foregrip and a skeleton stock. The drum comes off on reloads.',
+  ] },
   { v: '1.17.1', date: '2026-11-05', title: 'Remember me + knife tweaks', notes: [
     'New "Remember me" box when signing in or creating an account (on by default). Leave it on to stay signed in on this device when you come back; turn it off and you are signed out when you close the tab.',
     'Karambit: turned round in the hand, so the blade now sweeps in toward the centre of the screen with the ring on the outer side.',
@@ -2247,6 +2257,7 @@ BR.Audio = {
   shot(id, dist, pan, suppressed) {
     const near = 1 / (1 + dist / 18);
     if (id === 'hunter') id = 'sniper';
+    if (id === 'launcher') { this.tone(95, 38, 0.22, 0.55 * near, 'sine'); this.burst(900 * (0.4 + 0.6 * near), 0.7, 0.18, 0.35 * near, pan); return; }      // v1.17.2 hollow thump
     if (id === 'lmg') { this.burst(2700 * (0.4 + 0.6 * near), 0.8, 0.17, 0.62 * near, pan); if (dist < 8) this.tone(120, 40, 0.14, 0.32 * near, 'sine'); return; }
     if (id === 'dmr') { this.burst(2900 * (0.4 + 0.6 * near), 0.85, 0.26, 0.72 * near, pan); if (dist < 8) this.tone(140, 42, 0.2, 0.38 * near, 'sine'); return; }
     if (id === 'revolver') { this.burst(1900 * (0.4 + 0.6 * near), 0.9, 0.3, 0.7 * near, pan); if (dist < 8) this.tone(130, 40, 0.25, 0.4 * near, 'sine'); return; }
@@ -5019,7 +5030,16 @@ BR.Weapons = {
     const maxRange = Math.min(d.range * 2.5, 420);
     const end = this._end || (this._end = new THREE.Vector3());
 
-    for (let p = 0; p < d.pellets; p++) {
+    // v1.17.2 Shockwave Launcher: fire a shockwave grenade out of the muzzle instead of a hitscan round
+    if (d.launcher && game.shock) {
+      const aim = (this._la || (this._la = new THREE.Vector3())).copy(dir).addScaledVector(u, (Math.random() - 0.5) * spread).addScaledVector(v, (Math.random() - 0.5) * spread).normalize();
+      // start from the shooter (just in front of the eyes, a touch right + down where the barrel is), not the
+      // on-screen muzzle, so a respawn / teleport can never leave the shot behind
+      const right = (this._lr || (this._lr = new THREE.Vector3())).set(Math.cos(actor.yaw), 0, -Math.sin(actor.yaw));
+      const from = eye.clone().addScaledVector(aim, 0.6).addScaledVector(right, 0.12); from.y -= 0.1;
+      game.shock.launch(actor, from, aim, d.launchSpeed || 38, d.blastDamage || 40);
+    }
+    for (let p = 0; p < (d.launcher ? 0 : d.pellets); p++) {
       if (d.pattern === 'line') {
         // Horizontal line of pellets, like a door-breaching shotgun
         const k = d.pellets > 1 ? p / (d.pellets - 1) - 0.5 : 0;
@@ -6231,6 +6251,53 @@ BR.Models = (function () {
     // checkering, raised comb and black butt pad; round blued receiver with a bolt and
     // shroud, tapered barrel with a band, open sights (rear notch + ramped front post),
     // steel trigger guard and floorplate, sling swivels.
+    // v1.17.2 Shockwave Launcher: chunky revolving grenade launcher. Wide barrel with three glowing
+    // purple coil rings and a heavy muzzle ring, a 4-round drum (the "mag" for reloads) with glowing
+    // grenade noses in its chambers, receiver with a vented top rail and an open reflex-style sight,
+    // angled pistol grip + vertical foregrip, skeleton stock with a rubber pad, purple accent strips.
+    launcher(g, S, M) {
+      const k = kit(g), glow = glowMat(0xb04bff), hot = glowMat(0xffb8ff);
+      // receiver + rear housing
+      k.box(0.064, 0.07, 0.22, 0, 0.032, 0.0, S);
+      k.box(0.058, 0.05, 0.08, 0, 0.026, 0.14, S);
+      for (const sx of [-1, 1]) { k.box(0.003, 0.008, 0.16, sx * 0.0325, 0.04, -0.01, glow); k.box(0.002, 0.03, 0.05, sx * 0.0326, 0.02, 0.06, M.dark); }
+      // vented top rail + open reflex sight frame (sight line from irons)
+      k.box(0.026, 0.008, 0.22, 0, 0.071, -0.04, M.dark);
+      for (let i = 0; i < 9; i++) k.box(0.027, 0.004, 0.006, 0, 0.0765, -0.13 + i * 0.022, M.metal);
+      k.box(0.036, 0.006, 0.05, 0, 0.081, -0.02, M.dark);
+      for (const sx of [-1, 1]) k.box(0.004, 0.032, 0.04, sx * 0.017, 0.1, -0.02, M.dark);
+      k.box(0.038, 0.005, 0.04, 0, 0.118, -0.02, M.dark);
+      irons(g, M, 0.1, 0.03, -0.2, false);
+      k.box(0.01, 0.02, 0.012, 0, 0.08, -0.2, M.dark);                        // front post base on the barrel
+      g.userData.sightDist = 0.36;
+      // barrel: wide tube, coil rings, muzzle ring, bore
+      k.cyl(0.033, 0.34, 0, 0.038, -0.3, S, 'z', 24);
+      for (const z of [-0.24, -0.32, -0.4]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.0055, 10, 28), glow); r.position.set(0, 0.038, z); g.add(r); }
+      k.cyl(0.04, 0.03, 0, 0.038, -0.475, M.metal, 'z', 24);
+      k.cyl(0.026, 0.004, 0, 0.038, -0.492, M.grip, 'z', 20);
+      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; k.box(0.006, 0.006, 0.02, Math.cos(a) * 0.036, 0.038 + Math.sin(a) * 0.036, -0.47, M.dark); }
+      // 4-round drum under the barrel root, with glowing grenade noses in the chambers
+      const drumParts = [];
+      drumParts.push(k.cyl(0.054, 0.13, 0, -0.02, -0.11, M.dark, 'z', 28));
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + 0.39; drumParts.push(k.box(0.008, 0.008, 0.12, Math.cos(a) * 0.053, -0.02 + Math.sin(a) * 0.053, -0.11, M.metal)); }
+      for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.79, x = Math.cos(a) * 0.03, y = -0.02 + Math.sin(a) * 0.03;
+        drumParts.push(k.cyl(0.016, 0.006, x, y, -0.178, M.grip, 'z', 16));
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), i % 2 ? hot : glow); nose.position.set(x, y, -0.18); g.add(nose); drumParts.push(nose); }
+      drumParts.push(k.cyl(0.012, 0.15, 0, -0.02, -0.11, M.metal, 'z', 14));
+      magGroup(g, drumParts);
+      // grip, trigger guard + trigger, vertical foregrip
+      const grip = k.box(0.032, 0.11, 0.046, 0, -0.055, 0.09, M.grip); grip.rotation.x = 0.28;
+      k.box(0.006, 0.004, 0.06, 0, -0.03, 0.045, M.dark); k.box(0.006, 0.03, 0.004, 0, -0.016, 0.016, M.dark);
+      k.box(0.004, 0.02, 0.006, 0, -0.012, 0.045, M.metal);
+      k.cyl(0.016, 0.09, 0, -0.056, -0.3, M.grip, 'y', 16); k.box(0.03, 0.012, 0.05, 0, -0.012, -0.3, M.dark);
+      // skeleton stock + pad
+      k.box(0.02, 0.018, 0.17, 0, 0.034, 0.25, M.dark); k.box(0.02, 0.018, 0.15, 0, -0.03, 0.25, M.dark);
+      k.box(0.018, 0.08, 0.018, 0, 0.002, 0.33, M.dark);
+      k.box(0.034, 0.1, 0.022, 0, 0.0, 0.345, M.grip);
+      k.box(0.004, 0.06, 0.004, 0.012, 0.002, 0.33, glow);
+      hands(g, [0, -0.07, 0.1], [0, -0.07, -0.3], [0.05, 0.03, 0.0]);
+      anchors(g, -0.5, 0.038, [-0.036, -0.01, 0.1]);
+    },
     hunter(g, S, M) {
       // v1.16.2 Hunting Rifle: a Mauser-pattern bolt action (the 98k layout). Full-length one-piece stock
       // running almost to the muzzle with a top handguard over the barrel, two barrel bands and a nose
@@ -7594,6 +7661,8 @@ BR.Models = (function () {
     ['pistol', 'venom', 'Venom Rush', 'toxic', 0x10200a, 0x7dff3a, 0x7dff3a, 'Legendary', 1300, 'orbit'],
     ['lmg', 'forgeheart', 'Forgeheart', 'crown', 0x1c0d06, 0x4a1e0a, 0xff8a1f, 'Mythic', 2400, 'slam'],
     ['dmr', 'lightspeed', 'Lightspeed', 'hyperdrive', 0x050510, 0xff3df2, 0xff3df2, 'Exotic', 'nova', 'warp'],
+    ['launcher', 'voidbloom', 'Void Bloom', 'hyperdrive', 0x0b0616, 0xb04bff, 0xff5cf0, 'Mythic', 2500, 'orbit'],          // v1.17.2
+    ['launcher', 'solarburst', 'Solar Burst', 'crown', 0x1a0806, 0x3a1208, 0xff7a00, 'Legendary', 1400, 'slam'],
   ];
   const S2BP = {};
   for (const [w, id, name, theme, body, accent, glow, rarity, price, reload] of S2) {
@@ -11079,7 +11148,7 @@ BR.BotBrain = class BotBrain {
       b.grp.position.set(s.x, this.g.world.groundAt(s.x, s.z, 3), s.z); b.grp.rotation.y = s.yaw || 0; b.grp.visible = true;
       this.g.fx.burst(b.grp.position.clone().setY(b.grp.position.y + 1), [0x7fd8ff, 0xffffff], 40, 8, 0.1, 1, 0);
     },
-    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr']; },
+    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr', 'launcher']; },
     updateBox(dt) {
       const b = this.box; if (!b) return; b.t += dt;
       b.beam.material.opacity = 0.16 + 0.06 * Math.sin(this.tAll * 2); b.beam.rotation.y += dt * 0.4;
@@ -12735,7 +12804,7 @@ BR.BotBrain = class BotBrain {
         $('play').appendChild(el);
       }
       if (el.classList.contains('hidden')) { el.classList.remove('hidden'); this._loHtml = null; if (this.phase === 'roundEnd') g.input.unlock(); }
-      const L = (g.settings.duel || {}).loadout || ['rifle', 'shotgun'], P1 = ['rifle', 'holoar', 'smg', 'lmg', 'dmr', 'shotgun', 'hunter', 'sniper'], P2 = ['pistol', 'revolver', 'smg', 'shotgun'];
+      const L = (g.settings.duel || {}).loadout || ['rifle', 'shotgun'], P1 = ['rifle', 'holoar', 'smg', 'lmg', 'dmr', 'shotgun', 'hunter', 'sniper', 'launcher'], P2 = ['pistol', 'revolver', 'smg', 'shotgun'];
       const W = BR.CONFIG.weapons, pic = BR.WeaponIcons && BR.WeaponIcons.pic || {};
       const row = (ids, slot) => ids.map(id => `<button class="${L[slot] === id ? 'sel' : ''}" data-slot="${slot}" data-g="${id}">${pic[id] ? `<img src="${pic[id]}" alt="">` : ''}<span>${W[id].name}</span></button>`).join('');
       const html = `<div class="ar-lo-h"><b>CHOOSE YOUR LOADOUT</b><span>${this.phase === 'roundEnd' ? 'Next round in ' + Math.ceil(Math.max(0, this.t)) + 's' : 'Round starts in ' + Math.ceil(Math.max(0, this.t)) + 's'}</span></div><div class="ar-lo-l">PRIMARY</div><div class="ar-lo-r">${row(P1, 0)}</div><div class="ar-lo-l">SECONDARY</div><div class="ar-lo-r">${row(P2, 1)}</div>`;
@@ -13806,6 +13875,17 @@ BR.Shockwave = class Shockwave {
     return true;
   }
 
+  // v1.17.2: a grenade fired from the Shockwave Launcher (no grenade used up): fast, flatter arc,
+  // bursts on contact, more damage than a thrown one
+  launch(actor, pos, dir, speed, damage) {
+    const g = this.game;
+    const vel = dir.clone().multiplyScalar(speed).addScaledVector(actor.mover.vel, 0.4);
+    const mesh = Shockwave.model(); mesh.scale.setScalar(1.25); mesh.position.copy(pos);
+    g.scene.add(mesh);
+    this.nades.push({ pos: pos.clone(), vel, mesh, owner: actor, t: 0, trailT: 0, fired: true, dmg: damage, grav: 0.45 });
+    return true;
+  }
+
   update(dt) {
     const g = this.game, C = BR.CONFIG.shockwave, W = g.world;
     for (let i = this.nades.length - 1; i >= 0; i--) {
@@ -13814,7 +13894,7 @@ BR.Shockwave = class Shockwave {
       let boom = n.t > C.fuse;
       const steps = 2, h = dt / steps;
       for (let s = 0; s < steps && !boom; s++) {
-        n.vel.y -= C.gravity * h;
+        n.vel.y -= C.gravity * (n.grav || 1) * h;
         const len = n.vel.length() * h;
         if (len < 1e-5) continue;
         const d = this._d || (this._d = new THREE.Vector3()); d.copy(n.vel).normalize();
@@ -13827,7 +13907,7 @@ BR.Shockwave = class Shockwave {
       BR.Models.animate(n.mesh, g.time);
       n.trailT -= dt;
       if (n.trailT <= 0) { n.trailT = 0.025; g.fx.burst(n.pos, [0xb04bff, 0xff7af5], 2, 0.6, 0.05, 0.3, 0); }
-      if (boom) { this.explode(n.pos, n.owner); g.scene.remove(n.mesh); this.nades.splice(i, 1); }
+      if (boom) { this.explode(n.pos, n.owner, n.fired ? n.dmg : null); g.scene.remove(n.mesh); this.nades.splice(i, 1); }
     }
     for (const b of this.pool) {
       if (b.t > 1) continue;
@@ -13845,7 +13925,7 @@ BR.Shockwave = class Shockwave {
     for (const a of g.actors) if (a.nadeCd > 0) a.nadeCd -= dt;
   }
 
-  explode(pos, owner) {
+  explode(pos, owner, dmgOverride) {
     const g = this.game, C = BR.CONFIG.shockwave, R = C.radius;
     // VFX
     const b = this.pool[this.pi++ % this.pool.length];
@@ -13871,7 +13951,8 @@ BR.Shockwave = class Shockwave {
       m.onGround = false; m.sliding = false;
       m.pos.y += 0.05;
       if (a === g.player) hitPlayer = true;
-      if (a !== owner && C.damage > 0) g.applyDamage(a, owner, C.damage * (0.4 + 0.6 * k), false, new THREE.Vector3(cx, cy, cz), 'shockwave');
+      const dmg = dmgOverride != null ? dmgOverride : C.damage;
+      if (a !== owner && dmg > 0) g.applyDamage(a, owner, dmg * (0.4 + 0.6 * k), false, new THREE.Vector3(cx, cy, cz), dmgOverride != null ? 'launcher' : 'shockwave');
     }
     const cp = g.camera.position, dist = cp.distanceTo(pos);
     if (dist < 60) BR.Audio.shockwave(dist);
@@ -14668,7 +14749,7 @@ BR.AntiCheat = {
   active(g) { return g && !g.practice && !g.demo && !g.zm && !(g.mode && (g.mode.aim || g.mode.overdrive || g.mode.cls === 'aimmode')); },
   maxHit(wid) {
     const d = BR.CONFIG.weapons[wid]; if (!d) return 9999;
-    return Math.max(d.dmg * (d.head || 2), d.backstab || 0, d.dmg) * 1.5 + 1;
+    return Math.max(d.dmg * (d.head || 2), d.backstab || 0, d.dmg, d.blastDamage || 0) * 1.5 + 1;
   },
   // called by game.applyDamage for damage dealt BY the local player: returns the allowed damage
   checkHit(g, attacker, dmg, wid) {
@@ -15354,7 +15435,7 @@ BR.Profile = {
 };
 
 BR.MELEE = { bayonet: true, knife: true, butterfly: true, tracker: true };
-const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker']];
+const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['launcher', 'Shockwave Launcher'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker']];
 const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
 
 BR.Shop = class Shop {
@@ -18198,7 +18279,7 @@ BR.Game = class Game {
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
     const wid = p.weapon || 'holoar';
     const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
-    const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'bayonet' ? 3.3 : wid === 'tracker' ? 3.0 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'revolver' ? 2.4 : 1.6;
+    const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'bayonet' ? 3.3 : wid === 'tracker' ? 3.0 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'launcher' ? 1.8 : wid === 'revolver' ? 2.4 : 1.6;
     g.scale.setScalar(sc);
     g.rotation.y = Math.PI / 2;
     g.position.set(0, wid === 'knife' ? 0.05 : -0.05, -0.15);
@@ -18816,7 +18897,7 @@ BR.Game = class Game {
   });
 
   // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts
-  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'sniper', 'hunter', 'revolver', 'pistol'];
+  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'sniper', 'hunter', 'launcher', 'revolver', 'pistol'];
   let dmMode = 'setup', dmTimer = null;
   const dmSeg = (id, key, num) => {
     const el = $(id), sync = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', String(DS[key]) === b.dataset.v));
@@ -19013,7 +19094,7 @@ BR.Game = class Game {
   renderLobby();
 
   // ---- v1.11: loadout editor
-  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
+  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper', 'launcher'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
   const renderLoadout = () => {
     const L = BR.Profile.loadoutGuns();
     $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');

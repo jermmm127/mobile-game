@@ -92,7 +92,16 @@ BR.Weapons = {
     const maxRange = Math.min(d.range * 2.5, 420);
     const end = this._end || (this._end = new THREE.Vector3());
 
-    for (let p = 0; p < d.pellets; p++) {
+    // v1.17.2 Shockwave Launcher: fire a shockwave grenade out of the muzzle instead of a hitscan round
+    if (d.launcher && game.shock) {
+      const aim = (this._la || (this._la = new THREE.Vector3())).copy(dir).addScaledVector(u, (Math.random() - 0.5) * spread).addScaledVector(v, (Math.random() - 0.5) * spread).normalize();
+      // start from the shooter (just in front of the eyes, a touch right + down where the barrel is), not the
+      // on-screen muzzle, so a respawn / teleport can never leave the shot behind
+      const right = (this._lr || (this._lr = new THREE.Vector3())).set(Math.cos(actor.yaw), 0, -Math.sin(actor.yaw));
+      const from = eye.clone().addScaledVector(aim, 0.6).addScaledVector(right, 0.12); from.y -= 0.1;
+      game.shock.launch(actor, from, aim, d.launchSpeed || 38, d.blastDamage || 40);
+    }
+    for (let p = 0; p < (d.launcher ? 0 : d.pellets); p++) {
       if (d.pattern === 'line') {
         // Horizontal line of pellets, like a door-breaching shotgun
         const k = d.pellets > 1 ? p / (d.pellets - 1) - 0.5 : 0;

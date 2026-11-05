@@ -70,7 +70,7 @@ BR.AntiCheat = {
   active(g) { return g && !g.practice && !g.demo && !g.zm && !(g.mode && (g.mode.aim || g.mode.overdrive || g.mode.cls === 'aimmode')); },
   maxHit(wid) {
     const d = BR.CONFIG.weapons[wid]; if (!d) return 9999;
-    return Math.max(d.dmg * (d.head || 2), d.backstab || 0, d.dmg) * 1.5 + 1;
+    return Math.max(d.dmg * (d.head || 2), d.backstab || 0, d.dmg, d.blastDamage || 0) * 1.5 + 1;
   },
   // called by game.applyDamage for damage dealt BY the local player: returns the allowed damage
   checkHit(g, attacker, dmg, wid) {

@@ -933,7 +933,7 @@ const server = http.createServer((req, res) => {
       v.selected = g.settings.mode === 'aim' && /AIM TRAINER/.test(document.getElementById('mc-name').textContent);
       document.getElementById('btn-go').click(); v.goAim = g.mode instanceof BR.AimTrainer;
       g.toMenu(); BR.selectMode('br');
-      document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 8 && !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
+      document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 9 && !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
       out.v111 = v; }
     // v1.11.1: straight wrist, aim trainer infinite ammo, no frozen sparks in freefall, Ironreef for Resurgence
     { const v = {}, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
@@ -1233,6 +1233,24 @@ const server = http.createServer((req, res) => {
         localStorage.removeItem('velocity-royale.profile.u:' + nm.toLowerCase()); localStorage.removeItem('velocity-royale.profile.u:' + nm.toLowerCase() + '.sig');
       } finally { sessionStorage.removeItem('surge.session'); A.db = JSON.parse(keepDb); A.remember = keepRem; A.save(); BR.Profile.KEY = keepKey; BR.Profile.data = JSON.parse(keepP); BR.Profile.save(); BR.updateCoins(); }
       out.v1171 = v; }
+    // v1.17.2: Shockwave Launcher
+    { const v = {}, AC = BR.AntiCheat, keepT = AC._testing; AC._testing = false;
+      g.settings.bots = 3; g.startMatch(); for (let i = 0; i < 30; i++) g.update(1 / 30);
+      const p = g.player; p.mover.dropping = false; p.mover.pos.set(0, g.world.groundAt(0, 0, 8), 0); p.mover.vel.set(0, 0, 0); for (let i = 0; i < 10; i++) g.update(1 / 30);
+      p.slots[0] = BR.Weapons.create('launcher'); p.cur = 0; p.alive = true;
+      const foe = g.actors.find(a => a !== p && a.alive); foe.mover.dropping = false; foe.brain = null; foe.shield = 0; foe.health = 100;
+      foe.mover.pos.set(p.pos.x, p.pos.y, p.pos.z - 7); foe.mover.vel.set(0, 0, 0); p.yaw = 0; p.pitch = -0.02; for (let i = 0; i < 3; i++) g.update(1 / 60);
+      foe.mover.pos.set(p.pos.x, p.pos.y, p.pos.z - 7); foe.mover.vel.set(0, 0, 0);
+      const n0 = g.shock.nades.length, fired = BR.Weapons.tryFire(g, p); v.fires = fired && g.shock.nades.length === n0 + 1 && p.weapon.mag === 3;
+      const pin = () => { foe.mover.pos.set(p.pos.x, p.pos.y, p.pos.z - 7); foe.mover.vel.set(0, 0, 0); };
+      for (let i = 0; i < 40; i++) { pin(); g.update(1 / 60); }
+      v.blast = foe.health < 100 && foe.health > 100 - BR.CONFIG.weapons.launcher.blastDamage - 1;
+      p.mover.pos.set(30, g.world.groundAt(30, 30, 8), 30); p.mover.vel.set(0, 0, 0); p.health = 100; for (let i = 0; i < 30; i++) g.update(1 / 60);      // (the first blast threw us too: stand on open ground again)
+      p.weapon.cool = 0; p.weapon.reloadT = 0; p.pitch = -1.45; const y0 = p.mover.pos.y; BR.Weapons.tryFire(g, p); let top = y0; for (let i = 0; i < 90; i++) { g.update(1 / 60); top = Math.max(top, p.mover.pos.y); }
+      v.rocketJump = top - y0 > 6 && p.alive && p.health === 100;
+      v.loadout = !!BR.WeaponIcons.pic.launcher && !!BR.Models.BLUEPRINTS.launcher.voidbloom;
+      AC._testing = keepT; g.toMenu();
+      out.v1172 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1408,6 +1426,7 @@ const server = http.createServer((req, res) => {
     ['v1.16.3 imported .glb rifle: textured + normal-mapped, placed (length, muzzle, sights, hands), magazine split off, world model, camos still apply', v17.v1163.imported && v17.v1163.anchors && v17.v1163.mag && v17.v1163.world && v17.v1163.skin],
     ['v1.17 every procedural weapon + knife has worn textures, normal maps and real-scale UVs, guns get edge highlights; gloves get fabric', v17.v117.weapons && v17.v117.gloves && v17.v117.world],
     ['v1.17.1 Remember me: checked keeps you signed in across visits, unchecked only for the tab session; works from the form', v17.v1171.box && v17.v1171.remembered && v17.v1171.sessionOnly && v17.v1171.sameTab && v17.v1171.newVisit && v17.v1171.form],
+    ['v1.17.2 Shockwave Launcher: fires a grenade from the drum, the blast damages enemies (capped), firing at your feet rocket-jumps you unhurt; icon + blueprints', v17.v1172.fires && v17.v1172.blast && v17.v1172.rocketJump && v17.v1172.loadout],
     ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
     ['v1.15.1 level 20 takes about 30 average Battle Royale matches; each level needs more XP than the last', v17.v114.pace],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],

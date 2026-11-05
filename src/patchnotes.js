@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.17.2', date: '2026-11-05', title: 'Shockwave Launcher', notes: [
+    'New weapon: the SHOCKWAVE LAUNCHER. It fires the purple shockwave grenade from a 4-round drum, faster and flatter than a throw. It bursts on contact for up to 42 damage and launches everyone caught in the blast.',
+    'Fire it at your feet to rocket-jump (about 15 m straight up), or shoot walls and floors to fling yourself across the map. You never take damage from your own blast.',
+    'Uses shells (shared with the Breacher). Found in buildings and on roofs and towers, in the Mystery Box, the Loadout screen and the Duels loadout picker. All camos work on it.',
+    'Model: a chunky revolving launcher with three glowing purple coil rings on the barrel, glowing grenade noses in the drum, a reflex sight, vertical foregrip and a skeleton stock. The drum comes off on reloads.',
+  ] },
   { v: '1.17.1', date: '2026-11-05', title: 'Remember me + knife tweaks', notes: [
     'New "Remember me" box when signing in or creating an account (on by default). Leave it on to stay signed in on this device when you come back; turn it off and you are signed out when you close the tab.',
     'Karambit: turned round in the hand, so the blade now sweeps in toward the centre of the screen with the ring on the outer side.',

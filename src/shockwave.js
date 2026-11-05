@@ -66,6 +66,17 @@ BR.Shockwave = class Shockwave {
     return true;
   }
 
+  // v1.17.2: a grenade fired from the Shockwave Launcher (no grenade used up): fast, flatter arc,
+  // bursts on contact, more damage than a thrown one
+  launch(actor, pos, dir, speed, damage) {
+    const g = this.game;
+    const vel = dir.clone().multiplyScalar(speed).addScaledVector(actor.mover.vel, 0.4);
+    const mesh = Shockwave.model(); mesh.scale.setScalar(1.25); mesh.position.copy(pos);
+    g.scene.add(mesh);
+    this.nades.push({ pos: pos.clone(), vel, mesh, owner: actor, t: 0, trailT: 0, fired: true, dmg: damage, grav: 0.45 });
+    return true;
+  }
+
   update(dt) {
     const g = this.game, C = BR.CONFIG.shockwave, W = g.world;
     for (let i = this.nades.length - 1; i >= 0; i--) {
@@ -74,7 +85,7 @@ BR.Shockwave = class Shockwave {
       let boom = n.t > C.fuse;
       const steps = 2, h = dt / steps;
       for (let s = 0; s < steps && !boom; s++) {
-        n.vel.y -= C.gravity * h;
+        n.vel.y -= C.gravity * (n.grav || 1) * h;
         const len = n.vel.length() * h;
         if (len < 1e-5) continue;
         const d = this._d || (this._d = new THREE.Vector3()); d.copy(n.vel).normalize();
@@ -87,7 +98,7 @@ BR.Shockwave = class Shockwave {
       BR.Models.animate(n.mesh, g.time);
       n.trailT -= dt;
       if (n.trailT <= 0) { n.trailT = 0.025; g.fx.burst(n.pos, [0xb04bff, 0xff7af5], 2, 0.6, 0.05, 0.3, 0); }
-      if (boom) { this.explode(n.pos, n.owner); g.scene.remove(n.mesh); this.nades.splice(i, 1); }
+      if (boom) { this.explode(n.pos, n.owner, n.fired ? n.dmg : null); g.scene.remove(n.mesh); this.nades.splice(i, 1); }
     }
     for (const b of this.pool) {
       if (b.t > 1) continue;
@@ -105,7 +116,7 @@ BR.Shockwave = class Shockwave {
     for (const a of g.actors) if (a.nadeCd > 0) a.nadeCd -= dt;
   }
 
-  explode(pos, owner) {
+  explode(pos, owner, dmgOverride) {
     const g = this.game, C = BR.CONFIG.shockwave, R = C.radius;
     // VFX
     const b = this.pool[this.pi++ % this.pool.length];
@@ -131,7 +142,8 @@ BR.Shockwave = class Shockwave {
       m.onGround = false; m.sliding = false;
       m.pos.y += 0.05;
       if (a === g.player) hitPlayer = true;
-      if (a !== owner && C.damage > 0) g.applyDamage(a, owner, C.damage * (0.4 + 0.6 * k), false, new THREE.Vector3(cx, cy, cz), 'shockwave');
+      const dmg = dmgOverride != null ? dmgOverride : C.damage;
+      if (a !== owner && dmg > 0) g.applyDamage(a, owner, dmg * (0.4 + 0.6 * k), false, new THREE.Vector3(cx, cy, cz), dmgOverride != null ? 'launcher' : 'shockwave');
     }
     const cp = g.camera.position, dist = cp.distanceTo(pos);
     if (dist < 60) BR.Audio.shockwave(dist);
