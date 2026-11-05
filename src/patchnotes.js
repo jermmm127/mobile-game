@@ -5,6 +5,14 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.20.0', date: '2026-11-05', title: 'Friends, parties + new guns', notes: [
+    'Friends: tap FRIENDS in the main menu and add players by username or account ID. Accept requests, see who is online, and invite friends to your party.',
+    'Parties: up to 4 players. Everyone in your party stands on the main menu stage holding the gun they have equipped, in their camo or blueprint, with an INVITE spot for each empty place. The leader presses PLAY on Duels, Shotgun Duels, Sniper Duels, TDM or FFA, and the whole party lands in the same online lobby on the same team. (Battle Royale with friends isn’t available yet.)',
+    'Fixed: the game froze while reloading the Breacher (the shell reload hit an error every frame). One bad frame can no longer freeze the game.',
+    'Fixed: the Duels loadout picker couldn’t be tapped and some guns were off screen on phones. It now fits every gun and equips on tap.',
+    'The Shockwave Launcher is now only in Battle Royale and Resurgence loot, plus Sniper Duels. Sniper Duels has its own loadout picker with the Sniper, Hunting Rifle and Shockwave Launcher.',
+    'New models: a suppressed tactical Pistol with an extended magazine, an M14-style DMR with a prism scope and suppressor, and a Kar98k Hunting Rifle whose bolt handle cycles after every shot.',
+  ] },
   { v: '1.19.0', date: '2026-11-05', title: 'Squads + knockdowns', notes: [
     'Battle Royale now has Solos, Duos, Trios and Squads, and Resurgence has Solos, Duos and Trios. Pick your team size under the mode card in the lobby. Your teammates drop with you, stick with you, show as blue markers through walls, and appear in a team list on the left.',
     'Knockdowns: in any team mode, reaching 0 HP knocks you down instead of killing you. You crawl slowly and can\'t shoot, aim or use items, and you bleed out in 30 seconds unless a teammate revives you (stand next to them and tap Revive: 3.5 s). Enemies can keep shooting downed players to finish them faster. When nobody on a team is left standing, the whole team is eliminated.',

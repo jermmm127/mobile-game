@@ -632,7 +632,7 @@
           // Tilt the gun to show the loading port; left hand feeds a shell each cycle
           const tilt = 1;
           orz -= 0.45 * tilt; ory -= 0.25 * tilt; ox += 0.02; oy += 0.025; orx += 0.08;
-          const lp = this._v2.copy(port);
+          const lp = this._v2.copy(port || fore || this._v.set(0, -0.04, -0.1));
           const reach = smooth(k / 0.55), push = smooth((k - 0.55) / 0.3), away = smooth((k - 0.85) / 0.15);
           leftTarget = lp.set(port.x - 0.01, port.y - 0.16 * (1 - reach) - 0.01 * away, port.z + 0.06 * (1 - reach) - 0.035 * push + 0.08 * away);
           if (this.shellT > 0) oy -= Math.sin(this.shellT / 0.2 * Math.PI) * 0.02;

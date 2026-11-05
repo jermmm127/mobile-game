@@ -77,6 +77,7 @@ BR.Input = class Input {
   }
 
   onStart(e) {
+    if (e.target && e.target.closest && e.target.closest('.ui-touch')) return;     // v1.20: panels over the game (loadout picker) get normal taps + scrolling
     e.preventDefault();
     if (this.editing) return; // the HUD layout editor owns touches
     this.usingTouch = true;
@@ -110,6 +111,7 @@ BR.Input = class Input {
   }
 
   onMove(e) {
+    if (e.target && e.target.closest && e.target.closest('.ui-touch')) return;
     e.preventDefault();
     if (this.editing) return;
     for (const t of e.changedTouches) {
@@ -144,6 +146,7 @@ BR.Input = class Input {
   }
 
   onEnd(e) {
+    if (e.target && e.target.closest && e.target.closest('.ui-touch')) return;
     e.preventDefault();
     for (const t of e.changedTouches) {
       const r = this.touches[t.identifier];

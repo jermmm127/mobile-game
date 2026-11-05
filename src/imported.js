@@ -59,4 +59,35 @@ BR.IMPORTED.shotgun = {
   grip: [0, -0.06, 0.088], fore: [0, -0.066, -0.57], charge: null,
   sight: { y: 0.125, rearZ: 0.017, frontZ: -0.657, dist: 0.26 },
   muzzle: [0.089, -0.675], charm: [-0.03, -0.02, 0.12],
+  port: [0, -0.035, -0.06],          // v1.20: shells go in under the receiver, just ahead of the trigger guard
 };
+
+// v1.20: three more imports (untextured sculpts in the game's finish)
+Object.assign(BR.IMPORTED, {
+  // "tactical pistol" -> Pistol: suppressor + extended magazine. Slide (model x -0.3..0.95) = 0.25 m.
+  pistol: {
+    scale: 0.2, offset: [0, -0.058, -0.14],
+    magBox: { x: [0.5, 1.0], y: [-1, -0.06] },
+    grip: [0, -0.06, 0.012], fore: [-0.012, -0.095, 0.0], charge: [0, 0.05, 0.035],
+    sight: { y: 0.0792, rearZ: 0.03, frontZ: -0.176, dist: 0.4 },
+    muzzle: [0.0563, -0.33], charm: [-0.03, -0.02, 0.06],
+  },
+  // "DMR piercing strike" -> DMR: M14-style marksman rifle, prism scope (model x 0.1..0.35, axis y 0.178), suppressor.
+  dmr: {
+    scale: 0.65, offset: [-0.005, -0.0106, -0.0355],
+    magBox: { x: [-0.14, 0.03], y: [-1, -0.005] },
+    grip: [0, -0.075, 0.075], fore: [0, -0.02, -0.263], charge: [0.05, 0.05, -0.06],
+    sight: { y: 0.105, rearZ: 0.107, dist: 0.4, noDot: true },
+    muzzle: [0.045, -0.653], charm: [-0.035, -0.02, 0.2],
+  },
+  // "Kar98k" -> Hunting Rifle: bolt action with open sights. The bolt handle (right side, model x 0.15..0.36)
+  // is split off so it cycles after every shot.
+  hunter: {
+    scale: 0.58, offset: [0.0046, -0.0103, -0.088],
+    boltBox: { x: [0.15, 0.36], y: [-1, 1], z: [-1, -0.034] },
+    bolt: { pivot: [0, 0.0535, 0.057], knob: [0.0435, -0.0465, 0.012] },
+    grip: [0, -0.06, 0.19], fore: [0, -0.01, -0.23], charge: [0.055, 0.03, 0.14],
+    sight: { y: 0.0818, rearZ: -0.146, frontZ: -0.627, dist: 0.6, noDot: true },
+    muzzle: [0.05, -0.639], charm: [-0.035, -0.02, 0.24],
+  },
+});

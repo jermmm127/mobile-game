@@ -1049,7 +1049,7 @@
       b.grp.position.set(s.x, this.g.world.groundAt(s.x, s.z, 3), s.z); b.grp.rotation.y = s.yaw || 0; b.grp.visible = true;
       this.g.fx.burst(b.grp.position.clone().setY(b.grp.position.y + 1), [0x7fd8ff, 0xffffff], 40, 8, 0.1, 1, 0);
     },
-    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr', 'launcher']; },
+    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr']; },
     updateBox(dt) {
       const b = this.box; if (!b) return; b.t += dt;
       b.beam.material.opacity = 0.16 + 0.06 * Math.sin(this.tAll * 2); b.beam.rotation.y += dt * 0.4;

@@ -100,6 +100,7 @@
 
   BR.Net = {
     forceLocal: false,
+    loadPeer,                                    // v1.20: shared with party.js (friends + parties)
     session: null,
     makeCode,
     transport(local) { return local || this.forceLocal ? LocalSession : PeerSession; },

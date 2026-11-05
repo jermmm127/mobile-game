@@ -1509,12 +1509,12 @@ body.arenamode #topbar { display: none !important; }
 #maproll.done .mr-res { transform: scale(1); opacity: 1; }
 .mr-fine { color: var(--muted); font: 500 11px var(--ui); }
 /* v1.15 per-round loadout picker (Duels) */
-.ar-lo { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); width: min(720px, 94vw); padding: 12px 14px; border-radius: 16px; background: rgba(10,8,20,.82); box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.1); z-index: 30; color: #fff; font-family: var(--ui); pointer-events: auto; }
+.ar-lo { position: absolute; left: 50%; bottom: max(8px, 6%); transform: translateX(-50%); width: min(760px, 96vw); max-height: 78vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; padding: 12px 14px; border-radius: 16px; background: rgba(10,8,20,.82); box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.1); z-index: 30; color: #fff; font-family: var(--ui); pointer-events: auto; }
 .ar-lo.hidden { display: none; }
 .ar-lo-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
 .ar-lo-h b { font: 800 15px var(--ui); letter-spacing: .08em; } .ar-lo-h span { font: 600 12px var(--ui); color: #ffd24a; }
 .ar-lo-l { font: 700 10px var(--ui); letter-spacing: .2em; color: var(--muted); margin: 6px 0 4px; }
-.ar-lo-r { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.ar-lo-r { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding-bottom: 2px; }
 .ar-lo-r button { flex: 0 0 auto; min-width: 74px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 8px; border-radius: 10px; border: 0; background: rgba(255,255,255,.07); color: #fff; font: 600 11px var(--ui); cursor: pointer; }
 .ar-lo-r button img { height: 24px; max-width: 70px; object-fit: contain; }
 .ar-lo-r button.sel { background: linear-gradient(135deg, rgba(192,132,252,.55), rgba(123,44,255,.55)); box-shadow: inset 0 0 0 1px #c084fc; }
@@ -1618,3 +1618,44 @@ body:has(#downed:not(.hidden)) #vignette { box-shadow: inset 0 0 160px 60px rgba
 .sq-pick button { flex: 1; padding: 9px 4px; border-radius: 12px; cursor: pointer; font: 800 12px var(--ui); letter-spacing: .14em; color: #fff; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.16); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .sq-pick button small { display: block; font: 600 9px var(--ui); letter-spacing: .08em; opacity: .6; margin-top: 2px; }
 .sq-pick button.sel { background: linear-gradient(160deg, color-mix(in srgb, var(--g, #c084fc) 55%, transparent), rgba(255,255,255,.06)); border-color: var(--g, #c084fc); box-shadow: 0 0 14px color-mix(in srgb, var(--g, #c084fc) 35%, transparent); }
+
+@media (max-height: 500px) { .ar-lo { padding: 8px 10px; } .ar-lo-r button { min-width: 66px; padding: 4px 6px; font-size: 10px; } .ar-lo-r button img { height: 20px; } .ar-lo-l { margin: 3px 0 2px; } }
+
+/* ---- v1.20 friends + party lineup */
+.fr-chip { position: absolute; top: calc(110px + var(--st, 0px)); right: max(16px, calc(var(--sr, 0px) + 12px)); display: flex; align-items: center; gap: 6px; padding: 9px 13px; border-radius: 999px; color: #fff; cursor: pointer; font: 800 11px var(--ui); letter-spacing: .14em; z-index: 3; }
+.fr-chip svg { width: 18px; height: 18px; fill: #fff; stroke: #fff; }
+#pt-stage { position: absolute; right: 0; top: 6%; width: 62%; height: 50%; pointer-events: none; z-index: 3; }
+#pt-slots { position: absolute; right: 0; top: 6%; width: 62%; height: 50%; pointer-events: none; z-index: 4; }
+#pt-slots > * { position: absolute; left: 0; top: 0; pointer-events: auto; }
+.pt-plate { display: flex; flex-direction: column; align-items: center; padding: 3px 10px; border-radius: 9px; background: rgba(20,8,40,.62); border: 1px solid rgba(192,132,252,.45); color: #fff; font-family: var(--ui); white-space: nowrap; pointer-events: none; }
+.pt-plate b { font: 800 12px var(--ui); letter-spacing: .04em; } .pt-plate i { font: 700 9px var(--ui); font-style: normal; letter-spacing: .14em; color: #e9d5ff; opacity: .8; }
+.pt-plate.me { border-color: #ffc24a; box-shadow: 0 0 14px rgba(255,194,74,.3); }
+.pt-add { width: 74px; height: 120px; border-radius: 16px; border: 2px dashed rgba(220,190,255,.45); background: rgba(40,16,70,.28); color: #fff; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: var(--ui); transition: transform .15s, background .15s; }
+.pt-add b { font: 300 38px/1 var(--ui); } .pt-add span { font: 800 9px var(--ui); letter-spacing: .18em; opacity: .75; }
+.pt-add:hover { background: rgba(120,60,200,.35); transform: translate(var(--tx,0),var(--ty,0)) scale(1.04); }
+.pt-invite { position: absolute; left: 50%; top: calc(64px + var(--st, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 16px; border-radius: 14px; color: #fff; font: 600 13px var(--ui); z-index: 5; }
+.pt-invite.hidden { display: none; }
+.fr-panel { width: min(560px, 94vw); max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.fr-me { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.06); margin: 6px 0 10px; font-family: var(--ui); }
+.fr-me span { font: 700 10px var(--ui); letter-spacing: .2em; opacity: .65; } .fr-me b { font: 800 16px var(--ui); letter-spacing: .06em; color: #ffd24a; } .fr-me i { font-style: normal; opacity: .8; flex: 1; }
+.fr-add { display: flex; gap: 8px; } .fr-add input { flex: 1; min-width: 0; padding: 11px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35); color: #fff; font: 600 14px var(--ui); }
+.fr-msg { min-height: 16px; margin: 6px 2px; font: 600 12px var(--ui); color: #cfe3ff; } .fr-msg.warn { color: #ffb36b; min-height: 0; }
+.fr-h { margin: 12px 2px 6px; font: 800 10px var(--ui); letter-spacing: .22em; color: rgba(255,255,255,.6); }
+.fr-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.05); margin-bottom: 6px; }
+.fr-row.sent { opacity: .7; }
+.fr-dot { width: 9px; height: 9px; border-radius: 50%; background: #666; flex: none; } .fr-dot.on { background: #39ff88; box-shadow: 0 0 8px #39ff88; }
+.fr-n { flex: 1; min-width: 0; display: flex; flex-direction: column; } .fr-n b { font: 700 14px var(--ui); color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .fr-n small { font: 600 10px var(--ui); color: rgba(255,255,255,.55); letter-spacing: .06em; }
+.fr-tag { font: 800 9px var(--ui); font-style: normal; letter-spacing: .16em; color: #ffd24a; }
+.fr-empty { padding: 10px; font: 500 13px var(--ui); opacity: .6; }
+.fr-note { margin-top: 12px; font: 500 11px/1.4 var(--ui); opacity: .5; }
+.mbtn.ghost { background: transparent; }
+@media (max-width: 760px) { .fr-chip span { display: none; } .fr-chip { padding: 9px; } #pt-stage, #pt-slots { width: 64%; height: 46%; } }
+body.menulite #menu .menu-main { position: relative; z-index: 2; }
+.fr-add input { flex: 1 1 auto; width: 100%; height: 44px; box-sizing: border-box; }
+.fr-add .mbtn { flex: 0 0 auto; width: auto; min-width: 96px; }
+.fr-row .mbtn { flex: 0 0 auto; width: auto; padding: 7px 12px; }
+#friends { z-index: 60; }
+.fr-panel > div:empty { display: none; }
+/* v1.20: panels over the game that you tap (the duel loadout picker) must take pointer events; the
+   "#play > *" rule above switches them off for every HUD element, which made the picker untappable */
+#play > .ui-touch { pointer-events: auto !important; }

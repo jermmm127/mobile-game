@@ -288,6 +288,10 @@ BR.HUD = class HUD {
   <div class="film"><i class="lb top"></i><i class="lb bot"></i><i class="scan"></i><i class="grain"></i><i class="cutflash"></i></div>
   <div class="menu-coins glass"><i class="coin"></i><span id="menu-coins" class="num">0</span></div>
   <button id="lvl-chip" class="lvl-chip glass" aria-label="Level"><b id="lvl-n">0</b><span class="lvl-txt"><i>LEVEL</i><u class="lvl-bar"><s id="lvl-bar"></s></u><small id="lvl-xp">0 / 1,000 XP</small></span></button>
+  <button id="btn-friends" class="fr-chip glass" aria-label="Friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c0-3.8 3-6 6.5-6s6.5 2.2 6.5 6z"/><path d="M19 8v6M16 11h6" fill="none" stroke-width="2.2"/></svg><span>FRIENDS</span></button>
+  <canvas id="pt-stage" aria-hidden="true"></canvas>
+  <div id="pt-slots"></div>
+  <div id="pt-invite" class="pt-invite glass hidden"></div>
   <button id="acct-chip" class="acct-chip glass"><span id="acct-avatar" class="avatar">G</span><span class="acct-text"><b id="acct-name">Guest</b><small id="acct-sub">Sign in</small></span></button>
   <div class="menu-main">
     <div class="logo">
@@ -719,6 +723,17 @@ BR.HUD = class HUD {
   </div>
 </div>
 
+<div id="friends" class="overlay hidden">
+  <div class="panel metal wide fr-panel">
+    <button id="fr-x" class="xbtn" aria-label="Close">✕</button>
+    <div class="ptitle">FRIENDS &amp; PARTY</div>
+    <div id="fr-me" class="fr-me"></div>
+    <div class="fr-add"><input id="fr-input" type="text" maxlength="24" placeholder="Username or ID (SRG-XXXX-XXXX)" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="fr-add" class="mbtn hot">ADD</button></div>
+    <div id="fr-msg" class="fr-msg"></div><div id="fr-status" class="fr-msg warn"></div>
+    <div id="fr-party"></div><div id="fr-inv"></div><div id="fr-req"></div><div id="fr-list"></div>
+    <div class="fr-note">Friends and parties connect players directly (no game server), so you both need the game open. Parties queue together into Duels, Shotgun / Sniper Duels, TDM and FFA.</div>
+  </div>
+</div>
 <div id="duelmenu" class="overlay hidden">
   <div class="panel metal wide duel">
     <button id="dm-x" class="xbtn" aria-label="Close">✕</button>

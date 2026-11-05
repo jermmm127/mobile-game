@@ -9,7 +9,7 @@
   const DESC = {
     duel: 'Round-based duels: pick your guns before every round. No respawns: last team standing takes the round. First to 5. The map is rolled at the start.',
     shotgun: 'Breacher shotguns only. Close, fast, brutal. First to 5 rounds.',
-    sniper: 'Sniper and Hunting Rifle only. Hold angles, land the headshot. First to 5 rounds.',
+    sniper: 'Sniper, Hunting Rifle and Shockwave Launcher only: pick two before every round. Hold angles, land the headshot. First to 5 rounds.',
     tdm: 'Team Deathmatch, 4v4. Respawn after 3 seconds with your loadout. First team to 30 kills.',
     ffa: 'Free For All, 6 players. Everyone for themselves, respawns on. First to 20 kills.',
   };
@@ -91,7 +91,8 @@
         if (BR.Bans) { const recs = BR.Bans.records(); if (recs.length) S.send('bans', { list: recs }, m.from); }                                  // share the ban list
         if (BR.Board) S.send('board', { list: BR.Board.top(100) }, m.from);                                                                      // and the leaderboard
         const P = BR.ARENA_PRESETS[L.preset], c0 = L.players.filter(p => p.team === 0).length, c1 = L.players.filter(p => p.team === 1).length;
-        L.players.push({ pid: m.from, acct: String(m.acct || '').slice(0, 14), name: String(m.name || 'Player').slice(0, 16), team: P.kind === 'ffa' ? L.players.length : c0 <= c1 ? 0 : 1 });
+        const mate = BR.Party && BR.Party.hasAcct(m.acct) && c0 < L.size;          // v1.20: your party plays on your team
+        L.players.push({ pid: m.from, acct: String(m.acct || '').slice(0, 14), name: String(m.name || 'Player').slice(0, 16), team: P.kind === 'ffa' ? L.players.length : mate || c0 <= c1 ? 0 : 1 });
         BR.Audio.pickup(); broadcast();
       });
       S.on('leave', m => { L.players = L.players.filter(p => p.pid !== m.from); broadcast(); });

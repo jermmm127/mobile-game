@@ -632,9 +632,12 @@ BR.Game = class Game {
     if (this.hitStop > 0) { this.hitStop -= dt; dt *= 0.3; }
     // victory: starts in slow motion and eases back to full speed
     if (this.victory) { this.victory.rt += dt; const k = Math.min(1, this.victory.rt / 1.8); dt *= 0.25 + 0.75 * k * k; }
-    if (this.state === 'playing' || this.state === 'dead' || this.state === 'won') this.update(dt);
-    else if (this.state === 'menu') { if (this.scene) this.updateDemo(dt); }
-    else if (this.state === 'shop') this.updateShop(dt);
+    // v1.20: one bad frame (a script error) must never freeze the game: report it once, keep running
+    try {
+      if (this.state === 'playing' || this.state === 'dead' || this.state === 'won') this.update(dt);
+      else if (this.state === 'menu') { if (this.scene) this.updateDemo(dt); }
+      else if (this.state === 'shop') this.updateShop(dt);
+    } catch (e) { const k = String(e && e.message); this._errs = this._errs || {}; if (!this._errs[k]) { this._errs[k] = 1; console.error(e); } }
     this.render();
   }
 

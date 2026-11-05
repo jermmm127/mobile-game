@@ -81,12 +81,18 @@
       if (this.host) this.beginRound(); else this.waitT = 0;
     }
     get duel() { return this.P.kind === 'duel'; }
-    get picksLoadout() { return this.P.guns === 'duel'; }        // Duels 1v1/2v2: pick your guns before every round
+    get picksLoadout() { return this.P.guns === 'duel' || this.P.guns === 'sniper'; }        // Duels + Sniper Duels: pick your guns before every round
+    // v1.20: which saved loadout + which guns the picker offers (the Shockwave Launcher only in Sniper Duels)
+    loKey() { return this.P.guns === 'sniper' ? 'sniperDuel' : 'duel'; }
+    loDefault() { return this.P.guns === 'sniper' ? ['sniper', 'hunter'] : ['rifle', 'shotgun']; }
+    loLists() { return this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'smg', 'lmg', 'dmr', 'shotgun', 'hunter', 'sniper'], ['pistol', 'revolver', 'smg', 'shotgun']]; }
+    myLoadout() { const D = (this.g.settings[this.loKey()] || {}).loadout, def = this.loDefault(), [A, B] = this.loLists(); return [D && A.includes(D[0]) ? D[0] : def[0], D && B.includes(D[1]) ? D[1] : def[1]]; }
     get teams() { return this.P.kind !== 'ffa'; }
     gunsFor(a) {
       const set = this.P.guns;
+      if (a.isPlayer && (set === 'duel' || set === 'sniper')) return this.myLoadout();
       if (set === 'shotgun' || set === 'sniper') return GUNSETS[set];
-      if (a.isPlayer) { if (set === 'duel') { const L = (this.g.settings.duel || {}).loadout || ['rifle', 'shotgun']; return L; } const L = BR.Profile.loadoutGuns(); return [L.primary, L.secondary]; }
+      if (a.isPlayer) { const L = BR.Profile.loadoutGuns(); return [L.primary === 'launcher' ? 'rifle' : L.primary, L.secondary]; }     // (no launcher outside BR / Sniper Duels)
       return BOT_POOL[(a.rosterId * 3 + this.round) % BOT_POOL.length];
     }
     arm(a) {
@@ -334,20 +340,22 @@
       let el = $('ar-lo');
       if (!want) { if (el && !el.classList.contains('hidden')) el.classList.add('hidden'); return; }
       if (!el) {
-        el = document.createElement('div'); el.id = 'ar-lo'; el.className = 'ar-lo';
-        el.addEventListener('mousedown', e => e.stopPropagation()); el.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+        el = document.createElement('div'); el.id = 'ar-lo'; el.className = 'ar-lo ui-touch';       // v1.20: .ui-touch = the game's touch controls leave it alone (scroll + taps work)
+        el.addEventListener('mousedown', e => e.stopPropagation());
+        for (const t of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) el.addEventListener(t, e => e.stopPropagation(), { passive: true });
         el.addEventListener('click', e => {
           const b = e.target.closest('[data-slot]'); if (!b) return;
-          const gg = BR.game, D = gg.settings.duel = gg.settings.duel || {}; const L = (D.loadout || ['rifle', 'shotgun']).slice();
-          L[+b.dataset.slot] = b.dataset.g; D.loadout = L; if (BR.saveSettings) BR.saveSettings();
-          const M = BR.game.mode; if (!M || !M.arena) return;           // (the element outlives a match: always act on the current one)
+          const M = BR.game.mode; if (!M || !M.arena || !M.loKey) return;           // (the element outlives a match: always act on the current one)
+          const gg = BR.game, key = M.loKey(), D = gg.settings[key] = gg.settings[key] || {}; const L = M.myLoadout().slice(), k = +b.dataset.slot;
+          if (L[1 - k] === b.dataset.g) L[1 - k] = L[k];        // same gun in both slots -> swap them
+          L[k] = b.dataset.g; D.loadout = L; if (BR.saveSettings) BR.saveSettings();
           BR.Audio.pickup(); M._loHtml = null;
           const p = BR.game.player; if (M.phase === 'countdown' && p.alive) { const cur = p.cur; M.arm(p); p.cur = Math.min(cur, 1); if (!p.slots[p.cur]) p.cur = 2; }   // re-arm right away before the fight
         });
         $('play').appendChild(el);
       }
       if (el.classList.contains('hidden')) { el.classList.remove('hidden'); this._loHtml = null; if (this.phase === 'roundEnd') g.input.unlock(); }
-      const L = (g.settings.duel || {}).loadout || ['rifle', 'shotgun'], P1 = ['rifle', 'holoar', 'smg', 'lmg', 'dmr', 'shotgun', 'hunter', 'sniper', 'launcher'], P2 = ['pistol', 'revolver', 'smg', 'shotgun'];
+      const L = this.myLoadout(), [P1, P2] = this.loLists();
       const W = BR.CONFIG.weapons, pic = BR.WeaponIcons && BR.WeaponIcons.pic || {};
       const row = (ids, slot) => ids.map(id => `<button class="${L[slot] === id ? 'sel' : ''}" data-slot="${slot}" data-g="${id}">${pic[id] ? `<img src="${pic[id]}" alt="">` : ''}<span>${W[id].name}</span></button>`).join('');
       const html = `<div class="ar-lo-h"><b>CHOOSE YOUR LOADOUT</b><span>${this.phase === 'roundEnd' ? 'Next round in ' + Math.ceil(Math.max(0, this.t)) + 's' : 'Round starts in ' + Math.ceil(Math.max(0, this.t)) + 's'}</span></div><div class="ar-lo-l">PRIMARY</div><div class="ar-lo-r">${row(P1, 0)}</div><div class="ar-lo-l">SECONDARY</div><div class="ar-lo-r">${row(P2, 1)}</div>`;

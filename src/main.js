@@ -471,7 +471,7 @@
   });
 
   // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts
-  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'sniper', 'hunter', 'launcher', 'revolver', 'pistol'];
+  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'sniper', 'hunter', 'revolver', 'pistol'];
   let dmMode = 'setup', dmTimer = null;
   const dmSeg = (id, key, num) => {
     const el = $(id), sync = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', String(DS[key]) === b.dataset.v));
@@ -628,7 +628,7 @@
     resurgence: { name: 'RESURGENCE', sub: 'Solos · Duos · Trios · redeploys', rk: true, cat: 'BATTLE ROYALE', tags: ['24 PLAYERS', 'TRIOS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true, squad: squadFor('resurgence') }) },
     duels:      { name: 'DUELS 1V1 · 2V2', sub: 'AI teammate or friends online', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE', '2V2'], art: 'linear-gradient(120deg,#1f4fb8 0 46%,#ffd24a 48% 52%,#b8302a 54% 100%)', glow: '#ffd24a', go: () => BR.Lobby.open('duel') },
     shotgun:    { name: 'SHOTGUN DUELS', sub: 'Breachers only · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff9a1f,#6a2a10 55%,#1a0a06)', glow: '#ff9a1f', go: () => BR.Lobby.open('shotgun') },
-    sniper:     { name: 'SNIPER DUELS', sub: 'Snipers + hunting rifles · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#9fe8ff,#1a4a6a 55%,#06121c)', glow: '#9fe8ff', go: () => BR.Lobby.open('sniper') },
+    sniper:     { name: 'SNIPER DUELS', sub: 'Snipers, hunting rifles + launchers · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#9fe8ff,#1a4a6a 55%,#06121c)', glow: '#9fe8ff', go: () => BR.Lobby.open('sniper') },
     tdm:        { name: 'TEAM DEATHMATCH', sub: '4v4 · first to 30 kills', rk: true, cat: 'CASUAL', tags: ['NEW', 'ONLINE', '4V4'], art: 'linear-gradient(160deg,#4f8fff,#1a2f6a 50%,#6a1a1a 51%,#ff5a4a)', glow: '#c8a8ff', go: () => BR.Lobby.open('tdm') },
     ffa:        { name: 'FREE FOR ALL', sub: '6 players · first to 20 kills', rk: true, cat: 'CASUAL', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ffe14d,#8a3aff 55%,#12061c)', glow: '#ffe14d', go: () => BR.Lobby.open('ffa') },
     zombies:    { name: 'ZOMBIES', sub: 'Hollow Graves · endless rounds', cat: 'SURVIVAL', tags: ['STORY', 'BOSSES'], art: 'radial-gradient(120% 120% at 80% 0%,#ff7a1a,#5a141e 55%,#140818)', glow: '#ff8a2a', go: () => { BR.Audio.init(); game.startZombies(); } },
@@ -675,11 +675,14 @@
     settings.ranked = b.dataset.q === 'ranked'; save(); BR.Audio.click(); renderDiscover(); renderLobby(); });
   $('discover').addEventListener('click', e => { const t = e.target.closest('[data-m]'); if (!t) return; BR.selectMode(t.dataset.m); BR.Audio.pickup(); renderDiscover(); setTimeout(() => $('discover').classList.add('hidden'), 160); });
   $('btn-go').addEventListener('click', () => { BR.Audio.init();
-    if (BR.Bans && BR.Bans.blocked(false)) { game.hud.toast('This account is banned', 2200); BR.Audio.click(); return; } game.ranked = rankedNow(settings.mode); MODES[settings.mode].go(); });
+    if (BR.Bans && BR.Bans.blocked(false)) { game.hud.toast('This account is banned', 2200); BR.Audio.click(); return; } game.ranked = rankedNow(settings.mode);
+    // v1.20 parties: the leader queues everyone into an online lobby; members wait for the leader
+    if (BR.Party && BR.Party.inParty()) { if (!BR.Party.isLeader()) { game.hud.toast('Waiting for your party leader to start', 1800); return; } BR.Party.queue(settings.mode); return; }
+    MODES[settings.mode].go(); });
   renderLobby();
 
   // ---- v1.11: loadout editor
-  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper', 'launcher'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
+  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
   const renderLoadout = () => {
     const L = BR.Profile.loadoutGuns();
     $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');

@@ -688,7 +688,7 @@ const server = http.createServer((req, res) => {
       await new Promise(r => setTimeout(r, 1300));
       for (let i = 0; i < 60 * 3; i++) fx.update(1 / 60);
       const left = fx.fins.length - base;
-      const M = BR.Models.weapon('dmr', 'default', 'none'); let env = 0, bump = 0; M.traverse(o => { if (o.material && o.material.envMap) env++; if (o.material && (o.material.bumpMap || o.material.normalMap)) bump++; });   // (v1.17: normal maps; v1.16.3: the rifle is an imported model now, checked separately)
+      const M = BR.Models.weapon('sniper', 'default', 'none'); let env = 0, bump = 0; M.traverse(o => { if (o.material && o.material.envMap) env++; if (o.material && (o.material.bumpMap || o.material.normalMap)) bump++; });   // (v1.17: normal maps; v1.16.3: the rifle is an imported model now, checked separately)
       const bm = g.vmr.models.bayonet.userData.model.userData;
       out.v180 = { auraOk, trails, fins, left, env, bump, grip: !!(bm.armVec && bm.armVecUp && bm.wristRoll && bm.gripY), shop: ['sakura', 'prismburst', 'supernova'].every(k => BR.FINISHERS[k] && BR.FINISHERS[k].price), nova: ['thunderstrike', 'dragonsoul'].every(k => BR.FINISHERS[k].caseOnly && BR.FINISHERS[k].case === 'nova') }; }
     // v1.8.2: PC keybinds for every action
@@ -935,7 +935,7 @@ const server = http.createServer((req, res) => {
       v.selected = g.settings.mode === 'aim' && /AIM TRAINER/.test(document.getElementById('mc-name').textContent);
       document.getElementById('btn-go').click(); v.goAim = g.mode instanceof BR.AimTrainer;
       g.toMenu(); BR.selectMode('br');
-      document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 9 && !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
+      document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 8 && !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
       out.v111 = v; }
     // v1.11.1: straight wrist, aim trainer infinite ammo, no frozen sparks in freefall, Ironreef for Resurgence
     { const v = {}, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
@@ -1208,12 +1208,12 @@ const server = http.createServer((req, res) => {
       out.v1163 = v; }
     // v1.17: detailed surfaces on every procedural weapon, knife and glove
     { const v = {}; let real = 0, uvOk = 0, edges = 0, n = 0;
-      for (const id of ['dmr', 'sniper', 'pistol', 'revolver', 'tracker', 'bayonet', 'knife', 'butterfly']) {      // (v1.18.1: shotgun imported too)      // (v1.18: holoar / smg / lmg are imported models)
+      for (const id of ['sniper', 'revolver', 'launcher', 'tracker', 'bayonet', 'knife', 'butterfly']) {      // (v1.20: pistol / dmr / hunter imported)      // (v1.18.1: shotgun imported too)      // (v1.18: holoar / smg / lmg are imported models)
         const m = BR.Models.weapon(id, 'default', 'none', null); n++; let r = 0, e = 0, u = true;
         m.traverse(o => { if (o.isMesh && o.material.userData && o.material.userData.real) { r++; if (!o.material.map || !o.material.normalMap || !o.geometry.attributes.uv) u = false; } if (o.isLineSegments) e++; });
         if (r > 3) real++; if (u) uvOk++; if (e) edges++;
       }
-      v.weapons = real === n && uvOk === n && edges >= 4;      // edge highlights on the guns' main bodies (knife parts live in sub-groups)
+      v.weapons = real === n && uvOk === n && edges >= 3;      // edge highlights on the guns' main bodies (knife parts live in sub-groups)
       const h = BR.Models.hand('default', false); let fab = false; h.traverse(o => { if (o.isMesh && o.material.normalMap && o.material.map) fab = true; }); v.gloves = fab;
       const w = BR.Models.worldWeapon('smg'); v.world = w.isMesh;
       out.v117 = v; }
@@ -1352,7 +1352,29 @@ const server = http.createServer((req, res) => {
     const S = BR.CONFIG.weapons.smg; out.smg = S.rpm === 950 && S.mag === 30 && S.adsRate > 13 && S.speedMult > 1;
     return out;
   });
+  // v1.20: reloads never throw (the Breacher froze the game), new imports, launcher rules, friends + party
+  const v120 = await page.evaluate(() => {
+    const g = BR.game, out = {}; BR.AntiCheat._testing = true;
+    g.startMatch({ practice: true }); const p = g.player; const bad = [];
+    for (const id of Object.keys(BR.CONFIG.weapons)) { if (BR.CONFIG.weapons[id].melee) continue;
+      try { p.slots[0] = BR.Weapons.create(id); p.cur = 0; p.ammo = { light: 999, heavy: 999, shells: 999 }; for (let i = 0; i < 20; i++) g.update(1 / 60);
+        p.slots[0].mag = 0; BR.Weapons.startReload(p.slots[0], p); for (let i = 0; i < 600 && p.slots[0].reloadT > 0; i++) g.vmr.update(1 / 60, 0, 0) || BR.Weapons.update(p.slots[0], 1 / 60, p);
+        if (p.slots[0].mag !== p.slots[0].def.mag) bad.push(id); } catch (e) { bad.push(id + ':' + e.message); } }
+    out.reloads = bad.length === 0; out.bad = bad;
+    const ud = id => g.vmr.models[id].userData.model.userData;
+    out.imports = ['pistol', 'dmr', 'hunter'].every(id => ud(id).imported === id) && !!ud('hunter').bolt && !!ud('pistol').mag && !!ud('dmr').mag && !!ud('shotgun').port;
+    // the launcher: Sniper Duels picker only (never in the Duels / TDM / FFA lists or the Zombies box)
+    const fake = P => ({ P: BR.ARENA_PRESETS[P], g });
+    const lists = P => BR.ArenaMatch.prototype.loLists.call(fake(P));
+    out.launcher = lists('sniper')[0].join() === 'sniper,hunter,launcher' && !lists('duel')[1].includes('launcher') && !BR.ZombieMode.prototype.boxPool.call({}).includes('launcher');
+    out.sniperPicker = BR.ArenaMatch.prototype.loKey.call(fake('sniper')) === 'sniperDuel' && Object.getOwnPropertyDescriptor(BR.ArenaMatch.prototype, 'picksLoadout').get.call(fake('sniper')) === true;
+    out.duelLists = !lists('duel')[0].includes('launcher');
+    // friends + party pieces exist and the lineup renders your character
+    out.party = !!(BR.Party && BR.PartyStage && document.getElementById('btn-friends') && document.getElementById('pt-stage') && document.getElementById('friends'));
+    return out;
+  });
   const checks = [
+    ['v1.20 every gun reloads without errors (the Breacher reload froze the game), Pistol / DMR / Kar98k imports (bolt cycles), launcher only in Sniper Duels picker (+ BR loot), friends + party UI', v120.reloads && v120.imports && v120.sniperPicker && v120.duelLists && v120.launcher && v120.party],
     ['v1.19 squads: duos/trios/squads teams + teammates, knockdowns (crawl, no shooting, bleed out), bot + player revives, finishing the downed, team wipes, spectate, team win, Resurgence up to trios, lobby picker', ['setup', 'knocked', 'bleeds', 'noFire', 'botRevive', 'finish', 'wipe', 'noFF', 'playerDown', 'playerRevived', 'prompt', 'youRevive', 'panel', 'teamWin', 'spectate', 'resTrios', 'solo', 'picker'].every(k => v119[k])],
     ['v1.19 recoil springs settle without bouncing; SMG retuned (950 rpm, 30 rounds, fast ADS + mobility)', v119.recoil && v119.smg],
     ['run speed matches config', Math.abs(mech.run - run) < 0.3],
@@ -1521,7 +1543,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();
