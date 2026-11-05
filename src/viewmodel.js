@@ -110,8 +110,9 @@
           // CS-style idle: handle across the fist (ring on the inner side by the index finger),
           // blade out the outer side sweeping up-right with the hook curving up, flat facing you.
           // model Z (handle -> ring) -> left, model -Y (hook) -> up, model X -> toward the camera's -Z
-          m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, -1, 0), new THREE.Vector3(-1, 0, 0)));
-          m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, 0.25, -0.32, 'YXZ')));
+          // (v1.17.1) turned round: the blade now sweeps in toward the centre of the screen, ring on the outer side
+          m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, -1, 0), new THREE.Vector3(1, 0, 0)));
+          m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, -0.25, 0.32, 'YXZ')));
           m.scale.setScalar(0.8);
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
@@ -318,7 +319,7 @@
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       if (w.id === 'hunter') { hx = 0.15 * s; hy = -0.165; hz = -0.47; }     // v1.16.2: closer + bigger at the hip, muzzle toward the centre (reference)
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
-      if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; } if (w.id === 'tracker') { hx = 0.075 * s; hy = -0.118; hz = -0.43; }   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
+      if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; } if (w.id === 'tracker') { hx = 0.082 * s; hy = -0.129; hz = -0.47; }     // v1.17.1: a touch farther = smaller on screen, same spot   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to

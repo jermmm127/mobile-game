@@ -36,7 +36,11 @@ BR.Accounts = {
     let dirty = false;
     const taken = new Set(Object.values(this.db.users).map(u => u.id).filter(Boolean));
     for (const u of Object.values(this.db.users)) if (!u.id) { u.id = this.newId(taken); taken.add(u.id); dirty = true; }
+    // v1.17.1 Remember me: a remembered sign-in is stored with the accounts (survives closing the app);
+    // otherwise the sign-in only lives in this tab's session storage and ends when the tab / browser closes
+    let ses = null; try { ses = sessionStorage.getItem('surge.session'); } catch (e) { /* blocked */ }
     if (d.current && this.db.users[d.current]) this.db.current = d.current;
+    else if (ses && this.db.users[ses]) { this.db.current = ses; this.remember = false; }
     if (dirty) this.save();
     return this;
   },
@@ -60,7 +64,13 @@ BR.Accounts = {
     return 'SRG-' + c.slice(0, 4).join('') + '-' + c.slice(4).join('');
   },
   accountId(name) { const n = name === undefined ? this.db.current : name; const u = n && this.db.users[n]; return u ? u.id : null; },
-  save() { BR.util.save(this.KEY, this.db); },
+  remember: true,
+  save() {
+    const cur = this.db.current;
+    try { if (cur && !this.remember) sessionStorage.setItem('surge.session', cur); else sessionStorage.removeItem('surge.session'); } catch (e) { /* blocked */ }
+    BR.util.save(this.KEY, { users: this.db.users, current: this.remember ? cur : null });
+  },
+  setRemember(on) { this.remember = on !== false; },
 
   current() { return this.db.current; },
   displayName() { return this.db.current || 'Guest'; },
@@ -76,7 +86,7 @@ BR.Accounts = {
     const salt = BR.sha256.randomHex(16);
     const id = this.newId(new Set(Object.values(this.db.users).map(u => u.id)));
     this.db.users[name] = { salt, hash: await BR.sha256.hex(salt + ':' + pass), id, created: Date.now(), last: Date.now() };
-    this.db.current = name;
+    this.db.current = name; this.setRemember(arguments[2]);
     this.save();
     return { ok: true };
   },
@@ -86,7 +96,7 @@ BR.Accounts = {
     const key = Object.keys(this.db.users).find(u => u.toLowerCase() === name.toLowerCase());
     const u = key && this.db.users[key];
     if (!u || (await BR.sha256.hex(u.salt + ':' + (pass || ''))) !== u.hash) return { ok: false, msg: 'Wrong username or password' };
-    this.db.current = key;
+    this.db.current = key; this.setRemember(arguments[2]);
     u.last = Date.now();
     this.save();
     return { ok: true, mustChange: !!u.mustChange };
@@ -140,7 +150,7 @@ BR.Accounts = {
     return ['account_id,username,created,last_login,level,coins,rp,matches,wins'].concat(rows.map(r => [r.id, r.name, d(r.created), d(r.last), r.level, r.coins, r.rp, r.matches, r.wins].join(','))).join('\n');
   },
 
-  logOut() { this.db.current = null; this.adminUntil = 0; this.save(); },
+  logOut() { this.db.current = null; this.adminUntil = 0; this.remember = true; this.save(); },
 
   // Is the signed-in account a built-in dev account?
   isSeededDev() {

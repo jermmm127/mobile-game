@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.17.1', date: '2026-11-05', title: 'Remember me + knife tweaks', notes: [
+    'New "Remember me" box when signing in or creating an account (on by default). Leave it on to stay signed in on this device when you come back; turn it off and you are signed out when you close the tab.',
+    'Karambit: turned round in the hand, so the blade now sweeps in toward the centre of the screen with the ring on the outer side.',
+    'Tracker: sits a little smaller on screen (a touch farther from the camera, same spot).',
+  ] },
   { v: '1.17.0', date: '2026-11-04', title: 'Detailed weapon surfaces', notes: [
     'Every gun and knife got a hand-textured look, closer to the new Rifle. Finishes now have soft mottling, grime streaks, fine scratches, chipped edges and dust instead of flat colour, and real surface normals make light catch the scratches, stippled grips and brushed metal.',
     'Grips use a stippled polymer texture, steel parts a brushed grain, and knife blades a brushed satin with fine polishing lines.',

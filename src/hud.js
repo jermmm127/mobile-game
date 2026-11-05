@@ -488,6 +488,7 @@ BR.HUD = class HUD {
         <input id="acct-user" name="username" type="text" autocomplete="username" maxlength="16" autocapitalize="off" spellcheck="false">
         <label for="acct-pass">Password</label>
         <input id="acct-pass" name="password" type="password" autocomplete="current-password" maxlength="64">
+        <label class="acct-remember" for="acct-remember"><input id="acct-remember" type="checkbox" checked><span>Remember me</span><small>Stay signed in on this device</small></label>
         <button id="acct-submit" class="mbtn hot" type="submit">Sign in</button>
       </form>
       <p class="fine">Accounts are saved on this device for now. Coins, skins and stats are kept per account.</p>

@@ -10,7 +10,7 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
   await new Promise(r => server.listen(0, r)); const url = `http://localhost:${server.address().port}/index.html`;
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const ctx = await b.newContext({ viewport: { width: 640, height: 320 } }), A = await ctx.newPage(), B = await ctx.newPage(), errors = [];
-  for (const p of [A, B]) { p.on('pageerror', e => errors.push(e.message)); await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 }); await p.waitForFunction(() => window.BR && BR.game, null, { timeout: 60000 }); await p.evaluate(() => { BR.Net.forceLocal = true; BR.Lobby.skipRoll = true; }); }
+  for (const p of [A, B]) { p.on('pageerror', e => errors.push(e.message)); await p.route(u => !/^http:\/\/(localhost|127\.0\.0\.1)/.test(u.href), r => r.abort()); await p.goto(url, { waitUntil: 'commit', timeout: 120000 }); await p.waitForFunction(() => window.BR && BR.game, null, { timeout: 60000 }); await p.evaluate(() => { BR.Net.forceLocal = true; BR.Lobby.skipRoll = true; }); }
   const code = await A.evaluate(async () => { BR.Lobby.open('tdm'); await BR.Lobby.host(); return BR.Lobby.sess.code; });
   await B.evaluate(async c => { BR.Lobby.open('tdm'); await BR.Lobby.join(c); }, code);
   await A.waitForTimeout(800);

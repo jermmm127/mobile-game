@@ -1548,3 +1548,8 @@ body.arenamode #topbar { display: none !important; }
 .rk-row.holder .rp { font-style: italic; color: var(--muted); }
 .rk.rk-open { --r1: #3a3f4a; --r2: #23262d; }
 .rk-foot { font: 500 11px var(--ui); color: var(--muted); text-align: center; margin: 10px 4px 2px; }
+
+/* v1.17.1 remember me */
+.panel.acct label.acct-remember { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 9px; margin: 4px 0 2px; letter-spacing: normal; text-transform: none; color: var(--text); font: 600 14px var(--ui); cursor: pointer; }
+.acct-remember input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; grid-row: span 2; }
+.acct-remember small { font: 500 11px var(--ui); color: var(--muted); }

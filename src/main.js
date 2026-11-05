@@ -312,7 +312,7 @@
   $('acct-form').addEventListener('submit', async e => {
     e.preventDefault();
     const fn = acctMode === 'login' ? 'logIn' : 'signUp';
-    const r = await BR.Accounts[fn]($('acct-user').value, $('acct-pass').value);
+    const r = await BR.Accounts[fn]($('acct-user').value, $('acct-pass').value, $('acct-remember').checked);
     if (!r.ok) { $('acct-msg').textContent = r.msg; return; }
     const used = $('acct-pass').value; $('acct-pass').value = '';
     afterAuth();

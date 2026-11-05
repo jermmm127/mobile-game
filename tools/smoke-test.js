@@ -22,8 +22,9 @@ const server = http.createServer((req, res) => {
   const page = await (await browser.newContext({ viewport: { width: 844, height: 390 } })).newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
-  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-  await page.goto(url);
+  page.on('console', m => { if (m.type() === 'error' && !/net::ERR_FAILED/.test(m.text())) errors.push(m.text()); });     // (blocked web fonts aren't game errors)
+  await page.route(u => !/^http:\/\/(localhost|127\.0\.0\.1)/.test(u.href), r => r.abort());      // offline-safe: web fonts etc. are optional
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.waitForFunction(() => window.BR && BR.game);
   // the older checks below cover the karambit, so carry it (the bayonet is the default knife and has its own checks)
   await page.evaluate(() => { if (BR.AntiCheat) BR.AntiCheat._testing = true; BR.Profile.data.xp = 5e6; BR.Profile.data.equip.melee = 'knife'; BR.Profile.save(); BR.game.refreshCosmetics(); });     // v1.14: max level so every knife is unlocked for the older checks
@@ -1213,6 +1214,25 @@ const server = http.createServer((req, res) => {
       const h = BR.Models.hand('default', false); let fab = false; h.traverse(o => { if (o.isMesh && o.material.normalMap && o.material.map) fab = true; }); v.gloves = fab;
       const w = BR.Models.worldWeapon('smg'); v.world = w.isMesh;
       out.v117 = v; }
+    // v1.17.1: Remember me (checked: stays signed in after reopening; unchecked: only for this tab session)
+    { const v = {}, A = BR.Accounts, keepDb = JSON.stringify(A.db), keepRem = A.remember, keepP = JSON.stringify(BR.Profile.data), keepKey = BR.Profile.KEY;
+      try {
+        const nm = 'rem_' + (Date.now() % 1e6);
+        v.box = !!document.getElementById('acct-remember') && document.getElementById('acct-remember').checked;
+        await A.signUp(nm, 'pw1234', true);
+        v.remembered = BR.util.load(A.KEY, {}).current === nm && !sessionStorage.getItem('surge.session');
+        A.logOut(); await A.logIn(nm, 'pw1234', false);
+        v.sessionOnly = BR.util.load(A.KEY, {}).current === null && sessionStorage.getItem('surge.session') === nm;
+        A.load(); v.sameTab = A.current() === nm && A.remember === false;                     // reload in the same tab keeps you in
+        sessionStorage.removeItem('surge.session'); A.load(); v.newVisit = A.current() !== nm;  // a new visit (tab closed) signs you out
+        // through the form
+        A.logOut(); document.getElementById('acct-chip').click();
+        document.getElementById('acct-user').value = nm; document.getElementById('acct-pass').value = 'pw1234'; document.getElementById('acct-remember').checked = true;
+        document.getElementById('acct-form').dispatchEvent(new Event('submit', { cancelable: true })); await new Promise(r => setTimeout(r, 400));
+        v.form = A.current() === nm && BR.util.load(A.KEY, {}).current === nm; document.getElementById('acct-close').click();
+        localStorage.removeItem('velocity-royale.profile.u:' + nm.toLowerCase()); localStorage.removeItem('velocity-royale.profile.u:' + nm.toLowerCase() + '.sig');
+      } finally { sessionStorage.removeItem('surge.session'); A.db = JSON.parse(keepDb); A.remember = keepRem; A.save(); BR.Profile.KEY = keepKey; BR.Profile.data = JSON.parse(keepP); BR.Profile.save(); BR.updateCoins(); }
+      out.v1171 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
@@ -1387,6 +1407,7 @@ const server = http.createServer((req, res) => {
     ['v1.16.1 leaderboard: 50 spots filled with the owner\'s name, real ranked players replace them, forged / impersonated / impossible entries refused, bans hidden', v17.v1161.empty && v17.v1161.took && v17.v1161.forged && v17.v1161.pinned && v17.v1161.newcomer && v17.v1161.bannedHidden && v17.v1161.ui],
     ['v1.16.3 imported .glb rifle: textured + normal-mapped, placed (length, muzzle, sights, hands), magazine split off, world model, camos still apply', v17.v1163.imported && v17.v1163.anchors && v17.v1163.mag && v17.v1163.world && v17.v1163.skin],
     ['v1.17 every procedural weapon + knife has worn textures, normal maps and real-scale UVs, guns get edge highlights; gloves get fabric', v17.v117.weapons && v17.v117.gloves && v17.v117.world],
+    ['v1.17.1 Remember me: checked keeps you signed in across visits, unchecked only for the tab session; works from the form', v17.v1171.box && v17.v1171.remembered && v17.v1171.sessionOnly && v17.v1171.sameTab && v17.v1171.newVisit && v17.v1171.form],
     ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
     ['v1.15.1 level 20 takes about 30 average Battle Royale matches; each level needs more XP than the last', v17.v114.pace],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],
