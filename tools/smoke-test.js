@@ -1206,12 +1206,12 @@ const server = http.createServer((req, res) => {
       out.v1163 = v; }
     // v1.17: detailed surfaces on every procedural weapon, knife and glove
     { const v = {}; let real = 0, uvOk = 0, edges = 0, n = 0;
-      for (const id of ['shotgun', 'dmr', 'sniper', 'pistol', 'revolver', 'tracker', 'bayonet', 'knife', 'butterfly']) {      // (v1.18: holoar / smg / lmg are imported models)
+      for (const id of ['dmr', 'sniper', 'pistol', 'revolver', 'tracker', 'bayonet', 'knife', 'butterfly']) {      // (v1.18.1: shotgun imported too)      // (v1.18: holoar / smg / lmg are imported models)
         const m = BR.Models.weapon(id, 'default', 'none', null); n++; let r = 0, e = 0, u = true;
         m.traverse(o => { if (o.isMesh && o.material.userData && o.material.userData.real) { r++; if (!o.material.map || !o.material.normalMap || !o.geometry.attributes.uv) u = false; } if (o.isLineSegments) e++; });
         if (r > 3) real++; if (u) uvOk++; if (e) edges++;
       }
-      v.weapons = real === n && uvOk === n && edges >= 5;      // edge highlights on the guns' main bodies (knife parts live in sub-groups)
+      v.weapons = real === n && uvOk === n && edges >= 4;      // edge highlights on the guns' main bodies (knife parts live in sub-groups)
       const h = BR.Models.hand('default', false); let fab = false; h.traverse(o => { if (o.isMesh && o.material.normalMap && o.material.map) fab = true; }); v.gloves = fab;
       const w = BR.Models.worldWeapon('smg'); v.world = w.isMesh;
       out.v117 = v; }
@@ -1256,9 +1256,9 @@ const server = http.createServer((req, res) => {
       AC._testing = keepT; g.toMenu();
       out.v1172 = v; }
     // v1.18: imported Holo AR / SMG / LMG (factory finish, aligned optics), black factory Rifle + Hunting Rifle, light menu, karambit grip
-    { const v = {}, ids = ['holoar', 'smg', 'lmg'];
+    { const v = {}, ids = ['holoar', 'smg', 'lmg', 'shotgun'];
       v.imports = ids.every(id => { const m = BR.Models.weapon(id, 'default', 'none', null); let real = 0, uv = true; m.traverse(o => { if (o.isMesh && o.material.userData && o.material.userData.real) { real++; if (!o.geometry.attributes.uv) uv = false; } });
-        return m.userData.imported === id && real >= 1 && uv && !!m.userData.mag && !!m.userData.sight; });
+        return m.userData.imported === id && real >= 1 && uv && !!(m.userData.mag || m.userData.pump) && !!m.userData.sight; });     // (tube-fed shotgun: a pump instead of a magazine)
       const ho = BR.Models.weapon('holoar', 'default', 'none', null), ret = ho.userData.holoReticle, sg = ho.userData.sight.position;
       v.holo = !!ret && Math.abs(ret.position.y - sg.y) < 0.001 && Math.abs(ret.position.x) < 0.001;
       const lm = BR.Models.weapon('lmg', 'default', 'none', null); v.acog = BR.CONFIG.weapons.lmg.optic === 'acog' && Math.abs(lm.userData.sight.position.y - 0.134) < 0.002;
@@ -1268,6 +1268,7 @@ const server = http.createServer((req, res) => {
       // light menu: no world behind it
       g.toMenu(); v.lightMenu = g.state === 'menu' && !g.scene && document.body.classList.contains('menulite') && getComputedStyle(document.querySelector('.menu-bg')).display === 'block';
       g.startMatch({ practice: true }); v.menuOff = !document.body.classList.contains('menulite') && !!g.scene; g.toMenu();
+      { const sg = BR.Models.weapon('shotgun', 'default', 'none', null), d = BR.CONFIG.weapons.shotgun; v.mastiff = !!sg.userData.pump && sg.userData.pump.children.length === 1 && d.pattern === 'line' && d.pellets === 8 && d.ads <= 0.4 && d.rpm < 60 && d.shellReload; }
       out.v118 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
@@ -1445,7 +1446,7 @@ const server = http.createServer((req, res) => {
     ['v1.17 every procedural weapon + knife has worn textures, normal maps and real-scale UVs, guns get edge highlights; gloves get fabric', v17.v117.weapons && v17.v117.gloves && v17.v117.world],
     ['v1.17.1 Remember me: checked keeps you signed in across visits, unchecked only for the tab session; works from the form', v17.v1171.box && v17.v1171.remembered && v17.v1171.sessionOnly && v17.v1171.sameTab && v17.v1171.newVisit && v17.v1171.form],
     ['v1.17.2 Shockwave Launcher: fires a grenade from the drum, the blast damages enemies (capped), firing at your feet rocket-jumps you unhurt; icon + blueprints', v17.v1172.fires && v17.v1172.blast && v17.v1172.rocketJump && v17.v1172.loadout],
-    ['v1.18 imported Holo AR / SMG / LMG (factory finish, magazines, holo reticle + ACOG aligned, camos apply), black factory Rifle + Hunting Rifle, light menu with no match behind it', v17.v118.imports && v17.v118.holo && v17.v118.acog && v17.v118.camo && v17.v118.rifleBlack && v17.v118.hunterBlack && v17.v118.lightMenu && v17.v118.menuOff],
+    ['v1.18 imported Holo AR / SMG / LMG (factory finish, magazines, holo reticle + ACOG aligned, camos apply), black factory Rifle + Hunting Rifle, light menu with no match behind it', v17.v118.imports && v17.v118.holo && v17.v118.acog && v17.v118.camo && v17.v118.rifleBlack && v17.v118.hunterBlack && v17.v118.lightMenu && v17.v118.menuOff && v17.v118.mastiff],
     ['v1.14 fresh accounts (default skins, Tracker, level 0), XP + levels, knives unlock at 20/40/60, level UI', v17.v114.fresh && v17.v114.migrate && v17.v114.locked && v17.v114.matchXP && v17.v114.lv19 && v17.v114.lv20 && v17.v114.bayEquip && v17.v114.chip && v17.v114.panel],
     ['v1.15.1 level 20 takes about 30 average Battle Royale matches; each level needs more XP than the last', v17.v114.pace],
     ['patch notes page: every update with a date, newest = current version', v17.v178.shown && v17.v178.rows === v17.v178.notes && v17.v178.notes >= 40 && v17.v178.latest === BR_VERSION && v17.v178.sorted && v17.v178.dated && v17.v178.closed && v17.v178.badgeOff],

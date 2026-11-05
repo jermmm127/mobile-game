@@ -50,3 +50,13 @@ Object.assign(BR.IMPORTED, {
 });
 // v1.18: the Rifle keeps its sculpted detail (normal map) but loses its green paint: black factory finish
 BR.IMPORTED.rifle.finish = 'factory';
+
+// v1.18.1: sci-fi pump shotgun -> Breacher. Pump grip under the front (model x -0.88..-0.66) is split off
+// as userData.pump so it racks back after every shot. Iron sights on the top rail.
+BR.IMPORTED.shotgun = {
+  scale: 0.552, offset: [0, -0.005, -0.149],
+  pumpBox: { x: [-0.88, -0.66], y: [-1, -0.035] },
+  grip: [0, -0.06, 0.088], fore: [0, -0.066, -0.57], charge: null,
+  sight: { y: 0.125, rearZ: 0.017, frontZ: -0.657, dist: 0.26 },
+  muzzle: [0.089, -0.675], charm: [-0.03, -0.02, 0.12],
+};

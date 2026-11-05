@@ -1665,14 +1665,15 @@ BR.Models = (function () {
       for (const P of parseGLB(data)) {
         const mat = new THREE.MeshPhongMaterial({ map: P.map, normalMap: P.normalMap, color: P.map ? 0xffffff : (P.color || 0x888888), specular: 0x6a6a6a, shininess: C.shininess || 45, envMap: BR.weaponEnv(), reflectivity: C.reflect || 0.12, side: THREE.DoubleSide });
         if (P.normalMap) mat.normalScale.set(1, -1);
-        const parts = { body: [], mag: [] }, n = P.idx ? P.idx.length : P.pos.length / 3;
+        const parts = { body: [], mag: [], pump: [] }, n = P.idx ? P.idx.length : P.pos.length / 3;
         const vi = k => P.idx ? P.idx[k] : k;
         for (let t = 0; t < n; t += 3) {
           const a = vi(t), b = vi(t + 1), c = vi(t + 2), cx = (P.pos[a * 3] + P.pos[b * 3] + P.pos[c * 3]) / 3, cy = (P.pos[a * 3 + 1] + P.pos[b * 3 + 1] + P.pos[c * 3 + 1]) / 3;
           const M = C.magBox, isMag = M && cx >= M.x[0] && cx <= M.x[1] && cy >= M.y[0] && cy <= M.y[1];
-          (isMag ? parts.mag : parts.body).push(a, b, c);
+          const Pb = C.pumpBox, isPump = Pb && cx >= Pb.x[0] && cx <= Pb.x[1] && cy >= Pb.y[0] && cy <= Pb.y[1];     // v1.18.1 pump-action slide
+          (isPump ? parts.pump : isMag ? parts.mag : parts.body).push(a, b, c);
         }
-        for (const key of ['body', 'mag']) {
+        for (const key of ['body', 'mag', 'pump']) {
           const ids = parts[key]; if (!ids.length) continue;
           const pos = new Float32Array(ids.length * 3), nor = new Float32Array(ids.length * 3), uv = new Float32Array(ids.length * 2);
           ids.forEach((v, i) => {
@@ -1691,7 +1692,7 @@ BR.Models = (function () {
   function importedBuild(id, g, S, M, opts) {
     const parts = importedParts(id); if (!parts) return false;
     const C = BR.IMPORTED[id], def = BR.CONFIG.weapons[id], std = S === cache.mat['default|' + def.color];
-    const magMeshes = [];
+    const magMeshes = [], pumpMeshes = [];
     let textured = false;
     for (const p of parts) {
       // finish: a camo / blueprint body replaces the model's own texture. Untextured models (and ones
@@ -1703,9 +1704,10 @@ BR.Models = (function () {
       } else if (std && !p.mat.map) mat = S;
       else if (std) textured = true;
       const m = new THREE.Mesh(p.geo, mat);
-      g.add(m); if (p.key === 'mag') magMeshes.push(m);
+      g.add(m); if (p.key === 'mag') magMeshes.push(m); if (p.key === 'pump') pumpMeshes.push(m);
     }
     if (magMeshes.length) magGroup(g, magMeshes);
+    if (pumpMeshes.length) { const pg = new THREE.Group(); g.add(pg); for (const m of pumpMeshes) pg.attach(m); g.userData.pump = pg; }   // slides back after each shot
     g.userData.importedTextured = textured;
     // holographic sight (v1.18): clear glass + the ring-and-dot reticle inside the model's own sight window
     if (C.holo) {

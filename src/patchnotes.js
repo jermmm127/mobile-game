@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.18.1', date: '2026-11-05', title: 'Breacher rework', notes: [
+    'New Breacher model: a detailed sci-fi pump shotgun in the black factory finish. The pump grip racks back after every shot, it aims down its own iron sights, and every camo and blueprint works on it.',
+    'Breacher now handles like a heavy line-shot pump shotgun: 8 pellets in a wide horizontal line that tightens a lot when you aim, 15 damage per pellet (120 max), a slower and heavier pump (56 rpm), 5 shells with a shell-by-shell reload you can cancel by firing, and more reach (30 m).',
+  ] },
   { v: '1.18.0', date: '2026-11-05', title: 'New Holo AR, SMG + LMG, lighter menu', notes: [
     'New detailed models for the Holo AR (an M4-pattern carbine with a suppressor and a holographic sight), the SMG (a pistol-calibre carbine with flip-up iron sights) and the LMG (a belt-fed machine gun with a box mag, bipod and ACOG). They wear the worn black factory finish, every camo and blueprint works on them, and their magazines come out on reloads.',
     'Holo AR: the red ring-and-dot reticle now sits inside the new holographic sight\'s window, dead on the aim point. LMG: aiming lines up with the new ACOG\'s lens before the scope view takes over.',
