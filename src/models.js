@@ -7,7 +7,7 @@
 // Replace build functions with real assets later; keep the anchors.
 // =============================================================================
 BR.Models = (function () {
-  const cache = { tex: {}, mat: {} };
+  const cache = { tex: {}, mat: {}, geo: {} };
 
   // ---------------------------------------------------------------- textures
   function canvasTex(key, draw, size) {
@@ -627,8 +627,20 @@ BR.Models = (function () {
   function anchors(g, muzzleZ, muzzleY, charmPos) {
     const muzzle = new THREE.Object3D(); muzzle.position.set(0, muzzleY, muzzleZ); g.add(muzzle);
     const charm = new THREE.Object3D(); charm.position.set(charmPos[0], charmPos[1], charmPos[2]); g.add(charm);
-    const flash = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), MAT().flash);
-    flash.position.copy(muzzle.position); flash.position.z -= 0.04; flash.scale.set(1, 1, 1.8); flash.visible = false;
+    // v1.22 muzzle flash: a hot core, a 6-ray star facing you and two crossed flame tongues along the barrel
+    // (additive; the viewmodel spins + scales it every shot so no two flashes look the same)
+    let flash;
+    if (BR.Effects && BR.Effects.tex) {
+      const T = BR.Effects.tex(), mm = (map, c) => new THREE.MeshBasicMaterial({ map, color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+      const FM = cache.mat.fx || (cache.mat.fx = { star: mm(T.star, 0xffc46a), flame: mm(T.flame, 0xff9a3a), core: new THREE.SpriteMaterial({ map: T.dot, color: 0xfff1cc, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }) });
+      flash = new THREE.Group(); flash.position.copy(muzzle.position); flash.position.z -= 0.01;
+      const star = new THREE.Mesh(cache.geo.fxStar || (cache.geo.fxStar = new THREE.PlaneGeometry(0.17, 0.17)), FM.star); flash.add(star);
+      const fg = cache.geo.fxFlame || (cache.geo.fxFlame = new THREE.PlaneGeometry(0.075, 0.24).rotateX(-Math.PI / 2).translate(0, 0, -0.11));
+      const f1 = new THREE.Mesh(fg, FM.flame), f2 = new THREE.Mesh(fg, FM.flame); f2.rotation.z = Math.PI / 2; flash.add(f1, f2);
+      const core = new THREE.Sprite(FM.core); core.scale.setScalar(0.1); core.position.z = -0.02; flash.add(core);
+      flash.traverse(o => { o.userData.isFlash = true; o.userData.noUV = true; });
+    } else { flash = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), MAT().flash); flash.position.copy(muzzle.position); flash.position.z -= 0.04; flash.scale.set(1, 1, 1.8); }
+    flash.visible = false;
     g.add(flash);
     g.userData.muzzle = muzzle; g.userData.charm = charm; g.userData.flash = flash;
   }
@@ -1846,7 +1858,7 @@ BR.Models = (function () {
     const pos = [], nor = [], col = [];
     const c = new THREE.Color();
     g.traverse(o => {
-      if (!o.isMesh || o === g.userData.flash) return;
+      if (!o.isMesh || o === g.userData.flash || o.userData.isFlash) return;
       const mat = o.material;
       if (mat.transparent && mat.opacity < 0.5) return;           // skip holo glass
       let geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
@@ -1895,6 +1907,50 @@ BR.Models = (function () {
   // ---- Mythic helpers: animated parts. Each pushes fn(t) onto g.userData.anim; the viewmodel
   // and the shop call BR.Models.animate(model, t) every frame.
   const anim = (g, fn) => (g.userData.anim || (g.userData.anim = [])).push(fn);
+  // v1.22 SKIN VFX: Legendary / Mythic / Exotic camos and Mythic / Exotic blueprints get a living glow: an additive rim
+  // shell hugging the weapon that breathes, a slow light sweep along it, and sparkles drifting round it in the skin's
+  // colour (Exotic cycles through the rainbow). Knife blueprints that already carry their own aura keep it.
+  const FX_TIER = { Legendary: 1, Mythic: 2, Exotic: 3 };
+  const swatchColor = sw => { let best = null, bs = -1; for (const h of String(sw || '').match(/#[0-9a-fA-F]{6}/g) || []) { const c = new THREE.Color(h), hsl = {}; c.getHSL(hsl); const sc = hsl.s * (1 - Math.abs(hsl.l - 0.55)); if (sc > bs) { bs = sc; best = c.getHex(); } } return best; };
+  function skinFx(g, skin, bp) {
+    const sk = skin && skin !== 'default' ? SKINS[skin] : null;
+    let tier = 0, col = null;
+    if (sk && FX_TIER[sk.rarity]) { tier = FX_TIER[sk.rarity]; col = swatchColor(sk.swatch); }
+    else if (bp && !bp.mod && (bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) { tier = FX_TIER[bp.rarity]; col = bp.glow; }
+    if (!tier || col === null || col === undefined || !(BR.Effects && BR.Effects.tex)) return;
+    let src = null, n = 0;
+    g.traverse(o => { if (o.isMesh && !o.userData.isFlash && o.geometry && o.geometry.attributes.position && o.geometry.attributes.position.count > n && !(o.material && o.material.transparent)) { n = o.geometry.attributes.position.count; src = o; } });
+    if (!src) return;
+    const T = BR.Effects.tex(), C = new THREE.Color(col), tmp = new THREE.Color();
+    if (!src.geometry.boundingBox) src.geometry.computeBoundingBox();
+    const bb = src.geometry.boundingBox, ctr = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3()), len = Math.max(size.x, size.y, size.z);
+    const shells = [[1.02 + 0.006 * tier, 0.16 + 0.05 * tier], [1.05 + 0.01 * tier, 0.07 + 0.03 * tier]].map(([k, op]) => {
+      const m = new THREE.Mesh(src.geometry, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide, fog: false }));
+      m.scale.setScalar(k); m.position.copy(ctr).multiplyScalar(1 - k); m.userData.isFlash = true; m.userData.noUV = true; src.add(m); return { m, op }; });
+    // sparkles drift along the weapon's long axis and twinkle (in the model's own space so they follow every pose)
+    const P = src.parent || g, axis = size.z >= size.x && size.z >= size.y ? 'z' : size.y >= size.x ? 'y' : 'x', motes = [];
+    for (let i = 0; i < 5 + tier * 3; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      sp.userData.isFlash = true; P.add(sp); motes.push({ sp, o: Math.random(), a: Math.random() * 6.28, r: 0.4 + Math.random() * 0.6 });
+    }
+    const half = size.clone().multiplyScalar(0.5);
+    anim(g, t => {
+      const pulse = 0.65 + 0.35 * Math.sin(t * 2.4);
+      if (tier === 3) C.setHSL((t * 0.18) % 1, 1, 0.6);
+      shells.forEach(({ m, op }, i) => { m.material.opacity = op * (pulse + (i ? 0.2 * Math.sin(t * 5 + 1) : 0)); m.material.color.copy(C); });
+      motes.forEach(({ sp, o, a, r }, i) => {
+        const f = (t * (0.18 + 0.05 * tier) + o) % 1, ang = a + t * 1.6;
+        const along = (f - 0.5) * 2, rr = r * (axis === 'z' ? Math.max(half.x, half.y) : Math.max(half.z, half.x)) * 1.6;
+        const v = sp.position; v.copy(ctr);
+        v[axis] += along * (axis === 'z' ? half.z : axis === 'y' ? half.y : half.x) * 1.05;
+        const o1 = axis === 'x' ? 'y' : 'x', o2 = axis === 'z' ? 'y' : 'z'; v[o1] += Math.cos(ang) * rr; v[o2] += Math.sin(ang) * rr;
+        sp.scale.setScalar(len * (0.025 + 0.01 * tier) * (0.5 + 0.5 * Math.sin(t * 9 + i * 1.7)) * Math.sin(f * Math.PI));
+        sp.material.opacity = Math.sin(f * Math.PI);
+        if (tier === 3) sp.material.color.setHSL((t * 0.18 + i / motes.length) % 1, 1, 0.65); else sp.material.color.copy(i % 3 === 0 ? tmp.setRGB(1, 1, 1) : C);
+      });
+    });
+    g.userData.skinFx = tier;
+  }
   const liveGlow = (c) => new THREE.MeshBasicMaterial({ color: c });                  // own material, safe to animate
   const hueCycle = (g, mat, h0, h1, speed, l) => anim(g, t => mat.color.setHSL(h0 + (h1 - h0) * (0.5 + 0.5 * Math.sin(t * speed)), 1, l || 0.6));
   const chrome = (c) => new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: 150, emissive: new THREE.Color(c).multiplyScalar(0.12) });
@@ -3081,6 +3137,7 @@ BR.Models = (function () {
         if (bp && bp.mod) bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT() });
         if (bp && !opts.camo) bpUpgrade(g, id, bpId, bp, S, opts);          // v1.16 finishes + edge lines
         realPass(g, !bp && !opts.camo);                                        // v1.17 surface detail
+        skinFx(g, skin, bp);                                                   // v1.22 rarity glow + sparkles
       } finally { ROUND = false; }
       if (charmId && charmId !== 'none') {
         const c = charm(charmId);

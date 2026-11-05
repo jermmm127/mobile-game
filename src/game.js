@@ -1059,6 +1059,8 @@ BR.Game = class Game {
       if (!died) BR.Audio.hit(head);
       // impact sparks: gold crit burst on the head, team-colour/shield-blue on the body
       this.fx.burst(this._v3, head ? [0xffd24a, 0xffffff, 0xff9a1f] : shieldHit ? [0x6fc8ff, 0xffffff] : [0xff4a5a, 0xffffff], head ? 14 : 7, head ? 7 : 4.5, head ? 0.07 : 0.05, head ? 0.45 : 0.3);
+      // v1.22: a coloured shock ring + hot pop where your round lands (gold crit, blue shield, red body; bigger on the kill)
+      { const hc = head ? 0xffd24a : shieldHit ? 0x58c8ff : 0xff4a5a; this.fx.shock(this._v3, hc, died ? 1.6 : head ? 0.95 : 0.6, died ? 0.4 : 0.22); this.fx.pop(this._v3, hc, head ? 0.5 : 0.32, 0.09, 1.5); }
       // headshots punch the view a touch (FOV squeeze + tiny shake)
       if (head) { this.cam.hitFov = Math.min(4, (this.cam.hitFov || 0) + 2.5); this.cam.shake = Math.max(this.cam.shake, 0.06); }
       if (died) { this.cam.hitFov = Math.min(5, (this.cam.hitFov || 0) + (head ? 4 : 2)); }

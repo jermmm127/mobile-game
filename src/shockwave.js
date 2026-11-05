@@ -124,6 +124,7 @@ BR.Shockwave = class Shockwave {
     for (const m of [b.shell, b.core, b.r1, b.r2, b.r3]) { m.visible = true; m.position.copy(pos); }
     b.r2.rotation.set(Math.random() * 3, Math.random() * 3, 0);
     b.r3.lookAt(g.camera.position);
+    if (g.fx.pop) { g.fx.pop(pos, 0xc27bff, 3.5, 0.22, 2.4); g.fx.pop(pos, 0xffffff, 1.4, 0.1, 1.8); g.fx.shock(pos, 0xe0a8ff, 14, 0.45); }      // v1.22: hot flash + shock ring
     g.fx.burst(pos, [0xb04bff, 0xff5cf0, 0xffffff, 0x7b2cff], 40, 15, 0.09, 0.7, 4);
     g.fx.burst(pos, [0xd9a8ff, 0xffffff], 16, 6, 0.06, 0.4, 0);
     // launch everyone in range away from the blast and up

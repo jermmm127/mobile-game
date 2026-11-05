@@ -52,7 +52,7 @@ BR.WeaponIcons = {
         if (BR.Models.animate) BR.Models.animate(m, 1.2);
         g.updateMatrixWorld(true);
         const box = new THREE.Box3();
-        m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash) box.expandByObject(o); });
+        m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash && !o.userData.isFlash) box.expandByObject(o); });
         const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
         const pad = 1.08, w = Math.max(sz.z, sz.y * W / H) * pad / 2, h = w * H / W;
         cam.left = -w; cam.right = w; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
@@ -112,7 +112,7 @@ BR.WeaponIcons = {
       const turn = new THREE.Group(), g = new THREE.Group(); g.add(m); turn.add(g); sc.add(turn);
       if (BR.Models.animate) BR.Models.animate(m, 1.2);
       turn.updateMatrixWorld(true);
-      const box = new THREE.Box3(); m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash) box.expandByObject(o); });
+      const box = new THREE.Box3(); m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash && !o.userData.isFlash) box.expandByObject(o); });
       const c = box.getCenter(new THREE.Vector3()); g.position.sub(c);
       const rad = box.getSize(new THREE.Vector3()).length() / 2, w = rad * 1.02, h = w * H / W;
       cam.left = -w; cam.right = w; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();

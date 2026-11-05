@@ -1197,7 +1197,7 @@ const server = http.createServer((req, res) => {
     // v1.16.3: imported .glb rifle (built-in reader, placed with BR.IMPORTED, magazine split for reloads)
     { const v = {}, m = BR.Models.weapon('rifle', 'default', 'none', null); let tris = 0, tex = false, nmap = false;
       const bx = new THREE.Box3(); m.updateMatrixWorld(true);
-      m.traverse(o => { if (!o.isMesh || o === m.userData.flash || o.geometry.type === 'BoxGeometry') return; if (o.material.map || BR.IMPORTED.rifle.finish === 'factory') tex = true;      // (v1.18: factory finish = sculpted normal map, no paint)
+      m.traverse(o => { if (!o.isMesh || o === m.userData.flash || o.userData.isFlash || o.geometry.type === 'BoxGeometry') return; if (o.material.map || BR.IMPORTED.rifle.finish === 'factory') tex = true;      // (v1.18: factory finish = sculpted normal map, no paint)
         if (o.material.normalMap) nmap = true; tris += o.geometry.attributes.position.count / 3; bx.expandByObject(o); });
       const len = bx.max.z - bx.min.z;
       v.imported = m.userData.imported === 'rifle' && tex && nmap && tris > 4000 && len > 1.1 && len < 1.35;
@@ -1265,7 +1265,7 @@ const server = http.createServer((req, res) => {
       v.holo = !!ret && Math.abs(ret.position.y - sg.y) < 0.001 && Math.abs(ret.position.x) < 0.001;
       const lm = BR.Models.weapon('lmg', 'default', 'none', null); v.acog = BR.CONFIG.weapons.lmg.optic === 'acog' && Math.abs(lm.userData.sight.position.y - 0.134) < 0.002;
       const camo = BR.Models.weapon('holoar', 'chrome', 'none', null); let ch = false; camo.traverse(o => { if (o.isMesh && o.material === camo.children[0].material && !(o.material.userData && o.material.userData.real)) ch = true; }); v.camo = ch;
-      const rf = BR.Models.weapon('rifle', 'default', 'none', null); let green = false, nm = false; rf.traverse(o => { if (o.isMesh && o.material.map) green = true; if (o.isMesh && o.material.normalMap) nm = true; }); v.rifleBlack = !green && nm;
+      const rf = BR.Models.weapon('rifle', 'default', 'none', null); let green = false, nm = false; rf.traverse(o => { if (o.isMesh && !o.userData.isFlash && o.material.map) green = true; if (o.isMesh && o.material.normalMap) nm = true; }); v.rifleBlack = !green && nm;
       const hu = BR.Models.weapon('hunter', 'default', 'none', null); let mint = false; hu.traverse(o => { if (o.isMesh && o.material.map && o.material.map.image && o.material.map === (BR.Models._huCamoTex || null)) mint = true; }); v.hunterBlack = !mint;
       // light menu: no world behind it
       g.toMenu(); v.lightMenu = g.state === 'menu' && !g.scene && document.body.classList.contains('menulite') && getComputedStyle(document.querySelector('.menu-bg')).display === 'block';

@@ -1729,7 +1729,7 @@ body.menulite #menu .mc-change { display: none; }      /* the whole card opens t
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.21.1',
+  version: '1.22.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -2011,6 +2011,13 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.22.0', date: '2026-11-05', title: 'VFX revamp', notes: [
+    'New muzzle flash on every gun: a bright star burst with flame tongues that changes shape and size every shot. Shotguns and heavy guns flash bigger; suppressors keep it small.',
+    'Shell casings: brass flies out of the gun as you shoot. Pump and bolt guns kick theirs out when you cycle, and shotguns throw red shells.',
+    'Hit effects: every hit you land now flashes a ring and burst on the target. It is red on health, blue on shields and gold on headshots, with a bigger ring on kills.',
+    'Bullet impacts on walls throw a hot flash and extra sparks. Explosions and the Shockwave Launcher get a bright core flash and an expanding shockwave ring.',
+    'Skin effects: Legendary, Mythic and Exotic camos, plus Mythic and Exotic blueprints, now glow with a rim of light in the skin\'s colour and give off floating sparkles. Higher tiers glow brighter and sparkle more, and Exotic skins cycle through colours.',
+  ] },
   { v: '1.21.1', date: '2026-11-05', title: 'Bigger party stage', notes: [
     'Main menu: your party now takes the whole right half of the screen. The characters are much bigger and fanned out, with you in front.',
     'The mode card, PLAY button, team-size buttons and menu buttons are smaller and sit in a compact column on the left. Tap the mode card to change modes.',
@@ -5752,7 +5759,7 @@ Object.assign(BR.IMPORTED, {
 // Replace build functions with real assets later; keep the anchors.
 // =============================================================================
 BR.Models = (function () {
-  const cache = { tex: {}, mat: {} };
+  const cache = { tex: {}, mat: {}, geo: {} };
 
   // ---------------------------------------------------------------- textures
   function canvasTex(key, draw, size) {
@@ -6372,8 +6379,20 @@ BR.Models = (function () {
   function anchors(g, muzzleZ, muzzleY, charmPos) {
     const muzzle = new THREE.Object3D(); muzzle.position.set(0, muzzleY, muzzleZ); g.add(muzzle);
     const charm = new THREE.Object3D(); charm.position.set(charmPos[0], charmPos[1], charmPos[2]); g.add(charm);
-    const flash = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), MAT().flash);
-    flash.position.copy(muzzle.position); flash.position.z -= 0.04; flash.scale.set(1, 1, 1.8); flash.visible = false;
+    // v1.22 muzzle flash: a hot core, a 6-ray star facing you and two crossed flame tongues along the barrel
+    // (additive; the viewmodel spins + scales it every shot so no two flashes look the same)
+    let flash;
+    if (BR.Effects && BR.Effects.tex) {
+      const T = BR.Effects.tex(), mm = (map, c) => new THREE.MeshBasicMaterial({ map, color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+      const FM = cache.mat.fx || (cache.mat.fx = { star: mm(T.star, 0xffc46a), flame: mm(T.flame, 0xff9a3a), core: new THREE.SpriteMaterial({ map: T.dot, color: 0xfff1cc, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }) });
+      flash = new THREE.Group(); flash.position.copy(muzzle.position); flash.position.z -= 0.01;
+      const star = new THREE.Mesh(cache.geo.fxStar || (cache.geo.fxStar = new THREE.PlaneGeometry(0.17, 0.17)), FM.star); flash.add(star);
+      const fg = cache.geo.fxFlame || (cache.geo.fxFlame = new THREE.PlaneGeometry(0.075, 0.24).rotateX(-Math.PI / 2).translate(0, 0, -0.11));
+      const f1 = new THREE.Mesh(fg, FM.flame), f2 = new THREE.Mesh(fg, FM.flame); f2.rotation.z = Math.PI / 2; flash.add(f1, f2);
+      const core = new THREE.Sprite(FM.core); core.scale.setScalar(0.1); core.position.z = -0.02; flash.add(core);
+      flash.traverse(o => { o.userData.isFlash = true; o.userData.noUV = true; });
+    } else { flash = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), MAT().flash); flash.position.copy(muzzle.position); flash.position.z -= 0.04; flash.scale.set(1, 1, 1.8); }
+    flash.visible = false;
     g.add(flash);
     g.userData.muzzle = muzzle; g.userData.charm = charm; g.userData.flash = flash;
   }
@@ -7591,7 +7610,7 @@ BR.Models = (function () {
     const pos = [], nor = [], col = [];
     const c = new THREE.Color();
     g.traverse(o => {
-      if (!o.isMesh || o === g.userData.flash) return;
+      if (!o.isMesh || o === g.userData.flash || o.userData.isFlash) return;
       const mat = o.material;
       if (mat.transparent && mat.opacity < 0.5) return;           // skip holo glass
       let geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
@@ -7640,6 +7659,50 @@ BR.Models = (function () {
   // ---- Mythic helpers: animated parts. Each pushes fn(t) onto g.userData.anim; the viewmodel
   // and the shop call BR.Models.animate(model, t) every frame.
   const anim = (g, fn) => (g.userData.anim || (g.userData.anim = [])).push(fn);
+  // v1.22 SKIN VFX: Legendary / Mythic / Exotic camos and Mythic / Exotic blueprints get a living glow: an additive rim
+  // shell hugging the weapon that breathes, a slow light sweep along it, and sparkles drifting round it in the skin's
+  // colour (Exotic cycles through the rainbow). Knife blueprints that already carry their own aura keep it.
+  const FX_TIER = { Legendary: 1, Mythic: 2, Exotic: 3 };
+  const swatchColor = sw => { let best = null, bs = -1; for (const h of String(sw || '').match(/#[0-9a-fA-F]{6}/g) || []) { const c = new THREE.Color(h), hsl = {}; c.getHSL(hsl); const sc = hsl.s * (1 - Math.abs(hsl.l - 0.55)); if (sc > bs) { bs = sc; best = c.getHex(); } } return best; };
+  function skinFx(g, skin, bp) {
+    const sk = skin && skin !== 'default' ? SKINS[skin] : null;
+    let tier = 0, col = null;
+    if (sk && FX_TIER[sk.rarity]) { tier = FX_TIER[sk.rarity]; col = swatchColor(sk.swatch); }
+    else if (bp && !bp.mod && (bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) { tier = FX_TIER[bp.rarity]; col = bp.glow; }
+    if (!tier || col === null || col === undefined || !(BR.Effects && BR.Effects.tex)) return;
+    let src = null, n = 0;
+    g.traverse(o => { if (o.isMesh && !o.userData.isFlash && o.geometry && o.geometry.attributes.position && o.geometry.attributes.position.count > n && !(o.material && o.material.transparent)) { n = o.geometry.attributes.position.count; src = o; } });
+    if (!src) return;
+    const T = BR.Effects.tex(), C = new THREE.Color(col), tmp = new THREE.Color();
+    if (!src.geometry.boundingBox) src.geometry.computeBoundingBox();
+    const bb = src.geometry.boundingBox, ctr = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3()), len = Math.max(size.x, size.y, size.z);
+    const shells = [[1.02 + 0.006 * tier, 0.16 + 0.05 * tier], [1.05 + 0.01 * tier, 0.07 + 0.03 * tier]].map(([k, op]) => {
+      const m = new THREE.Mesh(src.geometry, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide, fog: false }));
+      m.scale.setScalar(k); m.position.copy(ctr).multiplyScalar(1 - k); m.userData.isFlash = true; m.userData.noUV = true; src.add(m); return { m, op }; });
+    // sparkles drift along the weapon's long axis and twinkle (in the model's own space so they follow every pose)
+    const P = src.parent || g, axis = size.z >= size.x && size.z >= size.y ? 'z' : size.y >= size.x ? 'y' : 'x', motes = [];
+    for (let i = 0; i < 5 + tier * 3; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      sp.userData.isFlash = true; P.add(sp); motes.push({ sp, o: Math.random(), a: Math.random() * 6.28, r: 0.4 + Math.random() * 0.6 });
+    }
+    const half = size.clone().multiplyScalar(0.5);
+    anim(g, t => {
+      const pulse = 0.65 + 0.35 * Math.sin(t * 2.4);
+      if (tier === 3) C.setHSL((t * 0.18) % 1, 1, 0.6);
+      shells.forEach(({ m, op }, i) => { m.material.opacity = op * (pulse + (i ? 0.2 * Math.sin(t * 5 + 1) : 0)); m.material.color.copy(C); });
+      motes.forEach(({ sp, o, a, r }, i) => {
+        const f = (t * (0.18 + 0.05 * tier) + o) % 1, ang = a + t * 1.6;
+        const along = (f - 0.5) * 2, rr = r * (axis === 'z' ? Math.max(half.x, half.y) : Math.max(half.z, half.x)) * 1.6;
+        const v = sp.position; v.copy(ctr);
+        v[axis] += along * (axis === 'z' ? half.z : axis === 'y' ? half.y : half.x) * 1.05;
+        const o1 = axis === 'x' ? 'y' : 'x', o2 = axis === 'z' ? 'y' : 'z'; v[o1] += Math.cos(ang) * rr; v[o2] += Math.sin(ang) * rr;
+        sp.scale.setScalar(len * (0.025 + 0.01 * tier) * (0.5 + 0.5 * Math.sin(t * 9 + i * 1.7)) * Math.sin(f * Math.PI));
+        sp.material.opacity = Math.sin(f * Math.PI);
+        if (tier === 3) sp.material.color.setHSL((t * 0.18 + i / motes.length) % 1, 1, 0.65); else sp.material.color.copy(i % 3 === 0 ? tmp.setRGB(1, 1, 1) : C);
+      });
+    });
+    g.userData.skinFx = tier;
+  }
   const liveGlow = (c) => new THREE.MeshBasicMaterial({ color: c });                  // own material, safe to animate
   const hueCycle = (g, mat, h0, h1, speed, l) => anim(g, t => mat.color.setHSL(h0 + (h1 - h0) * (0.5 + 0.5 * Math.sin(t * speed)), 1, l || 0.6));
   const chrome = (c) => new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: 150, emissive: new THREE.Color(c).multiplyScalar(0.12) });
@@ -8826,6 +8889,7 @@ BR.Models = (function () {
         if (bp && bp.mod) bp.mod(g, kit(g), { A: bpMat(bp.accent, bp.accentGloss || 0), G: glowMat(bp.glow), B: S, M: MAT() });
         if (bp && !opts.camo) bpUpgrade(g, id, bpId, bp, S, opts);          // v1.16 finishes + edge lines
         realPass(g, !bp && !opts.camo);                                        // v1.17 surface detail
+        skinFx(g, skin, bp);                                                   // v1.22 rarity glow + sparkles
       } finally { ROUND = false; }
       if (charmId && charmId !== 'none') {
         const c = charm(charmId);
@@ -9132,6 +9196,9 @@ BR.Models = (function () {
       this.kickR.y.vel += side * (auto ? 0.3 : 0.12) * a;
       if (auto) this.heatT = Math.min(1, this.heatT + 0.07 + d.recoil * 2);
       this.flashT = d.suppressed ? 0.025 : 0.05;
+      this.flashS = (d.suppressed ? 0.42 : d.pellets > 1 || (d.kick || 0) > 1 ? 1.35 : 1) * (0.8 + Math.random() * 0.45);
+      // v1.22: brass ejects to the right (shotguns: a red shell when the pump racks; bolt actions: when the bolt cycles)
+      if (!d.melee && !d.launcher && !d.revolver) (this.ejects || (this.ejects = [])).push({ t: d.pump ? 0.22 : d.bolt ? 0.42 : 0, kind: d.pellets > 1 ? 'shell' : d.bolt || d.dmg >= 40 ? 'big' : 'brass', w });
       this.inspectT = 0;
       if (d.revolver) this.cylTarget = (this.cylTarget || 0) + Math.PI / 3;          // index one chamber
       // Bolt action: cycle the bolt after every shot (unless that was the last round)
@@ -9625,7 +9692,8 @@ BR.Models = (function () {
       // Mag + muzzle flash
       if (ud.mag) { ud.mag.position.copy(magOff || this._v.set(0, 0, 0)); ud.mag.visible = magVis; }
       ud.flash.visible = this.flashT > 0 && A < 0.5;
-      if (ud.flash.visible) ud.flash.rotation.z = Math.random() * 3;
+      if (ud.flash.visible) { ud.flash.rotation.z = Math.random() * 3; ud.flash.scale.setScalar((this.flashS || 1) * (0.75 + 0.25 * this.flashT / 0.05)); }
+      if (this.ejects && this.ejects.length) this.stepEjects(dt, model, ud);
 
       // Charm swings from look + movement + recoil
       const ch = ud.charmObj;
@@ -9906,7 +9974,31 @@ BR.Models = (function () {
       const r = this.rings[this.rgi++ % this.rings.length];
       r.m.position.copy(at); r.m.lookAt(0, 0, 0); r.m.material.color.setHex(color); r.life = r.max = 0.4; r.m.visible = true;
     }
+    // v1.22: pooled casings (cylinders) tumbling out of the ejection port in view
+    stepEjects(dt, model, ud) {
+      if (!this.casings) {
+        const brass = new THREE.MeshPhongMaterial({ color: 0xd9a441, specular: 0xfff0c0, shininess: 90, emissive: 0x2a1800 }), red = new THREE.MeshPhongMaterial({ color: 0xb8231e, specular: 0xffffff, shininess: 50 });
+        const gB = new THREE.CylinderGeometry(0.0042, 0.0042, 0.02, 8), gS = new THREE.CylinderGeometry(0.0085, 0.0085, 0.032, 10);
+        this.casings = []; for (let i = 0; i < 12; i++) { const m = new THREE.Mesh(gB, brass); m.visible = false; this.scene.add(m); this.casings.push({ m, v: new THREE.Vector3(), w: new THREE.Vector3(), life: 0, gB, gS, brass, red }); }
+        this.casI = 0;
+      }
+      for (let i = this.ejects.length - 1; i >= 0; i--) {
+        const e = this.ejects[i]; e.t -= dt; if (e.t > 0) continue; this.ejects.splice(i, 1);
+        const c = this.casings[this.casI++ % this.casings.length], gp = ud.grip || this._v.set(0, -0.06, 0.06);
+        model.updateMatrixWorld(true);
+        c.m.position.copy(model.localToWorld(this._v2.set(0.02, gp.y + 0.12, gp.z - 0.09)));
+        const big = e.kind !== 'brass'; c.m.geometry = e.kind === 'shell' ? c.gS : c.gB; c.m.material = e.kind === 'shell' ? c.red : c.brass;
+        c.m.scale.set(1, big ? 1.5 : 1, 1);
+        c.v.set(1.1 + Math.random() * 0.7, 0.9 + Math.random() * 0.6, 0.15 + Math.random() * 0.3); c.w.set(Math.random() * 20 - 10, Math.random() * 10, 18 + Math.random() * 12);
+        c.m.rotation.set(0, 0, Math.PI / 2); c.life = 0.6; c.m.visible = true;
+      }
+      for (const c of this.casings) {
+        if (c.life <= 0) continue; c.life -= dt; if (c.life <= 0) { c.m.visible = false; continue; }
+        c.v.y -= 5.5 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += c.w.x * dt; c.m.rotation.y += c.w.y * dt; c.m.rotation.z += c.w.z * dt;
+      }
+    }
     updateVfx(dt) {
+      if (this.casings && !(this.ejects && this.ejects.length)) for (const c of this.casings) { if (c.life <= 0) continue; c.life -= dt; if (c.life <= 0) { c.m.visible = false; continue; } c.v.y -= 5.5 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += c.w.x * dt; c.m.rotation.z += c.w.z * dt; }
       for (const s of this.sparks) {
         if (s.life <= 0) continue;
         s.life -= dt; if (s.life <= 0) { s.m.visible = false; continue; }
@@ -14209,6 +14301,21 @@ BR.Effects = class Effects {
       this.rings.push({ m, life: 0 });
     }
     this.ri = 0;
+    // v1.22: glow pops (hot additive flashes) + shock rings (expanding camera-facing rings)
+    this.pops = []; this.shocks = [];
+    for (let i = 0; i < 40; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); s.visible = false; scene.add(s); this.pops.push({ s, life: 0, max: 1, s0: 1, s1: 1 }); }
+    for (let i = 0; i < 24; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.ring, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); s.visible = false; scene.add(s); this.shocks.push({ s, life: 0, max: 1, s0: 1, s1: 1 }); }
+    this.popI = 0; this.shI = 0;
+  }
+  // a hot additive flash at p that swells and fades
+  pop(p, color, size, life, grow) {
+    const o = this.pops[this.popI++ % this.pops.length]; o.s.position.copy(p); o.s.material.color.setHex(color); o.s.material.rotation = Math.random() * 6;
+    o.s0 = size; o.s1 = size * (grow || 1.6); o.life = o.max = life || 0.12; o.s.visible = true; o.s.scale.setScalar(size); o.s.material.opacity = 1;
+  }
+  // an expanding ring (camera-facing) at p
+  shock(p, color, size, life) {
+    const o = this.shocks[this.shI++ % this.shocks.length]; o.s.position.copy(p); o.s.material.color.setHex(color);
+    o.s0 = size * 0.25; o.s1 = size; o.life = o.max = life || 0.3; o.s.visible = true; o.s.scale.setScalar(o.s0); o.s.material.opacity = 1;
   }
 
   rope(from, g) {
@@ -14221,6 +14328,8 @@ BR.Effects = class Effects {
   }
 
   blast(p, power) {
+    this.pop(p, 0xffb547, 1.2 + power, 0.16, 2.2); this.shock(p, 0xffd27a, 3 + power * 3, 0.35);       // v1.22
+    this.burst(p, [0xffd27a, 0xff8a2a, 0xffffff], 14, 7, 0.06, 0.45, 6);
     const r = this.rings[this.ri++ % this.rings.length];
     r.m.position.copy(p);
     r.m.visible = true; r.life = r.max = 0.45; r.power = power;
@@ -14393,6 +14502,7 @@ BR.Effects = class Effects {
   }
 
   impact(p, blood) {
+    if (!blood) { this.pop(p, 0xffc86a, 0.22, 0.07, 1.4); this.burst(p, [0xffe2a0, 0xffffff, 0xff9a3c], 3, 4.5, 0.035, 0.25, 9); }      // v1.22: hot glint + a few sparks on every surface hit
     const f = this.puffs[this.pi++ % this.puffs.length];
     f.mesh.position.copy(p);
     f.mesh.material.color.setHex(blood ? 0xd8283c : 0xcfc6b2);
@@ -14647,6 +14757,13 @@ BR.Effects = class Effects {
       if (t.t >= t.life) { t.streak.visible = t.trail.visible = t.glow.visible = t.head.visible = false; if (t.fx) { for (const b of t.fx) b.visible = false; for (const b of t.seg) b.visible = false; t.sheath.visible = false; } continue; }
       this.placeTracer(t);
     }
+    for (const L of [this.pops, this.shocks]) for (const o of L) {
+      if (!o.s.visible) continue;
+      o.life -= dt; const k = Math.max(0, o.life / o.max), e = 1 - k;
+      o.s.scale.setScalar(o.s0 + (o.s1 - o.s0) * (1 - Math.pow(1 - e, 3)));
+      o.s.material.opacity = L === this.pops ? k * k : k;
+      if (o.life <= 0) o.s.visible = false;
+    }
     for (const f of this.puffs) {
       if (!f.mesh.visible) continue;
       f.life -= dt;
@@ -14676,6 +14793,9 @@ BR.Effects.tex = () => {
     dot: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return Math.pow(Math.max(0, 1 - r), 2.2) + Math.max(0, 1 - r * 3.5) * 0.8; }),
     ring: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return Math.exp(-Math.pow((r - 0.75) / 0.09, 2)) + Math.max(0, 1 - r) * 0.15; }),
     smoke: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; const n = 0.75 + 0.25 * Math.sin(u * 23 + v * 9) * Math.sin(v * 19 - u * 7); return Math.pow(Math.max(0, 1 - r), 1.5) * n; }),
+    // v1.22 muzzle flash parts: a 6-ray star with a hot centre, and a flame tongue (v = 0 at the muzzle -> 1 at the tip)
+    star: mk(96, 96, (u, v) => { const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y) * 2, a = Math.atan2(y, x); const rays = Math.pow(Math.abs(Math.cos(a * 3)), 14) * Math.max(0, 1 - r) * 1.1 + Math.pow(Math.abs(Math.cos(a * 3 + 0.52)), 30) * Math.max(0, 1 - r * 1.4) * 0.6; return rays + Math.pow(Math.max(0, 1 - r * 2.2), 1.6); }),
+    flame: mk(32, 96, (u, v) => { const w = 0.5 * (1 - v) * (0.55 + 0.45 * Math.sin(v * 3.1)); const d = Math.abs(u - 0.5); return Math.max(0, 1 - d / Math.max(0.02, w)) * Math.pow(1 - v, 0.6) * Math.min(1, v * 12 + 0.3); }),
   };
   return BR.Effects._tex;
 };
@@ -14808,6 +14928,7 @@ BR.Shockwave = class Shockwave {
     for (const m of [b.shell, b.core, b.r1, b.r2, b.r3]) { m.visible = true; m.position.copy(pos); }
     b.r2.rotation.set(Math.random() * 3, Math.random() * 3, 0);
     b.r3.lookAt(g.camera.position);
+    if (g.fx.pop) { g.fx.pop(pos, 0xc27bff, 3.5, 0.22, 2.4); g.fx.pop(pos, 0xffffff, 1.4, 0.1, 1.8); g.fx.shock(pos, 0xe0a8ff, 14, 0.45); }      // v1.22: hot flash + shock ring
     g.fx.burst(pos, [0xb04bff, 0xff5cf0, 0xffffff, 0x7b2cff], 40, 15, 0.09, 0.7, 4);
     g.fx.burst(pos, [0xd9a8ff, 0xffffff], 16, 6, 0.06, 0.4, 0);
     // launch everyone in range away from the blast and up
@@ -16679,7 +16800,7 @@ BR.WeaponIcons = {
         if (BR.Models.animate) BR.Models.animate(m, 1.2);
         g.updateMatrixWorld(true);
         const box = new THREE.Box3();
-        m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash) box.expandByObject(o); });
+        m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash && !o.userData.isFlash) box.expandByObject(o); });
         const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
         const pad = 1.08, w = Math.max(sz.z, sz.y * W / H) * pad / 2, h = w * H / W;
         cam.left = -w; cam.right = w; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
@@ -16739,7 +16860,7 @@ BR.WeaponIcons = {
       const turn = new THREE.Group(), g = new THREE.Group(); g.add(m); turn.add(g); sc.add(turn);
       if (BR.Models.animate) BR.Models.animate(m, 1.2);
       turn.updateMatrixWorld(true);
-      const box = new THREE.Box3(); m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash) box.expandByObject(o); });
+      const box = new THREE.Box3(); m.traverse(o => { if (o.isMesh && o.visible && o !== m.userData.flash && !o.userData.isFlash) box.expandByObject(o); });
       const c = box.getCenter(new THREE.Vector3()); g.position.sub(c);
       const rad = box.getSize(new THREE.Vector3()).length() / 2, w = rad * 1.02, h = w * H / W;
       cam.left = -w; cam.right = w; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
@@ -19056,6 +19177,8 @@ BR.Game = class Game {
       if (!died) BR.Audio.hit(head);
       // impact sparks: gold crit burst on the head, team-colour/shield-blue on the body
       this.fx.burst(this._v3, head ? [0xffd24a, 0xffffff, 0xff9a1f] : shieldHit ? [0x6fc8ff, 0xffffff] : [0xff4a5a, 0xffffff], head ? 14 : 7, head ? 7 : 4.5, head ? 0.07 : 0.05, head ? 0.45 : 0.3);
+      // v1.22: a coloured shock ring + hot pop where your round lands (gold crit, blue shield, red body; bigger on the kill)
+      { const hc = head ? 0xffd24a : shieldHit ? 0x58c8ff : 0xff4a5a; this.fx.shock(this._v3, hc, died ? 1.6 : head ? 0.95 : 0.6, died ? 0.4 : 0.22); this.fx.pop(this._v3, hc, head ? 0.5 : 0.32, 0.09, 1.5); }
       // headshots punch the view a touch (FOV squeeze + tiny shake)
       if (head) { this.cam.hitFov = Math.min(4, (this.cam.hitFov || 0) + 2.5); this.cam.shake = Math.max(this.cam.shake, 0.06); }
       if (died) { this.cam.hitFov = Math.min(5, (this.cam.hitFov || 0) + (head ? 4 : 2)); }

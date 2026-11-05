@@ -54,6 +54,21 @@ BR.Effects = class Effects {
       this.rings.push({ m, life: 0 });
     }
     this.ri = 0;
+    // v1.22: glow pops (hot additive flashes) + shock rings (expanding camera-facing rings)
+    this.pops = []; this.shocks = [];
+    for (let i = 0; i < 40; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); s.visible = false; scene.add(s); this.pops.push({ s, life: 0, max: 1, s0: 1, s1: 1 }); }
+    for (let i = 0; i < 24; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.ring, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); s.visible = false; scene.add(s); this.shocks.push({ s, life: 0, max: 1, s0: 1, s1: 1 }); }
+    this.popI = 0; this.shI = 0;
+  }
+  // a hot additive flash at p that swells and fades
+  pop(p, color, size, life, grow) {
+    const o = this.pops[this.popI++ % this.pops.length]; o.s.position.copy(p); o.s.material.color.setHex(color); o.s.material.rotation = Math.random() * 6;
+    o.s0 = size; o.s1 = size * (grow || 1.6); o.life = o.max = life || 0.12; o.s.visible = true; o.s.scale.setScalar(size); o.s.material.opacity = 1;
+  }
+  // an expanding ring (camera-facing) at p
+  shock(p, color, size, life) {
+    const o = this.shocks[this.shI++ % this.shocks.length]; o.s.position.copy(p); o.s.material.color.setHex(color);
+    o.s0 = size * 0.25; o.s1 = size; o.life = o.max = life || 0.3; o.s.visible = true; o.s.scale.setScalar(o.s0); o.s.material.opacity = 1;
   }
 
   rope(from, g) {
@@ -66,6 +81,8 @@ BR.Effects = class Effects {
   }
 
   blast(p, power) {
+    this.pop(p, 0xffb547, 1.2 + power, 0.16, 2.2); this.shock(p, 0xffd27a, 3 + power * 3, 0.35);       // v1.22
+    this.burst(p, [0xffd27a, 0xff8a2a, 0xffffff], 14, 7, 0.06, 0.45, 6);
     const r = this.rings[this.ri++ % this.rings.length];
     r.m.position.copy(p);
     r.m.visible = true; r.life = r.max = 0.45; r.power = power;
@@ -238,6 +255,7 @@ BR.Effects = class Effects {
   }
 
   impact(p, blood) {
+    if (!blood) { this.pop(p, 0xffc86a, 0.22, 0.07, 1.4); this.burst(p, [0xffe2a0, 0xffffff, 0xff9a3c], 3, 4.5, 0.035, 0.25, 9); }      // v1.22: hot glint + a few sparks on every surface hit
     const f = this.puffs[this.pi++ % this.puffs.length];
     f.mesh.position.copy(p);
     f.mesh.material.color.setHex(blood ? 0xd8283c : 0xcfc6b2);
@@ -492,6 +510,13 @@ BR.Effects = class Effects {
       if (t.t >= t.life) { t.streak.visible = t.trail.visible = t.glow.visible = t.head.visible = false; if (t.fx) { for (const b of t.fx) b.visible = false; for (const b of t.seg) b.visible = false; t.sheath.visible = false; } continue; }
       this.placeTracer(t);
     }
+    for (const L of [this.pops, this.shocks]) for (const o of L) {
+      if (!o.s.visible) continue;
+      o.life -= dt; const k = Math.max(0, o.life / o.max), e = 1 - k;
+      o.s.scale.setScalar(o.s0 + (o.s1 - o.s0) * (1 - Math.pow(1 - e, 3)));
+      o.s.material.opacity = L === this.pops ? k * k : k;
+      if (o.life <= 0) o.s.visible = false;
+    }
     for (const f of this.puffs) {
       if (!f.mesh.visible) continue;
       f.life -= dt;
@@ -521,6 +546,9 @@ BR.Effects.tex = () => {
     dot: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return Math.pow(Math.max(0, 1 - r), 2.2) + Math.max(0, 1 - r * 3.5) * 0.8; }),
     ring: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; return Math.exp(-Math.pow((r - 0.75) / 0.09, 2)) + Math.max(0, 1 - r) * 0.15; }),
     smoke: mk(64, 64, (u, v) => { const r = Math.hypot(u - 0.5, v - 0.5) * 2; const n = 0.75 + 0.25 * Math.sin(u * 23 + v * 9) * Math.sin(v * 19 - u * 7); return Math.pow(Math.max(0, 1 - r), 1.5) * n; }),
+    // v1.22 muzzle flash parts: a 6-ray star with a hot centre, and a flame tongue (v = 0 at the muzzle -> 1 at the tip)
+    star: mk(96, 96, (u, v) => { const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y) * 2, a = Math.atan2(y, x); const rays = Math.pow(Math.abs(Math.cos(a * 3)), 14) * Math.max(0, 1 - r) * 1.1 + Math.pow(Math.abs(Math.cos(a * 3 + 0.52)), 30) * Math.max(0, 1 - r * 1.4) * 0.6; return rays + Math.pow(Math.max(0, 1 - r * 2.2), 1.6); }),
+    flame: mk(32, 96, (u, v) => { const w = 0.5 * (1 - v) * (0.55 + 0.45 * Math.sin(v * 3.1)); const d = Math.abs(u - 0.5); return Math.max(0, 1 - d / Math.max(0.02, w)) * Math.pow(1 - v, 0.6) * Math.min(1, v * 12 + 0.3); }),
   };
   return BR.Effects._tex;
 };

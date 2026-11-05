@@ -263,6 +263,9 @@
       this.kickR.y.vel += side * (auto ? 0.3 : 0.12) * a;
       if (auto) this.heatT = Math.min(1, this.heatT + 0.07 + d.recoil * 2);
       this.flashT = d.suppressed ? 0.025 : 0.05;
+      this.flashS = (d.suppressed ? 0.42 : d.pellets > 1 || (d.kick || 0) > 1 ? 1.35 : 1) * (0.8 + Math.random() * 0.45);
+      // v1.22: brass ejects to the right (shotguns: a red shell when the pump racks; bolt actions: when the bolt cycles)
+      if (!d.melee && !d.launcher && !d.revolver) (this.ejects || (this.ejects = [])).push({ t: d.pump ? 0.22 : d.bolt ? 0.42 : 0, kind: d.pellets > 1 ? 'shell' : d.bolt || d.dmg >= 40 ? 'big' : 'brass', w });
       this.inspectT = 0;
       if (d.revolver) this.cylTarget = (this.cylTarget || 0) + Math.PI / 3;          // index one chamber
       // Bolt action: cycle the bolt after every shot (unless that was the last round)
@@ -756,7 +759,8 @@
       // Mag + muzzle flash
       if (ud.mag) { ud.mag.position.copy(magOff || this._v.set(0, 0, 0)); ud.mag.visible = magVis; }
       ud.flash.visible = this.flashT > 0 && A < 0.5;
-      if (ud.flash.visible) ud.flash.rotation.z = Math.random() * 3;
+      if (ud.flash.visible) { ud.flash.rotation.z = Math.random() * 3; ud.flash.scale.setScalar((this.flashS || 1) * (0.75 + 0.25 * this.flashT / 0.05)); }
+      if (this.ejects && this.ejects.length) this.stepEjects(dt, model, ud);
 
       // Charm swings from look + movement + recoil
       const ch = ud.charmObj;
@@ -1037,7 +1041,31 @@
       const r = this.rings[this.rgi++ % this.rings.length];
       r.m.position.copy(at); r.m.lookAt(0, 0, 0); r.m.material.color.setHex(color); r.life = r.max = 0.4; r.m.visible = true;
     }
+    // v1.22: pooled casings (cylinders) tumbling out of the ejection port in view
+    stepEjects(dt, model, ud) {
+      if (!this.casings) {
+        const brass = new THREE.MeshPhongMaterial({ color: 0xd9a441, specular: 0xfff0c0, shininess: 90, emissive: 0x2a1800 }), red = new THREE.MeshPhongMaterial({ color: 0xb8231e, specular: 0xffffff, shininess: 50 });
+        const gB = new THREE.CylinderGeometry(0.0042, 0.0042, 0.02, 8), gS = new THREE.CylinderGeometry(0.0085, 0.0085, 0.032, 10);
+        this.casings = []; for (let i = 0; i < 12; i++) { const m = new THREE.Mesh(gB, brass); m.visible = false; this.scene.add(m); this.casings.push({ m, v: new THREE.Vector3(), w: new THREE.Vector3(), life: 0, gB, gS, brass, red }); }
+        this.casI = 0;
+      }
+      for (let i = this.ejects.length - 1; i >= 0; i--) {
+        const e = this.ejects[i]; e.t -= dt; if (e.t > 0) continue; this.ejects.splice(i, 1);
+        const c = this.casings[this.casI++ % this.casings.length], gp = ud.grip || this._v.set(0, -0.06, 0.06);
+        model.updateMatrixWorld(true);
+        c.m.position.copy(model.localToWorld(this._v2.set(0.02, gp.y + 0.12, gp.z - 0.09)));
+        const big = e.kind !== 'brass'; c.m.geometry = e.kind === 'shell' ? c.gS : c.gB; c.m.material = e.kind === 'shell' ? c.red : c.brass;
+        c.m.scale.set(1, big ? 1.5 : 1, 1);
+        c.v.set(1.1 + Math.random() * 0.7, 0.9 + Math.random() * 0.6, 0.15 + Math.random() * 0.3); c.w.set(Math.random() * 20 - 10, Math.random() * 10, 18 + Math.random() * 12);
+        c.m.rotation.set(0, 0, Math.PI / 2); c.life = 0.6; c.m.visible = true;
+      }
+      for (const c of this.casings) {
+        if (c.life <= 0) continue; c.life -= dt; if (c.life <= 0) { c.m.visible = false; continue; }
+        c.v.y -= 5.5 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += c.w.x * dt; c.m.rotation.y += c.w.y * dt; c.m.rotation.z += c.w.z * dt;
+      }
+    }
     updateVfx(dt) {
+      if (this.casings && !(this.ejects && this.ejects.length)) for (const c of this.casings) { if (c.life <= 0) continue; c.life -= dt; if (c.life <= 0) { c.m.visible = false; continue; } c.v.y -= 5.5 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += c.w.x * dt; c.m.rotation.z += c.w.z * dt; }
       for (const s of this.sparks) {
         if (s.life <= 0) continue;
         s.life -= dt; if (s.life <= 0) { s.m.visible = false; continue; }

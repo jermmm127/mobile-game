@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.22.0', date: '2026-11-05', title: 'VFX revamp', notes: [
+    'New muzzle flash on every gun: a bright star burst with flame tongues that changes shape and size every shot. Shotguns and heavy guns flash bigger; suppressors keep it small.',
+    'Shell casings: brass flies out of the gun as you shoot. Pump and bolt guns kick theirs out when you cycle, and shotguns throw red shells.',
+    'Hit effects: every hit you land now flashes a ring and burst on the target. It is red on health, blue on shields and gold on headshots, with a bigger ring on kills.',
+    'Bullet impacts on walls throw a hot flash and extra sparks. Explosions and the Shockwave Launcher get a bright core flash and an expanding shockwave ring.',
+    'Skin effects: Legendary, Mythic and Exotic camos, plus Mythic and Exotic blueprints, now glow with a rim of light in the skin\'s colour and give off floating sparkles. Higher tiers glow brighter and sparkle more, and Exotic skins cycle through colours.',
+  ] },
   { v: '1.21.1', date: '2026-11-05', title: 'Bigger party stage', notes: [
     'Main menu: your party now takes the whole right half of the screen. The characters are much bigger and fanned out, with you in front.',
     'The mode card, PLAY button, team-size buttons and menu buttons are smaller and sit in a compact column on the left. Tap the mode card to change modes.',
