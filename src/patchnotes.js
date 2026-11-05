@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.18.2', date: '2026-11-05', title: 'Karambit hold', notes: [
+    'New karambit idle pose: the handle runs through the fist with the ring by your thumb, the back of the hand faces you, and the blade sweeps out to the right of the fist and hooks up.',
+    'Your empty left fist now shows at the bottom left while you hold the karambit. It drops out of view during the draw and inspect twirls.',
+  ] },
   { v: '1.18.1', date: '2026-11-05', title: 'Breacher rework', notes: [
     'New Breacher model: a detailed sci-fi pump shotgun in the black factory finish. The pump grip racks back after every shot, it aims down its own iron sights, and every camo and blueprint works on it.',
     'Breacher now handles like a heavy line-shot pump shotgun: 8 pellets in a wide horizontal line that tightens a lot when you aim, 15 damage per pellet (120 max), a slower and heavier pump (56 rpm), 5 shells with a shell-by-shell reload you can cancel by firing, and more reach (30 m).',

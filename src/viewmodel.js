@@ -13,6 +13,9 @@
 (function () {
   // v1.11 sleeves: a tapered fabric forearm (lathe) with an elastic cuff at the wrist and a
   // seam band, instead of a plain tube. Unit length along +Y (wrist at -0.5, elbow at +0.5).
+  // v1.18.2 karambit idle, matched to the reference screenshot: knife tilt (x/y/z), forearm direction (f),
+  // right fist position (hx/hy/hz), empty left fist in view (left, lx/ly). window.__KP overrides for tuning.
+  const KP = Object.assign({ x: -0.9, y: -0.3, z: 0.2, f: [0.85, -0.4, 0.35], hx: 0.08, hy: -0.075, hz: -0.34, left: 1, lx: 0.05, ly: -0.025 }, (typeof window !== 'undefined' && window.__KP) || {});
   const KI = { z1: 0.95, y1: -0.15, x1: 0.1, z2: -0.25, y2: -0.55, x2: 0 };      // karambit inspect show poses (wrist turns)
   const BAYLIKE = id => id === 'bayonet' || id === 'tracker';      // v1.13: the Tracker shares the bayonet's fist + flips
   let SLEEVE = null;
@@ -105,20 +108,14 @@
         const m = BR.Models.weapon(id, BR.Profile.skinFor(id), BR.CONFIG.weapons[id].melee ? 'none' : eq.charms, bp);
         const holder = new THREE.Group();
         if (id === 'knife') {
-          // Reverse grip: handle upright in the fist (ring on top by the index finger), blade
-          // hanging below it with the hooked tip sweeping forward and up.
-          // CS-style idle: handle across the fist (ring on the inner side by the index finger),
-          // blade out the outer side sweeping up-right with the hook curving up, flat facing you.
-          // model Z (handle -> ring) -> left, model -Y (hook) -> up, model X -> toward the camera's -Z
-          // (v1.17.1) turned round: the blade now sweeps in toward the centre of the screen, ring on the outer side
-          m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, -1, 0), new THREE.Vector3(1, 0, 0)));
-          m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, -0.25, 0.32, 'YXZ')));
+          // (v1.18.2, matched to the reference screenshot) CS-style idle: the handle runs diagonally through
+          // the fist (ring down by the thumb at the lower left), the back of the hand faces you with the
+          // fingers wrapped on the left, and the blade leaves the top right of the fist, sweeps out to the
+          // right and hooks UP, leaning away from the camera.
+          // model -Z (blade root -> out) -> right, model -Y (hook) -> up, model X -> toward -Z (flat to camera)
+          m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, -1, 0), new THREE.Vector3(-1, 0, 0)));
+          m.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(KP.x, KP.y, KP.z, 'YXZ')));
           m.scale.setScalar(0.8);
-          // (v1.18) the fist grips it the other way and the blade turns the other way: the knife rolls a half
-          // turn round the forearm's axis through the middle of the handle (the hand follows the handle)
-          { m.updateMatrix(); const Zf = new THREE.Vector3(0.6, -0.78, -0.05).normalize(), Rq = new THREE.Quaternion().setFromAxisAngle(Zf, Math.PI);
-            const C = new THREE.Vector3(0, 0.023, 0.052).applyMatrix4(m.matrix);
-            m.quaternion.premultiply(Rq); m.position.sub(C).applyQuaternion(Rq).add(C); }
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
           const P = new THREE.Vector3(0, 0.066, 0.12).applyMatrix4(m.matrix);   // ring centre
@@ -273,6 +270,7 @@
 
     // ---- per frame ------------------------------------------------------------
     update(dt, lookDX, lookDY) {
+      this._dt = dt;
       const game = this.game, p = game.player, w = p.weapon, m = p.mover, Mv = BR.CONFIG.move;
       for (const id in this.models) this.models[id].visible = false;
       if (this.papModels) for (const id in this.papModels) this.papModels[id].visible = false;
@@ -320,7 +318,7 @@
       const sprinting = m.onGround && !m.sliding && sp > run * 0.92 && !p.ads && !p.fireHeld && !reloading && this.drawT <= 0 && this.inspectT <= 0;
       this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
-      if (def.melee) { hx = 0.1 * s; hy = -0.095; hz = -0.38; }      // karambit low in the right of the view, like CS
+      if (def.melee) { hx = (KP.hx !== undefined ? KP.hx : 0.1) * s; hy = KP.hy !== undefined ? KP.hy : -0.095; hz = KP.hz !== undefined ? KP.hz : -0.38; }      // karambit low in the right of the view, like CS
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       if (w.id === 'hunter') { hx = 0.15 * s; hy = -0.165; hz = -0.47; }     // v1.16.2: closer + bigger at the hip, muzzle toward the centre (reference)
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
@@ -806,7 +804,7 @@
         spin.obj.quaternion.copy(sq); spin.obj.updateMatrixWorld(true);
         // mirrored glove (thumb on -X): -X points at the ring, wrist down toward you, back of hand up
         const X = (this._kx || (this._kx = new THREE.Vector3())).subVectors(a, b).normalize();
-        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(0.6, -0.78, -0.05).normalize();
+        const Z = (this._kz || (this._kz = new THREE.Vector3())).set(...(KP.f || [0.6, -0.78, -0.05])).normalize();
         Z.addScaledVector(X, -Z.dot(X)).normalize();
         const Y = (this._ky || (this._ky = new THREE.Vector3())).crossVectors(Z, X);
         const gripQ = (this._kq2 || (this._kq2 = new THREE.Quaternion())).setFromRotationMatrix((this._km || (this._km = new THREE.Matrix4())).makeBasis(X, Y, Z));
@@ -862,11 +860,14 @@
         // empty left fist, mirroring the knife hand (like CS)
         L.hand.visible = false;
         const P = this.pos;                    // follows bob/sway/landing, not the knife's slashes
-        KH.L.position.set(-P.x.v - 0.1 * s, P.y.v - 0.05, P.z.v + 0.02);
-        const LX = this._sx.set(0.9, -0.35, 0.2).normalize(), LZ = this._sz.set(-0.35, -0.9, -0.15).normalize();
+        // v1.18.2: the empty left fist shows at idle (reference screenshot) and drops out of view for the twirls
+        this._klw = BR.util.damp(this._klw === undefined ? 1 : this._klw, this.drawT > 0 || this.inspectT > 0 ? 0 : 1, 9, this._dt || 1 / 60);
+        KH.L.position.set(-P.x.v - KP.lx * s, P.y.v + KP.ly - (1 - this._klw) * 0.3, P.z.v + 0.02);
+        const LX = this._sx.set(...(KP.lX || [0.9, -0.35, 0.2])).normalize(), LZ = this._sz.set(...(KP.lZ || [-0.35, -0.9, -0.15])).normalize();
         LZ.addScaledVector(LX, -LZ.dot(LX)).normalize();
         KH.L.quaternion.setFromRotationMatrix(this._sm.makeBasis(LX, this._sy.crossVectors(LZ, LX), LZ));
-        KH.L.visible = false;                  // v1.11: like CS, the off hand stays out of view with the karambit
+        KH.L.visible = !!KP.left && this._klw > 0.03;
+        if (KH.L.visible) { KH.L.updateMatrixWorld(true); this.limb(L.fore, KH.L.localToWorld(new THREE.Vector3(0, 0, 0.075)), this._sv.set(-0.5 * s, -0.68, -0.3), 0.72); return; }
         KH.L.updateMatrixWorld(true);
         L.fore.visible = false;
         return;

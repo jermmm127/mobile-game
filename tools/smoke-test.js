@@ -140,7 +140,9 @@ const server = http.createServer((req, res) => {
     for (let i = 0; i < 70; i++) { v.update(1 / 60, 0, 0); const q = v.models.knife.userData.spin.obj.quaternion; maxSpin = Math.max(maxSpin, 2 * Math.acos(Math.min(1, Math.abs(q.w)))); }
     r.knifeSpin = maxSpin;
     // karambit is held in the backhand-fist gloves (right holds the knife, left is an empty fist)
-    r.armsVisible = v.knifeHands.R.visible && !v.knifeHands.L.visible && v.arms.R.fore.visible;    // v1.11: the karambit's empty off hand stays out of view (like CS)
+    // v1.18.2 (reference screenshot): the empty left fist shows at idle, after the draw has finished
+    v.drawT = 0; v.inspectT = 0; for (let i = 0; i < 60; i++) v.update(1 / 60, 0, 0);
+    r.armsVisible = v.knifeHands.R.visible && v.knifeHands.L.visible && v.arms.R.fore.visible;
     p.slots[0] = BR.Weapons.create('rifle', 2); p.ammo.heavy = 90; p.cur = 0;
     for (let i = 0; i < 60; i++) v.update(1 / 60, 0, 0);
     BR.Weapons.startReload(p.weapon, p); let magDrop = 0;
