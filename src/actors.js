@@ -330,7 +330,8 @@ BR.Actor = class Actor {
     // shoulders counter-rotate against the hip sway so the pelvis visibly swings under them
     u.upper.rotation.y = U.damp(u.upper.rotation.y, U.clamp(U.wrapAngle(this.yaw - u.yaw), -1.1, 1.1) - (u.hipYaw || 0) * 1.15, 16, dt);
     u.pitch = U.damp(u.pitch, this.pitch, 14, dt);
-    u.t += dt * sp * 1.45;
+    u.spS = U.damp(u.spS || 0, sp, 7, dt);                       // v1.21: smoothed speed drives the gait (no stride pops)
+    u.t += dt * (u.spS * 1.3 + (u.spS > 0.3 ? 0.6 : 0));
     // targets: [hipL, kneeL, hipR, kneeR, lean, bodyY, bodyX]
     let hL = 0, kL = 0, hR = 0, kR = 0, lean = 0, bodyY = 0, bodyX = 0, armsUp = 0, armsOut = 0, hipYaw = 0, hipRoll = 0, hipShift = 0;
     let crawl = 0;
@@ -348,19 +349,27 @@ BR.Actor = class Actor {
       bodyY = -0.34; hL = -1.0; kL = 1.6; hR = -0.6; kR = 1.4; lean = 0.18;
     } else if (!m.onGround) {                     // jump: tuck the knees
       hL = -0.7; kL = 1.0; hR = -0.2; kR = 0.6; lean = 0.05;
-    } else {                                      // run cycle with knee bend
-      const a = Math.min(0.8, sp * 0.09), c = Math.sin(u.t);
-      hL = c * a; hR = -c * a;
-      kL = Math.max(0, -Math.cos(u.t)) * a * 1.4 + (sp > 0.5 ? 0.15 : 0); kR = Math.max(0, Math.cos(u.t)) * a * 1.4 + (sp > 0.5 ? 0.15 : 0);
-      lean = Math.min(sp * 0.012, 0.12);
-      bodyY = -Math.abs(Math.sin(u.t)) * Math.min(sp * 0.006, 0.04);
-      // hips: twist with the leg swing, drop toward the swinging leg, shift over the planted foot
-      const amp = Math.min(1, sp / 5);
-      hipYaw = c * 0.2 * amp; hipRoll = Math.sin(u.t) * 0.07 * amp; hipShift = Math.sin(u.t) * 0.035 * amp;
+    } else {                                      // v1.21 direction-aware gait: forward/back strides, side-steps when strafing
+      const spd = u.spS, c = Math.sin(u.t), cc = Math.cos(u.t);
+      const fx = -Math.sin(u.yaw), fz = -Math.cos(u.yaw), vf = m.vel.x * fx + m.vel.z * fz, vs = m.vel.x * -fz + m.vel.z * fx;
+      const n = Math.max(0.001, Math.hypot(vf, vs)), f = vf / n, l = vs / n;          // f: +1 forward, -1 back; l: strafe share
+      u.gf = U.damp(u.gf === undefined ? 1 : u.gf, spd > 0.3 ? f : 1, 8, dt); u.gl = U.damp(u.gl || 0, spd > 0.3 ? l : 0, 8, dt);
+      const a = Math.min(0.72, spd * 0.085) * (spd < 2.6 ? 0.75 : 1);                 // a shorter, calmer stride when walking
+      const fw = Math.abs(u.gf), sd = Math.min(1, Math.abs(u.gl) * 1.2), dir = u.gf < 0 ? -1 : 1;
+      hL = c * a * fw * dir; hR = -c * a * fw * dir;
+      const lift = a * (1.25 + 0.35 * sd);                                             // knees lift on the swing (also when side-stepping)
+      kL = Math.max(0, -cc) * lift + (spd > 0.4 ? 0.12 : 0); kR = Math.max(0, cc) * lift + (spd > 0.4 ? 0.12 : 0);
+      u.side = c * a * 0.55 * sd * Math.sign(u.gl || 1);                              // legs open + cross when strafing
+      lean = U.clamp(u.gf * spd * 0.011, -0.05, 0.11);
+      bodyY = -(0.5 - 0.5 * Math.cos(u.t * 2)) * Math.min(spd * 0.0065, 0.04);         // smooth double bounce per stride (no sharp dip)
+      const amp = Math.min(1, spd / 5);
+      hipYaw = c * 0.17 * amp * fw; hipRoll = c * 0.06 * amp - u.gl * Math.min(spd * 0.012, 0.07); hipShift = c * 0.03 * amp;
     }
     const D = (o, key, v, k) => { o[key] = U.damp(o[key], v, k, dt); };
     D(u.L.hip.rotation, 'x', hL, 16); D(u.L.knee.rotation, 'x', kL, 16);
     D(u.R.hip.rotation, 'x', hR, 16); D(u.R.knee.rotation, 'x', kR, 16);
+    const sideOn = !m.dropping && !m.sliding && !m.crouched && m.onGround && !this.downed ? (u.side || 0) : 0;
+    D(u.L.hip.rotation, 'z', -0.04 + sideOn, 14); D(u.R.hip.rotation, 'z', 0.04 + sideOn, 14);
     D(u.upper.rotation, 'x', lean, 12);
     D(u.body.rotation, 'x', bodyX, 7);
     D(u.body.position, 'y', bodyY, 12);

@@ -5,6 +5,18 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.21.0', date: '2026-11-05', title: 'New models, District, vaulting', notes: [
+    'New models: Sniper, Revolver (the cylinder swings out and spins on reloads), Shockwave Launcher (the drum comes off on reloads), plus all four knives: Karambit, Butterfly (the handles still flip), M9 Bayonet and Tracker. All camos and blueprints work on them.',
+    'Sniper scope: when you aim, the rifle\'s own scope now comes up to your eye and lines up with the crosshair before the scope view opens, so the reticle sits exactly in the model\'s scope.',
+    'Knockdowns: downing a player earns you the elimination. Helping finish someone who is down gives you an assist.',
+    'Knocked down? Tap GIVE UP to stop waiting. In Resurgence, the team list shows each teammate\'s redeploy countdown next to their name.',
+    'New map, District: a big town block made for Free For All, with a fountain plaza, four houses you can walk into, a market row, a footbridge and container alleys. Free For All now rolls District or Killhouse, and TDM can roll District too.',
+    'Free For All spawns are spread out: players no longer spawn next to each other, and spawns avoid places an enemy can see.',
+    'Vault through windows: jump next to a window to climb in or out.',
+    'Aim Trainer: the Tracking drill now has a runner that moves like a real player. It strafes left and right, stops, crouch-spams, jumps and slides.',
+    'Smoother movement: characters side-step when they strafe instead of running in place, and their stride follows their speed. The step bob is rounder in first person, both for the camera and the gun.',
+    'Map art: buildings get framed corners and trim along their tops, wall bases are shaded where they meet the ground, windows and doors are framed, and the lighting is warmer with more contrast. The arena concrete is warmer too.',
+  ] },
   { v: '1.20.0', date: '2026-11-05', title: 'Friends, parties + new guns', notes: [
     'Friends: tap FRIENDS in the main menu and add players by username or account ID. Accept requests, see who is online, and invite friends to your party.',
     'Parties: up to 4 players. Everyone in your party stands on the main menu stage holding the gun they have equipped, in their camo or blueprint, with an INVITE spot for each empty place. The leader presses PLAY on Duels, Shotgun Duels, Sniper Duels, TDM or FFA, and the whole party lands in the same online lobby on the same team. (Battle Royale with friends isn’t available yet.)',

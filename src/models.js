@@ -1661,11 +1661,17 @@ BR.Models = (function () {
     if (!C || !data) return (IMPORT_CACHE[id] = null);
     try {
       const s = C.scale, [dx, dy, dz] = C.offset, out = [];
-      const tp = (x, y, z) => [-z * s + dx, y * s + dy, x * s + dz];      // model -X (muzzle) -> game -Z, model +Z (left side) -> game -X
+      // model -X (muzzle) -> game -Z, model +Z (left side) -> game -X. v1.21 knives: axes 'upright' puts the blade (model -X)
+      // up +Y with the edge (model -Y) toward -Z, like the procedural knives; rot (game-space Euler) turns it about pivot.
+      const up = C.axes === 'upright', ax = (x, y, z) => up ? [-z, -x, y] : [-z, y, x];
+      const R = C.rot ? new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...C.rot)) : null, pv = C.pivot || [0, 0, 0], tv = new THREE.Vector3();
+      const tp = (x, y, z) => { const a = ax(x, y, z); tv.set(a[0] * s, a[1] * s, a[2] * s); if (R) tv.sub(new THREE.Vector3(...pv)).applyMatrix4(R).add(new THREE.Vector3(...pv)); return [tv.x + dx, tv.y + dy, tv.z + dz]; };
+      const tn = (x, y, z) => { const a = ax(x, y, z); tv.set(a[0], a[1], a[2]); if (R) tv.applyMatrix4(R); return [tv.x, tv.y, tv.z]; };
       for (const P of parseGLB(data)) {
         const mat = new THREE.MeshPhongMaterial({ map: P.map, normalMap: P.normalMap, color: P.map ? 0xffffff : (P.color || 0x888888), specular: 0x6a6a6a, shininess: C.shininess || 45, envMap: BR.weaponEnv(), reflectivity: C.reflect || 0.12, side: THREE.DoubleSide });
         if (P.normalMap) mat.normalScale.set(1, -1);
-        const parts = { body: [], mag: [], pump: [], bolt: [] }, n = P.idx ? P.idx.length : P.pos.length / 3;
+        const parts = { body: [], mag: [], pump: [], bolt: [], blade: [], cyl: [], hA: [], hB: [] }, n = P.idx ? P.idx.length : P.pos.length / 3;
+        const inB = (B, x, y, z) => B && x >= B.x[0] && x <= B.x[1] && (!B.y || (y >= B.y[0] && y <= B.y[1])) && (!B.z || (z >= B.z[0] && z <= B.z[1]));
         const vi = k => P.idx ? P.idx[k] : k;
         for (let t = 0; t < n; t += 3) {
           const a = vi(t), b = vi(t + 1), c = vi(t + 2), cx = (P.pos[a * 3] + P.pos[b * 3] + P.pos[c * 3]) / 3, cy = (P.pos[a * 3 + 1] + P.pos[b * 3 + 1] + P.pos[c * 3 + 1]) / 3;
@@ -1673,14 +1679,15 @@ BR.Models = (function () {
           const Pb = C.pumpBox, isPump = Pb && cx >= Pb.x[0] && cx <= Pb.x[1] && cy >= Pb.y[0] && cy <= Pb.y[1];     // v1.18.1 pump-action slide
           const Bb = C.boltBox, cz = (P.pos[a * 3 + 2] + P.pos[b * 3 + 2] + P.pos[c * 3 + 2]) / 3;                  // v1.20 bolt handle (bolt actions)
           const isBolt = Bb && cx >= Bb.x[0] && cx <= Bb.x[1] && cy >= Bb.y[0] && cy <= Bb.y[1] && cz >= Bb.z[0] && cz <= Bb.z[1];
-          (isBolt ? parts.bolt : isPump ? parts.pump : isMag ? parts.mag : parts.body).push(a, b, c);
+          const HS = C.handleSplit, isH = HS && cx > HS.x;                                                     // v1.21 butterfly handles (two sides)
+          (isBolt ? parts.bolt : isPump ? parts.pump : isMag ? parts.mag : inB(C.cylBox, cx, cy, cz) ? parts.cyl : isH ? (cz > HS.z ? parts.hA : parts.hB) : inB(C.bladeBox, cx, cy, cz) ? parts.blade : parts.body).push(a, b, c);
         }
-        for (const key of ['body', 'mag', 'pump', 'bolt']) {
+        for (const key of ['body', 'mag', 'pump', 'bolt', 'blade', 'cyl', 'hA', 'hB']) {
           const ids = parts[key]; if (!ids.length) continue;
           const pos = new Float32Array(ids.length * 3), nor = new Float32Array(ids.length * 3), uv = new Float32Array(ids.length * 2);
           ids.forEach((v, i) => {
             const q = tp(P.pos[v * 3], P.pos[v * 3 + 1], P.pos[v * 3 + 2]); pos.set(q, i * 3);
-            if (P.nor) nor.set([-P.nor[v * 3 + 2], P.nor[v * 3 + 1], P.nor[v * 3]], i * 3);
+            if (P.nor) nor.set(tn(P.nor[v * 3], P.nor[v * 3 + 1], P.nor[v * 3 + 2]), i * 3);
             if (P.uv) uv.set([P.uv[v * 2], P.uv[v * 2 + 1]], i * 2);
           });
           const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
@@ -1694,7 +1701,8 @@ BR.Models = (function () {
   function importedBuild(id, g, S, M, opts) {
     const parts = importedParts(id); if (!parts) return false;
     const C = BR.IMPORTED[id], def = BR.CONFIG.weapons[id], std = S === cache.mat['default|' + def.color];
-    const magMeshes = [], pumpMeshes = [], boltMeshes = [];
+    const magMeshes = [], pumpMeshes = [], boltMeshes = [], by = { blade: [], cyl: [], hA: [], hB: [] };
+    const bladeMat = (opts && (opts.blade || opts.camo)) || M.blade;           // v1.21 knives: camo / blueprint blade finish
     let textured = false;
     for (const p of parts) {
       // finish: a camo / blueprint body replaces the model's own texture. Untextured models (and ones
@@ -1705,8 +1713,37 @@ BR.Models = (function () {
         textured = true;
       } else if (std && !p.mat.map) mat = S;
       else if (std) textured = true;
+      if (p.key === 'blade') mat = bladeMat;
       const m = new THREE.Mesh(p.geo, mat);
-      g.add(m); if (p.key === 'mag') magMeshes.push(m); if (p.key === 'pump') pumpMeshes.push(m); if (p.key === 'bolt') boltMeshes.push(m);
+      g.add(m); if (p.key === 'mag') magMeshes.push(m); if (p.key === 'pump') pumpMeshes.push(m); if (p.key === 'bolt') boltMeshes.push(m); if (by[p.key]) by[p.key].push(m);
+    }
+    // v1.21 revolver: the cylinder swings out on a crane (pivot low on the left) and spins on reloads / every shot
+    if (C.cylC && by.cyl.length) {
+      const c = C.cylC, crane = new THREE.Group(); crane.position.set(c[0] - 0.016, c[1] - 0.02, c[2]); g.add(crane);
+      const cyl = new THREE.Group(); cyl.position.set(0.016, 0.02, 0); crane.add(cyl); crane.updateMatrixWorld(true);
+      for (const m of by.cyl) cyl.attach(m);
+      g.userData.crane = crane; g.userData.cylinder = cyl;
+      const sl = new THREE.Group(); sl.position.set(0, 0.042, 0.03);
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.012, 16), M.dark); ring.rotation.x = Math.PI / 2; sl.add(ring);
+      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.52; const rd = new THREE.Mesh(new THREE.CylinderGeometry(0.0052, 0.0052, 0.03, 8), M.brass); rd.rotation.x = Math.PI / 2; rd.position.set(Math.cos(a) * 0.015, Math.sin(a) * 0.015, -0.02); sl.add(rd); }
+      const mg = new THREE.Group(); mg.add(sl); g.add(mg); g.userData.mag = mg; sl.visible = false; g.userData.speedloader = sl;
+    }
+    // v1.21 knives, laid out like the procedural ones so every pose, flip and twirl still fits
+    if (C.knife) {
+      const bv = [], v = new THREE.Vector3();
+      for (const m of by.blade) { const P = m.geometry.attributes.position; for (let i = 0; i < P.count; i += 3) bv.push(v.fromBufferAttribute(P, i).clone()); }
+      let tip = new THREE.Vector3(0, 0.15, 0); for (const q of bv) if (q.length() > tip.length()) tip = q;
+      let mid = tip.clone().multiplyScalar(0.55), best = 1e9; for (const q of bv) { const d = Math.abs(q.length() - tip.length() * 0.55); if (d < best) { best = d; mid = q; } }
+      g.userData.trailTip = tip.clone(); g.userData.trailMid = mid.clone(); if (by.blade[0]) g.userData.bladeMesh = by.blade[0];     // (blueprint auras hug this mesh)
+      if (C.knife === 'baylike' || C.knife === 'karambit') {
+        const inner = new THREE.Group(); g.add(inner); for (const m of g.children.slice()) if (m.isMesh) inner.attach(m);
+        g.userData.blade = C.knife === 'baylike' ? (by.blade[0] || inner) : inner;      // (the blade mesh: camo / blueprint checks read its material)
+        if (C.knife === 'baylike') { g.userData.inner = inner; g.userData.bayonet = true; if (id === 'tracker') g.userData.tracker = true; }
+      } else if (C.knife === 'butterfly') {
+        const mk = (list, at) => { const h = new THREE.Group(); h.position.set(...at); g.add(h); h.updateMatrixWorld(true); for (const m of list) h.attach(m); return h; };
+        g.userData.handleA = mk(by.hA, C.hinge); g.userData.handleB = mk(by.hB, C.hinge);
+        g.userData.blade = by.blade[0] || g;
+      }
     }
     if (magMeshes.length) magGroup(g, magMeshes);
     if (pumpMeshes.length) { const pg = new THREE.Group(); g.add(pg); for (const m of pumpMeshes) pg.attach(m); g.userData.pump = pg; }   // slides back after each shot
@@ -1727,11 +1764,13 @@ BR.Models = (function () {
       g.userData.holoReticle = ret;
     }
     // aim point: the model's own iron sights; a small dot on the front post helps line it up
-    const sg = new THREE.Object3D(); sg.position.set(0, C.sight.y, C.sight.rearZ); g.add(sg);
-    g.userData.sight = sg; g.userData.sightDist = C.sight.dist;
-    if (C.sight.frontZ !== undefined && !C.holo && !C.sight.noDot) { const dot = new THREE.Mesh(new THREE.BoxGeometry(0.0035, 0.0035, 0.0035), M.sightDot); dot.position.set(0, C.sight.y - 0.0035, C.sight.frontZ); g.add(dot); }
-    hands(g, C.grip, C.fore, C.charge);
+    if (C.sight) { const sg = new THREE.Object3D(); sg.position.set(0, C.sight.y, C.sight.rearZ); g.add(sg);
+    g.userData.sight = sg; g.userData.sightDist = C.sight.dist; }
+    if (C.sight && C.sight.frontZ !== undefined && !C.holo && !C.sight.noDot) { const dot = new THREE.Mesh(new THREE.BoxGeometry(0.0035, 0.0035, 0.0035), M.sightDot); dot.position.set(0, C.sight.y - 0.0035, C.sight.frontZ); g.add(dot); }
+    hands(g, C.grip, C.fore || null, C.charge || null);
     anchors(g, C.muzzle[1], C.muzzle[0], C.charm);
+    if (C.knife) g.userData.flash.visible = false;
+    if (C.kScale) g.userData.kScale = C.kScale;
     // v1.20: the shell-loading point (shotguns load one shell at a time through it). Missing on the imported
     // Breacher in v1.18.1, which broke every frame of its reload (the game froze until the reload ended).
     if (C.port || def.shellReload) g.userData.port = new THREE.Vector3(...(C.port || [0, C.grip[1] + 0.03, C.grip[2] - 0.15]));

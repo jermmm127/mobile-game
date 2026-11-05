@@ -78,6 +78,21 @@ BR.Mover = class Mover {
     const frac = Math.min(1, wl);
     if (wl > 1e-4) { wx /= wl; wz /= wl; }
 
+    // ---- v1.21 window vault: a scripted climb up onto the sill and through the opening ----------
+    if (this.vault) {
+      const V = this.vault; V.t += dt; const k = Math.min(1, V.t / V.dur), e = k * k * (3 - 2 * k);
+      // up to the sill in the first half, through + down to the landing in the second
+      const a = Math.min(1, e / 0.5), b = Math.max(0, (e - 0.5) / 0.5);
+      const ox = this.pos.x, oy = this.pos.y, oz = this.pos.z;
+      this.pos.x = V.x0 + (V.mx - V.x0) * a + (V.x1 - V.mx) * b; this.pos.z = V.z0 + (V.mz - V.z0) * a + (V.z1 - V.mz) * b;
+      this.pos.y = V.y0 + (V.sill + 0.06 - V.y0) * Math.sin(a * Math.PI / 2) + (V.y1 - V.sill - 0.06) * b * b;
+      this.h = 0.8; this.onGround = false; this.sliding = false; this.crouched = false;
+      if (dt > 0) this.vel.set((this.pos.x - ox) / dt, (this.pos.y - oy) / dt, (this.pos.z - oz) / dt);
+      if (k >= 1) { this.vault = null; this.pos.set(V.x1, V.y1, V.z1); this.vel.set(V.dx * 4.5, 0, V.dz * 4.5); this.onGround = V.y1 <= this.world.groundAt(V.x1, V.z1, V.y1 + 0.05) + 0.02; ev.land = true; this.landSpeed = 3; }
+      return;
+    }
+    if (inp.jump && !this.dropping && !this.grapple && this.tryWindowVault(yaw)) { this.jumpBuf = 0; ev.mantle = true; ev.tech = 'VAULT'; return; }
+
     // ---- skydive ----------------------------------------------------------
     // Freefall until you press Jump (or get close to the ground), then the parachute opens.
     if (this.dropping) {
@@ -384,6 +399,36 @@ BR.Mover = class Mover {
       this.landVel.x = preX; this.landVel.z = preZ;
       if (this.grapple) this.releaseGrapple();
     }
+  }
+
+  // v1.21: Jump next to a window (a sill between knee and chest height with an opening above it) climbs through it.
+  // Returns true and starts the vault when there's a clear landing on the other side.
+  tryWindowVault(yaw) {
+    const W = this.world, p = this.pos, dx = -Math.sin(yaw), dz = -Math.cos(yaw), q = this._tmp, w = 0.14;
+    for (const reach of [0.45, 0.75, 1.05]) {
+      const ax = p.x + dx * reach, az = p.z + dz * reach;
+      W.query(ax - w, p.y + 0.35, az - w, ax + w, p.y + 1.6, az + w, q);
+      if (!q.length) continue;
+      let sill = -1; for (const b of q) if (!b.ground && b.y1 > sill && b.y1 <= p.y + 1.6) sill = b.y1;
+      if (sill < p.y + 0.4 || sill > p.y + 1.55) continue;
+      // an opening above the sill (at least 0.75 m) with something over it: a window, not just a low wall
+      if (W.query(ax - w, sill + 0.03, az - w, ax + w, sill + 0.78, az + w, q).length) return false;
+      if (!W.query(ax - w, sill + 0.78, az - w, ax + w, sill + 2.4, az + w, q).length) return false;
+      // the far side: walk forward until there's standing room on the ground beyond the wall
+      for (let l = reach + 0.35; l < reach + 1.9; l += 0.25) {
+        const bx = p.x + dx * l, bz = p.z + dz * l;
+        if (W.query(bx - w, sill + 0.03, bz - w, bx + w, sill + 0.78, bz + w, q).length) return false;     // blocked through the opening
+        const gy = W.groundAt(bx, bz, sill + 0.05);
+        if (gy > sill + 0.02) return false;
+        if (this.clearAt(bx, gy + 0.02, bz, this.standH - 0.05)) {
+          this.vault = { t: 0, dur: 0.46, x0: p.x, y0: p.y, z0: p.z, mx: ax, mz: az, sill, x1: bx, y1: gy + 0.001, z1: bz, dx, dz };
+          if (this.grapple) this.releaseGrapple();
+          return true;
+        }
+      }
+      return false;
+    }
+    return false;
   }
 
   clearAt(x, y, z, h) {

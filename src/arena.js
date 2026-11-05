@@ -119,11 +119,17 @@
     freeSpot(a) {
       let best = null, bd = -1;
       const spots = this.g.world.ffaSpots || SPOTS.map(([x, z]) => [x * K, z * K]);      // v1.15: each map has its own
+      // v1.21: also keep away from spots handed out in the last few seconds (everyone spawning at once used to
+      // land on the same far spot), and prefer spots with no enemy in line of sight
+      const now = this.g.time, recent = (this._recent || (this._recent = [])).filter(r => now - r.t < 4); this._recent = recent;
+      const W = this.g.world;
       for (const [x, z] of spots) {
-        let md = 1e9; for (const o of this.g.actors) if (o !== a && o.alive && o.team !== a.team) md = Math.min(md, Math.hypot(o.pos.x - x, o.pos.z - z));
-        md += Math.random() * 6;
+        let md = 1e9; for (const o of this.g.actors) if (o !== a && o.alive && o.team !== a.team) { const d = Math.hypot(o.pos.x - x, o.pos.z - z); md = Math.min(md, d < 30 && W.lineOfSight(x, 1.6, z, o.pos.x, o.pos.y + 1.4, o.pos.z) ? d * 0.5 : d); }
+        for (const r of recent) md = Math.min(md, Math.hypot(r.x - x, r.z - z));
+        md += Math.random() * 4;
         if (md > bd) { bd = md; best = [x, z]; }
       }
+      recent.push({ x: best[0], z: best[1], t: now });
       const s = this.safe(best[0], best[1]);
       return Object.assign(s, { yaw: Math.atan2(s.x, s.z) });
     }

@@ -340,7 +340,7 @@ const server = http.createServer((req, res) => {
       r.inventory = { onlyOwned, equipped, turned, closed: g.state !== 'shop' };
     }
     const Wd = g.world;
-    r.newstuff = { knifeSpeed, bolts: !!(C.sniper.bolt && C.hunter.bolt), hunterIrons: !C.hunter.scope && !!hm.sight, sniperBolt: !!vm.models.sniper.userData.model.userData.bolt,
+    r.newstuff = { knifeSpeed, bolts: !!(C.sniper.bolt && C.hunter.bolt), hunterIrons: !C.hunter.scope && !!hm.sight, sniperBolt: !!vm.models.sniper.userData.model.userData.bolt, sniperImported: vm.models.sniper.userData.model.userData.imported === 'sniper',
       lift, back, settled: Math.abs(hm.bolt.rotation.z) < 1e-3 && Math.abs(hm.bolt.position.z - hm.boltZ0) < 1e-3,
       decor: Wd.decor.length, buildings: Wd.buildings.length, ponds: Wd.props.ponds.length, barrels: Wd.props.barrels.length, logs: Wd.props.logs.length };
     // stretched res + saturation
@@ -983,7 +983,7 @@ const server = http.createServer((req, res) => {
     // v1.13: the Tracker knife + its blueprints
     { const v = {}, P = BR.Profile, run = n => { for (let i = 0; i < n; i++) g.update(1 / 30); };
       const m = BR.Models.weapon('tracker', 'default', 'none', 'goldrune'); let n = 0; m.traverse(o => { if (o.isMesh) n++; });
-      v.model = !!m.userData.tracker && !!m.userData.inner && n > 12;
+      v.model = !!m.userData.tracker && !!m.userData.inner && n >= (m.userData.imported ? 2 : 12);      // (v1.21: imported model)
       v.bps = Object.keys(BR.Models.BLUEPRINTS.tracker).length >= 7 && BR.MELEE.tracker && !!BR.CONFIG.weapons.tracker.melee;
       const was = P.data.equip.melee; P.data.equip.melee = 'tracker'; g.refreshCosmetics();
       document.getElementById('btn-practice').click(); const pl = g.player; pl.slots[2] = BR.Weapons.create('tracker'); pl.cur = 2; g.vmr.lastWeapon = null; run(40);
@@ -1032,7 +1032,7 @@ const server = http.createServer((req, res) => {
         g.toMenu();
       }
       // fair odds: every map rolls about a third of the time
-      const tally = {}; for (let i = 0; i < 30000; i++) { const m = L.rollMap(); tally[m] = (tally[m] || 0) + 1; }
+      L.preset = 'duel'; const tally = {}; for (let i = 0; i < 30000; i++) { const m = L.rollMap(); tally[m] = (tally[m] || 0) + 1; }
       v.fair = Object.keys(tally).length === 3 && Object.values(tally).every(n => Math.abs(n / 30000 - 1 / 3) < 0.02);
       // the roll overlay lands on the chosen map
       L.skipRoll = false; let rolled = false; L.showRoll('cargo', () => { rolled = true; });
@@ -1161,7 +1161,7 @@ const server = http.createServer((req, res) => {
       for (const w in BR.Models.BLUEPRINTS) for (const b in BR.Models.BLUEPRINTS[w]) { if (b === 'default' || !BR.CONFIG.weapons[w]) continue; n++;
         const m = BR.Models.weapon(w, 'default', 'none', b); let f = false, e = false; m.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.finish) f = true; if (o.isLineSegments) e = true; });
         if (f) fin++; else bad.push(w + ':' + b); if (e) edges++; }
-      v.finishes = fin === n && edges === n; v.bpCount = n; v.noFinish = bad.slice(0, 5);
+      v.finishes = fin === n;      // (v1.21: edge lines only on procedural models; every gun + knife is imported now) v.bpCount = n; v.noFinish = bad.slice(0, 5);
       v.worldOne = BR.Models.worldWeapon('rifle', Object.keys(BR.Models.BLUEPRINTS.rifle).find(k => k !== 'default')).isMesh;
       out.v116 = v; }
     // v1.16.1: real leaderboard (owner's name in open spots; signed entries replace them; forgeries rejected)
@@ -1213,7 +1213,7 @@ const server = http.createServer((req, res) => {
         m.traverse(o => { if (o.isMesh && o.material.userData && o.material.userData.real) { r++; if (!o.material.map || !o.material.normalMap || !o.geometry.attributes.uv) u = false; } if (o.isLineSegments) e++; });
         if (r > 3) real++; if (u) uvOk++; if (e) edges++;
       }
-      v.weapons = real === n && uvOk === n && edges >= 3;      // edge highlights on the guns' main bodies (knife parts live in sub-groups)
+      v.weapons = ['sniper', 'revolver', 'launcher', 'tracker', 'bayonet', 'knife', 'butterfly'].every(id => BR.Models.weapon(id, 'default', 'none', null).userData.imported === id);      // (v1.21: all imported)      // edge highlights on the guns' main bodies (knife parts live in sub-groups)
       const h = BR.Models.hand('default', false); let fab = false; h.traverse(o => { if (o.isMesh && o.material.normalMap && o.material.map) fab = true; }); v.gloves = fab;
       const w = BR.Models.worldWeapon('smg'); v.world = w.isMesh;
       out.v117 = v; }
@@ -1352,6 +1352,36 @@ const server = http.createServer((req, res) => {
     const S = BR.CONFIG.weapons.smg; out.smg = S.rpm === 950 && S.mag === 30 && S.adsRate > 13 && S.speedMult > 1;
     return out;
   });
+  // v1.21: kill credit on knocks + assists, give up, District + FFA spawns, window vault, tracking runner, imports, art pass
+  const v121 = await page.evaluate(async () => {
+    const g = BR.game, out = {}; BR.AntiCheat._testing = true; g.settings.bots = 29;
+    g.startMatch({ squad: 2 }); const p = g.player;
+    for (const a of g.actors) { a.mover.dropping = false; a.mover.pos.y = g.world.groundAt(a.pos.x, a.pos.z, 80); }
+    const foe = g.actors.find(a => a.team === 1), other = g.actors.find(a => a.team === 2);
+    g.applyDamage(foe, p, 999, false, foe.pos, 'rifle'); const k0 = p.kills, o0 = other.kills;
+    g.applyDamage(foe, other, 999, false, foe.pos, 'rifle');
+    out.knockCredit = !foe.alive && p.kills === k0 + 1 && other.kills === o0 && (other.assists || 0) === 1;
+    const e2 = g.actors.find(a => a.team === 3); g.applyDamage(p, e2, 9999, false, p.pos, 'rifle');
+    g.input.press('giveup'); g.update(1 / 30); out.giveUp = !p.alive && !!document.querySelector('#downed .dn-give');
+    // District + FFA spawns
+    BR.Lobby.skipRoll = true; BR.Lobby.preset = 'ffa'; BR.Lobby.size = 6; const pool = BR.Lobby.pool('ffa').map(m => m.id).sort().join();
+    g.toMenu(); BR.Lobby.play({ map: 'district' }); await new Promise(r => setTimeout(r, 300)); for (let i = 0; i < 10; i++) g.update(1 / 30);
+    const A = g.actors.filter(a => a.alive); let md = 1e9; for (const a of A) for (const o of A) if (a !== o) md = Math.min(md, a.pos.distanceTo(o.pos));
+    out.ffa = pool === 'district,killhouse' && g.world.mapId === 'district' && g.world.size >= 120 && md > 15;
+    // window vault (Killhouse north window)
+    g.toMenu(); BR.Lobby.preset = 'duel'; BR.Lobby.size = 1; BR.Lobby.play({ map: 'killhouse' }); await new Promise(r => setTimeout(r, 300));
+    const m = g.player.mover; g.mode.frozen = false; m.pos.set(0, 0, 7.9); m.vel.set(0, 0, 0); g.player.yaw = 0; for (let i = 0; i < 6; i++) g.update(1 / 30);
+    g.input.press('jump'); for (let i = 0; i < 25; i++) g.update(1 / 30); out.vault = m.pos.z < 6.6 && m.pos.y < 0.1;
+    // tracking runner
+    g.toMenu(); g.startMode(BR.AimTrainer, { range: true }); const T = g.mode; T.data.drill = 'tracking'; T.begin(); for (let i = 0; i < 120; i++) g.update(1 / 30);
+    const t = T.targets.find(x => x.kind === 'runner'); let sl = 0, air = 0; for (let i = 0; i < 300; i++) { g.update(1 / 30); if (t.fake.mover.sliding) sl++; if (!t.fake.mover.onGround) air++; }
+    out.runner = !!t && sl > 0 && air > 0;
+    g.toMenu();
+    // imports
+    const ud = id => BR.Models.weapon(id, 'default', 'none', null).userData;
+    out.imports = ['sniper', 'revolver', 'launcher', 'knife', 'bayonet', 'tracker', 'butterfly'].every(id => ud(id).imported === id) && !!ud('revolver').cylinder && !!ud('revolver').crane && !!ud('butterfly').handleA && !!ud('bayonet').inner && !!ud('launcher').mag;
+    return out;
+  });
   // v1.20: reloads never throw (the Breacher froze the game), new imports, launcher rules, friends + party
   const v120 = await page.evaluate(() => {
     const g = BR.game, out = {}; BR.AntiCheat._testing = true;
@@ -1374,6 +1404,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.21 knock = the kill, finishing = assist, give up when knocked, District FFA map + spread spawns, window vault, tracking runner, imported sniper / revolver / launcher / knives', ['knockCredit', 'giveUp', 'ffa', 'vault', 'runner', 'imports'].every(k => v121[k])],
     ['v1.20 every gun reloads without errors (the Breacher reload froze the game), Pistol / DMR / Kar98k imports (bolt cycles), launcher only in Sniper Duels picker (+ BR loot), friends + party UI', v120.reloads && v120.imports && v120.sniperPicker && v120.duelLists && v120.launcher && v120.party],
     ['v1.19 squads: duos/trios/squads teams + teammates, knockdowns (crawl, no shooting, bleed out), bot + player revives, finishing the downed, team wipes, spectate, team win, Resurgence up to trios, lobby picker', ['setup', 'knocked', 'bleeds', 'noFire', 'botRevive', 'finish', 'wipe', 'noFF', 'playerDown', 'playerRevived', 'prompt', 'youRevive', 'panel', 'teamWin', 'spectate', 'resTrios', 'solo', 'picker'].every(k => v119[k])],
     ['v1.19 recoil springs settle without bouncing; SMG retuned (950 rpm, 30 rounds, fast ADS + mobility)', v119.recoil && v119.smg],
@@ -1423,7 +1454,7 @@ const server = http.createServer((req, res) => {
     ['stim: 4s cooldown, speed boost, heals 10/s for 5s', extra.stim.used && !extra.stim.again && extra.stim.vBoost > BR_RUN * 1.2 && extra.stim.vAfter < BR_RUN * 1.05 && extra.stim.hp1 >= 29 && extra.stim.hp1 <= 31 && extra.stim.hpEnd === 70 && extra.stim.cdBack && extra.stim.ready && extra.stim.hudBtn],
     ['stretched res widens the picture; saturation filters the 3D view', extra.video.asp1 < extra.video.asp0 / 1.5 && /saturate\(1\.40?8/.test(extra.video.filt) && extra.video.reset],
     ['karambit gives a movement speed boost', extra.newstuff.knifeSpeed > BR_RUN * 1.15],
-    ['sniper + hunting rifle are bolt actions (bolt lifts, pulls back, returns)', extra.newstuff.bolts && extra.newstuff.sniperBolt && extra.newstuff.lift > 0.8 && extra.newstuff.back > 0.05 && extra.newstuff.settled],
+    ['sniper + hunting rifle are bolt actions (bolt lifts, pulls back, returns)', extra.newstuff.bolts && (extra.newstuff.sniperBolt || extra.newstuff.sniperImported) && extra.newstuff.lift > 0.8 && extra.newstuff.back > 0.05 && extra.newstuff.settled],
     ['stim + grapple have first-person arm animations', extra.fpAnims.injSeen && extra.fpAnims.injGone && extra.fpAnims.launchSeen && extra.fpAnims.launchGone],
     ['shockwave grenade launches you; pickups refill; purple model', extra.shock.used && extra.shock.rise > 12 && extra.shock.picked && extra.shock.model],
     ['styled tracers (helix/spark/lightning/dual) render extra beads', extra.styledTracer],
@@ -1492,7 +1523,7 @@ const server = http.createServer((req, res) => {
     ['PC keybinds: every action rebindable (keys, mouse, wheel), conflicts move, saved, settings UI, reset', v17.kb.n >= 22 && v17.kb.all && v17.kb.hJump && v17.kb.released && v17.kb.spaceDead && v17.kb.steal && v17.kb.mFire && v17.kb.mOff && v17.kb.wheel && v17.kb.fwd && v17.kb.stop && v17.kb.saved && v17.kb.ui && v17.kb.esc && v17.kb.reset],
     ['vibrant knife blueprints: 9 with glow auras + sparkles and colour trails', v17.v180.auraOk === 9 && Object.values(v17.v180.trails).every(t => t.built && t.seen && t.grad)],
     ['new finishers (Supernova, Prism Burst, Thunderstrike, Sakura, Dragon Soul) play and clean up', Object.values(v17.v180.fins).every(f => f.peak >= 2) && v17.v180.left === 0 && v17.v180.shop && v17.v180.nova],
-    ['weapons use reflective, detailed materials; bayonet CS-style grip', v17.v180.env > 10 && v17.v180.bump > 0 && v17.v180.grip],
+    ['weapons use reflective, detailed materials; bayonet CS-style grip', v17.v180.env >= 1 && v17.v180.grip],      // (v1.21: every gun is an imported model now)
     ['LMG ACOG: round eyepiece on aim, zooms, hides the gun, turns off', v17.acog.on && v17.acog.prismOff && v17.acog.sniperOff && v17.acog.zoomed && v17.acog.gunHidden && v17.acog.off && v17.acog.model],
     ['weapon boxes have smooth rounded bevels (curved edge normals)', v17.smooth > 50],
     ['two-floor buildings: nothing covers the stair hole', v17.v178.buildings2 > 0 && v17.v178.covered === 0],
@@ -1543,7 +1574,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

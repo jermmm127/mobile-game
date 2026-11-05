@@ -12,7 +12,7 @@
   const DRILLS = {
     gridshot: { name: 'GRIDSHOT', dur: 60, gun: 'pistol', desc: '3 targets at once on a 5×5 board. Clear them fast.' },
     flick:    { name: 'FLICK',    dur: 60, gun: 'dmr',    desc: 'One small target at a time, anywhere ahead. Faster hits score more.' },
-    tracking: { name: 'TRACKING', dur: 45, gun: 'smg',    desc: 'Keep your crosshair on the strafing orb.' },
+    tracking: { name: 'TRACKING', dur: 45, gun: 'smg',    desc: 'Stay on a runner that strafes, stops, jumps and slides like a real player.' },
     strafe:   { name: 'STRAFE',   dur: 60, gun: 'rifle',  desc: '4 strafing dummies, 150 HP. Headshots score double.' },
   };
   const GUNS = ['pistol', 'revolver', 'smg', 'rifle', 'holoar', 'lmg', 'dmr', 'hunter', 'sniper', 'shotgun'];
@@ -143,6 +143,39 @@
       const t = { kind: 'dummy', mesh: g, bar, hp: 150, max: 150, born: this.g.time, vx: (Math.random() < 0.5 ? -1 : 1) * (2 + Math.random() * 2.5), turn: 0.4 + Math.random() * 1.2, x0: x };
       this.targets.push(t); return t;
     }
+    // v1.21 Tracking: a full player model that moves like a real player (accelerates, ADAD strafes, stops,
+    // crouch-spams, jumps and slides), animated by the same character code as the bots
+    addRunner(x, z) {
+      const fake = { color: 0xff5ec4, yaw: Math.PI, pitch: 0, downed: false, weapon: { id: 'smg' },
+        mover: { pos: new THREE.Vector3(x, 0, z), vel: new THREE.Vector3(), speedH: 0, dropping: false, chute: false, sliding: false, crouched: false, onGround: true, wallRunning: false, wallN: new THREE.Vector3() } };
+      const mesh = BR.Actor.prototype.buildMesh.call(fake); fake.mesh = mesh; mesh.userData.yaw = Math.PI; this.root.add(mesh);
+      const t = { kind: 'runner', fake, mesh, born: this.g.time, vt: 0, plan: 0, slideT: 0, vy: 0, z0: z };
+      this.targets.push(t); return t;
+    }
+    runnerBox(t) { const m = t.fake.mover, top = m.sliding ? 1.0 : m.crouched ? 1.3 : 1.8; return { p: m.pos, top }; }
+    moveRunner(t, dt) {
+      const m = t.fake.mover, R = Math.random;
+      t.plan -= dt;
+      if (t.plan <= 0) {            // next move: strafe left/right (ADAD), a short stop, or a crouch-spam beat
+        const r = R(); t.crouch = false;
+        if (r < 0.14) { t.vt = 0; t.plan = 0.18 + R() * 0.3; }
+        else if (r < 0.24) { t.vt = (R() < 0.5 ? -1 : 1) * 3.5; t.crouch = true; t.plan = 0.3 + R() * 0.3; }
+        else { t.vt = (m.pos.x > 7 ? -1 : m.pos.x < -7 ? 1 : R() < 0.5 ? -1 : 1) * (5.2 + R() * 1.6); t.plan = 0.22 + R() * 0.75; }
+        if (m.onGround && !m.sliding && R() < 0.22) t.vy = 7.2;                                   // jump
+        else if (m.onGround && Math.abs(m.vel.x) > 4 && R() < 0.3) { m.sliding = true; t.slideT = 0.7; m.vel.x = Math.sign(m.vel.x) * 9.5; }   // slide
+      }
+      if (m.sliding) { t.slideT -= dt; m.vel.x *= Math.exp(-dt * 1.4); if (t.slideT <= 0 || Math.abs(m.vel.x) < 3) m.sliding = false; }
+      else { const acc = m.onGround ? 26 : 9; m.vel.x += U().clamp(t.vt - m.vel.x, -acc * dt, acc * dt); }
+      m.crouched = !!t.crouch && m.onGround && !m.sliding;
+      if (t.vy) { m.vel.y = t.vy; t.vy = 0; m.onGround = false; }
+      if (!m.onGround) { m.vel.y -= 22 * dt; m.pos.y += m.vel.y * dt; if (m.pos.y <= 0) { m.pos.y = 0; m.vel.y = 0; m.onGround = true; } }
+      m.pos.x += m.vel.x * dt; if (Math.abs(m.pos.x) > 10) { m.pos.x = Math.sign(m.pos.x) * 10; m.vel.x *= -0.3; t.plan = 0; }
+      m.pos.z = t.z0 + Math.sin((this.g.time - t.born) * 0.7) * 2.5;
+      m.speedH = Math.abs(m.vel.x);
+      // face the way it runs, gun toward you (bots strafe while aiming at you)
+      t.fake.yaw = Math.PI + U().clamp(-m.vel.x * 0.06, -0.5, 0.5);
+      BR.Actor.prototype.syncMesh.call(t.fake, dt);
+    }
     gridCell(exclude) {
       for (let k = 0; k < 40; k++) { const i = Math.floor(Math.random() * 5), j = Math.floor(Math.random() * 5);
         if (!this.targets.some(t => t.cell === i + ',' + j) && (i + ',' + j) !== exclude) return [i, j]; }
@@ -155,7 +188,7 @@
         const yaw = (Math.random() - 0.5) * 1.6, pitch = -0.04 + Math.random() * 0.36, d = 12 + Math.random() * 9;
         return this.addOrb(p.pos.x - Math.sin(yaw) * Math.cos(pitch) * d, eye + Math.sin(pitch) * d, p.pos.z - Math.cos(yaw) * Math.cos(pitch) * d, 0.3);
       }
-      if (id === 'tracking') { const t = this.addOrb(0, 2.6, -10, 0.5, { vx: 4, vy: 0, chg: 0.6 }); t.mesh.material = this.matHot; return t; }
+      if (id === 'tracking') return this.addRunner(0, -13);
       if (id === 'strafe') { const x = (Math.random() - 0.5) * 26, z = -12 - Math.random() * 16; return this.addDummy(x, z); }
     }
 
@@ -164,6 +197,13 @@
       const u = U(); let best = maxT, hit = null, head = false;
       for (const t of this.targets) {
         if (t.dead) continue;
+        if (t.kind === 'runner') {
+          const { p, top } = this.runnerBox(t), hy = p.y + top - 0.12;
+          const th = u.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, p.x, hy, p.z, 0.22, best); if (th < best) { best = th; hit = t; head = true; }
+          const bx = this._bx || (this._bx = {}); bx.x0 = p.x - 0.32; bx.x1 = p.x + 0.32; bx.z0 = p.z - 0.32; bx.z1 = p.z + 0.32; bx.y0 = p.y; bx.y1 = p.y + top - 0.3;
+          const tb = u.rayAABB(o.x, o.y, o.z, u.inv(d.x), u.inv(d.y), u.inv(d.z), bx, best); if (tb < best) { best = tb; hit = t; head = false; }
+          continue;
+        }
         if (t.kind === 'orb') { const p = t.mesh.position, th = u.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, p.x, p.y, p.z, t.r * 1.05, best); if (th < best) { best = th; hit = t; head = false; } }
         else {
           const p = t.mesh.position;
@@ -179,8 +219,8 @@
       const g = this.g, R = this.run, v = this._hv || (this._hv = new THREE.Vector3()); v.set(at.x, at.y, at.z);
       if (this.state !== 'run' || t.dead) { g.fx.burst(v, [0x45e0ff, 0xffffff], 6, 3, 0.05, 0.3, 0); g.hud.hitmarker(head, false); BR.Audio.hit(head); return; }
       R.hits++;
+      if (R.id === 'tracking') { R.score += head ? 10 : 6; g.hud.hitmarker(head, false); return; }
       if (t.kind === 'orb') {
-        if (R.id === 'tracking') { R.score += 6; g.hud.hitmarker(false, false); return; }
         t.dead = true; this.root.remove(t.mesh); this.targets.splice(this.targets.indexOf(t), 1);
         const life = g.time - t.born; R.ttk.push(life);
         R.score += R.id === 'flick' ? Math.round(100 + Math.max(0, 1.2 - life) * 150) : 100;
@@ -221,7 +261,13 @@
       if (this.state !== 'run') return;
       const R = this.run; R.t -= dt;
       for (const t of this.targets) {
-        if (t.kind === 'orb' && R.id === 'tracking') {
+        if (t.kind === 'runner') {
+          this.moveRunner(t, dt);
+          const e = p.eye(this._e || (this._e = new THREE.Vector3())), d = p.aimDir(this._d || (this._d = new THREE.Vector3()));
+          const h = this.rayTargets(e, d, 200), on = !!(h && h.target === t);
+          if (on) { R.onT += dt; R.score += dt * 160; }
+          const mat = t.mesh.userData.mat; if (mat) mat.emissive.setHex(on ? 0x3a0a2a : 0x000000);
+        } else if (t.kind === 'orb' && R.id === 'tracking') {
           t.chg -= dt; if (t.chg <= 0) { t.chg = 0.35 + Math.random() * 0.9; t.vx = (Math.random() < 0.5 ? -1 : 1) * (2.5 + Math.random() * 5); t.vy = (Math.random() - 0.5) * 2.4; }
           const m = t.mesh.position; m.x += t.vx * dt; m.y += t.vy * dt;
           if (Math.abs(m.x) > 11) { m.x = Math.sign(m.x) * 11; t.vx *= -1; } if (m.y < 1.2 || m.y > 5.5) { m.y = U().clamp(m.y, 1.2, 5.5); t.vy *= -1; }

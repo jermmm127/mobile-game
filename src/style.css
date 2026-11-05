@@ -1659,3 +1659,10 @@ body.menulite #menu .menu-main { position: relative; z-index: 2; }
 /* v1.20: panels over the game that you tap (the duel loadout picker) must take pointer events; the
    "#play > *" rule above switches them off for every HUD element, which made the picker untappable */
 #play > .ui-touch { pointer-events: auto !important; }
+
+/* v1.21: give up while knocked; Resurgence redeploy countdowns in the team list */
+.downed .dn-give { pointer-events: auto; margin-top: 6px; padding: 8px 18px; border-radius: 10px; border: 1px solid rgba(255,120,120,.6); background: rgba(80,10,10,.6); color: #fff; font: 800 12px var(--ui); letter-spacing: .16em; cursor: pointer; }
+.downed .dn-give:active, .downed .dn-give.on { background: rgba(160,20,20,.8); }
+.sq-row.out em { font-size: 11px; color: #7fe0ff; }
+.sq-row em { white-space: nowrap; }
+.sq-row { grid-template-columns: 1fr auto; }

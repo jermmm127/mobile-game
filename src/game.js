@@ -163,8 +163,9 @@ BR.Game = class Game {
     this.scene.fog = new THREE.Fog(fogCol, 70, this.fogFar || 230);
     // Lighting: cool sky / warm ground bounce, a warm key sun from the sky's sun direction,
     // and a faint cool fill from the other side so shaded faces aren't flat
-    this.scene.add(new THREE.HemisphereLight(0xd6e6ff, 0x5b5440, 0.82));
-    const sun = new THREE.DirectionalLight(0xfff0d4, 1.08);
+    // v1.21 art direction: a touch more contrast (warmer, stronger key; darker bounce) so forms read clearly
+    this.scene.add(new THREE.HemisphereLight(0xd2e2ff, 0x4f4636, 0.76));
+    const sun = new THREE.DirectionalLight(0xffe9c8, 1.2);
     this.sunDir = new THREE.Vector3(420, 300, 300).normalize();
     sun.position.copy(this.sunDir);
     this.scene.add(sun, sun.target);
@@ -746,14 +747,14 @@ BR.Game = class Game {
       } else if (this.squad > 1 && BR.Squads.teamsAlive(this) <= 1 && BR.Squads.teamAlive(this, p.team) && !p.alive) {
         // v1.19: you were out, but your team won it
         this.state = 'won'; this.endT = 3.2;
-        this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time, squad: this.squad, teams: this.teams };
+        this.result = { win: true, place: 1, total: this.total, kills: p.kills, assists: p.assists || 0, damage: p.damageDealt, time: this.time, squad: this.squad, teams: this.teams };
         this.hud.toast('YOUR TEAM WON', 2400); BR.Audio.victory && BR.Audio.victory();
       } else if (!p.alive && this.squad > 1 && BR.Squads.teamAlive(this, p.team)) { /* spectating your team */ }
       else if (!p.alive) { this.state = 'dead'; this.endT = BR.CONFIG.match.endDelay;
         if (this.squad > 1 && this.result) { this.result.place = BR.Squads.teamsAlive(this) + 1; this.result.squad = this.squad; this.result.teams = this.teams; } }
       else if (!this.practice && (this.squad > 1 ? BR.Squads.teamsAlive(this) === 1 : this.aliveCount() === 1)) {
         this.state = 'won'; this.endT = 5.4;
-        this.result = { win: true, place: 1, total: this.total, kills: p.kills, damage: p.damageDealt, time: this.time, squad: this.squad, teams: this.teams };
+        this.result = { win: true, place: 1, total: this.total, kills: p.kills, assists: p.assists || 0, damage: p.damageDealt, time: this.time, squad: this.squad, teams: this.teams };
         if (p.downed) { p.downed = false; p.reviver = null; p.mover.prone = false; p.health = Math.max(p.health, 1); }
         // freeze frame first (like the big shooters), then the victory show
         this.freezeT = 1.0; p.fireHeld = false; this.hud.freeze(true); BR.Audio.freeze && BR.Audio.freeze();
@@ -869,6 +870,7 @@ BR.Game = class Game {
     p.input.mx = inp.moveX;
     p.input.mz = inp.moveY;
     // v1.19 knocked down: crawl and look only
+    if (p.downed && inp.consume('giveup')) { this.kill(p, p.knocker && p.knocker.alive ? p.knocker : null, 'bleed', false); return; }     // v1.21: give up instead of waiting to bleed out
     if (p.downed) { p.fireHeld = false; p.ads = false; inp.ads = false; for (const k of ['jump', 'crouch', 'grenade', 'grapple', 'stim', 'reload', 'swap', 'slot0', 'slot1', 'slot2', 'knife', 'inspect', 'interact']) inp.consume(k);
       if (inp.consume('pause')) this.pause(); if (inp.consume('map')) this.hud.toggleMap(); return; }
     if (this.reviveTgt && inp.consume('interact')) { const t = this.reviveTgt; if (!t.reviver) { t.reviver = p; t.reviveP = 0; BR.Audio.click(); } }
@@ -1071,7 +1073,12 @@ BR.Game = class Game {
   }
 
   kill(victim, killer, weaponId, head) {
-    if (weaponId === 'bleed' && killer && victim.downWid) weaponId = victim.downWid;     // finished off: credit the knock
+    // v1.21: knocking someone down earns the elimination; finishing them off (or helping to) is an assist
+    const kn = victim.downed ? victim.knocker : null;
+    if (kn && kn !== victim && !(kn.team !== undefined && kn.team === victim.team)) {
+      if (killer && killer !== kn && killer !== victim) { killer.assists = (killer.assists || 0) + 1; if (killer.isPlayer) { this.hud.toast('+ ASSIST · ' + victim.name, 1100); BR.Audio.hit && BR.Audio.hit(false); } }
+      killer = kn; weaponId = victim.downWid || weaponId;
+    } else if (weaponId === 'bleed' && killer && victim.downWid) weaponId = victim.downWid;
     victim.downed = false; victim.reviver = null; victim.mover.prone = false;
     victim.alive = false;
     victim.health = 0;
@@ -1119,7 +1126,7 @@ BR.Game = class Game {
       this.deathPos = victim.pos.clone();
       this.killer = killer;
       this.result = {
-        win: false, place: this.aliveCount() + 1, total: this.total, kills: victim.kills,
+        win: false, place: this.aliveCount() + 1, total: this.total, kills: victim.kills, assists: victim.assists || 0,
         damage: victim.damageDealt, time: this.time,
         by: killer ? 'Eliminated by ' + killer.name : weaponId === 'bleed' ? 'Bled out' : 'Lost to the storm',
       };
@@ -1360,7 +1367,9 @@ BR.Game = class Game {
     c.shake = Math.max(0, c.shake - dt * 1.2);
     const sp = m.speedH;
     if (m.onGround && !m.sliding) c.bob += dt * sp * 1.35;
-    const bobY = m.onGround && !m.sliding ? Math.abs(Math.sin(c.bob)) * Math.min(sp, 9) * 0.006 : 0;
+    // v1.21: smooth step bob (a rounded rise and fall each step instead of a hard bounce), eased in and out with speed
+    c.bobA = BR.util.damp(c.bobA || 0, m.onGround && !m.sliding ? Math.min(sp, 9) : 0, 8, dt);
+    const bobY = (0.5 - 0.5 * Math.cos(c.bob * 2)) * c.bobA * 0.0055;
     const sh = c.shake * c.shake;
     // v1.19: smooth shake (layered sines) instead of a new random offset every frame
     const st = this.time * 1;

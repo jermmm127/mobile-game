@@ -31,8 +31,11 @@
     { id: 'yard', name: 'THE YARD', sub: 'Concrete yard · centre tower', art: 'linear-gradient(150deg,#9aa0a8,#4a5160 55%,#1d2128)' },
     { id: 'killhouse', name: 'KILLHOUSE', sub: '3 lanes · training house', art: 'linear-gradient(150deg,#e3d6bc,#8f8676 50%,#2c2823)' },
     { id: 'cargo', name: 'CARGO', sub: 'Tiny container grid', art: 'linear-gradient(150deg,#4f8fc8,#763a35 50%,#1a1d22)' },
+    { id: 'district', name: 'DISTRICT', sub: 'Big town block · houses + plaza', art: 'linear-gradient(150deg,#e6c79a,#7a4a3a 50%,#24201c)', big: true },
   ];
-  L.rollMap = () => L.MAPS[Math.floor(Math.random() * L.MAPS.length)].id;
+  // v1.21: Free For All plays on the big maps (District, Killhouse); TDM adds District to its pool; duels keep the small ones
+  L.pool = preset => preset === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse') : preset === 'tdm' ? L.MAPS : L.MAPS.filter(m => !m.big);
+  L.rollMap = () => { const P = L.pool(L.preset); return P[Math.floor(Math.random() * P.length)].id; };
   L.play = (opts) => {
     const g = BR.game; BR.Audio.init();
     const o = Object.assign({ preset: L.preset, size: L.size, diff: L.diff, ranked: !!g.ranked }, opts || {});
@@ -43,7 +46,7 @@
   L.showRoll = (target, done) => {
     const el = $('maproll'); if (!el || L.skipRoll) { done(); return; }
     const N = 34, at = 29, cards = [];
-    for (let i = 0; i < N; i++) cards.push(i === at ? L.MAPS.find(m => m.id === target) : L.MAPS[Math.floor(Math.random() * L.MAPS.length)]);
+    const pool = L.pool(L.preset); for (let i = 0; i < N; i++) cards.push(i === at ? L.MAPS.find(m => m.id === target) : pool[Math.floor(Math.random() * pool.length)]);
     const strip = $('mr-strip');
     strip.innerHTML = cards.map(m => `<div class="mr-card" style="--a:${m.art}"><i></i><b>${m.name}</b><span>${m.sub}</span></div>`).join('');
     $('mr-title').textContent = (BR.ARENA_PRESETS[L.preset] || {}).title || 'ARENA';

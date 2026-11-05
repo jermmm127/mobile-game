@@ -25,7 +25,7 @@ BR.World = class World {
     this.range = !!(opts && opts.range); this.overdrive = !!(opts && opts.overdrive);
     this.mapId = (opts && opts.arena && opts.map) || (opts && opts.arena ? 'yard' : null);   // v1.15 arena maps: yard / killhouse / cargo
     if (this.halloween) this.groundCols = [0x2b3820, 0x1f2a17, 0x3a3122];   // dead grass, mud
-    this.size = this.reef ? 380 : opts && opts.halloween ? 230 : this.overdrive ? 170 : this.range ? 100 : this.arena ? 92 : M.size;
+    this.size = this.reef ? 380 : opts && opts.halloween ? 230 : this.overdrive ? 170 : this.range ? 100 : this.mapId === 'district' ? 128 : this.arena ? 92 : M.size;     // v1.21 District (FFA) is bigger
     this.half = this.reef ? this.size / 2 : M.size / 2;
     this.gridHalf = this.size / 2;     // collision grid spans this world's own size (the duel arena is 72 m)
     this.cell = M.cell;
@@ -46,7 +46,7 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [], rockFill: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.arena) this.generateArena(); else this.generate();
+    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.mapId === 'district') this.generateDistrict(); else if (this.arena) this.generateArena(); else this.generate();
   }
 
   // ------------------------------------------------------------------ zombies: Hollow Graves
@@ -277,7 +277,7 @@ BR.World = class World {
     }
     B(-0.3, 3.2, -1.6, 0.3, 4.3, 1.6, CON);                       // cover wall on the deck
     // the ground is concrete here
-    this.groundCols = [0x8a8a86, 0x7c7d7a, 0x9a958a];
+    this.groundCols = [0x908a80, 0x837d74, 0x9e968a];      // v1.21: warmer yard concrete
   }
 
   // ---------------------------------------------------------------- storage
@@ -1177,6 +1177,22 @@ BR.World = class World {
     const tex = makeTileTexture();
     const lowDetail = detail !== undefined && detail < 0.5;
     const visAll = this.boxes.filter(b => !b.hidden).concat(lowDetail ? this.decor.filter(b => !b.fine) : this.decor);
+    // v1.21 art pass: architecture gets corner pilasters + a coping lip on top (visual only, merged into the same
+    // tiles, so no extra draw calls). Corners read as built edges, window and door openings get frames.
+    if (!lowDetail) {
+      const trim = [], arch = b => b.tag !== 'edge' && b.y1 - b.y0 >= 2.0 && Math.max(b.x1 - b.x0, b.z1 - b.z0) >= 1.0 && Math.min(b.x1 - b.x0, b.z1 - b.z0) >= 0.2 && Math.min(b.x1 - b.x0, b.z1 - b.z0) <= 40;
+      const tone = (c, k) => { const C = new THREE.Color(c); C.r = Math.min(1, C.r * k); C.g = Math.min(1, C.g * k); C.b = Math.min(1, C.b * k); return C.getHex(); };
+      for (const b of this.boxes) {
+        if (b.hidden || !arch(b)) continue;
+        const e = 0.035, w = Math.min(0.16, (b.x1 - b.x0) * 0.3, (b.z1 - b.z0) * 0.6 + e), dk = tone(b.color, 0.8), lt = tone(b.color, 1.12), y1 = b.y1;
+        for (const [cx, cz] of [[b.x0, b.z0], [b.x1, b.z0], [b.x0, b.z1], [b.x1, b.z1]]) {
+          const sx = cx === b.x0 ? -1 : 1, sz = cz === b.z0 ? -1 : 1;
+          trim.push({ x0: Math.min(cx + sx * e, cx - sx * w), x1: Math.max(cx + sx * e, cx - sx * w), y0: b.y0, y1: y1 - 0.02, z0: Math.min(cz + sz * e, cz - sz * w), z1: Math.max(cz + sz * e, cz - sz * w), color: dk, trim: true });
+        }
+        if (y1 > 1.5) trim.push({ x0: b.x0 - 0.05, x1: b.x1 + 0.05, y0: y1 - 0.02, y1: y1 + 0.09, z0: b.z0 - 0.05, z1: b.z1 + 0.05, color: lt, trim: true });
+      }
+      for (const t of trim) visAll.push(t);
+    }
     // Split the world into 64 m tiles (one mesh each) so the GPU skips off-screen and fogged-out tiles
     const TILE = 128, tiles = new Map();
     for (const b of visAll) {
@@ -1187,11 +1203,12 @@ BR.World = class World {
     let first = null;
     for (const vis of tiles.values()) {
     const count = vis.length;
-    const pos = new Float32Array(count * 24 * 3);
-    const nor = new Float32Array(count * 24 * 3);
-    const col = new Float32Array(count * 24 * 3);
-    const uv = new Float32Array(count * 24 * 2);
-    const idx = new Uint32Array(count * 36);
+    const Q = 14;                                  // quads per box at most (top, bottom, 4 sides x up to 3 bands)
+    const pos = new Float32Array(count * Q * 4 * 3);
+    const nor = new Float32Array(count * Q * 4 * 3);
+    const col = new Float32Array(count * Q * 4 * 3);
+    const uv = new Float32Array(count * Q * 4 * 2);
+    const idx = new Uint32Array(count * Q * 6);
     let v = 0, ii = 0;
     const c = new THREE.Color();
     const S = 0.4; // uv scale: one tile per 2.5 m
@@ -1205,8 +1222,9 @@ BR.World = class World {
         const p = P[k];
         pos[v * 3] = p[0]; pos[v * 3 + 1] = p[1]; pos[v * 3 + 2] = p[2];
         nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
-        // Fake ambient occlusion: darken side walls where they meet the ground
-        const ao = ny === 0 && p[1] < 0.05 ? 0.62 : ny === 0 && p[1] === aoY0 ? 0.85 : 1;
+        // Fake ambient occlusion: a short dark band where side walls meet the ground (v1.21: banded, not the
+        // whole wall height), a lighter bevel along the very top edge
+        const ao = ny === 0 ? (p[1] < 0.05 ? 0.58 : p[1] === aoY0 ? 0.82 : p[1] === aoBand ? 0.97 : p[1] === aoTop ? 1.1 : 1) : 1;
         const sh = shade * ao;
         col[v * 3] = c.r * sh; col[v * 3 + 1] = c.g * sh; col[v * 3 + 2] = c.b * sh;
         const u = uvf(p);
@@ -1219,7 +1237,19 @@ BR.World = class World {
     };
     const uvXZ = p => [p[0], p[2]], uvZY = p => [p[2], p[1]], uvXY = p => [p[0], p[1]];
     const jitter = this.rand;
-    let aoY0 = 0;
+    let aoY0 = 0, aoBand = -1, aoTop = -1;
+    // a side face split into bands: [y0 .. y0+0.9] grounding gradient, middle, [y1-0.08 .. y1] top bevel
+    const side = (nx, nz, x0, z0, x1, z1, y0, y1, shade, uvf) => {
+      const h = y1 - y0, b1 = h > 1.6 ? y0 + 0.9 : -1, t0 = h > 1.0 ? y1 - 0.08 : -1;
+      const ys = [y0]; if (b1 > 0) ys.push(b1); if (t0 > 0) ys.push(t0); ys.push(y1);
+      aoBand = b1; aoTop = -1;
+      for (let i = 0; i < ys.length - 1; i++) {
+        const ya = ys[i], yb = ys[i + 1];
+        if (t0 > 0 && i === ys.length - 2) aoTop = yb;
+        face(nx, 0, nz, [[x0, ya, z0], [x0, yb, z0], [x1, yb, z1], [x1, ya, z1]], shade, uvf);
+        aoTop = -1;
+      }
+    };
     for (const b of vis) {
       aoY0 = b.y0;
       c.setHex(b.color);
@@ -1228,17 +1258,17 @@ BR.World = class World {
       const { x0, y0, z0, x1, y1, z1 } = b;
       face(0, 1, 0, [[x0, y1, z0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0]], 1.0, uvXZ);
       face(0, -1, 0, [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], 0.55, uvXZ);
-      face(1, 0, 0, [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]], 0.86, uvZY);
-      face(-1, 0, 0, [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], 0.78, uvZY);
-      face(0, 0, 1, [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], 0.92, uvXY);
-      face(0, 0, -1, [[x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0]], 0.72, uvXY);
+      side(1, 0, x1, z0, x1, z1, y0, y1, 0.86, uvZY);
+      side(-1, 0, x0, z0, x0, z1, y0, y1, 0.78, uvZY);
+      side(0, 1, x0, z1, x1, z1, y0, y1, 0.92, uvXY);
+      side(0, -1, x0, z0, x1, z0, y0, y1, 0.72, uvXY);
     }
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    g.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, v * 3), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor.subarray(0, v * 3), 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col.subarray(0, v * 3), 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uv.subarray(0, v * 2), 2));
+    g.setIndex(new THREE.BufferAttribute(idx.subarray(0, ii), 1));
     g.computeBoundingSphere();
     const mesh = new THREE.Mesh(g, mat);
     mesh.matrixAutoUpdate = false;

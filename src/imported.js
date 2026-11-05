@@ -91,3 +91,54 @@ Object.assign(BR.IMPORTED, {
     muzzle: [0.05, -0.639], charm: [-0.035, -0.02, 0.24],
   },
 });
+
+// v1.21: sniper, revolver, launcher + all four knives. Knives use axes 'upright' (blade +Y, edge -Z) or a
+// rotation about a pivot so they land exactly where the procedural knives were: every grip, flip and twirl
+// still fits. bladeBox parts wear the knife's camo / blueprint blade finish.
+Object.assign(BR.IMPORTED, {
+  // heavy bolt-action sniper, low-mounted scope: scope axis (model) y 0.185 -> the aim point is on it
+  sniper: {
+    scale: 0.68, offset: [0.0034, -0.0498, -0.137],
+    magBox: { x: [0.05, 0.2], y: [-1, -0.02] },
+    grip: [0, -0.09, 0.033], fore: [0, -0.04, -0.24], charge: [0.05, 0.05, 0.0],
+    sight: { y: 0.076, rearZ: -0.035, dist: 0.36, noDot: true },
+    muzzle: [0.04, -0.817], charm: [-0.034, -0.02, 0.2],
+  },
+  // tactical revolver: the cylinder (model x 0.04..0.36) is split onto the crane so it swings out + spins
+  revolver: {
+    scale: 0.19, offset: [0, -0.0027, -0.06],
+    cylBox: { x: [0.04, 0.36], y: [0.05, 0.42] }, cylC: [0, 0.042, -0.022],
+    grip: [0, -0.05, 0.065], fore: [-0.012, -0.075, 0.05], charge: [0, 0.09, 0.03],
+    sight: { y: 0.091, rearZ: 0.016, frontZ: -0.231, dist: 0.34 },
+    muzzle: [0.054, -0.25], charm: [-0.02, -0.07, 0.09],
+  },
+  // Shockwave Launcher: the lower canister is the drum (comes off on reloads)
+  launcher: {
+    scale: 0.45, offset: [0, -0.015, -0.071],
+    magBox: { x: [-0.75, 0.02], y: [-1, -0.03] },
+    grip: [0, -0.07, 0.1], fore: [0, -0.06, -0.25], charge: [0.05, 0.03, 0.0],
+    sight: { y: 0.1335, rearZ: -0.026, dist: 0.36, noDot: true },
+    muzzle: [0.038, -0.521], charm: [-0.036, -0.01, 0.1],
+  },
+  // knives
+  knife: {           // Karambit: blade root at the origin, ring centre at (0, 0.066, 0.12) like the procedural one
+    scale: 0.17, pivot: [0, 0.0425, -0.0595], rot: [-0.55, 0, 0], offset: [0, -0.0425, 0.0595], kScale: 1.33,     // a third bigger than the old one
+    bladeBox: { x: [-1.1, -0.38] }, knife: 'karambit',
+    grip: [0, 0.02, 0.05], muzzle: [0, -0.15], charm: [0, -0.02, 0.12],
+  },
+  bayonet: {
+    scale: 0.156, axes: 'upright', offset: [0, 0.0096, 0.003],
+    bladeBox: { x: [-1.1, 0.05] }, knife: 'baylike',
+    grip: [0, -0.07, 0.0], muzzle: [0, 0.15], charm: [0, -0.13, 0],
+  },
+  tracker: {
+    scale: 0.172, axes: 'upright', offset: [0, 0.0172, -0.003],
+    bladeBox: { x: [-1.1, -0.02] }, knife: 'baylike',
+    grip: [0, -0.07, 0.0], muzzle: [0, 0.16], charm: [0, -0.135, 0],
+  },
+  butterfly: {       // open in the file (handles together under the blade); the two handles split by side
+    scale: 0.148, axes: 'upright', pivot: [0.00074, 0.03256, 0.00888], rot: [-0.443, 0, 0], offset: [-0.0007, -0.0286, -0.0079],
+    bladeBox: { x: [-1.1, -0.2] }, handleSplit: { x: -0.2, z: -0.005 }, hinge: [0, 0.004, 0.001], knife: 'butterfly',
+    grip: [0, -0.07, 0.0], muzzle: [0, 0.14], charm: [0, -0.13, 0],
+  },
+});

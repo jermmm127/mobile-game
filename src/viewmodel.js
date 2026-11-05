@@ -13,9 +13,9 @@
 (function () {
   // v1.11 sleeves: a tapered fabric forearm (lathe) with an elastic cuff at the wrist and a
   // seam band, instead of a plain tube. Unit length along +Y (wrist at -0.5, elbow at +0.5).
-  // v1.18.2 karambit idle, matched to the reference screenshot: knife tilt (x/y/z), forearm direction (f),
+  // v1.18.2 karambit idle, matched to the reference screenshot (v1.21: re-tuned for the imported karambit): knife tilt (x/y/z), forearm direction (f),
   // right fist position (hx/hy/hz), empty left fist in view (left, lx/ly). window.__KP overrides for tuning.
-  const KP = Object.assign({ x: -0.9, y: -0.3, z: 0.2, f: [0.85, -0.4, 0.35], hx: 0.08, hy: -0.075, hz: -0.34, left: 1, lx: 0.05, ly: -0.025 }, (typeof window !== 'undefined' && window.__KP) || {});
+  const KP = Object.assign({ x: -1.1, y: -0.1, z: -0.6, f: [0.85, -0.4, 0.35], hx: 0.08, hy: -0.075, hz: -0.34, left: 1, lx: 0.05, ly: -0.025 }, (typeof window !== 'undefined' && window.__KP) || {});
   const KI = { z1: 0.95, y1: -0.15, x1: 0.1, z2: -0.25, y2: -0.55, x2: 0 };      // karambit inspect show poses (wrist turns)
   const BAYLIKE = id => id === 'bayonet' || id === 'tracker';      // v1.13: the Tracker shares the bayonet's fist + flips
   let SLEEVE = null;
@@ -121,7 +121,7 @@
           m.scale.setScalar(0.8);
           // Pivot at the finger ring so the karambit twirls around it
           m.updateMatrix();
-          const P = new THREE.Vector3(0, 0.066, 0.12).applyMatrix4(m.matrix);   // ring centre
+          const ks = m.userData.kScale || 1, P = new THREE.Vector3(0, 0.066 * ks, 0.12 * ks).applyMatrix4(m.matrix);   // ring centre (v1.21: scaled with an imported karambit)
           const axis = new THREE.Vector3(1, 0, 0).applyQuaternion(m.quaternion).normalize();
           const spin = new THREE.Group();
           spin.position.copy(P); m.position.sub(P);
@@ -291,7 +291,8 @@
       if (this.pumpDelay > 0) { this.pumpDelay -= dt; if (this.pumpDelay <= 0) this.pumpT = this.pumpDur; }
       else if (this.pumpT > 0) this.pumpT = Math.max(0, this.pumpT - dt);
       if (!w || !w.def.pump) { this.pumpT = 0; this.pumpDelay = 0; }
-      if (!w || m.dropping || (p.ads && w.def.scope) || (p.ads && w.def.optic && this.adsW > 0.8)) { this.hide(); if (p.ads && w && w.def.optic) this.adsW = Math.min(1, this.adsW + dt * 6); return; }
+      // v1.21: scoped guns raise the scope to your eye first (the reticle lines up with the model's own scope), then the scope view takes over
+      if (!w || m.dropping || (p.ads && w.def.scope && this.adsW > 0.92) || (p.ads && w.def.optic && this.adsW > 0.8)) { this.hide(); if (p.ads && w && (w.def.optic || w.def.scope)) this.adsW = Math.min(1, this.adsW + dt * 6); return; }
       this.root.visible = true;
       const holder = w.def.pap ? this.papHolder(w.id) : this.models[w.id], model = holder.userData.model, ud = model.userData, def = w.def;
       holder.visible = true;
@@ -337,14 +338,14 @@
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
-      if (ud.sight && !def.scope) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) * 0.78 - sg.z; }
+      if (ud.sight && (!def.scope || ud.imported)) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) * 0.78 - sg.z; }
       const A = this.adsW, nA = 1 - A * 0.85;
       // Bob: figure-eight while moving on the ground
       const grounded = m.onGround && !m.sliding;
       this.bobAmt = U.damp(this.bobAmt, grounded ? Math.min(sp / run, 1.3) : 0, 8, dt);
       this.bob += dt * (4 + sp * 0.9) * (grounded ? 1 : 0.3);
       const bx = Math.sin(this.bob) * 0.011 * this.bobAmt * nA;
-      const by = -Math.abs(Math.cos(this.bob)) * 0.013 * this.bobAmt * nA;
+      const by = -(0.5 + 0.5 * Math.cos(this.bob * 2)) * 0.013 * this.bobAmt * nA;     // v1.21: smooth (no cusp at the bottom of each step)
       let tx = U.lerp(hx, ax, A) + bx, ty = U.lerp(hy, ay, A) + by, tz = U.lerp(hz, az, A);
       let rx = 0, ry = 0, rz = 0;
       // Sway: the gun lags behind where you look
@@ -697,6 +698,9 @@
       const P = this.pos, R = this.rot, K = this.kick, KR = this.kickR;
       P.x.step(tx, dt); P.y.step(ty, dt); P.z.step(tz, dt);
       R.x.step(rx, dt); R.y.step(ry, dt); R.z.step(rz, dt);
+      // v1.21 scoped guns: the springs would still be catching up when the scope view takes over, so pull the gun
+      // onto the aim line as you raise it: the scope's eyepiece is centred on the crosshair before the reticle appears
+      if (def.scope && p.ads) { const k = smooth((A - 0.45) / 0.4); for (const [S2, t] of [[P.x, tx], [P.y, ty], [P.z, tz], [R.x, rx], [R.y, ry], [R.z, rz]]) { S2.v += (t - S2.v) * k; S2.vel *= 1 - k; } }
       K.x.step(0, dt); K.y.step(0, dt); K.z.step(0, dt);
       KR.x.step(0, dt); KR.y.step(0, dt); KR.z.step(0, dt);
       // spray heat: decays once you stop firing, eased through a spring so it never pops
@@ -814,8 +818,8 @@
         // stays put during twirls and the knife spins round the ring at the index finger.
         const sq = this._ksq || (this._ksq = new THREE.Quaternion());
         sq.copy(spin.obj.quaternion); spin.obj.quaternion.identity(); spin.obj.updateMatrixWorld(true);
-        const a = model.localToWorld((this._kv2 || (this._kv2 = new THREE.Vector3())).set(0, 0.002, 0.004));      // handle centre line
-        const b = model.localToWorld((this._kv3 || (this._kv3 = new THREE.Vector3())).set(0, 0.044, 0.1));
+        const a = model.localToWorld((this._kv2 || (this._kv2 = new THREE.Vector3())).set(0, 0.002, 0.004).multiplyScalar(model.userData.kScale || 1));      // handle centre line
+        const b = model.localToWorld((this._kv3 || (this._kv3 = new THREE.Vector3())).set(0, 0.044, 0.1).multiplyScalar(model.userData.kScale || 1));
         spin.obj.quaternion.copy(sq); spin.obj.updateMatrixWorld(true);
         // mirrored glove (thumb on -X): -X points at the ring, wrist down toward you, back of hand up
         const X = (this._kx || (this._kx = new THREE.Vector3())).subVectors(a, b).normalize();
