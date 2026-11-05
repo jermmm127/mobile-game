@@ -206,7 +206,7 @@ BR.Weapons = {
     const dir = actor.aimDir(this._dir || (this._dir = new THREE.Vector3()));
     let best = null, bestD = d.lunge;
     for (const o of game.actors) {
-      if (o === actor || !o.alive) continue;
+      if (o === actor || !o.alive || (o.team !== undefined && o.team === actor.team)) continue;     // never lunge at a teammate
       const tx = o.pos.x - eye.x, ty = o.pos.y + o.mover.h * 0.6 - eye.y, tz = o.pos.z - eye.z;
       const dist = Math.hypot(tx, ty, tz);
       if (dist > bestD) continue;
