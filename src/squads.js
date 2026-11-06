@@ -18,7 +18,12 @@ BR.Squads = {
   MATE_COL: 0x3f8cff,
   TEAM_COLS: [0xe0533d, 0xe0a33d, 0x8fd14f, 0x3dd6c5, 0xb56ce6, 0xe66cb0, 0xd6d6d6, 0x9b6b43, 0x5b7a3a, 0xc94f7c, 0x6a74d9, 0xd9c36a, 0x4fa38a, 0xa04848, 0x7c8ea6],
 
-  on(g) { return !!(g && g.squad > 1 && !g.zm && !g.mode && !g.duel && !g.practice); },
+  on(g) {
+    if (!g) return false;
+    if (g.squad > 1 && !g.zm && !g.mode && !g.duel && !g.practice) return true;
+    const M = g.mode;                                      // v1.29.1: 2v2 / 3v3 duels knock too (a 1v1 has nobody to revive you)
+    return !!(M && M.arena && M.P && M.P.kind === 'duel' && M.size > 1);
+  },
 
   // Called by startMatch after the bots are added: the player is on team 0 with the first (size-1)
   // bots; every other run of `size` bots is a team. Teams drop together.
@@ -53,7 +58,7 @@ BR.Squads = {
   tryDown(g, v, killer, wid, head) {
     if (!this.on(g) || v.downed || v.team === undefined) return false;
     if (!this.standing(g, v.team, v)) return false;
-    v.downed = true; v.health = this.DOWN_HP; v.shield = 0; v.downT = g.time; if (g.brnet) g.brnet.onDown(v);
+    v.downed = true; v.health = this.DOWN_HP; v.shield = 0; v.downT = g.time; if (g.brnet) g.brnet.onDown(v); else if (g.mode && g.mode.onDown) g.mode.onDown(v);
     v.knocker = killer || null; v.downWid = wid; v.reviver = null; v.reviveP = 0;
     v.fireHeld = false; v.ads = false; v.stimT = 0; v.stimHealT = 0; v.lunge = null;
     if (v.mover.grapple) v.mover.releaseGrapple();
@@ -98,7 +103,7 @@ BR.Squads = {
       if (a.netProxy) {                                      // v1.24 party BR: a downed party member / bot owned by another screen
         const r = a.reviver;                                 // we only run the revive if one of OUR actors is doing it; the owner applies it
         if (r && (r.netProxy || !r.alive || r.downed || r.fireHeld || r.pos.distanceTo(a.pos) > this.REVIVE_DIST + 0.4 || (r.isPlayer && Math.hypot(g.input.moveX, g.input.moveY) > 0.35))) { a.reviver = null; a.reviveP = 0; continue; }
-        if (r) { a.reviveP += dt; if (a.reviveP >= this.REVIVE_T) { a.reviver = null; a.reviveP = 0; g.brnet && g.brnet.reviveDone(a, r); if (r.isPlayer) g.hud.toast('Revived ' + a.name, 900); } }
+        if (r) { a.reviveP += dt; if (a.reviveP >= this.REVIVE_T) { a.reviver = null; a.reviveP = 0; if (g.brnet) g.brnet.reviveDone(a, r); else if (g.mode && g.mode.reviveDone) g.mode.reviveDone(a, r); if (r.isPlayer) g.hud.toast('Revived ' + a.name, 900); } }
         continue;
       }
       // revive in progress? the reviver must stay close, standing and not shooting

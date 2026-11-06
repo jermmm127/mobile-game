@@ -142,6 +142,7 @@
       a.alive = true; a.deathT = 0; a.fireHeld = false; a.lunge = null;
       if (a.mover.grapple) a.mover.releaseGrapple();
       if (a.resetCooldowns) a.resetCooldowns();          // v1.28.4: abilities used last round are ready again
+      a.downed = false; a.reviver = null; a.reviveP = 0; a.knocker = null; a.mover.prone = false;      // v1.29.1: a new round clears knockdowns
       if (!a.isPlayer) {
         if (a.mesh && a.mesh.parent) g.scene.remove(a.mesh);
         a.mesh = a.buildMesh(); g.scene.add(a.mesh); g.highlightActor(a);
@@ -150,6 +151,10 @@
       if (a.local) { this.arm(a); this.placeAt(a, s); a.spawnLock = { x: a.mover.pos.x, y: a.mover.pos.y, z: a.mover.pos.z }; }
       if (a.netProxy) { a.netProxy.seen = false; a.mover.pos.set(s.x, 0, s.z); }
     }
+
+    // v1.29.1 team duels: knockdowns (BR.Squads) — a revive of a teammate owned by another screen goes to that screen
+    onDown() {}
+    reviveDone(v, by) { if (this.net && v.netProxy) this.net.send('rev', { v: v.rosterId, by: by ? by.rosterId : -1 }); }
 
     // ------------------------------------------------------------------ flow (host)
     beginRound() {
@@ -189,7 +194,7 @@
         const alive = [0, 1].map(t => this.g.actors.some(a => a.alive && a.team === t));
         let w = null;
         if (!alive[0] && !alive[1]) w = -1; else if (!alive[0]) w = 1; else if (!alive[1]) w = 0;
-        else if (this.t <= 0) { const hp = [0, 1].map(t => this.g.actors.filter(a => a.alive && a.team === t).reduce((s, a) => s + a.health + a.shield, 0)); w = hp[0] > hp[1] + 0.5 ? 0 : hp[1] > hp[0] + 0.5 ? 1 : -1; }
+        else if (this.t <= 0) { const hp = [0, 1].map(t => this.g.actors.filter(a => a.alive && !a.downed && a.team === t).reduce((s, a) => s + a.health + a.shield, 0)); w = hp[0] > hp[1] + 0.5 ? 0 : hp[1] > hp[0] + 0.5 ? 1 : -1; }     // (knocked players count for nothing)
         if (w !== null) { if (w >= 0) this.score[w]++; this.phase = 'roundEnd'; this.t = this.picksLoadout && Math.max(...this.score) < P.target ? 7 : 2.6; this.lastWinner = w; this.pushMatch(true); }
       } else if (this.phase === 'fight') {
         const best = P.kind === 'tdm' ? Math.max(...this.score) : Math.max(...Object.values(this.stats).map(s => s.kills));
@@ -267,6 +272,7 @@
       const N = this.net;
       N.on('st', m => { for (const s of m.a) { const a = this.byId.get(s[0]); if (a && a.netProxy) { a.netProxy.set(s); if (!a.alive && s[7] && a.mesh && !a.mesh.parent) { a.alive = true; } } } });
       N.on('fx', m => { for (const f of m.f) this.remoteShot(f); });
+      N.on('rev', m => { const v = this.byId.get(m.v), by = this.byId.get(m.by); if (v && v.local && v.alive && v.downed) BR.Squads.revive(this.g, v, by || v); });     // v1.29.1: a teammate on another screen revived you
       N.on('hit', m => { const v = this.byId.get(m.v); if (!v || !v.local || !v.alive) return;
         if (BR.AntiCheat && m.from && m.from !== this.me) { const ok = BR.AntiCheat.hostHit(m, m.from); if (ok !== true) { if (ok === 'kick' && this.host && N.kick) { N.kick(m.from, 'cheat'); this.g.hud.toast('A player was removed by anti-cheat', 2000); } return; } } this.g.applyDamage(v, this.byId.get(m.a) || null, m.d, m.h, { x: m.at[0], y: m.at[1], z: m.at[2] }, m.w); });
       N.on('kill', m => { const v = this.byId.get(m.v); if (!v || !v.alive) return; this._remote = true; this.g.kill(v, this.byId.get(m.k) || null, m.w, m.h); this._remote = false; });
@@ -283,7 +289,7 @@
       if (this.sendT <= 0) {
         this.sendT = 0.05;
         const ids = BR.Net.WIDS, a = [];
-        for (const x of this.g.actors) if (x.local) { const w = x.weapon; a.push([x.rosterId, +x.pos.x.toFixed(2), +x.pos.y.toFixed(2), +x.pos.z.toFixed(2), +x.yaw.toFixed(3), +x.pitch.toFixed(3), w ? ids.indexOf(w.id) : -1, x.alive ? 1 : 0, x.mover.crouched || x.mover.sliding ? 1 : 0, Math.round(x.health)]); }
+        for (const x of this.g.actors) if (x.local) { const w = x.weapon; a.push([x.rosterId, +x.pos.x.toFixed(2), +x.pos.y.toFixed(2), +x.pos.z.toFixed(2), +x.yaw.toFixed(3), +x.pitch.toFixed(3), w ? ids.indexOf(w.id) : -1, x.alive ? 1 : 0, x.mover.crouched || x.mover.sliding ? 1 : 0, Math.round(x.health), x.downed ? 1 : 0]); }     // (v1.29.1: + knocked down)
         if (a.length) this.net.send('st', { a });
       }
       if (this.fxQ.length) { this.net.send('fx', { f: this.fxQ }); this.fxQ = []; }

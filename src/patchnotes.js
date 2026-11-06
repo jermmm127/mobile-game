@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.29.1', date: '2026-11-06', title: 'Knockdowns in team duels', notes: [
+    '2v2 and 3v3 Duels (Shotgun and Sniper Duels too): getting killed now knocks you down while a teammate is still standing. Crawl to cover and a teammate can revive you, or you bleed out.',
+    'If the last player standing on a team goes down, the whole team is out: any knocked teammates are finished and the round is lost.',
+    'Knocked players count for nothing if the round runs out of time, and every new round starts with everyone back up. Works online too: teammates and opponents see you knocked, and a revive from a teammate on another screen brings you back.',
+    '1v1 duels are unchanged.',
+  ] },
   { v: '1.29.0', date: '2026-11-06', title: 'Co-op Zombies', notes: [
     'Zombies now works with your party (2 to 4 players). The party leader picks ZOMBIES and presses PLAY, and everyone loads into the same Hollow Graves game.',
     'Same rounds, same zombies, same bosses for everyone. Zombies and bosses go after whoever is closest.',

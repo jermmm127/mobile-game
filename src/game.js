@@ -729,7 +729,7 @@ BR.Game = class Game {
       if (!a.alive && a.mesh && a.mesh.parent && this.time - a.deathT > 4) this.scene.remove(a.mesh);
       else if (a.mesh && a.alive) a.mesh.visible = Math.abs(a.pos.x - cp.x) + Math.abs(a.pos.z - cp.z) < 260;
     }
-    if (this.squad > 1) BR.Squads.update(this, dt);
+    if (BR.Squads.on(this)) BR.Squads.update(this, dt);        // (BR squads + team duels)
     while (this.recentShots.length && this.time - this.recentShots[0].t > 2) this.recentShots.shift();
     if (this.brnet) this.brnet.update(dt);
     this.loot.update(dt, cp);
@@ -1241,7 +1241,7 @@ BR.Game = class Game {
         by: killer ? 'Eliminated by ' + killer.name : weaponId === 'bleed' ? 'Bled out' : 'Lost to the storm',
       };
     }
-    if (this.squad > 1) BR.Squads.onDeath(this, victim);
+    if (BR.Squads.on(this)) BR.Squads.onDeath(this, victim);
   }
 
   onShot(actor, w) {

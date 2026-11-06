@@ -1743,7 +1743,7 @@ body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint 
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.29.0',
+  version: '1.29.1',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -2026,6 +2026,12 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.29.1', date: '2026-11-06', title: 'Knockdowns in team duels', notes: [
+    '2v2 and 3v3 Duels (Shotgun and Sniper Duels too): getting killed now knocks you down while a teammate is still standing. Crawl to cover and a teammate can revive you, or you bleed out.',
+    'If the last player standing on a team goes down, the whole team is out: any knocked teammates are finished and the round is lost.',
+    'Knocked players count for nothing if the round runs out of time, and every new round starts with everyone back up. Works online too: teammates and opponents see you knocked, and a revive from a teammate on another screen brings you back.',
+    '1v1 duels are unchanged.',
+  ] },
   { v: '1.29.0', date: '2026-11-06', title: 'Co-op Zombies', notes: [
     'Zombies now works with your party (2 to 4 players). The party leader picks ZOMBIES and presses PLAY, and everyone loads into the same Hollow Graves game.',
     'Same rounds, same zombies, same bosses for everyone. Zombies and bosses go after whoever is closest.',
@@ -11901,7 +11907,12 @@ BR.Squads = {
   MATE_COL: 0x3f8cff,
   TEAM_COLS: [0xe0533d, 0xe0a33d, 0x8fd14f, 0x3dd6c5, 0xb56ce6, 0xe66cb0, 0xd6d6d6, 0x9b6b43, 0x5b7a3a, 0xc94f7c, 0x6a74d9, 0xd9c36a, 0x4fa38a, 0xa04848, 0x7c8ea6],
 
-  on(g) { return !!(g && g.squad > 1 && !g.zm && !g.mode && !g.duel && !g.practice); },
+  on(g) {
+    if (!g) return false;
+    if (g.squad > 1 && !g.zm && !g.mode && !g.duel && !g.practice) return true;
+    const M = g.mode;                                      // v1.29.1: 2v2 / 3v3 duels knock too (a 1v1 has nobody to revive you)
+    return !!(M && M.arena && M.P && M.P.kind === 'duel' && M.size > 1);
+  },
 
   // Called by startMatch after the bots are added: the player is on team 0 with the first (size-1)
   // bots; every other run of `size` bots is a team. Teams drop together.
@@ -11936,7 +11947,7 @@ BR.Squads = {
   tryDown(g, v, killer, wid, head) {
     if (!this.on(g) || v.downed || v.team === undefined) return false;
     if (!this.standing(g, v.team, v)) return false;
-    v.downed = true; v.health = this.DOWN_HP; v.shield = 0; v.downT = g.time; if (g.brnet) g.brnet.onDown(v);
+    v.downed = true; v.health = this.DOWN_HP; v.shield = 0; v.downT = g.time; if (g.brnet) g.brnet.onDown(v); else if (g.mode && g.mode.onDown) g.mode.onDown(v);
     v.knocker = killer || null; v.downWid = wid; v.reviver = null; v.reviveP = 0;
     v.fireHeld = false; v.ads = false; v.stimT = 0; v.stimHealT = 0; v.lunge = null;
     if (v.mover.grapple) v.mover.releaseGrapple();
@@ -11981,7 +11992,7 @@ BR.Squads = {
       if (a.netProxy) {                                      // v1.24 party BR: a downed party member / bot owned by another screen
         const r = a.reviver;                                 // we only run the revive if one of OUR actors is doing it; the owner applies it
         if (r && (r.netProxy || !r.alive || r.downed || r.fireHeld || r.pos.distanceTo(a.pos) > this.REVIVE_DIST + 0.4 || (r.isPlayer && Math.hypot(g.input.moveX, g.input.moveY) > 0.35))) { a.reviver = null; a.reviveP = 0; continue; }
-        if (r) { a.reviveP += dt; if (a.reviveP >= this.REVIVE_T) { a.reviver = null; a.reviveP = 0; g.brnet && g.brnet.reviveDone(a, r); if (r.isPlayer) g.hud.toast('Revived ' + a.name, 900); } }
+        if (r) { a.reviveP += dt; if (a.reviveP >= this.REVIVE_T) { a.reviver = null; a.reviveP = 0; if (g.brnet) g.brnet.reviveDone(a, r); else if (g.mode && g.mode.reviveDone) g.mode.reviveDone(a, r); if (r.isPlayer) g.hud.toast('Revived ' + a.name, 900); } }
         continue;
       }
       // revive in progress? the reviver must stay close, standing and not shooting
@@ -14606,6 +14617,7 @@ BR.Squads = {
       a.alive = true; a.deathT = 0; a.fireHeld = false; a.lunge = null;
       if (a.mover.grapple) a.mover.releaseGrapple();
       if (a.resetCooldowns) a.resetCooldowns();          // v1.28.4: abilities used last round are ready again
+      a.downed = false; a.reviver = null; a.reviveP = 0; a.knocker = null; a.mover.prone = false;      // v1.29.1: a new round clears knockdowns
       if (!a.isPlayer) {
         if (a.mesh && a.mesh.parent) g.scene.remove(a.mesh);
         a.mesh = a.buildMesh(); g.scene.add(a.mesh); g.highlightActor(a);
@@ -14614,6 +14626,10 @@ BR.Squads = {
       if (a.local) { this.arm(a); this.placeAt(a, s); a.spawnLock = { x: a.mover.pos.x, y: a.mover.pos.y, z: a.mover.pos.z }; }
       if (a.netProxy) { a.netProxy.seen = false; a.mover.pos.set(s.x, 0, s.z); }
     }
+
+    // v1.29.1 team duels: knockdowns (BR.Squads) — a revive of a teammate owned by another screen goes to that screen
+    onDown() {}
+    reviveDone(v, by) { if (this.net && v.netProxy) this.net.send('rev', { v: v.rosterId, by: by ? by.rosterId : -1 }); }
 
     // ------------------------------------------------------------------ flow (host)
     beginRound() {
@@ -14653,7 +14669,7 @@ BR.Squads = {
         const alive = [0, 1].map(t => this.g.actors.some(a => a.alive && a.team === t));
         let w = null;
         if (!alive[0] && !alive[1]) w = -1; else if (!alive[0]) w = 1; else if (!alive[1]) w = 0;
-        else if (this.t <= 0) { const hp = [0, 1].map(t => this.g.actors.filter(a => a.alive && a.team === t).reduce((s, a) => s + a.health + a.shield, 0)); w = hp[0] > hp[1] + 0.5 ? 0 : hp[1] > hp[0] + 0.5 ? 1 : -1; }
+        else if (this.t <= 0) { const hp = [0, 1].map(t => this.g.actors.filter(a => a.alive && !a.downed && a.team === t).reduce((s, a) => s + a.health + a.shield, 0)); w = hp[0] > hp[1] + 0.5 ? 0 : hp[1] > hp[0] + 0.5 ? 1 : -1; }     // (knocked players count for nothing)
         if (w !== null) { if (w >= 0) this.score[w]++; this.phase = 'roundEnd'; this.t = this.picksLoadout && Math.max(...this.score) < P.target ? 7 : 2.6; this.lastWinner = w; this.pushMatch(true); }
       } else if (this.phase === 'fight') {
         const best = P.kind === 'tdm' ? Math.max(...this.score) : Math.max(...Object.values(this.stats).map(s => s.kills));
@@ -14731,6 +14747,7 @@ BR.Squads = {
       const N = this.net;
       N.on('st', m => { for (const s of m.a) { const a = this.byId.get(s[0]); if (a && a.netProxy) { a.netProxy.set(s); if (!a.alive && s[7] && a.mesh && !a.mesh.parent) { a.alive = true; } } } });
       N.on('fx', m => { for (const f of m.f) this.remoteShot(f); });
+      N.on('rev', m => { const v = this.byId.get(m.v), by = this.byId.get(m.by); if (v && v.local && v.alive && v.downed) BR.Squads.revive(this.g, v, by || v); });     // v1.29.1: a teammate on another screen revived you
       N.on('hit', m => { const v = this.byId.get(m.v); if (!v || !v.local || !v.alive) return;
         if (BR.AntiCheat && m.from && m.from !== this.me) { const ok = BR.AntiCheat.hostHit(m, m.from); if (ok !== true) { if (ok === 'kick' && this.host && N.kick) { N.kick(m.from, 'cheat'); this.g.hud.toast('A player was removed by anti-cheat', 2000); } return; } } this.g.applyDamage(v, this.byId.get(m.a) || null, m.d, m.h, { x: m.at[0], y: m.at[1], z: m.at[2] }, m.w); });
       N.on('kill', m => { const v = this.byId.get(m.v); if (!v || !v.alive) return; this._remote = true; this.g.kill(v, this.byId.get(m.k) || null, m.w, m.h); this._remote = false; });
@@ -14747,7 +14764,7 @@ BR.Squads = {
       if (this.sendT <= 0) {
         this.sendT = 0.05;
         const ids = BR.Net.WIDS, a = [];
-        for (const x of this.g.actors) if (x.local) { const w = x.weapon; a.push([x.rosterId, +x.pos.x.toFixed(2), +x.pos.y.toFixed(2), +x.pos.z.toFixed(2), +x.yaw.toFixed(3), +x.pitch.toFixed(3), w ? ids.indexOf(w.id) : -1, x.alive ? 1 : 0, x.mover.crouched || x.mover.sliding ? 1 : 0, Math.round(x.health)]); }
+        for (const x of this.g.actors) if (x.local) { const w = x.weapon; a.push([x.rosterId, +x.pos.x.toFixed(2), +x.pos.y.toFixed(2), +x.pos.z.toFixed(2), +x.yaw.toFixed(3), +x.pitch.toFixed(3), w ? ids.indexOf(w.id) : -1, x.alive ? 1 : 0, x.mover.crouched || x.mover.sliding ? 1 : 0, Math.round(x.health), x.downed ? 1 : 0]); }     // (v1.29.1: + knocked down)
         if (a.length) this.net.send('st', { a });
       }
       if (this.fxQ.length) { this.net.send('fx', { f: this.fxQ }); this.fxQ = []; }
@@ -20294,7 +20311,7 @@ BR.Game = class Game {
       if (!a.alive && a.mesh && a.mesh.parent && this.time - a.deathT > 4) this.scene.remove(a.mesh);
       else if (a.mesh && a.alive) a.mesh.visible = Math.abs(a.pos.x - cp.x) + Math.abs(a.pos.z - cp.z) < 260;
     }
-    if (this.squad > 1) BR.Squads.update(this, dt);
+    if (BR.Squads.on(this)) BR.Squads.update(this, dt);        // (BR squads + team duels)
     while (this.recentShots.length && this.time - this.recentShots[0].t > 2) this.recentShots.shift();
     if (this.brnet) this.brnet.update(dt);
     this.loot.update(dt, cp);
@@ -20806,7 +20823,7 @@ BR.Game = class Game {
         by: killer ? 'Eliminated by ' + killer.name : weaponId === 'bleed' ? 'Bled out' : 'Lost to the storm',
       };
     }
-    if (this.squad > 1) BR.Squads.onDeath(this, victim);
+    if (BR.Squads.on(this)) BR.Squads.onDeath(this, victim);
   }
 
   onShot(actor, w) {

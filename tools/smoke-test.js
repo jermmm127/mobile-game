@@ -962,7 +962,8 @@ const server = http.createServer((req, res) => {
       // a kill on the enemy team scores; no friendly fire
       const mate = g.actors.find(a => !a.isPlayer && a.team === g.player.team), foe = g.actors.find(a => a.team !== g.player.team);
       const hp0 = mate.health; g.applyDamage(mate, g.player, 50, false, mate.pos, 'rifle'); v.noFF = mate.health === hp0;
-      g.applyDamage(foe, g.player, 999, true, foe.pos, 'rifle'); v.duelKill = !foe.alive && M.stats[g.player.rosterId].kills === 1;
+      g.applyDamage(foe, g.player, 999, true, foe.pos, 'rifle'); const knocked = foe.alive && foe.downed;      // (v1.29.1: 2v2 knocks first while a teammate stands)
+      g.applyDamage(foe, g.player, 999, true, foe.pos, 'rifle'); v.duelKill = knocked && !foe.alive && M.stats[g.player.rosterId].kills === 1;
       M = play('shotgun', 1); v.shotgun = g.player.slots[0].id === 'shotgun' && !g.player.slots[1] && g.actors.every(a => !a.slots[1] && a.slots[0].id === 'shotgun');
       M = play('sniper', 2); v.sniper = g.actors.every(a => a.slots[0].id === 'sniper' && a.slots[1].id === 'hunter');
       M = play('tdm', 4); v.tdm = g.actors.length === 8; run(120);
@@ -1414,6 +1415,32 @@ const server = http.createServer((req, res) => {
     g.toMenu(); BR.AntiCheat._testing = false; Object.assign(L, keepL);
     return out;
   });
+  // v1.29.1: 2v2 / 3v3 duels: a lethal hit knocks you down while a teammate stands; the last one standing dying ends it
+  const v1291 = await page.evaluate(async () => {
+    const g = BR.game, out = {}, L = BR.Lobby, keepL = { skipRoll: L.skipRoll, preset: L.preset, size: L.size }; BR.AntiCheat._testing = true;
+    const go = async size => { g.toMenu(); L.skipRoll = true; L.preset = 'duel'; L.size = size; L.play({ map: 'yard' }); await new Promise(r => setTimeout(r, 300)); const M = g.mode; M.frozen = false; M.phase = 'fight'; M.t = 90; for (const a of g.actors) if (a.brain) a.brain = null; return M; };
+    let M = await go(2); const p = g.player, mate = g.actors.find(a => a !== p && a.team === p.team), foes = g.actors.filter(a => a.team !== p.team);
+    out.on = BR.Squads.on(g) && !!mate && foes.length === 2;
+    g.applyDamage(p, foes[0], 999, false, p.pos, 'rifle'); g.update(1 / 30);
+    out.knocked = p.alive && p.downed;
+    // a teammate revives you
+    mate.mover.pos.copy(p.pos).add(new THREE.Vector3(1, 0, 0)); mate.reviver = null; p.reviver = mate; p.reviveP = 0;
+    for (let i = 0; i < 140 && p.downed; i++) { p.reviver = mate; g.update(1 / 30); }
+    out.revived = p.alive && !p.downed;
+    // knocked again, then your last teammate dies: you're finished and the round goes to the other team
+    g.applyDamage(p, foes[0], 999, false, p.pos, 'rifle'); g.update(1 / 30); const k2 = p.downed;
+    g.applyDamage(mate, foes[1], 999, false, mate.pos, 'rifle'); g.update(1 / 30);
+    out.mateDiesOut = k2 && !mate.alive && !p.alive;
+    for (let i = 0; i < 5; i++) g.update(1 / 30);
+    out.roundLost = M.phase === 'roundEnd' && M.score[1] === 1;
+    // next round: knocks cleared
+    M.beginRound(); g.update(1 / 30); out.fresh = g.actors.every(a => a.alive && !a.downed);
+    // 1v1: no teammate, so a lethal hit is a kill
+    M = await go(1); const foe = g.actors.find(a => a !== g.player);
+    out.oneVone = !BR.Squads.on(g) && (g.applyDamage(g.player, foe, 999, false, g.player.pos, 'rifle'), !g.player.alive);
+    g.toMenu(); Object.assign(L, keepL); BR.AntiCheat._testing = false;
+    return out;
+  });
   // v1.28.4: duel rounds: abilities used last round (stim, hook, grenade) are ready again in the next round
   const v1284 = await page.evaluate(async () => {
     const g = BR.game, out = {}, L = BR.Lobby, keepL = { skipRoll: L.skipRoll, preset: L.preset, size: L.size }; BR.AntiCheat._testing = true;
@@ -1601,6 +1628,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.29.1 2v2 / 3v3 duels: killed = knocked while a teammate stands, teammates revive, the last one standing dying finishes the knocked and ends the round, new rounds clear knocks, 1v1 still kills', Object.values(v1291).every(Boolean), v1291],
     ['v1.28.4 duels: stim / hook / grenade cooldowns used in a round are ready again when the next round starts', Object.values(v1284).every(Boolean), v1284],
     ['v1.28.2 duel / TDM / FFA maps keep everyone inside (flings, teleports, every map), BR has no box, auto-fire skips teammates but still shoots enemies, sound layers no longer cut off', Object.values(v1282).every(Boolean), v1282],
     ['v1.28 controller: wakes on input, L stick moves, R stick looks, R2 fires, L2 aims, ✕ jumps, Options pauses + ○ resumes, menu highlight starts on PLAY and moves, unplugging releases everything, settings, WebGL fallback for limited browsers', Object.values(v128).every(Boolean), v128],
@@ -1777,7 +1805,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();
