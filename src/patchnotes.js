@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.27.5', date: '2026-11-06', title: 'Karambit distance', notes: [
+    'The Karambit is held a little farther from the screen (about 13%), in the same spot, so it looks slightly smaller. Draw, inspect, the twirl and the swings are unchanged.',
+  ] },
   { v: '1.27.4', date: '2026-11-06', title: 'Revolver hand grip', notes: [
     'The hand now holds the revolver like the reference: the grip sits down in the fist, the back of the glove wraps round the right side, the fingertips curl round the front-left, and the wrist and forearm run down to the lower-right corner. Size, distance, ADS, reload, inspect and recoil are unchanged.',
   ] },
