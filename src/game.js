@@ -1006,7 +1006,8 @@ BR.Game = class Game {
     if (S.autoFire && touch && w && !w.def.melee && !fire) {
       const e = p.eye(this._v1), d = p.aimDir(this._v2);
       const h = this.hitscan(p, e, d, w.def.range * 1.6);
-      if (h.actor || h.target) fire = true;
+      const mate = h.actor && h.actor.team !== undefined && h.actor.team === p.team;      // v1.28.2: never auto-fire at a teammate
+      if ((h.actor && !mate) || h.target) fire = true;
     }
     p.fireHeld = fire && !p.mover.dropping;
     if (fire && w && !w.def.melee) this.vmr.inspectT = 0;

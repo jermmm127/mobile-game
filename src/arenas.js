@@ -136,6 +136,7 @@ Object.assign(BR.World.prototype, {
   arenaCrate(x, z, h) { this.addBox(x - 0.65, 0, z - 0.65, x + 0.65, h || 1.2, z + 0.65, 0xa77b4f); },
   arenaShell(X, Z, WH, CON, CON2) {
     const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
+    this.playBounds = { x0: -X, x1: X, z0: -Z, z1: Z, y1: WH + 14 };       // v1.28.2: the hard play area (inside the walls)
     B(-X - 3, 0, -Z - 3, X + 3, WH, -Z, CON, { tag: 'edge' }); B(-X - 3, 0, Z, X + 3, WH, Z + 3, CON, { tag: 'edge' });
     B(-X - 3, 0, -Z, -X, WH, Z, CON, { tag: 'edge' }); B(X, 0, -Z, X + 3, WH, Z, CON, { tag: 'edge' });
     for (const z of [-Z, Z]) this.addBox(-X, WH, z - 0.2, X, WH + 0.25, z + 0.2, CON2, { decor: true });
@@ -352,6 +353,7 @@ Object.assign(BR.World.prototype, {
 
   generateSkyline() {
     const X = 19, Z = 14, WH = 1.15;
+    this.playBounds = { x0: -X, x1: X, z0: -Z, z1: Z, y1: 14 };            // v1.28.2: stay on the roof
     const ROOF = 0x55585f, PAR = 0x7b7f87, AC = 0x9aa0a8, GLASS = 0x6fa8c8, STEEL = 0x3c4048, Y = 0xf2b234, BLUE = 0x2f6fd8, RED = 0xd8443a;
     const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(Math.min(x0, x1), y0, Math.min(z0, z1), Math.max(x0, x1), y1, Math.max(z0, z1), c, o);
     const Dc = (x0, y0, z0, x1, y1, z1, c) => B(x0, y0, z0, x1, y1, z1, c, { decor: true });

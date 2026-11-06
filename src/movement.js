@@ -60,9 +60,20 @@ BR.Mover = class Mover {
 
   get speedH() { return Math.hypot(this.vel.x, this.vel.z); }
 
+  // v1.28.2: arena maps (duels / TDM / FFA) have a hard play area: nobody gets over, onto or round the perimeter
+  // walls, whatever the grapple, wall-run, jump pad or vault does. Pushing into the edge just stops you.
+  clampBounds() {
+    const B = this.world && this.world.playBounds; if (!B) return;
+    const p = this.pos, v = this.vel, r = this.r || 0.35;
+    if (p.x < B.x0 + r) { p.x = B.x0 + r; if (v.x < 0) v.x = 0; } else if (p.x > B.x1 - r) { p.x = B.x1 - r; if (v.x > 0) v.x = 0; }
+    if (p.z < B.z0 + r) { p.z = B.z0 + r; if (v.z < 0) v.z = 0; } else if (p.z > B.z1 - r) { p.z = B.z1 - r; if (v.z > 0) v.z = 0; }
+    if (B.y1 !== undefined && p.y > B.y1) { p.y = B.y1; if (v.y > 0) v.y = 0; }
+    if (this.grapple && (this.grapple.x < B.x0 || this.grapple.x > B.x1 || this.grapple.z < B.z0 || this.grapple.z > B.z1) && this.releaseGrapple) this.releaseGrapple();     // no hooking onto the outside
+  }
   update(dt, inp, yaw) {
     const M = BR.CONFIG.move;
     const ev = this.events;
+    this.clampBounds();                               // (also catches teleports / respawns placed outside)
     for (const k in ev) ev[k] = false;
     this.slideCd -= dt; this.wallRunCd -= dt; this.coyote -= dt; this.jumpBuf -= dt;
     this.slideQueue -= dt; this.wallContactT += dt; this.mantleT -= dt; this.superCd -= dt;
@@ -88,7 +99,7 @@ BR.Mover = class Mover {
       this.pos.y = V.y0 + (V.sill + 0.06 - V.y0) * Math.sin(a * Math.PI / 2) + (V.y1 - V.sill - 0.06) * b * b;
       this.h = 0.8; this.onGround = false; this.sliding = false; this.crouched = false;
       if (dt > 0) this.vel.set((this.pos.x - ox) / dt, (this.pos.y - oy) / dt, (this.pos.z - oz) / dt);
-      if (k >= 1) { this.vault = null; this.pos.set(V.x1, V.y1, V.z1); this.vel.set(V.dx * 4.5, 0, V.dz * 4.5); this.onGround = V.y1 <= this.world.groundAt(V.x1, V.z1, V.y1 + 0.05) + 0.02; ev.land = true; this.landSpeed = 3; }
+      if (k >= 1) { this.vault = null; this.pos.set(V.x1, V.y1, V.z1); this.clampBounds(); this.vel.set(V.dx * 4.5, 0, V.dz * 4.5); this.onGround = V.y1 <= this.world.groundAt(V.x1, V.z1, V.y1 + 0.05) + 0.02; ev.land = true; this.landSpeed = 3; }
       return;
     }
     if (inp.jump && !this.dropping && !this.grapple && this.tryWindowVault(yaw)) { this.jumpBuf = 0; ev.mantle = true; ev.tech = 'VAULT'; return; }
@@ -238,6 +249,7 @@ BR.Mover = class Mover {
     // ---- move + collide -----------------------------------------------------
     this.mantleWish = inp.mz > 0.3 || !!this.grapple;
     this.integrate(dt, jumped);
+    this.clampBounds();
 
     // ---- jump pad -----------------------------------------------------------
     if (this.padHit) {

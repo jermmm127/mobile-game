@@ -21,7 +21,7 @@ BR.Audio = {
       if (!AC) return;
       const c = this.ctx = new AC();
       this.master = c.createGain(); this.master.gain.value = this.volume;
-      const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.18;
+      const comp = c.createDynamicsCompressor(); comp.threshold.value = -12; comp.knee.value = 18; comp.ratio.value = 3; comp.attack.value = 0.008; comp.release.value = 0.3;     // v1.28.2: gentler, so shots don't audibly duck everything else
       this.bus = c.createGain(); this.bus.gain.value = 1; this.bus.connect(comp); comp.connect(this.master); this.master.connect(c.destination);
       const len = c.sampleRate * 1.0;
       this.noise = c.createBuffer(1, len, c.sampleRate);
@@ -42,7 +42,8 @@ BR.Audio = {
 
   setVolume(v) { this.volume = v; if (this.master) this.master.gain.value = v; },
 
-  ok() { return this.ctx && this.ctx.state === 'running' && this.voices < 56; },
+  // v1.28.2: a soft voice limit for far / ambient layers, a much higher one for your own and nearby sounds (they used to get dropped mid-fight)
+  ok(force) { return this.ctx && this.ctx.state === 'running' && this.voices < (force || this._force ? 140 : 80); },
 
   // routing helper: gain -> (pan) -> dry bus + reverb send
   _out(node, pan, rev) {
@@ -65,7 +66,8 @@ BR.Audio = {
     src.connect(f); let last = f;
     if (o.hp) { const h = c.createBiquadFilter(); h.type = 'highpass'; h.frequency.value = o.hp; last.connect(h); last = h; }
     last.connect(g); this._out(g, o.pan, o.rev);
-    src.start(t, Math.random() * 0.7); src.stop(t + dur + 0.03); this._done(src);
+    src.loop = true;                                  // v1.28.2: the noise loops, so long layers (booms, echoes, tails) never stop dead when the buffer runs out
+    src.start(t, Math.random() * 0.9); src.stop(t + dur + 0.03); this._done(src);
   },
   // oscillator layer (optionally saturated): pitch sweeps f0 -> f1
   osc(o) {
@@ -107,8 +109,8 @@ BR.Audio = {
     hunter:   { vol: 0.92, crack: 5000, body: 75,  bodyDur: 0.2,  boom: 0.48, lp0: 5600, lp1: 420, tail: 0.65, mech: 0 },
   },
   shot(id, dist, pan, suppressed) {
-    if (!this.ok()) return;
     dist = dist || 0;
+    if (!this.ok(dist < 18)) return;
     const near = 1 / (1 + dist / 22), far = Math.min(1, dist / 90), delay = Math.min(0.35, dist / 343);
     const air = 1 - 0.85 * far;                                         // distant shots lose their highs
     if (id === 'launcher') {                                           // hollow thump, compressed-gas hiss
@@ -118,6 +120,10 @@ BR.Audio = {
       return;
     }
     const G = this.GUNS[id] || this.GUNS.rifle, j = 0.93 + Math.random() * 0.14, v = G.vol * near * 1.3;
+    this._force = dist < 18;                           // your own / close shots always get through the voice limit
+    try { this._shot(id, dist, pan, suppressed, G, j, v, near, far, delay, air); } finally { this._force = false; }
+  },
+  _shot(id, dist, pan, suppressed, G, j, v, near, far, delay, air) {
     if (suppressed) {                                                  // a suppressed "thup": low pop, cloth-like hiss, loud action
       this.osc({ f0: G.body * 1.5 * j, f1: G.body * 0.7, dur: 0.07, vol: v * 0.5, drive: 1.5, at: delay, pan, rev: 0.12 });
       this.nz({ f0: 2400 * air * j, f1: 500, dur: 0.09, vol: v * 0.42, q: 0.9, at: delay, pan, rev: 0.15 });
@@ -140,7 +146,7 @@ BR.Audio = {
   // weapon handling foley: mag out / in, charging handle, bolts, pump, revolver crane, shells, draw
   mech(kind) {
     const r = () => 0.94 + Math.random() * 0.12;
-    this._k = 1.9; try { this._mech(kind, r); } finally { this._k = 1; }
+    this._k = 1.9; this._force = true; try { this._mech(kind, r); } finally { this._k = 1; this._force = false; }     // (your own reload foley is never dropped)
   },
   _mech(kind, r) {
     switch (kind) {

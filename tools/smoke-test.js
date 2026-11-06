@@ -1414,6 +1414,46 @@ const server = http.createServer((req, res) => {
     g.toMenu(); BR.AntiCheat._testing = false; Object.assign(L, keepL);
     return out;
   });
+  // v1.28.2: arena maps have a hard play area; auto-fire never shoots teammates; long sound layers loop
+  const v1282 = await page.evaluate(async () => {
+    const g = BR.game, out = {}, L = BR.Lobby, keepL = { skipRoll: L.skipRoll, preset: L.preset, size: L.size }; BR.AntiCheat._testing = true;
+    const maps = ['yard', 'killhouse', 'cargo', 'district', 'suburb', 'skyline'], bad = [];
+    for (const map of maps) {
+      g.toMenu(); L.skipRoll = true; L.preset = 'tdm'; L.size = 4; L.play({ map }); await new Promise(r => setTimeout(r, 200));
+      const W = g.world, B = W.playBounds, p = g.player; if (g.mode) g.mode.frozen = false;
+      for (const a of g.actors) if (a !== p) { a.brain = null; a.mover.pos.set(0, -50, 0); }      // (nobody shoots you mid-test)
+      if (!B) { bad.push(map + ':nobounds'); continue; }
+      // flung over the wall (as if from the grapple / a jump pad): high up, fast, heading out on every side
+      for (const [vx, vz] of [[30, 0], [-30, 0], [0, 30], [0, -30], [25, 25]]) {
+        p.mover.pos.set(0, 6, 0); p.mover.vel.set(vx, 12, vz); p.mover.onGround = false;
+        for (let i = 0; i < 90; i++) { p.input.mx = p.input.mz = 0; g.update(1 / 30); }
+        const q = p.pos; if (q.x < B.x0 || q.x > B.x1 || q.z < B.z0 || q.z > B.z1) bad.push(map + ':' + vx + ',' + vz + '->' + q.x.toFixed(1) + ',' + q.z.toFixed(1));
+      }
+      // teleported outside: pulled straight back in
+      p.alive = true; p.health = 100; p.mover.pos.set(B.x1 + 8, 0, B.z1 + 8); g.update(1 / 30); if (p.pos.x > B.x1 || p.pos.z > B.z1) bad.push(map + ':tp' + (p.alive ? '' : '(dead)'));
+    }
+    out.bounds = bad.length === 0; out.bad = bad.join(' ') || true;
+    out.brFree = (() => { g.toMenu(); g.startMatch({ seed: 4 }); return !g.world.playBounds; })();      // the BR island has no box
+    // auto-fire: a teammate under the crosshair doesn't trigger it, an enemy does
+    g.toMenu(); L.preset = 'tdm'; L.size = 4; L.play({ map: 'yard' }); await new Promise(r => setTimeout(r, 200)); if (g.mode) g.mode.frozen = false;
+    const S = g.settings, keepAF = S.autoFire; S.autoFire = true; g.input.usingTouch = true;
+    const p = g.player, mate = g.actors.find(a => a !== p && a.team === p.team), foe = g.actors.find(a => a.team !== p.team);
+    for (const a of g.actors) if (a !== p) { a.brain = null; a.mover.pos.set(0, 0, 999); }
+    p.slots[0] = BR.Weapons.create('rifle'); p.cur = 0; p.ammo.heavy = 300; p.pitch = 0;
+    const sp = g.world.spawns[0]; p.mover.pos.set(sp.x, g.world.groundAt(sp.x, sp.z, 20), sp.z); p.yaw = sp.yaw || 0; p.mover.vel.set(0, 0, 0);      // a spawn: open ground ahead
+    const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
+    const aimAt = a => { const x = p.pos.x + fx * 5, z = p.pos.z + fz * 5; a.mover.pos.set(x, g.world.groundAt(x, z, p.pos.y + 3), z); a.mover.vel.set(0, 0, 0); const e = p.eye(new THREE.Vector3()); p.pitch = Math.atan2(a.pos.y + a.mover.h * 0.55 - e.y, 5); };
+    const shots = () => { const w = p.weapon, m0 = w.mag; for (let i = 0; i < 20; i++) { g.input.fire = false; g.update(1 / 60); } return m0 - w.mag; };
+    let mateShots = -1, foeShots = -1;
+    if (mate) { aimAt(mate); mateShots = shots(); mate.mover.pos.set(0, 0, 999); }
+    if (foe) { aimAt(foe); foeShots = shots(); }
+    out.autoMate = mate ? mateShots === 0 : true; out.autoFoe = foe ? foeShots > 0 : true; out.fire = 'mate ' + mateShots + ' foe ' + foeShots;
+    S.autoFire = keepAF; g.input.usingTouch = false;
+    // audio: noise layers loop (no early cut-off) and close sounds get priority over the voice limit
+    out.audio = /src\.loop = true/.test(BR.Audio.nz.toString()) && BR.Audio.ok.length === 1;
+    g.toMenu(); Object.assign(L, keepL); BR.AntiCheat._testing = false;
+    return out;
+  });
   // v1.28: controller support (a fake standard-mapping pad through navigator.getGamepads)
   const v128 = await page.evaluate(async () => {
     const g = BR.game, I = g.input, out = {}, keepGP = navigator.getGamepads, keepLoop = g.loop;
@@ -1545,6 +1585,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.28.2 duel / TDM / FFA maps keep everyone inside (flings, teleports, every map), BR has no box, auto-fire skips teammates but still shoots enemies, sound layers no longer cut off', Object.values(v1282).every(Boolean), v1282],
     ['v1.28 controller: wakes on input, L stick moves, R stick looks, R2 fires, L2 aims, ✕ jumps, Options pauses + ○ resumes, menu highlight starts on PLAY and moves, unplugging releases everything, settings, WebGL fallback for limited browsers', Object.values(v128).every(Boolean), v128],
     ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hands-and-knees crawl + hitbox along the body, no walking during the victory, chest opening show + sparkle loot, upright floating guns, heavy Sniper + LMG', Object.values(v127).every(Boolean), v127],
     ['v1.26 CHARACTER: outfits + masks in the shop, both cases and mastery; bought / equipped looks are worn by your character (patterns, glow, mask add-ons), bots keep team colours, inventory + shop CHARACTER tab with preview, party look', Object.values(v126).every(Boolean), v126],
@@ -1719,7 +1760,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

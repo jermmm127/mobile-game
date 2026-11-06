@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.28.2', date: '2026-11-06', title: 'Arena walls, auto-fire + sound fixes', notes: [
+    'Duels, TDM and FFA maps (the Yard, Killhouse, Cargo, District, Cul-de-Sac, Skyline) now have a hard play area. No grapple, wall-run, jump pad or vault can take you over, onto or round the outer walls, and the grapple won\'t hook onto the outside. Battle Royale is unchanged.',
+    'Auto-fire no longer shoots when a teammate is under your crosshair (it still fires at enemies).',
+    'Fixed sounds being chopped off. Long layers (gun booms, echoes, distant shots, chest shimmer) could stop dead halfway through and now play out fully.',
+    'In big fights, your own gunshots and reloads were sometimes skipped. They now always play, and the master compressor no longer audibly ducks everything on each shot.',
+  ] },
   { v: '1.28.1', date: '2026-11-06', title: 'Starts on more browsers', notes: [
     'Fixed "Error creating WebGL context" on limited browsers (game-console browsers, older phones, locked-down PCs). The game now retries with simpler graphics settings, down to basic WebGL 1, instead of giving up.',
     'On those browsers the game runs in a lite mode: Low graphics, and no extra 3D views (the menu lineup and rendered item pictures use simple versions), so the browser\'s one 3D view goes to the game.',

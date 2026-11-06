@@ -217,6 +217,7 @@ BR.World = class World {
     this.pois = [{ x: 0, z: 0, name: 'The Yard', type: 'arena' }];
     this.towns = [];
     this.spawns = [{ x: -22 * K, z: 0, yaw: -Math.PI / 2 }, { x: 22 * K, z: 0, yaw: Math.PI / 2 }];
+    this.playBounds = { x0: -W * K, x1: W * K, z0: -D * K, z1: D * K, y1: WH + 14 };     // v1.28.2: the hard play area (inside the walls)
     // perimeter walls (tall, grappleable) + coping + barbed wire
     B(-W - 3, 0, -D - 3, W + 3, WH, -D, CON, { tag: 'edge' }); B(-W - 3, 0, D, W + 3, WH, D + 3, CON, { tag: 'edge' });
     B(-W - 3, 0, -D, -W, WH, D, CON, { tag: 'edge' }); B(W, 0, -D, W + 3, WH, D, CON, { tag: 'edge' });
