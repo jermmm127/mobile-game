@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.27.1', date: '2026-11-06', title: 'Revolver grip', notes: [
+    'Revolver held like the reference: the wrist comes up from the bottom right and the gun points forward and up toward the centre of the screen, seen from just behind, so the hammer and the back of the cylinder show. Recoil kick, reload and inspect are unchanged.',
+  ] },
   { v: '1.27.0', date: '2026-11-06', title: 'Hats, chest hype + victory dance', notes: [
     'New HAT slot in the CHARACTER section, with 20 hats. In the Shop: Red Bandana, Pom Beanie, Snapback, Bucket Hat, Commando Beret, a colour-cycling Neon Top Hat and Glow Cat Ears.',
     'Release Case hats: Backwards Cap, Traffic Cone, Shogun Kabuto, an RGB Headset whose ear cups cycle colours, and the Exotic Inferno Crown with flickering flames.',
