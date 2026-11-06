@@ -50,9 +50,38 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
   await A2.evaluate(() => { BR.selectMode('duels'); document.getElementById('btn-go').click(); }); await A2.waitForTimeout(1500);
   for (let i = 0; i < 12; i++) { await pump(); if (await B2.evaluate(() => !!(BR.game.mode && BR.game.mode.preset === 'duel'))) break; }
   const dA = await A2.evaluate(() => ({ preset: BR.game.mode && BR.game.mode.preset, team: BR.game.player.team })), dB = await B2.evaluate(() => ({ preset: BR.game.mode && BR.game.mode.preset, team: BR.game.player.team, net: !!(BR.game.mode && BR.game.mode.net) }));
+  // v1.29 party Zombies: same game, the guest sees + kills the host's zombies (points to the guest), zombies hurt
+  // the guest, doors are shared, a downed guest comes back next round, a party wipe ends it for everyone
+  await A2.evaluate(() => BR.game.toMenu()); await B2.evaluate(() => { BR.Net.leave(); BR.game.toMenu(); }); await A2.waitForTimeout(500);
+  for (const pg of [A2, B2]) await pg.evaluate(() => { BR.AntiCheat._testing = true; });
+  await A2.evaluate(() => { BR.selectMode('zombies'); document.getElementById('btn-go').click(); }); await A2.waitForTimeout(1500);
+  for (let i = 0; i < 12; i++) { await pump(); if (await B2.evaluate(() => !!(BR.game.brnet && BR.game.zm && BR.game.zm.net))) break; }
+  const zst = pg => pg.evaluate(() => { const g = BR.game, zm = g.zm, N = g.brnet; return { on: !!(N && zm && zm.net === N), seed: g.world && g.world.seed, humans: N ? N.humans().length : 0, round: zm ? zm.round : -1, zombies: zm ? zm.zombies.filter(z => z.alive).length : 0, pts: zm ? zm.points : 0, hp: g.player.health, state: g.state }; });
+  for (let i = 0; i < 14; i++) { await pump(); if ((await zst(A2)).zombies >= 1 && (await zst(B2)).zombies >= 1) break; }
+  const zA = await zst(A2), zB = await zst(B2);
+  const zid = await B2.evaluate(() => { const g = BR.game, z = g.zm.zombies.find(z => z.alive && z.zproxy); if (!z) return null; g.applyDamage(z, g.player, 9999, true, z.pos.clone().setY(z.pos.y + 1.6), 'rifle'); return z.zid; });
+  await pump(); await pump();
+  const zKill = { host: await A2.evaluate(id => { const z = BR.game.brnet.byZ.get(id); return !z || !z.alive; }, zid), guest: await B2.evaluate(id => { const z = BR.game.brnet.byZ.get(id); return !z || !z.alive; }, zid), pts: (await zst(B2)).pts - zB.pts, hostPts: (await zst(A2)).pts - zA.pts };
+  await A2.evaluate(() => { const g = BR.game, N = g.brnet, o = N.humans().find(a => a !== g.player); let z = g.zm.zombies.find(z => z.alive); if (!z) z = g.zm.spawnZombie(); if (!o || !z) return; z.riseT = 0; z.mover.pos.set(o.pos.x + 0.8, o.pos.y, o.pos.z); g.player.mover.pos.set(o.pos.x + 30, o.pos.y, o.pos.z + 30); for (let i = 0; i < 90; i++) { N.tgt.clear(); g.update(1 / 30); } });
+  await pump(); await pump();
+  const zHurt = (await zst(B2)).hp < 100;
+  await B2.evaluate(() => { const zm = BR.game.zm, d = zm.doors && zm.doors[0]; if (d && !d.open) zm.openDoor(d); }); await pump();
+  const zDoor = await A2.evaluate(() => !!(BR.game.zm.doors[0] && BR.game.zm.doors[0].open));
+  await B2.evaluate(() => { const g = BR.game; g.applyDamage(g.player, null, 999, false, g.player.pos, 'zombie'); }); await pump(); await pump();
+  const zDown = (await B2.evaluate(() => !BR.game.player.alive && BR.game.state === 'playing')) && (await A2.evaluate(() => BR.game.state === 'playing'));
+  await A2.evaluate(() => { const g = BR.game, zm = g.zm; for (const z of zm.zombies.slice()) if (z.alive) g.kill(z, null, 'nuke', false); zm.toSpawn = 0; zm.bossPending = 0; for (let i = 0; i < 40; i++) g.update(1 / 30); zm.breakT = 0.01; for (let i = 0; i < 10; i++) g.update(1 / 30); });
+  await pump(); await pump();
+  const zBack = await B2.evaluate(() => BR.game.player.alive);
+  await B2.evaluate(() => { const g = BR.game; g.applyDamage(g.player, null, 999, false, g.player.pos, 'zombie'); }); await pump();
+  await A2.evaluate(() => { const g = BR.game; g.applyDamage(g.player, null, 999, false, g.player.pos, 'zombie'); for (let i = 0; i < 3; i++) g.update(1 / 30); }); await pump(); await pump();
+  const over = () => /^(dead|end)$/.test(BR.game.state) && !!(BR.game.result && /overrun/.test(BR.game.result.by || ''));      // (the death screen, or already the results)
+  const zWipe = (await A2.evaluate(over)) && (await B2.evaluate(over));
   const checks = [
     ['party Battle Royale: the leader queues, both drop into the same match (same island, same squad) and see each other', pA.on && pB.on && pA.seed === pB.seed && pA.n === pB.n && pA.mate && pB.mate && pA.seen && pB.seen],
     ['party Duels: the leader queues, the lobby starts by itself, both play on the same team', dA.preset === 'duel' && dB.preset === 'duel' && dB.net && dA.team === dB.team],
+    ['party Zombies: the leader queues, both land in the same game (same map), the guest sees the host\'s zombies', zA.on && zB.on && zA.seed === zB.seed && zA.humans === 2 && zB.humans === 2 && zA.round >= 1 && zB.zombies >= 1],
+    ['party Zombies: a guest shot kills the host\'s zombie on both screens and pays the guest (not the host); zombies hurt the guest; doors are shared', zKill.host && zKill.guest && zKill.pts >= 100 && zKill.hostPts === 0 && zHurt && zDoor],
+    ['party Zombies: a downed guest spectates while the host plays on, comes back next round; a party wipe ends it for both', zDown && zBack && zWipe],
     ['host can kick a player: they are sent back to the menu and dropped from the host', !kicked.inMatch && !kicked.sess && hostConns === 0],
     ['lobby: guest joins with the code, both see 2 players', lobby === 2 && lobbyB === 2],
     ['match starts on both with the same 8-player roster (2 humans + 6 AI)', sA.n === 8 && sB.n === 8 && sA.proxies === 1 && sB.proxies === 7],

@@ -211,8 +211,9 @@
     //  * Battle Royale / Resurgence (v1.24): host a party match (brnet.js); the party drops in as one squad.
     async queue(modeId) {
       if (modeId === 'br' || modeId === 'resurgence') return this.queueBR(modeId);
+      if (modeId === 'zombies') return this.queueZM();                 // v1.29 co-op Zombies
       const preset = ONLINE_MODES[modeId];
-      if (!preset) { BR.game.hud.toast('That mode is solo only. With a party, pick Battle Royale, Resurgence, Duels, Shotgun Duels, Sniper Duels, TDM or Free For All.', 3600); return false; }
+      if (!preset) { BR.game.hud.toast('That mode is solo only. With a party, pick Battle Royale, Resurgence, Zombies, Duels, Shotgun Duels, Sniper Duels, TDM or Free For All.', 3600); return false; }
       const L = BR.Lobby, PR = BR.ARENA_PRESETS[preset], n = this.party.members.length;
       L.open(preset); L.size = PR.kind === 'duel' ? Math.min(Math.max(...PR.sizes), Math.max(PR.sizes[0], n)) : Math.max(PR.sizes[0], n);
       await L.host();
@@ -243,8 +244,33 @@
       if (joined.length < H - 1) BR.game.hud.toast('Some of your party didn’t connect in time', 2600);
       return true;
     },
+    // v1.29: host a co-op Zombies game (zmnet.js); everyone plays the same map and rounds together
+    async queueZM() {
+      const H = this.party.members.length, local = this.local();
+      BR.game.hud.toast('Starting Zombies with your party…', 2000);
+      let S; try { BR.Net.leave(); S = await BR.Net.host(this.myName(), local); } catch (e) { BR.game.hud.toast('Could not start the party game (' + (e.message || e) + ')', 3000); return false; }
+      const joined = [];
+      S.on('join', m => { if (!joined.some(j => j.pid === m.from)) joined.push({ pid: m.from, name: String(m.name || 'Player').slice(0, 16) }); });
+      S.on('leave', m => { const i = joined.findIndex(j => j.pid === m.from); if (i >= 0 && !BR.game.brnet) joined.splice(i, 1); });
+      this.party.sess.send('go', { kind: 'zm', code: S.code });
+      const t0 = Date.now();
+      while (joined.length < H - 1 && Date.now() - t0 < 12000) await new Promise(r => setTimeout(r, 150));
+      if (BR.Net.session !== S) return false;
+      const cfg = { seed: Math.floor(Math.random() * 2 ** 31), humans: [{ pid: 'H', name: this.myName(), ch: BR.Profile.charLook() }].concat(joined.slice(0, 3).map(j => { const pm = this.party && this.party.members.find(x => x.name === j.name && !x.me); return Object.assign({}, j, { ch: pm && pm.look && pm.look.ch || null }); })) };
+      BR.ZMNet.begin(BR.game, S, cfg);
+      S.send('zmstart', cfg);
+      if (joined.length < H - 1) BR.game.hud.toast('Some of your party didn’t connect in time', 2600);
+      return true;
+    },
     async follow(m) {
       if (BR.game.state !== 'menu') BR.game.toMenu();
+      if (m.kind === 'zm') {                                     // v1.29: join the leader's Zombies game
+        BR.game.hud.toast('Joining your party’s Zombies game…', 2000);
+        let S; try { BR.Net.leave(); S = await BR.Net.join(String(m.code), this.myName(), this.local()); } catch (e) { BR.game.hud.toast('Could not join your party’s game (' + (e.message || e) + ')', 3000); return; }
+        S.on('zmstart', cfg => { if (BR.Net.session === S && !BR.game.brnet) BR.ZMNet.begin(BR.game, S, cfg); });
+        S.on('closed', () => { if (!BR.game.brnet) BR.game.hud.toast('Your party leader cancelled the game', 2000); });
+        return;
+      }
       if (m.kind === 'br') {                                     // v1.24: join the leader's Battle Royale / Resurgence match
         BR.game.hud.toast('Joining your party’s match…', 2000);
         let S; try { BR.Net.leave(); S = await BR.Net.join(String(m.code), this.myName(), this.local()); } catch (e) { BR.game.hud.toast('Could not join your party’s match (' + (e.message || e) + ')', 3000); return; }

@@ -633,11 +633,12 @@
     // ---- per frame -------------------------------------------------------------
     update(dt) {
       const g = this.g, p = g.player;
+      if (this.net && !this.net.host) return this.net.clientUpdate(dt);       // v1.29 online: a guest's frame (the host runs the zombies)
       this.tAll = (this.tAll || 0) + dt;
       this.ambience(dt);
-      if (!p.alive) { if (g.state === 'playing') this.gameOver(); return; }
+      if (!p.alive && !this.net) { if (g.state === 'playing') this.gameOver(); return; }
       // regen + slow from boss screams
-      if (g.time - p.lastHurtT > ZC.regenDelay && p.health < BR.CONFIG.actor.maxHealth) p.health = Math.min(BR.CONFIG.actor.maxHealth, p.health + ZC.regenRate * dt);
+      if (p.alive && g.time - p.lastHurtT > ZC.regenDelay && p.health < BR.CONFIG.actor.maxHealth) p.health = Math.min(BR.CONFIG.actor.maxHealth, p.health + ZC.regenRate * dt);
       if (p.zSlowT > 0) p.zSlowT -= dt;
       // rounds
       if (this.phase === 'break') { this.breakT -= dt; if (this.breakT <= 0) this.nextRound(); }
@@ -682,7 +683,7 @@
     onHit(victim, dmg, head) { if (victim.zombie) this.addPoints(ZC.hitPts, victim); }
     onKill(victim, killer, weaponId, head) {
       const g = this.g;
-      if (victim.isPlayer) { this.gameOver(); return; }
+      if (victim.isPlayer) { if (this.net) this.net.localDied(); else this.gameOver(); return; }     // v1.29 online: you're down until the next round
       if (!victim.zombie) return;
       if (killer && killer.isPlayer) {
         this.kills++;
@@ -1252,9 +1253,10 @@
     // ---- per frame extras ------------------------------------------------------------------
     update(dt) {
       baseUpdate.call(this, dt);
-      if (!this.g.player.alive) return;
-      this.updateBox(dt); this.updatePap(dt); this.updateQuest(dt);
+      if (!this.g.player.alive && !this.net) return;
+      this.updateBox(dt); this.updatePap(dt); if (!this.net || this.net.host) this.updateQuest(dt);
       for (const d of this.doors || []) if (d.open && d.openT < 1) { d.openT = Math.min(1, d.openT + dt * 1.5); d.bars.position.y = -d.openT * 4.6; if (d.openT >= 1) d.grp.visible = false; }
+      if (this.net && !this.net.host) return;               // (a guest's count comes from the host)
       const left = this.phase === 'fight' ? this.toSpawn + this.zombies.filter(z => z.alive).length + (this.bossPending ? 1 : 0) : 0;
       this.g.hud.zmLeft(left, this.phase === 'fight');
     },

@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.29.0', date: '2026-11-06', title: 'Co-op Zombies', notes: [
+    'Zombies now works with your party (2 to 4 players). The party leader picks ZOMBIES and presses PLAY, and everyone loads into the same Hollow Graves game.',
+    'Same rounds, same zombies, same bosses for everyone. Zombies and bosses go after whoever is closest.',
+    'Each player has their own points, guns, Mystery Box rolls and Pack-a-Punch. Kills pay whoever landed them. Doors you open, the box moving and power-ups are shared: Max Ammo refills everyone, Insta-Kill and Double Points work for the whole team, and a Nuke clears the round.',
+    'Boss attacks (fireballs, spikes, gas, crows, shock rings) show up for everyone, and each player can dodge them on their own screen.',
+    'If you go down you watch your team until the next round starts, then everyone who died comes back. The game ends only when the whole party is down at once.',
+  ] },
   { v: '1.28.4', date: '2026-11-06', title: 'Fresh abilities every round', notes: [
     'Duels: anything you used before the round ended (stim, grapple hook, grenade) is ready again when the next round starts, with no leftover cooldown and no leftover stim boost or heal. The same goes for bots and online opponents.',
     'TDM and FFA respawns also come back with every ability ready.',
