@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.27.4', date: '2026-11-06', title: 'Revolver hand grip', notes: [
+    'The hand now holds the revolver like the reference: the grip sits down in the fist, the back of the glove wraps round the right side, the fingertips curl round the front-left, and the wrist and forearm run down to the lower-right corner. Size, distance, ADS, reload, inspect and recoil are unchanged.',
+  ] },
   { v: '1.27.3', date: '2026-11-06', title: 'Revolver grip, take 2', notes: [
     'Revolver is smaller on screen and held farther from the camera.',
     'The hand now wraps round the grip like the reference: fingers curled round the front, the hand turned so the wrist and sleeve run down to the lower-right corner of the screen. ADS, reload, inspect and the recoil kick are unchanged.',

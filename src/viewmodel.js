@@ -18,7 +18,7 @@
   const KP = Object.assign({ x: -1.1, y: -0.1, z: -0.6, f: [0.85, -0.4, 0.35], hx: 0.08, hy: -0.075, hz: -0.34, left: 1, lx: 0.05, ly: -0.025 }, (typeof window !== 'undefined' && window.__KP) || {});
   const KI = { z1: 0.95, y1: -0.15, x1: 0.1, z2: -0.25, y2: -0.55, x2: 0 };      // karambit inspect show poses (wrist turns)
   // v1.27.3 revolver hold (reference screenshot): farther out (smaller), muzzle forward and up toward the centre, hand wrapped round the grip with the forearm running to the lower right: window.__RV overrides for tuning
-  const RV = Object.assign({ hx: 0.22, hy: -0.18, hz: -0.58, rx: 0.18, ry: 0.12, rz: 0.12, gx: 0.008, gy: 0.026, gz: 0.012, qx: 0, qy: -0.35, qz: 0, ex: 0.38, ey: -0.72, ez: 0.05 }, window.__RV || {});
+  const RV = Object.assign({ hx: 0.22, hy: -0.18, hz: -0.58, rx: 0.18, ry: 0.12, rz: 0.12, gx: -0.015, gy: 0.02, gz: 0.012, qx: 0, qy: 0.3, qz: 0.4, ex: 0.45, ey: -0.85, ez: 0.0 }, window.__RV || {});
   const BAYLIKE = id => id === 'bayonet' || id === 'tracker';      // v1.13: the Tracker shares the bayonet's fist + flips
   let SLEEVE = null;
   function sleeveParts() {
