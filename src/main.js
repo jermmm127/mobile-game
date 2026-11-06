@@ -96,6 +96,10 @@
   if (!settings.gyro) settings.gyro = 'off';
   seg('set-gyro', 'gyro', () => { if (settings.gyro !== 'off') game.input.enableGyro().then(ok => { if (!ok) { settings.gyro = 'off'; save(); $('set-gyro').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === 'off')); game.hud.toast('Gyro not available on this device', 1600); } }); });
   check('set-gyroInvX', 'gyroInvX'); check('set-gyroInvY', 'gyroInvY');
+  // v1.28 controller
+  if (settings.padSens === undefined) settings.padSens = 1;
+  if (settings.padRumble === undefined) settings.padRumble = true;
+  range('set-padSens', 'padSens', mult); check('set-padInvert', 'padInvert'); check('set-padRumble', 'padRumble');
   $('set-sensReset').addEventListener('click', () => {
     Object.assign(settings, { sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyroSens: 1 });
     for (const k of ['sensX', 'sensY', 'sensAds', 'sensScope', 'sensFire', 'sensCurve', 'gyroSens']) { const el = $('set-' + k); el.value = settings[k]; el.dispatchEvent(new Event('input')); }

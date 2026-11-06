@@ -1696,3 +1696,6 @@ body.menulite #menu .mc-change { display: none; }      /* the whole card opens t
 .gr-sw .sw.chr { height: 42px; }
 #shop-tabs .tab-char, #inv-tabs .tab-char { color: #ffd88a; }
 @media (orientation: landscape) and (max-height: 500px) { .card .sw.chr { height: 52px; } .card .sw.chr.mk { height: 44px; } }
+/* v1.28 controller: the highlighted menu item, and touch-only controls hidden while a controller drives the game */
+.pad-focus { outline: 3px solid #ffd24a !important; outline-offset: 2px; box-shadow: 0 0 0 5px rgba(255, 210, 74, 0.25), 0 0 18px rgba(255, 210, 74, 0.55) !important; position: relative; z-index: 2; }
+body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint { display: none !important; }

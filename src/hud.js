@@ -395,6 +395,14 @@ BR.HUD = class HUD {
         </div>
         <p class="sens-hint">Each value multiplies LOOK SPEED. Response curve: 0 = linear, higher = slow drags are finer and fast flicks turn further. Gyro: tilt / turn your phone to aim (iPhone asks for motion access the first time).</p>
       </details>
+      <details class="help pad-set"><summary>🎮 CONTROLLER</summary>
+        <div class="row"><label for="set-padSens">STICK LOOK SPEED</label><input id="set-padSens" type="range" min="0.3" max="3" step="0.05"><output id="out-padSens"></output></div>
+        <div class="row toggles">
+          <label class="tg"><input type="checkbox" id="set-padInvert"> INVERT LOOK Y</label>
+          <label class="tg"><input type="checkbox" id="set-padRumble"> VIBRATION</label>
+        </div>
+        <p class="sens-hint">PlayStation / Xbox controllers: L stick move · R stick look · R2 fire · L2 aim · ✕/A jump · ○/B crouch + slide · □/X reload, or open / swap / buy when a prompt shows · △/Y next weapon · L1 grenade · R1 grapple · L3 stim · R3 knife · D-pad ↑ inspect, ↓ map, ←/→ weapon 1 / 2 · Options pause. Menus: D-pad or L stick to move, ✕/A select, ○/B back, L1 / R1 switch tabs. AIM ASSIST also helps on a controller.</p>
+      </details>
       <div class="row"><label for="set-smooth">AIM SMOOTHING</label><input id="set-smooth" type="range" min="0" max="1" step="0.05"><output id="out-smooth"></output></div>
       <div class="row"><label for="set-stretch">STRETCHED RES</label><input id="set-stretch" type="range" min="0" max="2" step="0.05"><output id="out-stretch"></output></div>
       <div class="row"><label for="set-sat">SATURATION</label><input id="set-sat" type="range" min="0" max="2" step="0.05"><output id="out-sat"></output></div>

@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.28.0', date: '2026-11-06', title: 'Controller support', notes: [
+    'Play with a PlayStation (DualSense / DualShock), Xbox or other standard controller. Plug it in or pair it and press any button.',
+    'In a match: L stick move, R stick look, R2 fire, L2 aim, Cross/A jump, Circle/B crouch + slide, Square/X reload (or open / swap / buy when a prompt shows), Triangle/Y next weapon, L1 grenade, R1 grapple, L3 stim, R3 knife, D-pad up inspect, down map, left/right weapon 1 / 2, Options pause.',
+    'Look has a smooth response curve with a turn boost when you hold the stick all the way over. AIM ASSIST (slowdown + gentle pull onto targets) now works on controllers too.',
+    'Menus: the D-pad or L stick moves a gold highlight, Cross/A selects, Circle/B goes back, L1 / R1 switch tabs, left/right changes sliders, and the R stick turns the 3D preview in the Inventory.',
+    'Vibration when you fire and when you get hit. New CONTROLLER section in Settings: stick look speed, invert Y, vibration on/off, and the full button list.',
+  ] },
   { v: '1.27.6', date: '2026-11-06', title: 'Heavy weapons', notes: [
     'The Sniper and the LMG are now heavy. You move about 20% slower holding them (Sniper 80% speed, LMG 78%; the LMG was 90%).',
     'They are also slower to aim down sights and slower to swap to. Switch to your sidearm or knife to run.',

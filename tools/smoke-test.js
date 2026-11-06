@@ -1414,6 +1414,33 @@ const server = http.createServer((req, res) => {
     g.toMenu(); BR.AntiCheat._testing = false; Object.assign(L, keepL);
     return out;
   });
+  // v1.28: controller support (a fake standard-mapping pad through navigator.getGamepads)
+  const v128 = await page.evaluate(async () => {
+    const g = BR.game, I = g.input, out = {}, keepGP = navigator.getGamepads, keepLoop = g.loop;
+    const pad = { index: 0, connected: true, id: 'Test pad', mapping: 'standard', axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) };
+    const btn = (i, on) => { pad.buttons[i].pressed = on; pad.buttons[i].value = on ? 1 : 0; };
+    navigator.getGamepads = () => [pad]; BR.Pad.idx = -1;
+    const step = n => { for (let i = 0; i < n; i++) { I.pollPad(1 / 60, g); if (g.state === 'playing' || g.state === 'paused') g.update(1 / 60); } };
+    try {
+      BR.AntiCheat._testing = true; g.startMatch({ practice: true }); document.querySelectorAll('.overlay').forEach(o => o.classList.add('hidden')); step(3);
+      out.active = BR.Pad.active === false;            // idle until you touch it
+      btn(13, true); step(2); btn(13, false); step(2); out.woke = BR.Pad.active && document.body.classList.contains('pad');
+      const p = g.player, x0 = p.pos.clone(); pad.axes[1] = -1; step(40); pad.axes[1] = 0; step(2); out.move = p.pos.distanceTo(x0) > 1 && I.moveX === 0 && I.moveY === 0;
+      const y0 = p.yaw; pad.axes[2] = 1; step(30); pad.axes[2] = 0; out.look = p.yaw < y0 - 0.3;
+      p.slots[0] = BR.Weapons.create('rifle'); p.cur = 0; p.ammo.heavy = 300; step(40);
+      const m0 = p.weapon.mag; btn(7, true); step(60); btn(7, false); step(2); out.fire = m0 - p.weapon.mag >= 6 && !I.fire;
+      btn(6, true); step(20); out.ads = p.ads; btn(6, false); step(2);
+      btn(0, true); step(2); out.jump = !p.mover.onGround || p.mover.vel.y > 0; btn(0, false); step(30);
+      btn(9, true); step(2); btn(9, false); step(2); out.pause = g.state === 'paused' && !!document.querySelector('#btn-resume.pad-focus');
+      btn(1, true); step(2); btn(1, false); step(2); out.resume = g.state === 'playing' && !document.querySelector('.pad-focus');
+      g.toMenu(); document.querySelectorAll('.overlay').forEach(o => { if (o.id !== 'menu') o.classList.add('hidden'); }); I.padClearFocus(); step(3); await new Promise(r => setTimeout(r, 1500)); step(2);     // (earlier tests can leave screens open; the menu fades in)
+      out.menuFocus = !!document.querySelector('#btn-go.pad-focus');
+      btn(15, true); step(2); btn(15, false); step(2); out.menuNav = !!document.querySelector('.pad-focus') && !document.querySelector('#btn-go.pad-focus');
+      btn(7, true); step(2); navigator.getGamepads = () => []; step(2); out.unplug = !BR.Pad.active && !I.fire && !document.body.classList.contains('pad');
+      out.settings = !!document.getElementById('set-padSens') && g.settings.padSens === 1;
+    } finally { navigator.getGamepads = keepGP; I.padClearFocus(); BR.Pad.active = false; BR.Pad.prev = []; I.padActive = false; document.body.classList.remove('pad'); g.loop = keepLoop; BR.AntiCheat._testing = false; if (g.state !== 'menu') g.toMenu(); }
+    return out;
+  });
   // v1.27: hats, revolver hold, victory freeze + dance, downed crawl hitbox, chest show, upright floating guns
   const v127 = await page.evaluate(async () => {
     const g = BR.game, P = BR.Profile, out = {}, keep = JSON.stringify({ owned: P.data.owned, equip: P.data.equip, coins: P.data.coins, dev: P.data.dev });
@@ -1511,6 +1538,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.28 controller: wakes on input, L stick moves, R stick looks, R2 fires, L2 aims, ✕ jumps, Options pauses + ○ resumes, menu highlight starts on PLAY and moves, unplugging releases everything, settings', Object.values(v128).every(Boolean), v128],
     ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hands-and-knees crawl + hitbox along the body, no walking during the victory, chest opening show + sparkle loot, upright floating guns, heavy Sniper + LMG', Object.values(v127).every(Boolean), v127],
     ['v1.26 CHARACTER: outfits + masks in the shop, both cases and mastery; bought / equipped looks are worn by your character (patterns, glow, mask add-ons), bots keep team colours, inventory + shop CHARACTER tab with preview, party look', Object.values(v126).every(Boolean), v126],
     ['v1.23 blueprints seated on the new models (fit groups + surface ribbons), Overdrive blueprints with energy veins, factory black guns, knife trail tips, Mastiff full blast, kill ammo packs, pause while dead, Cul-de-Sac + Skyline, sound engine', Object.values(v123).every(Boolean), v123],
@@ -1684,7 +1712,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

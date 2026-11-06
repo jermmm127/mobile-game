@@ -640,6 +640,7 @@ BR.Game = class Game {
     this.fpsAcc += dt; this.fpsN++;
     if (this.fpsAcc > 0.5) { this.fpsVal = this.fpsN / this.fpsAcc; this.fpsAcc = 0; this.fpsN = 0; }
     dt = Math.min(dt, 0.05);
+    try { if (this.input && this.input.pollPad) this.input.pollPad(dt, this); } catch (e) { /* a controller glitch never stops the game */ }     // v1.28 controller
     // hit-stop: a split second of slow motion when you get a kill
     if (this.hitStop > 0) { this.hitStop -= dt; dt *= 0.3; }
     // victory: starts in slow motion and eases back to full speed
@@ -892,7 +893,7 @@ BR.Game = class Game {
     // response curve: slow drags finer, fast flicks further (0 = linear)
     const curve = touch ? (S.sensCurve || 0) : 0;
     if (curve > 0 && (dx || dy)) { const v = Math.hypot(dx, dy) / Math.max(dt, 1e-3); sens *= BR.util.clamp(Math.pow(v / 700, curve * 0.6), 0.5, 1.9); }
-    const target = touch && S.assist ? this.findAssistTarget() : null;
+    const target = (touch || inp.padActive) && S.assist ? this.findAssistTarget() : null;      // touch + controller
     if (target) sens *= 1 - L.aimAssist * 0.6;
     p.yaw -= dx * sens * (S.sensX ?? 1);
     p.pitch = BR.util.clamp(p.pitch - dy * sens * (S.sensY ?? 1), -1.45, 1.45);
