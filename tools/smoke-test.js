@@ -1265,7 +1265,7 @@ const server = http.createServer((req, res) => {
       v.holo = !!ret && Math.abs(ret.position.y - sg.y) < 0.001 && Math.abs(ret.position.x) < 0.001;
       const lm = BR.Models.weapon('lmg', 'default', 'none', null); v.acog = BR.CONFIG.weapons.lmg.optic === 'acog' && Math.abs(lm.userData.sight.position.y - 0.134) < 0.002;
       const camo = BR.Models.weapon('holoar', 'chrome', 'none', null); let ch = false; camo.traverse(o => { if (o.isMesh && o.material === camo.children[0].material && !(o.material.userData && o.material.userData.real)) ch = true; }); v.camo = ch;
-      const rf = BR.Models.weapon('rifle', 'default', 'none', null); let green = false, nm = false; rf.traverse(o => { if (o.isMesh && !o.userData.isFlash && o.material.map) green = true; if (o.isMesh && o.material.normalMap) nm = true; }); v.rifleBlack = !green && nm;
+      const rf = BR.Models.weapon('rifle', 'default', 'none', null); let green = false, nm = false; rf.traverse(o => { if (o.isMesh && !o.userData.isFlash && o.material.map && !(o.material.userData && o.material.userData.real)) green = true;      /* (v1.31: the factory finish's own worn gunmetal map is fine; the model's green paint isn't) */ if (o.isMesh && o.material.normalMap) nm = true; }); v.rifleBlack = !green && nm;
       const hu = BR.Models.weapon('hunter', 'default', 'none', null); let mint = false; hu.traverse(o => { if (o.isMesh && o.material.map && o.material.map.image && o.material.map === (BR.Models._huCamoTex || null)) mint = true; }); v.hunterBlack = !mint;
       // light menu: no world behind it
       g.toMenu(); v.lightMenu = g.state === 'menu' && !g.scene && document.body.classList.contains('menulite') && getComputedStyle(document.querySelector('.menu-bg')).display === 'block';
