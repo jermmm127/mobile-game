@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.27.1',
+  version: '1.27.2',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map

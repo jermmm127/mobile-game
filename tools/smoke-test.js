@@ -1430,10 +1430,10 @@ const server = http.createServer((req, res) => {
     // downed: the hitbox lies along the body (a shot at the head out in front lands as a headshot)
     BR.AntiCheat._testing = true; g.startMatch({ seed: 5 }); const p = g.player, b = g.actors.find(a => a !== p); p.mover.dropping = false; p.mover.chute = false; for (const a of g.actors) if (a !== p) { a.brain = null; if (a !== b) a.mover.pos.set(9999, 0, 9999); }
     b.mover.pos.set(p.pos.x, p.pos.y, p.pos.z - 10); b.downed = true; b.mover.prone = true; b.mover.h = 0.62; b.yaw = Math.PI; if (b.mesh) b.mesh.rotation.y = Math.PI; for (let i = 0; i < 10; i++) b.syncMesh(1 / 30);
-    const eye = new THREE.Vector3(p.pos.x, b.pos.y + 0.3, p.pos.z), dir = new THREE.Vector3(0, 0, -1);
-    const hs = g.hitscan(p, eye, dir, 50); out.crawlHead = hs.actor === b && hs.head && Math.abs(hs.t - (10 - 0.8 - 0.2)) < 0.15;
-    const side = g.hitscan(p, new THREE.Vector3(b.pos.x - 6, b.pos.y + 0.18, b.pos.z + 0.5), new THREE.Vector3(1, 0, 0), 20); out.crawlLegs = side.actor === b && !side.head;
-    out.crawlCentred = Math.abs(b.mesh.userData.body.position.z - 0.94) < 0.05;
+    const eye = new THREE.Vector3(p.pos.x, b.pos.y + 0.56, p.pos.z), dir = new THREE.Vector3(0, 0, -1);
+    const hs = g.hitscan(p, eye, dir, 50); out.crawlHead = hs.actor === b && hs.head && Math.abs(hs.t - (10 - 0.62 - 0.19)) < 0.15;
+    const side = g.hitscan(p, new THREE.Vector3(b.pos.x - 6, b.pos.y + 0.14, b.pos.z - 0.45), new THREE.Vector3(1, 0, 0), 20); out.crawlLegs = side.actor === b && !side.head;
+    out.crawlCentred = Math.abs(b.mesh.userData.body.position.z - 0.1) < 0.05 && b.mesh.userData.body.position.y < -0.4;
     // victory: the stick can't walk you during the show
     g.toMenu(); g.startMatch({ seed: 3 }); const p2 = g.player; p2.mover.dropping = false; p2.mover.chute = false; for (const a of g.actors) if (a !== p2) { a.alive = false; }
     p2.input.mz = 1; g.update(1 / 30); for (let i = 0; i < 40; i++) g.update(1 / 30); const x0 = p2.pos.clone(); p2.input.mz = 1; for (let i = 0; i < 60; i++) { p2.input.mz = 1; g.update(1 / 30); }
@@ -1508,7 +1508,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
-    ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hitbox along the crawling body, no walking during the victory, chest opening show + sparkle loot, upright floating guns', Object.values(v127).every(Boolean), v127],
+    ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hands-and-knees crawl + hitbox along the body, no walking during the victory, chest opening show + sparkle loot, upright floating guns', Object.values(v127).every(Boolean), v127],
     ['v1.26 CHARACTER: outfits + masks in the shop, both cases and mastery; bought / equipped looks are worn by your character (patterns, glow, mask add-ons), bots keep team colours, inventory + shop CHARACTER tab with preview, party look', Object.values(v126).every(Boolean), v126],
     ['v1.23 blueprints seated on the new models (fit groups + surface ribbons), Overdrive blueprints with energy veins, factory black guns, knife trail tips, Mastiff full blast, kill ammo packs, pause while dead, Cul-de-Sac + Skyline, sound engine', Object.values(v123).every(Boolean), v123],
     ['v1.21 knock = the kill, finishing = assist, give up when knocked, District FFA map + spread spawns, window vault, tracking runner, imported sniper / revolver / launcher / knives', ['knockCredit', 'giveUp', 'ffa', 'vault', 'runner', 'imports'].every(k => v121[k])],

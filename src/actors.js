@@ -44,6 +44,8 @@ function solveArm(arm, target, side) {
   fore.applyQuaternion(_ikQ.copy(arm.sh.quaternion).invert());
   arm.el.quaternion.setFromUnitVectors(_DOWN, fore);
 }
+// v1.27.2 downed crawl on hands and knees (window.__CK overrides for tuning)
+const CRAWL = Object.assign({ by: -0.5, cz: 0.1, lean: -1.5, h: 0.05, k: -1.45, hz: 0.1, ax: 0.22, ay: 0.62, az: -0.52, head: 0.95 }, (typeof window !== 'undefined' && window.__CK) || {});
 BR.solveArm = (arm, target, side) => solveArm(arm, target, side);      // (the victory dance poses the arms by IK)
 // v1.26: whose look an actor wears ({ o: outfit id, m: mask id }): its own (party members, previews) or, for the player, the profile's
 BR.lookOf = a => (a && a.look) || (a && a.isPlayer && BR.Profile && BR.Profile.data && BR.Profile.charLook ? BR.Profile.charLook() : null);
@@ -620,12 +622,12 @@ BR.Actor = class Actor {
     let hL = 0, kL = 0, hR = 0, kR = 0, lean = 0, bodyY = 0, bodyX = 0, armsUp = 0, armsOut = 0, hipYaw = 0, hipRoll = 0, hipShift = 0;
     let crawl = 0;
     let crawlZ = 0;
-    if (this.downed) {                            // v1.27 knocked down: flat on the belly, centred on the hitbox, pulling forward on the elbows
-      u.ct = (u.ct || 0) + dt * (1.2 + Math.min(1, sp) * 3.2);   // the crawl cycle runs with the crawl speed (slow wriggle when still)
-      const c = Math.sin(u.ct);
-      bodyX = -1.47; bodyY = 0.2; crawlZ = 0.94;
-      hL = 0.14 - c * 0.18; kL = -(0.25 + Math.max(0, -c) * 0.85); hR = 0.14 + c * 0.18; kR = -(0.25 + Math.max(0, c) * 0.85);     // frog-kick: the knee comes up on the side that pushes
-      hipRoll = c * 0.08; crawl = c || 0.0001;
+    if (this.downed) {                            // v1.27.2 knocked down: crawling on hands and knees, centred on the hitbox
+      u.ct = (u.ct || 0) + dt * (1.2 + Math.min(1, sp) * 3.2);   // the crawl cycle runs with the crawl speed (a slow sway when still)
+      const c = Math.sin(u.ct), K = CRAWL;
+      bodyY = K.by + Math.abs(Math.cos(u.ct)) * 0.02; crawlZ = K.cz; lean = K.lean;
+      hL = K.h + c * 0.16; kL = K.k - c * 0.12; hR = K.h - c * 0.16; kR = K.k + c * 0.12;      // knees on the ground, shins flat behind, stepping in turn
+      hipRoll = c * 0.05; hipYaw = c * 0.06; crawl = c || 0.0001;
     } else if (m.dropping && !m.chute) {                 // freefall: belly down, limbs spread
       bodyX = -1.4; bodyY = 1.0; hL = 0.3; kL = 0.6; hR = 0.25; kR = 0.5; armsOut = 1.1;
     } else if (m.dropping) {                      // under canopy: holding the lines, legs dangling
@@ -663,12 +665,12 @@ BR.Actor = class Actor {
     D(u.body.position, 'y', bodyY, 12);
     D(u.body.rotation, 'z', (m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : m.sliding ? 0.1 : 0) + hipRoll, 10);
     D(u.body.rotation, 'y', hipYaw, 12); D(u.body.position, 'x', hipShift, 12); D(u.body.position, 'z', crawlZ, 10);
-    if (this.downed) { const c = crawl; D(u.L.hip.rotation, 'z', -0.16 - Math.max(0, -c) * 0.26, 10); D(u.R.hip.rotation, 'z', 0.16 + Math.max(0, c) * 0.26, 10); }
+    if (this.downed) { D(u.L.hip.rotation, 'z', -CRAWL.hz, 10); D(u.R.hip.rotation, 'z', CRAWL.hz, 10); }
     D(u.upper.rotation, 'z', -hipRoll * 0.8, 12);
     u.hipYaw = u.body.rotation.y;
     // Aim: head + arms + gun follow the (smoothed) pitch together
     const aimP = u.pitch - u.upper.rotation.x;
-    u.head.rotation.x = this.downed ? 1.15 : aimP * 0.6;           // downed: chin up, looking ahead
+    u.head.rotation.x = this.downed ? CRAWL.head : aimP * 0.6;           // downed: chin up, looking ahead
     u.gun.rotation.x = aimP;
     // Arms: two-bone IK puts the right hand on the grip and the left on the foregrip
     // of whatever gun is held; blends to holding the risers (canopy) or spread (freefall).
@@ -680,7 +682,8 @@ BR.Actor = class Actor {
     const up = Math.max(armsUp, 0), out = Math.min(armsOut, 1);
     if (up > 0) { tR.lerp(_ikV.set(0.2, 1.08, 0.02), up); tL.lerp(_ikC.set(-0.2, 1.08, 0.02), up); }
     if (crawl) {                                   // elbows on the ground ahead of the shoulders, reaching and pulling in turn
-      tR.set(0.26, 0.72 + crawl * 0.2, -0.2 + Math.max(0, -crawl) * 0.08); tL.set(-0.26, 0.72 - crawl * 0.2, -0.2 + Math.max(0, crawl) * 0.08);
+      const K = CRAWL;                             // hands planted under the shoulders, reaching forward in turn (the moving hand lifts)
+      tR.set(K.ax, K.ay + crawl * 0.1, K.az + Math.max(0, crawl) * 0.07); tL.set(-K.ax, K.ay - crawl * 0.1, K.az + Math.max(0, -crawl) * 0.07);
     }
     if (out > 0) { tR.lerp(_ikV.set(0.62, 0.58, 0.05), out); tL.lerp(_ikC.set(-0.62, 0.58, 0.05), out); }
     if (!u.hR) { u.hR = tR.clone(); u.hL = tL.clone(); }

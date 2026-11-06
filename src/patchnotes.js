@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.27.2', date: '2026-11-06', title: 'Knee crawl', notes: [
+    'Downed players now crawl on their hands and knees instead of on their belly: knees on the ground, shins flat behind, back level, hands planted ahead and stepping in turn, head up looking forward.',
+    'The downed hitbox moved with the new pose (head up front, then back, hips and shins), so shots still land where the body is drawn.',
+  ] },
   { v: '1.27.1', date: '2026-11-06', title: 'Revolver grip', notes: [
     'Revolver held like the reference: the wrist comes up from the bottom right and the gun points forward and up toward the centre of the screen, seen from just behind, so the hammer and the back of the cylinder show. Recoil kick, reload and inspect are unchanged.',
   ] },

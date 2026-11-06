@@ -1044,9 +1044,9 @@ BR.Game = class Game {
       if (tc < -1 - bh || tc > best + 1 + bh) continue;
       const cull = HB ? (bh * 0.5 + br + hr + 0.5) ** 2 : 4.8;
       if (lx * lx + ly * ly + lz * lz - tc * tc > cull) continue;
-      if (a.downed && !HB) {                           // v1.27: lying flat: head, chest, hips and legs along the body (matches the crawl pose)
+      if (a.downed && !HB) {                           // v1.27.2: on hands and knees: head, back, hips and shins along the body (matches the crawl pose)
         const yw = a.mesh ? a.mesh.rotation.y : a.yaw, fx = -Math.sin(yw), fz = -Math.cos(yw), py = m.pos.y;
-        const S = this._downS || (this._downS = [[0.8, 0.3, 0.2, true], [0.42, 0.22, 0.27, false], [0.0, 0.2, 0.26, false], [-0.5, 0.16, 0.2, false], [-0.88, 0.14, 0.17, false]]);
+        const S = this._downS || (this._downS = [[0.62, 0.56, 0.19, true], [0.32, 0.5, 0.25, false], [0.0, 0.44, 0.25, false], [-0.3, 0.16, 0.17, false], [-0.6, 0.1, 0.14, false]]);
         for (const [f, y, r, hd] of S) { const tt = U.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, m.pos.x + fx * f, py + y, m.pos.z + fz * f, r, best); if (tt < best) { best = tt; actor = a; head = hd; } }
         continue;
       }
