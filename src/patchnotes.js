@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.28.1', date: '2026-11-06', title: 'Starts on more browsers', notes: [
+    'Fixed "Error creating WebGL context" on limited browsers (game-console browsers, older phones, locked-down PCs). The game now retries with simpler graphics settings, down to basic WebGL 1, instead of giving up.',
+    'On those browsers the game runs in a lite mode: Low graphics, and no extra 3D views (the menu lineup and rendered item pictures use simple versions), so the browser\'s one 3D view goes to the game.',
+    'If a browser truly can\'t do 3D, you get a clear help screen (which browsers to use, turning on hardware acceleration) with a TRY AGAIN button.',
+    'If the browser resets the graphics mid-game, the game offers a one-tap reload instead of freezing on a black screen.',
+  ] },
   { v: '1.28.0', date: '2026-11-06', title: 'Controller support', notes: [
     'Play with a PlayStation (DualSense / DualShock), Xbox or other standard controller. Plug it in or pair it and press any button.',
     'In a match: L stick move, R stick look, R2 fire, L2 aim, Cross/A jump, Circle/B crouch + slide, Square/X reload (or open / swap / buy when a prompt shows), Triangle/Y next weapon, L1 grenade, R1 grapple, L3 stim, R3 knife, D-pad up inspect, down map, left/right weapon 1 / 2, Options pause.',

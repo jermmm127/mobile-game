@@ -15,12 +15,45 @@
 //   applyDamage(), kill(), onShot(), onBlast(), onMelee(), onPickup(),
 //   onZoneShrink(), playerEvents() (reads mover.events)
 // =============================================================================
+// v1.28.1: start 3D on as many browsers as possible. Tries the full-quality settings first, then simpler ones,
+// then plain WebGL 1 (limited browsers: game consoles, old phones, locked-down PCs). Each try gets a fresh
+// canvas, because a canvas that already handed out one kind of context can't give another.
+// Returns { renderer, canvas, lite } (lite = a fallback was needed: skip extra 3D views, use low graphics).
+BR.makeRenderer = (canvas, want) => {
+  const base = Object.assign({}, want); delete base.canvas;
+  const tries = [
+    base,
+    Object.assign({}, base, { powerPreference: 'default' }),
+    Object.assign({}, base, { powerPreference: 'default', antialias: false }),
+    { antialias: false, alpha: false, stencil: false, depth: true, powerPreference: 'low-power', precision: 'mediump', failIfMajorPerformanceCaveat: false },
+  ];
+  let cv = canvas, lastErr = null;
+  const fresh = () => { const n = cv.cloneNode(false); if (cv.parentNode) cv.parentNode.replaceChild(n, cv); cv = n; };
+  for (let i = 0; i < tries.length; i++) {
+    try { return { renderer: new THREE.WebGLRenderer(Object.assign({ canvas: cv }, tries[i])), canvas: cv, lite: i > 0 }; }
+    catch (e) { lastErr = e; fresh(); }
+  }
+  for (const kind of ['webgl', 'experimental-webgl']) {                 // last chance: ask for WebGL 1 ourselves
+    try {
+      const ctx = cv.getContext(kind, { antialias: false, alpha: false, stencil: false, depth: true, failIfMajorPerformanceCaveat: false, powerPreference: 'low-power' });
+      if (ctx) return { renderer: new THREE.WebGLRenderer({ canvas: cv, context: ctx }), canvas: cv, lite: true };
+    } catch (e) { lastErr = e; }
+    fresh();
+  }
+  throw lastErr || new Error('WebGL unavailable');
+};
+
 BR.Game = class Game {
   constructor(settings) {
     this.settings = settings;
     this.hud = new BR.HUD(document.getElementById('app'));
-    this.canvas = document.getElementById('view');
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });   // MSAA: smooth edges (cheap on mobile tile GPUs)
+    const R0 = BR.makeRenderer(document.getElementById('view'), { antialias: true, powerPreference: 'high-performance' });   // MSAA: smooth edges (cheap on mobile tile GPUs)
+    this.canvas = R0.canvas; this.renderer = R0.renderer;
+    BR.liteGL = this.liteGL = R0.lite;                 // a limited browser: one 3D view only, low graphics
+    if (R0.lite && !settings.liteSet) { settings.liteSet = true; settings.gfx = 'low'; try { BR.util.save('velocity-royale.settings', settings); } catch (e) { /* ok */ } }
+    // the graphics driver can drop the 3D context (low memory, GPU reset): offer a clean reload instead of a frozen screen
+    this.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); this.ctxLost = true;
+      const d = document.createElement('div'); d.className = 'fatal ctx-lost'; d.innerHTML = '<h2>Graphics paused</h2><p>Your browser reset the 3D graphics. Tap to reload the game.</p>'; d.onclick = () => location.reload(); document.body.appendChild(d); }, false);
     this.renderer.autoClear = false;
     // Filmic grade: ACES tone mapping gives soft highlight roll-off, richer mid-tones and
     // more depth than the raw linear output

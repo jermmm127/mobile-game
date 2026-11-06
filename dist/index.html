@@ -1715,6 +1715,9 @@ body.menulite #menu .mc-change { display: none; }      /* the whole card opens t
 /* v1.28 controller: the highlighted menu item, and touch-only controls hidden while a controller drives the game */
 .pad-focus { outline: 3px solid #ffd24a !important; outline-offset: 2px; box-shadow: 0 0 0 5px rgba(255, 210, 74, 0.25), 0 0 18px rgba(255, 210, 74, 0.55) !important; position: relative; z-index: 2; }
 body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint { display: none !important; }
+/* v1.28.1: no-WebGL help screen + "graphics paused" (context lost) overlay */
+.fatal ul { margin: 8px 0 14px 18px; line-height: 1.5; } .fatal .fatal-err { opacity: 0.55; font-size: 12px; margin-top: 12px; }
+.fatal.ctx-lost { position: fixed; inset: 0; z-index: 9999; max-width: none; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: rgba(8, 6, 16, 0.92); color: #fff; cursor: pointer; }
 
 </style>
 </head>
@@ -1739,7 +1742,7 @@ body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint 
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.28.0',
+  version: '1.28.1',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -2022,6 +2025,12 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.28.1', date: '2026-11-06', title: 'Starts on more browsers', notes: [
+    'Fixed "Error creating WebGL context" on limited browsers (game-console browsers, older phones, locked-down PCs). The game now retries with simpler graphics settings, down to basic WebGL 1, instead of giving up.',
+    'On those browsers the game runs in a lite mode: Low graphics, and no extra 3D views (the menu lineup and rendered item pictures use simple versions), so the browser\'s one 3D view goes to the game.',
+    'If a browser truly can\'t do 3D, you get a clear help screen (which browsers to use, turning on hardware acceleration) with a TRY AGAIN button.',
+    'If the browser resets the graphics mid-game, the game offers a one-tap reload instead of freezing on a black screen.',
+  ] },
   { v: '1.28.0', date: '2026-11-06', title: 'Controller support', notes: [
     'Play with a PlayStation (DualSense / DualShock), Xbox or other standard controller. Plug it in or pair it and press any button.',
     'In a match: L stick move, R stick look, R2 fire, L2 aim, Cross/A jump, Circle/B crouch + slide, Square/X reload (or open / swap / buy when a prompt shows), Triangle/Y next weapon, L1 grenade, R1 grapple, L3 stim, R3 knife, D-pad up inspect, down map, left/right weapon 1 / 2, Options pause.',
@@ -17769,6 +17778,7 @@ BR.CharIcons = {
   get(cat, id) {
     const k = cat + ':' + id; if (this.pics[k] !== undefined) return this.pics[k];
     let url = null;
+    if (BR.liteGL) return (this.pics[k] = null);       // limited browser: colour swatches instead of rendered pictures
     try {
       if (!this.r) {
         const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
@@ -18153,6 +18163,7 @@ BR.WeaponIcons = {
     this.done = true;
     setTimeout(() => { if (this.onBuilt) this.onBuilt(); }, 0);
     let r;
+    if (BR.liteGL) { this.sil = {}; this.pic = {}; return; }       // limited browser: keep its one 3D context for the game (plain icons instead)
     try {
       const W = 320, H = 120;
       const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -18220,6 +18231,7 @@ BR.WeaponIcons = {
     const F = 12, W = 120, H = 48;
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     let r = null;
+    if (BR.liteGL) { this.running = false; return; }
     try { r = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, preserveDrawingBuffer: true }); } catch (err) { this.running = false; return; }
     r.setPixelRatio(1); r.setSize(W, H, false); r.setClearColor(0x000000, 0);
     const sc = new THREE.Scene();
@@ -19517,12 +19529,45 @@ BR.fmtTime = fmtTime;
 //   applyDamage(), kill(), onShot(), onBlast(), onMelee(), onPickup(),
 //   onZoneShrink(), playerEvents() (reads mover.events)
 // =============================================================================
+// v1.28.1: start 3D on as many browsers as possible. Tries the full-quality settings first, then simpler ones,
+// then plain WebGL 1 (limited browsers: game consoles, old phones, locked-down PCs). Each try gets a fresh
+// canvas, because a canvas that already handed out one kind of context can't give another.
+// Returns { renderer, canvas, lite } (lite = a fallback was needed: skip extra 3D views, use low graphics).
+BR.makeRenderer = (canvas, want) => {
+  const base = Object.assign({}, want); delete base.canvas;
+  const tries = [
+    base,
+    Object.assign({}, base, { powerPreference: 'default' }),
+    Object.assign({}, base, { powerPreference: 'default', antialias: false }),
+    { antialias: false, alpha: false, stencil: false, depth: true, powerPreference: 'low-power', precision: 'mediump', failIfMajorPerformanceCaveat: false },
+  ];
+  let cv = canvas, lastErr = null;
+  const fresh = () => { const n = cv.cloneNode(false); if (cv.parentNode) cv.parentNode.replaceChild(n, cv); cv = n; };
+  for (let i = 0; i < tries.length; i++) {
+    try { return { renderer: new THREE.WebGLRenderer(Object.assign({ canvas: cv }, tries[i])), canvas: cv, lite: i > 0 }; }
+    catch (e) { lastErr = e; fresh(); }
+  }
+  for (const kind of ['webgl', 'experimental-webgl']) {                 // last chance: ask for WebGL 1 ourselves
+    try {
+      const ctx = cv.getContext(kind, { antialias: false, alpha: false, stencil: false, depth: true, failIfMajorPerformanceCaveat: false, powerPreference: 'low-power' });
+      if (ctx) return { renderer: new THREE.WebGLRenderer({ canvas: cv, context: ctx }), canvas: cv, lite: true };
+    } catch (e) { lastErr = e; }
+    fresh();
+  }
+  throw lastErr || new Error('WebGL unavailable');
+};
+
 BR.Game = class Game {
   constructor(settings) {
     this.settings = settings;
     this.hud = new BR.HUD(document.getElementById('app'));
-    this.canvas = document.getElementById('view');
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });   // MSAA: smooth edges (cheap on mobile tile GPUs)
+    const R0 = BR.makeRenderer(document.getElementById('view'), { antialias: true, powerPreference: 'high-performance' });   // MSAA: smooth edges (cheap on mobile tile GPUs)
+    this.canvas = R0.canvas; this.renderer = R0.renderer;
+    BR.liteGL = this.liteGL = R0.lite;                 // a limited browser: one 3D view only, low graphics
+    if (R0.lite && !settings.liteSet) { settings.liteSet = true; settings.gfx = 'low'; try { BR.util.save('velocity-royale.settings', settings); } catch (e) { /* ok */ } }
+    // the graphics driver can drop the 3D context (low memory, GPU reset): offer a clean reload instead of a frozen screen
+    this.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); this.ctxLost = true;
+      const d = document.createElement('div'); d.className = 'fatal ctx-lost'; d.innerHTML = '<h2>Graphics paused</h2><p>Your browser reset the 3D graphics. Tap to reload the game.</p>'; d.onclick = () => location.reload(); document.body.appendChild(d); }, false);
     this.renderer.autoClear = false;
     // Filmic grade: ACES tone mapping gives soft highlight roll-off, richer mid-tones and
     // more depth than the raw linear output
@@ -21025,14 +21070,18 @@ BR.Game = class Game {
   if (BR.AntiCheat) BR.AntiCheat.lock();          // v1.16: stat tables can't be edited from the console
   BR.Accounts.load();
   BR.Profile.load();
-  setTimeout(() => daily(), 0);
+  setTimeout(() => { try { daily(); } catch (e) { /* (no game: 3D failed to start) */ } }, 0);
 
   let game;
   try {
     game = new BR.Game(settings);
   } catch (err) {
     document.getElementById('app').innerHTML =
-      '<div class="fatal"><h2>This device could not start 3D graphics.</h2><p>Try another browser, or turn off battery saver. (' +
+      '<div class="fatal"><h2>This browser can\'t start 3D graphics</h2><p>surge needs WebGL. Things to try:</p><ul>' +
+      '<li>Use Chrome, Edge, Safari or Firefox (game-console and in-app browsers often block 3D)</li>' +
+      '<li>Turn on hardware acceleration in the browser settings, and update the browser</li>' +
+      '<li>Close other tabs or apps using 3D, turn off battery saver, then reload</li></ul>' +
+      '<button class="mbtn hot" onclick="location.reload()">TRY AGAIN</button><p class="fatal-err">(' +
       String(err && err.message || err).replace(/</g, '&lt;') + ')</p></div>';
     return;
   }
@@ -22203,6 +22252,7 @@ BR.PartyStage = (function () {
   const order = list => { const me = list.find(m => m.me) || list[0], rest = list.filter(m => m !== me); return [me].concat(rest).filter(Boolean).slice(0, 4); };
   const init = () => {
     const cv = $('pt-stage'); if (!cv || S.r) return !!S.r;
+    if (BR.liteGL) return false;                      // limited browser: no second 3D view
     try { S.r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); } catch (e) { return false; }
     S.r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
     S.scene = new THREE.Scene();

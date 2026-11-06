@@ -1433,11 +1433,18 @@ const server = http.createServer((req, res) => {
       btn(0, true); step(2); out.jump = !p.mover.onGround || p.mover.vel.y > 0; btn(0, false); step(30);
       btn(9, true); step(2); btn(9, false); step(2); out.pause = g.state === 'paused' && !!document.querySelector('#btn-resume.pad-focus');
       btn(1, true); step(2); btn(1, false); step(2); out.resume = g.state === 'playing' && !document.querySelector('.pad-focus');
-      g.toMenu(); document.querySelectorAll('.overlay').forEach(o => { if (o.id !== 'menu') o.classList.add('hidden'); }); I.padClearFocus(); step(3); await new Promise(r => setTimeout(r, 1500)); step(2);     // (earlier tests can leave screens open; the menu fades in)
+      g.toMenu(); document.querySelectorAll('.overlay').forEach(o => { if (o.id !== 'menu') o.classList.add('hidden'); }); I.padClearFocus(); step(3); for (let k = 0; k < 40 && !document.querySelector('#btn-go.pad-focus'); k++) { await new Promise(r => setTimeout(r, 100)); step(1); }     // (earlier tests can leave screens open; the menu fades in)
       out.menuFocus = !!document.querySelector('#btn-go.pad-focus');
       btn(15, true); step(2); btn(15, false); step(2); out.menuNav = !!document.querySelector('.pad-focus') && !document.querySelector('#btn-go.pad-focus');
       btn(7, true); step(2); navigator.getGamepads = () => []; step(2); out.unplug = !BR.Pad.active && !I.fire && !document.body.classList.contains('pad');
       out.settings = !!document.getElementById('set-padSens') && g.settings.padSens === 1;
+      // v1.28.1: WebGL fallback: a browser that refuses WebGL 2 / antialiasing still gets a (lite) renderer
+      const gc = HTMLCanvasElement.prototype.getContext, ce = console.error; console.error = () => {};      // (three.js logs each refused try)
+      HTMLCanvasElement.prototype.getContext = function (type, attrs) { if (type === 'webgl2' || (/webgl/.test(type) && attrs && attrs.antialias)) return null; return gc.call(this, type, attrs); };
+      try { const holder = document.createElement('div'), cv = document.createElement('canvas'); holder.appendChild(cv); const R = BR.makeRenderer(cv, { antialias: true, powerPreference: 'high-performance' });
+        out.glFallback = !!R.renderer && R.lite === true && R.canvas !== cv && holder.firstChild === R.canvas; R.renderer.dispose(); if (R.renderer.forceContextLoss) R.renderer.forceContextLoss(); }
+      catch (e) { out.glFallback = false; } finally { HTMLCanvasElement.prototype.getContext = gc; console.error = ce; }
+      out.glNormal = BR.liteGL === false;
     } finally { navigator.getGamepads = keepGP; I.padClearFocus(); BR.Pad.active = false; BR.Pad.prev = []; I.padActive = false; document.body.classList.remove('pad'); g.loop = keepLoop; BR.AntiCheat._testing = false; if (g.state !== 'menu') g.toMenu(); }
     return out;
   });
@@ -1538,7 +1545,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
-    ['v1.28 controller: wakes on input, L stick moves, R stick looks, R2 fires, L2 aims, ✕ jumps, Options pauses + ○ resumes, menu highlight starts on PLAY and moves, unplugging releases everything, settings', Object.values(v128).every(Boolean), v128],
+    ['v1.28 controller: wakes on input, L stick moves, R stick looks, R2 fires, L2 aims, ✕ jumps, Options pauses + ○ resumes, menu highlight starts on PLAY and moves, unplugging releases everything, settings, WebGL fallback for limited browsers', Object.values(v128).every(Boolean), v128],
     ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hands-and-knees crawl + hitbox along the body, no walking during the victory, chest opening show + sparkle loot, upright floating guns, heavy Sniper + LMG', Object.values(v127).every(Boolean), v127],
     ['v1.26 CHARACTER: outfits + masks in the shop, both cases and mastery; bought / equipped looks are worn by your character (patterns, glow, mask add-ons), bots keep team colours, inventory + shop CHARACTER tab with preview, party look', Object.values(v126).every(Boolean), v126],
     ['v1.23 blueprints seated on the new models (fit groups + surface ribbons), Overdrive blueprints with energy veins, factory black guns, knife trail tips, Mastiff full blast, kill ammo packs, pause while dead, Cul-de-Sac + Skyline, sound engine', Object.values(v123).every(Boolean), v123],

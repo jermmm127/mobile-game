@@ -518,6 +518,7 @@ BR.CharIcons = {
   get(cat, id) {
     const k = cat + ':' + id; if (this.pics[k] !== undefined) return this.pics[k];
     let url = null;
+    if (BR.liteGL) return (this.pics[k] = null);       // limited browser: colour swatches instead of rendered pictures
     try {
       if (!this.r) {
         const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;

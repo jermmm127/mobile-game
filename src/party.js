@@ -317,6 +317,7 @@ BR.PartyStage = (function () {
   const order = list => { const me = list.find(m => m.me) || list[0], rest = list.filter(m => m !== me); return [me].concat(rest).filter(Boolean).slice(0, 4); };
   const init = () => {
     const cv = $('pt-stage'); if (!cv || S.r) return !!S.r;
+    if (BR.liteGL) return false;                      // limited browser: no second 3D view
     try { S.r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); } catch (e) { return false; }
     S.r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
     S.scene = new THREE.Scene();

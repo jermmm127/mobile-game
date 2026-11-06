@@ -15,14 +15,18 @@
   if (BR.AntiCheat) BR.AntiCheat.lock();          // v1.16: stat tables can't be edited from the console
   BR.Accounts.load();
   BR.Profile.load();
-  setTimeout(() => daily(), 0);
+  setTimeout(() => { try { daily(); } catch (e) { /* (no game: 3D failed to start) */ } }, 0);
 
   let game;
   try {
     game = new BR.Game(settings);
   } catch (err) {
     document.getElementById('app').innerHTML =
-      '<div class="fatal"><h2>This device could not start 3D graphics.</h2><p>Try another browser, or turn off battery saver. (' +
+      '<div class="fatal"><h2>This browser can\'t start 3D graphics</h2><p>surge needs WebGL. Things to try:</p><ul>' +
+      '<li>Use Chrome, Edge, Safari or Firefox (game-console and in-app browsers often block 3D)</li>' +
+      '<li>Turn on hardware acceleration in the browser settings, and update the browser</li>' +
+      '<li>Close other tabs or apps using 3D, turn off battery saver, then reload</li></ul>' +
+      '<button class="mbtn hot" onclick="location.reload()">TRY AGAIN</button><p class="fatal-err">(' +
       String(err && err.message || err).replace(/</g, '&lt;') + ')</p></div>';
     return;
   }

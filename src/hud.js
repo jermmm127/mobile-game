@@ -31,6 +31,7 @@ BR.WeaponIcons = {
     this.done = true;
     setTimeout(() => { if (this.onBuilt) this.onBuilt(); }, 0);
     let r;
+    if (BR.liteGL) { this.sil = {}; this.pic = {}; return; }       // limited browser: keep its one 3D context for the game (plain icons instead)
     try {
       const W = 320, H = 120;
       const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -98,6 +99,7 @@ BR.WeaponIcons = {
     const F = 12, W = 120, H = 48;
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     let r = null;
+    if (BR.liteGL) { this.running = false; return; }
     try { r = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, preserveDrawingBuffer: true }); } catch (err) { this.running = false; return; }
     r.setPixelRatio(1); r.setSize(W, H, false); r.setClearColor(0x000000, 0);
     const sc = new THREE.Scene();
