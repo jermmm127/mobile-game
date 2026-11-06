@@ -1415,6 +1415,21 @@ const server = http.createServer((req, res) => {
     g.toMenu(); BR.AntiCheat._testing = false; Object.assign(L, keepL);
     return out;
   });
+  // v1.29.2: the map roll stops on the card of the map that actually loads
+  const v1292 = await page.evaluate(async () => {
+    const g = BR.game, L = BR.Lobby, keepL = { skipRoll: L.skipRoll, preset: L.preset, size: L.size }; BR.AntiCheat._testing = true;
+    if (g.state !== 'menu') g.toMenu(); L.skipRoll = false; L.preset = 'tdm'; L.size = 2;
+    const el = document.getElementById('maproll'), target = L.rollMap(); let under = null, shown = null;
+    await new Promise(res => { L.play({ map: target }); const t = setInterval(() => {
+      if (el.classList.contains('done') && under === null) setTimeout(() => { const mk = document.querySelector('.mr-mark').getBoundingClientRect(), mx = mk.left + mk.width / 2;
+        const c = [...document.querySelectorAll('#mr-strip .mr-card')].find(c => { const r = c.getBoundingClientRect(); return r.left <= mx && r.right >= mx; });
+        under = c ? c.querySelector('b').textContent : ''; shown = document.getElementById('mr-res').textContent; }, 400);
+      if (under !== null && el.classList.contains('hidden')) { clearInterval(t); setTimeout(res, 800); } }, 50); });
+    const name = (L.MAPS.find(m => m.id === target) || {}).name;
+    const out = { reel: under === name, label: shown === name, loaded: g.world && g.world.mapId === target };
+    g.toMenu(); Object.assign(L, keepL); BR.AntiCheat._testing = false;
+    return out;
+  });
   // v1.29.1: 2v2 / 3v3 duels: a lethal hit knocks you down while a teammate stands; the last one standing dying ends it
   const v1291 = await page.evaluate(async () => {
     const g = BR.game, out = {}, L = BR.Lobby, keepL = { skipRoll: L.skipRoll, preset: L.preset, size: L.size }; BR.AntiCheat._testing = true;
@@ -1628,6 +1643,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.29.2 map roll: the reel stops on the card of the map that actually loads (and the label + loaded map match)', Object.values(v1292).every(Boolean), v1292],
     ['v1.29.1 2v2 / 3v3 duels: killed = knocked while a teammate stands, teammates revive, the last one standing dying finishes the knocked and ends the round, new rounds clear knocks, 1v1 still kills', Object.values(v1291).every(Boolean), v1291],
     ['v1.28.4 duels: stim / hook / grenade cooldowns used in a round are ready again when the next round starts', Object.values(v1284).every(Boolean), v1284],
     ['v1.28.2 duel / TDM / FFA maps keep everyone inside (flings, teleports, every map), BR has no box, auto-fire skips teammates but still shoots enemies, sound layers no longer cut off', Object.values(v1282).every(Boolean), v1282],
@@ -1805,7 +1821,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

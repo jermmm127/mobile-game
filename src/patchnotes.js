@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.29.2', date: '2026-11-06', title: 'Map roll fix', notes: [
+    'Fixed the map roll before Duels, TDM and FFA stopping on the wrong card. The game always loaded the right map, but the reel used to stop about three cards early (it got the card size wrong). It now always lands on the map you are about to play, on every screen size.',
+  ] },
   { v: '1.29.1', date: '2026-11-06', title: 'Knockdowns in team duels', notes: [
     '2v2 and 3v3 Duels (Shotgun and Sniper Duels too): getting killed now knocks you down while a teammate is still standing. Crawl to cover and a teammate can revive you, or you bleed out.',
     'If the last player standing on a team goes down, the whole team is out: any knocked teammates are finished and the round is lost.',

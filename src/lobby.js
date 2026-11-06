@@ -53,15 +53,17 @@
     strip.innerHTML = cards.map(m => `<div class="mr-card" style="--a:${m.art}"><i></i><b>${m.name}</b><span>${m.sub}</span></div>`).join('');
     $('mr-title').textContent = (BR.ARENA_PRESETS[L.preset] || {}).title || 'ARENA';
     $('mr-res').textContent = ''; el.classList.remove('hidden', 'done');
-    const cw = 172, t0 = performance.now(), dur = 3600, jitter = (Math.random() - 0.5) * cw * 0.6;
-    const end = at * cw + 80 + jitter;     // card 160 px + 12 px gap; land somewhere on the target card
+    // v1.29.2: measure the real card pitch + width (padding made cards 180 px, not 160, so the reel used to stop ~3 cards early)
+    const cEls = strip.children, cw = cEls.length > 1 ? cEls[1].offsetLeft - cEls[0].offsetLeft : 172, half = (cEls[0] ? cEls[0].offsetWidth : 160) / 2;
+    const t0 = performance.now(), dur = 3600, jitter = (Math.random() - 0.5) * half * 1.2;
+    const end = at * cw + half + jitter;   // land somewhere on the target card, then settle on its centre
     let lastI = -1;
     const step = now => {
       const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4), x = end * e;
       strip.style.transform = `translateX(${(-x).toFixed(1)}px)`;
       const i = Math.floor(x / cw); if (i !== lastI) { lastI = i; BR.Audio.click && BR.Audio.click(); }
       if (k < 1) { requestAnimationFrame(step); return; }
-      strip.style.transform = `translateX(${-(at * cw + 80)}px)`; strip.style.transition = 'transform .25s ease-out';
+      strip.style.transform = `translateX(${-(at * cw + half)}px)`; strip.style.transition = 'transform .25s ease-out';
       setTimeout(() => { strip.style.transition = ''; }, 260);
       el.classList.add('done'); const m = cards[at]; $('mr-res').textContent = m.name; BR.Audio.coin && BR.Audio.coin();
       setTimeout(() => { el.classList.add('hidden'); done(); }, 1100);
