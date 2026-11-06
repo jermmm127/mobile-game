@@ -1414,6 +1414,22 @@ const server = http.createServer((req, res) => {
     g.toMenu(); BR.AntiCheat._testing = false; Object.assign(L, keepL);
     return out;
   });
+  // v1.28.4: duel rounds: abilities used last round (stim, hook, grenade) are ready again in the next round
+  const v1284 = await page.evaluate(async () => {
+    const g = BR.game, out = {}, L = BR.Lobby, keepL = { skipRoll: L.skipRoll, preset: L.preset, size: L.size }; BR.AntiCheat._testing = true;
+    g.toMenu(); L.skipRoll = true; L.preset = 'duel'; L.size = 1; L.play({ map: 'killhouse' }); await new Promise(r => setTimeout(r, 300));
+    const M = g.mode, p = g.player; if (M) { M.frozen = false; M.phase = 'fight'; }
+    p.health = 40; out.stimUsed = p.tryStim() && p.stimCd > 0;
+    p.grappleCd = 4; p.nadeCd = 3;
+    for (let i = 0; i < 30; i++) g.update(1 / 30);
+    out.stillCooling = p.stimCd > 0 && p.grappleCd > 0;
+    M.beginRound(); for (let i = 0; i < 2; i++) g.update(1 / 30);
+    out.round2 = M.round >= 2;
+    out.fresh = p.stimCd === 0 && p.grappleCd <= 0 && p.nadeCd <= 0 && p.stimT === 0 && p.stimHealT === 0;
+    out.bot = g.actors.filter(a => a !== p).every(a => (a.stimCd || 0) === 0 && (a.grappleCd || 0) <= 0);
+    g.toMenu(); Object.assign(L, keepL); BR.AntiCheat._testing = false;
+    return out;
+  });
   // v1.28.2: arena maps have a hard play area; auto-fire never shoots teammates; long sound layers loop
   const v1282 = await page.evaluate(async () => {
     const g = BR.game, out = {}, L = BR.Lobby, keepL = { skipRoll: L.skipRoll, preset: L.preset, size: L.size }; BR.AntiCheat._testing = true;
@@ -1585,6 +1601,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.28.4 duels: stim / hook / grenade cooldowns used in a round are ready again when the next round starts', Object.values(v1284).every(Boolean), v1284],
     ['v1.28.2 duel / TDM / FFA maps keep everyone inside (flings, teleports, every map), BR has no box, auto-fire skips teammates but still shoots enemies, sound layers no longer cut off', Object.values(v1282).every(Boolean), v1282],
     ['v1.28 controller: wakes on input, L stick moves, R stick looks, R2 fires, L2 aims, ✕ jumps, Options pauses + ○ resumes, menu highlight starts on PLAY and moves, unplugging releases everything, settings, WebGL fallback for limited browsers', Object.values(v128).every(Boolean), v128],
     ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hands-and-knees crawl + hitbox along the body, no walking during the victory, chest opening show + sparkle loot, upright floating guns, heavy Sniper + LMG', Object.values(v127).every(Boolean), v127],
@@ -1760,7 +1777,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

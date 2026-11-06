@@ -329,6 +329,11 @@ BR.Actor = class Actor {
     this.mesh = this.isPlayer ? null : this.buildMesh();
   }
 
+  // v1.28.4: a new round / respawn starts with every ability ready: grapple, stim (no leftover boost or heal), grenade
+  resetCooldowns() {
+    this.grappleCd = 0; this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0; this.nadeCd = 0; this.zSlowT = 0;
+    if (this.mover && this.mover.grapple && this.mover.releaseGrapple) this.mover.releaseGrapple();
+  }
   get weapon() { return this.slots[this.cur]; }
   get pos() { return this.mover.pos; }
 

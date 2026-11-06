@@ -1743,7 +1743,7 @@ body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint 
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.28.3',
+  version: '1.28.4',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -2026,6 +2026,10 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.28.4', date: '2026-11-06', title: 'Fresh abilities every round', notes: [
+    'Duels: anything you used before the round ended (stim, grapple hook, grenade) is ready again when the next round starts, with no leftover cooldown and no leftover stim boost or heal. The same goes for bots and online opponents.',
+    'TDM and FFA respawns also come back with every ability ready.',
+  ] },
   { v: '1.28.3', date: '2026-11-06', title: 'More 3D fallbacks + diagnostics', notes: [
     'Even more ways to start 3D on limited browsers: if the usual requests are refused, the game now asks for every kind of WebGL context in every basic form, including the bare "no options" request that some console and embedded browsers need, on a properly sized canvas.',
     'If a browser still refuses, the help screen now says exactly why: whether the browser has WebGL at all, the reason the browser gave, every attempt and its result, and the browser ID. Take a photo of it if you need help.',
@@ -11124,6 +11128,11 @@ BR.Actor = class Actor {
     this.mesh = this.isPlayer ? null : this.buildMesh();
   }
 
+  // v1.28.4: a new round / respawn starts with every ability ready: grapple, stim (no leftover boost or heal), grenade
+  resetCooldowns() {
+    this.grappleCd = 0; this.stimCd = 0; this.stimT = 0; this.stimHealT = 0; this.stimAcc = 0; this.nadeCd = 0; this.zSlowT = 0;
+    if (this.mover && this.mover.grapple && this.mover.releaseGrapple) this.mover.releaseGrapple();
+  }
   get weapon() { return this.slots[this.cur]; }
   get pos() { return this.mover.pos; }
 
@@ -14587,6 +14596,7 @@ BR.Squads = {
       const g = this.g;
       a.alive = true; a.deathT = 0; a.fireHeld = false; a.lunge = null;
       if (a.mover.grapple) a.mover.releaseGrapple();
+      if (a.resetCooldowns) a.resetCooldowns();          // v1.28.4: abilities used last round are ready again
       if (!a.isPlayer) {
         if (a.mesh && a.mesh.parent) g.scene.remove(a.mesh);
         a.mesh = a.buildMesh(); g.scene.add(a.mesh); g.highlightActor(a);

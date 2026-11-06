@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.28.4', date: '2026-11-06', title: 'Fresh abilities every round', notes: [
+    'Duels: anything you used before the round ended (stim, grapple hook, grenade) is ready again when the next round starts, with no leftover cooldown and no leftover stim boost or heal. The same goes for bots and online opponents.',
+    'TDM and FFA respawns also come back with every ability ready.',
+  ] },
   { v: '1.28.3', date: '2026-11-06', title: 'More 3D fallbacks + diagnostics', notes: [
     'Even more ways to start 3D on limited browsers: if the usual requests are refused, the game now asks for every kind of WebGL context in every basic form, including the bare "no options" request that some console and embedded browsers need, on a properly sized canvas.',
     'If a browser still refuses, the help screen now says exactly why: whether the browser has WebGL at all, the reason the browser gave, every attempt and its result, and the browser ID. Take a photo of it if you need help.',

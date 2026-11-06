@@ -141,6 +141,7 @@
       const g = this.g;
       a.alive = true; a.deathT = 0; a.fireHeld = false; a.lunge = null;
       if (a.mover.grapple) a.mover.releaseGrapple();
+      if (a.resetCooldowns) a.resetCooldowns();          // v1.28.4: abilities used last round are ready again
       if (!a.isPlayer) {
         if (a.mesh && a.mesh.parent) g.scene.remove(a.mesh);
         a.mesh = a.buildMesh(); g.scene.add(a.mesh); g.highlightActor(a);
