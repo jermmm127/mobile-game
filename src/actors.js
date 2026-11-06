@@ -51,18 +51,38 @@ function charAssets() {
   const D = BR.CHAR_DATA, dec = (b, T) => { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new T(u.buffer); };
   const pos = new THREE.BufferAttribute(dec(D.pos, Float32Array), 3), uv = new THREE.BufferAttribute(dec(D.uv, Float32Array), 2);
   const col = new THREE.BufferAttribute(dec(D.col, Uint8Array), 3, true), si = new THREE.BufferAttribute(dec(D.si, Uint8Array), 4), sw = new THREE.BufferAttribute(dec(D.sw, Uint8Array), 4, true);
-  const full = new THREE.BufferGeometry(); full.setAttribute('position', pos);
-  full.setIndex(new THREE.BufferAttribute(new Uint16Array([...dec(D.ij, Uint16Array), ...dec(D.ir, Uint16Array)]), 1)); full.computeVertexNormals();
-  const nor = full.getAttribute('normal');
-  const mk = idx => { const g = new THREE.BufferGeometry(); g.setAttribute('position', pos); g.setAttribute('normal', nor); g.setAttribute('uv', uv); g.setAttribute('color', col);
-    g.setAttribute('skinIndex', si); g.setAttribute('skinWeight', sw); g.setIndex(new THREE.BufferAttribute(idx, 1));
-    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 2.2); return g; };
+  const geoAll = new THREE.BufferGeometry(); geoAll.setAttribute('position', pos); geoAll.setAttribute('uv', uv); geoAll.setAttribute('skinIndex', si); geoAll.setAttribute('skinWeight', sw);
+  geoAll.setIndex(new THREE.BufferAttribute(dec(D.idx, Uint16Array), 1)); geoAll.computeVertexNormals();
+  geoAll.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 2.2);
+  const team = dec(D.team, Uint8Array), cb = col.array, base = new Float32Array(cb.length), teamIdx = [];
+  for (let i = 0; i < cb.length; i++) base[i] = cb[i] / 255;
+  for (let i = 0; i < team.length; i++) if (team[i]) teamIdx.push(i);
   const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d');
   x.fillStyle = '#d8d8d8'; x.fillRect(0, 0, 64, 64);
   for (let yy = 0; yy < 64; yy += 2) for (let xx = 0; xx < 64; xx += 2) { const v = 196 + ((xx + yy) % 4 ? 18 : -10) + Math.random() * 30; x.fillStyle = `rgb(${v},${v},${v})`; x.fillRect(xx, yy, 2, 2); }
   for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(Math.random() * 64, Math.random() * 64, 6 + Math.random() * 12, 1); }
   const fabric = new THREE.CanvasTexture(cv); fabric.wrapS = fabric.wrapT = THREE.RepeatWrapping;
-  return (charCache = { jacket: mk(dec(D.ij, Uint16Array)), rest: mk(dec(D.ir, Uint16Array)), fabric });
+  // the ski mask: a smooth head-shaped ellipsoid in black knit with a painted eye opening (front = -Z: u 0.75, v ~0.56)
+  const R = D.mask.r, mg = new THREE.SphereGeometry(1, 32, 24), mp = mg.attributes.position;
+  for (let i = 0; i < mp.count; i++) {
+    let x = mp.getX(i), y = mp.getY(i), z = mp.getZ(i); const front = -z;
+    if (y < -0.35) { const k = 1 - (-0.35 - y) * 0.55; x *= k; z *= k; }                                   // tapers into the neck
+    if (front > 0.55 && y < 0.05 && y > -0.6) z -= 0.06 * (front - 0.55) * (1 - Math.abs(y + 0.25) * 2);       // nose / chin shape
+    if (front > 0.6 && Math.abs(y - 0.16) < 0.13) z += 0.03 * (front - 0.6);                                    // the eyes sit a touch deeper
+    mp.setXYZ(i, x * R[0], y * R[1], z * R[2]);
+  }
+  mg.computeVertexNormals();
+  const mc = document.createElement('canvas'); mc.width = 256; mc.height = 128; const m2 = mc.getContext('2d');
+  m2.fillStyle = '#17181b'; m2.fillRect(0, 0, 256, 128);
+  for (let yy = 0; yy < 128; yy += 2) for (let xx = 0; xx < 256; xx += 3) { m2.fillStyle = `rgba(255,255,255,${((xx / 3 + yy / 2) % 2 ? 0.035 : 0.0)})`; m2.fillRect(xx, yy, 2, 2); }      // knit rib
+  const ex = 0.75 * 256, ey = 0.44 * 128;
+  m2.fillStyle = '#0c0d0f'; m2.beginPath(); m2.ellipse(ex, ey, 34, 11, 0, 0, Math.PI * 2); m2.fill();                                  // rim
+  m2.fillStyle = '#b4866a'; m2.beginPath(); m2.ellipse(ex, ey, 29, 8, 0, 0, Math.PI * 2); m2.fill();                                   // skin
+  m2.fillStyle = 'rgba(80,50,35,0.35)'; m2.fillRect(ex - 29, ey - 8, 58, 3);                                                             // brow shadow
+  for (const dx of [-12, 12]) { m2.fillStyle = '#efe9e2'; m2.beginPath(); m2.ellipse(ex + dx, ey + 1, 4.6, 2.5, 0, 0, Math.PI * 2); m2.fill();
+    m2.fillStyle = '#3a2a20'; m2.beginPath(); m2.arc(ex + dx, ey + 1, 2.0, 0, Math.PI * 2); m2.fill(); m2.fillStyle = '#000'; m2.beginPath(); m2.arc(ex + dx, ey + 1, 1.0, 0, Math.PI * 2); m2.fill(); }
+  const maskTex = new THREE.CanvasTexture(mc);
+  return (charCache = { geo: geoAll, base, teamIdx, fabric, mask: mg, maskTex });
 }
 
 function sharedGeo() {
@@ -307,13 +327,26 @@ BR.Actor = class Actor {
     R.hip.rotation.z = B.hip; L.hip.rotation.z = -B.hip; R.knee.rotation.z = B.knee; L.knee.rotation.z = -B.knee;
     g.updateMatrixWorld(true);
     const skel = new THREE.Skeleton([body, upper, head, AR.sh, AR.el, AL.sh, AL.el, R.hip, R.knee, L.hip, L.knee]);
-    const mat = new THREE.MeshLambertMaterial({ color: this.color, map: C.fabric, skinning: true });
-    const mat2 = new THREE.MeshLambertMaterial({ vertexColors: true, map: C.fabric, skinning: true });
-    for (const [geo, m] of [[C.jacket, mat], [C.rest, mat2]]) { const sm = new THREE.SkinnedMesh(geo, m); sm.bind(skel); sm.userData.noMerge = true; g.add(sm); }
+    // one skinned mesh, one draw call: per-vertex colours (pants, boots, gloves) with the jacket in this actor's
+    // team colour, blended smoothly at the borders. The geometry is shared; only the colour layer is per actor.
+    const geo = new THREE.BufferGeometry(); for (const k in C.geo.attributes) if (k !== 'color') geo.setAttribute(k, C.geo.attributes[k]);
+    geo.setIndex(C.geo.index); geo.boundingSphere = C.geo.boundingSphere;
+    const colA = new THREE.BufferAttribute(new Float32Array(C.base), 3); geo.setAttribute('color', colA);
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, map: C.fabric, skinning: true });
+    // existing code sets team colours with mat.color.setHex(...): route that into the jacket's vertex colours instead
+    const paint = hex => { const c = new THREE.Color(hex), a = colA.array; for (const i of C.teamIdx) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } colA.needsUpdate = true; };
+    mat.color.setHex = function (hex) { paint(hex); return this; };
+    mat.clone = function () { const m = THREE.MeshLambertMaterial.prototype.clone.call(this); m.color.setHex = mat.color.setHex; m.clone = mat.clone; return m; };     // (the enemy highlight clones it)
+    paint(this.color !== undefined ? this.color : 0x8899aa);
+    const sm = new THREE.SkinnedMesh(geo, mat); sm.bind(skel); sm.userData.noMerge = true; g.add(sm);
+    const mat2 = null;
+    // the ski mask head (smooth knit, eye opening) on the head joint
+    const mat3 = new THREE.MeshLambertMaterial({ map: C.maskTex });
+    const mk = BR.CHAR_DATA.mask, maskM = new THREE.Mesh(C.mask, mat3); maskM.position.set(mk.c[0], mk.c[1] - 1.7, mk.c[2]); head.add(maskM);
     for (const o of [AR.sh, AL.sh, AR.el, AL.el, R.hip, L.hip, R.knee, L.knee]) o.rotation.set(0, 0, 0);     // back to the rig's rest pose
     const chute = BR.Models.parachute(this.color, 0xf2f2f2);
     chute.position.y = 1.5; chute.visible = false; g.add(chute);
-    g.userData = { body, upper, head, L, R, AR, AL, gun, mat, mat2, chute, t: 0, yaw: this.yaw, pitch: 0, char: true };
+    g.userData = { body, upper, head, L, R, AR, AL, gun, mat, mat2, mat3, chute, t: 0, yaw: this.yaw, pitch: 0, char: true };
     return g;
   }
 
@@ -469,7 +502,7 @@ BR.Actor = class Actor {
   // Flash white briefly on hit
   flash() {
     if (!this.mesh) return;
-    const u = this.mesh.userData, mats = u.mat2 ? [u.mat, u.mat2] : [u.mat];
+    const u = this.mesh.userData, mats = [u.mat, u.mat2, u.mat3].filter(Boolean);
     for (const mat of mats) { mat.emissive.setHex(0xffffff); mat.emissiveIntensity = 0.7; }
     clearTimeout(this._flashTO);
     this._flashTO = setTimeout(() => { for (const mat of mats) mat.emissive.setHex(0x000000); }, 70);

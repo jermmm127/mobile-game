@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.25.1', date: '2026-11-06', title: 'Operator clean-up + your arms', notes: [
+    'Character model fixed: a smoother body with more detail, no more spikes or shards on the jacket, sleeves, collar or waist when the arms move, and clean colour blends between the jacket, pants, boots and gloves.',
+    'New head: a clean black knit ski mask with a proper eye opening, instead of the old lumpy face.',
+    'First person now shows the operator\'s own arms: the jacket sleeves are taken from the character model (real fabric folds, tapered to the wrist) and the gloves tuck into the sleeve cuffs. Every hold, reload, inspect and knife animation is unchanged.',
+    'Each character is now a single draw call (it was 2), which helps frame rate in busy fights.',
+  ] },
   { v: '1.25.0', date: '2026-11-06', title: 'New operator + shotgun fix', notes: [
     'Fixed: the shotgun only ever did about 27 damage. The anti-cheat was treating a whole blast as one bullet and capping it. Every pellet now counts: 8 pellets x 8 damage = 64 for a full body blast, headshot pellets do more, and fewer pellets land the farther away you are.',
     'New character model for every player and bot: a tactical operator in a hoodie jacket (in your team colour), cargo pants, boots, gloves, a chest rig and a black ski mask with an eye opening. Every animation works on it: running, crouching, sliding, aiming, knockdowns, deaths, the victory dance and the menu lineup.',

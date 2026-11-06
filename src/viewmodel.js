@@ -42,7 +42,24 @@
     x.fillStyle = 'rgba(0,0,0,0.25)'; x.fillRect(60, 0, 2, 128);                // side seam
     const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 3);
     const sleeve = new THREE.MeshPhongMaterial({ map: tex, vertexColors: true, shininess: 10, specular: 0x222831 });
-    return (SLEEVE = { sleeve, sleeveGeo: geo });
+    const own = charSleeve();
+    return (SLEEVE = { sleeve, sleeveGeo: own || geo });
+  }
+  // v1.25.1: the operator's own jacket sleeve (cut from the character model's arm and straightened onto the same unit
+  // limb: wrist -0.5, elbow 0.088, upper arm to 0.5), so first person shows the character's arms; the cuff is sized to the glove
+  function charSleeve() {
+    const D = BR.CHAR_DATA && BR.CHAR_DATA.sleeve; if (!D) return null;
+    const dec = (b, T) => { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new T(u.buffer); };
+    const pos = dec(D.pos, Float32Array), n = pos.length / 3, col = new Float32Array(n * 3), uv = new Float32Array(n * 2), c = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+      c.setHex(y < -0.46 ? 0x2a2f37 : 0xffffff);                    // the knit cuff over the glove
+      col.set([c.r, c.g, c.b], i * 3); uv[i * 2] = Math.atan2(z, x) / (Math.PI * 2) + 0.5; uv[i * 2 + 1] = y * 2.2;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.setIndex(new THREE.BufferAttribute(dec(D.idx, Uint16Array), 1)); geo.computeVertexNormals();
+    return geo;
   }
   const U = BR.util;
   // butterfly hammer grip: relaxed elbow (camera space, x scaled by the side) + which way the thumb faces

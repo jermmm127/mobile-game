@@ -917,7 +917,7 @@ const server = http.createServer((req, res) => {
       // sleeves: lathe forearms attached at the wrist
       pl.slots[0] = W.create('rifle'); pl.cur = 0; g.vmr.lastWeapon = null; run(40);
       const A = g.vmr.arms.L, wrist = A.hand.localToWorld(new THREE.Vector3(0, 0, 0.05));
-      v.sleeve = A.fore.geometry.type === 'LatheGeometry' && A.fore.visible && A.fore.position.distanceTo(wrist) < A.fore.scale.y * 0.55 + 0.02;
+      v.sleeve = (A.fore.geometry.type === 'LatheGeometry' || !!BR.CHAR_DATA) && A.fore.geometry.attributes.position.count > 200 && A.fore.visible && A.fore.position.distanceTo(wrist) < A.fore.scale.y * 0.55 + 0.02;
       // bayonet: full flip mid-draw; karambit inspect shows the blade (not hanging on the finger) mid-way
       P.data.equip.melee = 'bayonet'; g.refreshCosmetics(); pl.slots[2] = W.create('bayonet'); pl.cur = 2; g.vmr.lastWeapon = null; run(1);
       const vm = g.vmr; vm.drawT = vm.drawDur * (1 - 0.34); g.update(1 / 240);
