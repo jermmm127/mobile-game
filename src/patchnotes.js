@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.29.3', date: '2026-11-06', title: 'Auto-fire changes', notes: [
+    'Auto-fire now only works on phones/tablets (touch) and with a controller. It never fires for keyboard and mouse players. Touching the keyboard or mouse switches a controller off until you press something on it again.',
+    'Auto-fire nerf: an enemy has to stay under your crosshair for a short moment (0.18 s) before it starts shooting, and it only fires out to the gun\'s normal range (it used to reach 1.6× further).',
+  ] },
   { v: '1.29.2', date: '2026-11-06', title: 'Map roll fix', notes: [
     'Fixed the map roll before Duels, TDM and FFA stopping on the wrong card. The game always loaded the right map, but the reel used to stop about three cards early (it got the card size wrong). It now always lands on the map you are about to play, on every screen size.',
   ] },

@@ -1506,6 +1506,15 @@ const server = http.createServer((req, res) => {
     if (mate) { aimAt(mate); mateShots = shots(); mate.mover.pos.set(0, 0, 999); }
     if (foe) { aimAt(foe); foeShots = shots(); }
     out.autoMate = mate ? mateShots === 0 : true; out.autoFoe = foe ? foeShots > 0 : true; out.fire = 'mate ' + mateShots + ' foe ' + foeShots;
+    // v1.29.3: auto-fire is for touch + controller only, and waits a moment on target before shooting
+    if (foe) {
+      aimAt(foe); const n = (frames, touch, pad) => { foe.alive = true; foe.health = 5000; foe.shield = 0; g.input.usingTouch = touch; g.input.padActive = pad; g.autoT = 0; const w = p.weapon; w.mag = w.def.mag; w.cool = 0; const m0 = w.mag; for (let i = 0; i < frames; i++) { g.input.fire = false; g.update(1 / 60); } return m0 - w.mag; };
+      out.autoKbm = n(30, false, false) === 0;                     // keyboard / mouse: never
+      out.autoPad = n(30, false, true) > 0;                        // controller: yes
+      const early = n(6, true, false), later = n(30, true, false); out.autoDelay = early === 0 && later > 0;     // not in the first 0.1 s, yes after the reaction time
+      g.input.padActive = true; BR.Pad.active = true; window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ' })); out.kbmDropsPad = !g.input.padActive;
+      g.input.padActive = false; BR.Pad.active = false; document.body.classList.remove('pad');
+    }
     S.autoFire = keepAF; g.input.usingTouch = false;
     // audio: noise layers loop (no early cut-off) and close sounds get priority over the voice limit
     out.audio = /src\.loop = true/.test(BR.Audio.nz.toString()) && BR.Audio.ok.length === 1;
@@ -1646,7 +1655,7 @@ const server = http.createServer((req, res) => {
     ['v1.29.2 map roll: the reel stops on the card of the map that actually loads (and the label + loaded map match)', Object.values(v1292).every(Boolean), v1292],
     ['v1.29.1 2v2 / 3v3 duels: killed = knocked while a teammate stands, teammates revive, the last one standing dying finishes the knocked and ends the round, new rounds clear knocks, 1v1 still kills', Object.values(v1291).every(Boolean), v1291],
     ['v1.28.4 duels: stim / hook / grenade cooldowns used in a round are ready again when the next round starts', Object.values(v1284).every(Boolean), v1284],
-    ['v1.28.2 duel / TDM / FFA maps keep everyone inside (flings, teleports, every map), BR has no box, auto-fire skips teammates but still shoots enemies, sound layers no longer cut off', Object.values(v1282).every(Boolean), v1282],
+    ['v1.28.2 duel / TDM / FFA maps keep everyone inside (flings, teleports, every map), BR has no box, auto-fire skips teammates but still shoots enemies (touch + controller only, after a short reaction time), sound layers no longer cut off', Object.values(v1282).every(Boolean), v1282],
     ['v1.28 controller: wakes on input, L stick moves, R stick looks, R2 fires, L2 aims, ✕ jumps, Options pauses + ○ resumes, menu highlight starts on PLAY and moves, unplugging releases everything, settings, WebGL fallback for limited browsers', Object.values(v128).every(Boolean), v128],
     ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hands-and-knees crawl + hitbox along the body, no walking during the victory, chest opening show + sparkle loot, upright floating guns, heavy Sniper + LMG', Object.values(v127).every(Boolean), v127],
     ['v1.26 CHARACTER: outfits + masks in the shop, both cases and mastery; bought / equipped looks are worn by your character (patterns, glow, mask add-ons), bots keep team colours, inventory + shop CHARACTER tab with preview, party look', Object.values(v126).every(Boolean), v126],

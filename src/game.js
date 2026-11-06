@@ -1013,12 +1013,16 @@ BR.Game = class Game {
     }
 
     let fire = inp.fire;
-    if (S.autoFire && touch && w && !w.def.melee && !fire) {
+    // v1.29.3 auto-fire: phones + controllers only (never keyboard / mouse), and a little weaker: the target has to stay under
+    // the crosshair for a short reaction time first, and it only reaches the gun's normal range (it was 1.6x)
+    if (S.autoFire && (touch || inp.padActive) && w && !w.def.melee && !fire) {
       const e = p.eye(this._v1), d = p.aimDir(this._v2);
-      const h = this.hitscan(p, e, d, w.def.range * 1.6);
+      const h = this.hitscan(p, e, d, w.def.range);
       const mate = h.actor && h.actor.team !== undefined && h.actor.team === p.team;      // v1.28.2: never auto-fire at a teammate
-      if ((h.actor && !mate) || h.target) fire = true;
-    }
+      const on = (h.actor && !mate) || h.target;
+      this.autoT = on ? (this.autoT || 0) + dt : 0;
+      if (on && this.autoT >= BR.CONFIG.autoFireDelay) fire = true;
+    } else this.autoT = 0;
     p.fireHeld = fire && !p.mover.dropping;
     if (fire && w && !w.def.melee) this.vmr.inspectT = 0;
   }

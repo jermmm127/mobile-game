@@ -7,7 +7,8 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.29.2',
+  version: '1.29.3',
+  autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map

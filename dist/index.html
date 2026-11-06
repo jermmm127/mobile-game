@@ -1743,7 +1743,8 @@ body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint 
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.29.2',
+  version: '1.29.3',
+  autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -2026,6 +2027,10 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.29.3', date: '2026-11-06', title: 'Auto-fire changes', notes: [
+    'Auto-fire now only works on phones/tablets (touch) and with a controller. It never fires for keyboard and mouse players. Touching the keyboard or mouse switches a controller off until you press something on it again.',
+    'Auto-fire nerf: an enemy has to stay under your crosshair for a short moment (0.18 s) before it starts shooting, and it only fires out to the gun\'s normal range (it used to reach 1.6× further).',
+  ] },
   { v: '1.29.2', date: '2026-11-06', title: 'Map roll fix', notes: [
     'Fixed the map roll before Duels, TDM and FFA stopping on the wrong card. The game always loaded the right map, but the reel used to stop about three cards early (it got the card size wrong). It now always lands on the map you are about to play, on every screen size.',
   ] },
@@ -16314,14 +16319,14 @@ BR.Input = class Input {
     window.addEventListener('keydown', e => {
       if (e.repeat || BR.Keybinds.capturing) return;
       if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-      this.usingTouch = false;
+      this.usingTouch = false; this.kbm();
       BR.Audio.init();
       this.bindDown(e.code, e);
     });
     window.addEventListener('keyup', e => this.bindUp(e.code));
     this.root.addEventListener('mousedown', e => {
       if (this.usingTouch || this.editing || e.target.closest('[data-act]') || BR.Keybinds.capturing) return;
-      BR.Audio.init();
+      this.kbm(); BR.Audio.init();
       if (!this.locked && this.root.requestPointerLock) {
         try { const p = this.root.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed here */ }
       }
@@ -16353,6 +16358,8 @@ BR.Input = class Input {
     window.addEventListener('blur', () => this.reset());
   }
 
+  // v1.29.3: keyboard / mouse took over: the controller counts as idle until it's touched again (auto-fire follows the device in use)
+  kbm() { if (this.padActive) { this.padActive = false; if (BR.Pad) BR.Pad.active = false; document.body.classList.remove('pad'); if (this.padRelease) this.padRelease(); } }
   unlock() {
     try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* ignore */ }
   }
@@ -18619,7 +18626,7 @@ BR.HUD = class HUD {
       <div class="row"><label for="set-vol">VOLUME</label><input id="set-vol" type="range" min="0" max="1" step="0.05"><output id="out-vol"></output></div>
       <div class="row toggles">
         <label class="tg"><input type="checkbox" id="set-assist"> AIM ASSIST</label>
-        <label class="tg"><input type="checkbox" id="set-auto"> AUTO-FIRE</label>
+        <label class="tg" title="Phones and controllers only"><input type="checkbox" id="set-auto"> AUTO-FIRE <small>(touch + controller)</small></label>
         <label class="tg"><input type="checkbox" id="set-fps"> SHOW FPS</label>
         <label class="tg"><input type="checkbox" id="set-speed"> SPEED (M/S)</label>
       </div>
@@ -20598,12 +20605,16 @@ BR.Game = class Game {
     }
 
     let fire = inp.fire;
-    if (S.autoFire && touch && w && !w.def.melee && !fire) {
+    // v1.29.3 auto-fire: phones + controllers only (never keyboard / mouse), and a little weaker: the target has to stay under
+    // the crosshair for a short reaction time first, and it only reaches the gun's normal range (it was 1.6x)
+    if (S.autoFire && (touch || inp.padActive) && w && !w.def.melee && !fire) {
       const e = p.eye(this._v1), d = p.aimDir(this._v2);
-      const h = this.hitscan(p, e, d, w.def.range * 1.6);
+      const h = this.hitscan(p, e, d, w.def.range);
       const mate = h.actor && h.actor.team !== undefined && h.actor.team === p.team;      // v1.28.2: never auto-fire at a teammate
-      if ((h.actor && !mate) || h.target) fire = true;
-    }
+      const on = (h.actor && !mate) || h.target;
+      this.autoT = on ? (this.autoT || 0) + dt : 0;
+      if (on && this.autoT >= BR.CONFIG.autoFireDelay) fire = true;
+    } else this.autoT = 0;
     p.fireHeld = fire && !p.mover.dropping;
     if (fire && w && !w.def.melee) this.vmr.inspectT = 0;
   }

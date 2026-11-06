@@ -199,14 +199,14 @@ BR.Input = class Input {
     window.addEventListener('keydown', e => {
       if (e.repeat || BR.Keybinds.capturing) return;
       if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-      this.usingTouch = false;
+      this.usingTouch = false; this.kbm();
       BR.Audio.init();
       this.bindDown(e.code, e);
     });
     window.addEventListener('keyup', e => this.bindUp(e.code));
     this.root.addEventListener('mousedown', e => {
       if (this.usingTouch || this.editing || e.target.closest('[data-act]') || BR.Keybinds.capturing) return;
-      BR.Audio.init();
+      this.kbm(); BR.Audio.init();
       if (!this.locked && this.root.requestPointerLock) {
         try { const p = this.root.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed here */ }
       }
@@ -238,6 +238,8 @@ BR.Input = class Input {
     window.addEventListener('blur', () => this.reset());
   }
 
+  // v1.29.3: keyboard / mouse took over: the controller counts as idle until it's touched again (auto-fire follows the device in use)
+  kbm() { if (this.padActive) { this.padActive = false; if (BR.Pad) BR.Pad.active = false; document.body.classList.remove('pad'); if (this.padRelease) this.padRelease(); } }
   unlock() {
     try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* ignore */ }
   }

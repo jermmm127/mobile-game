@@ -416,7 +416,7 @@ BR.HUD = class HUD {
       <div class="row"><label for="set-vol">VOLUME</label><input id="set-vol" type="range" min="0" max="1" step="0.05"><output id="out-vol"></output></div>
       <div class="row toggles">
         <label class="tg"><input type="checkbox" id="set-assist"> AIM ASSIST</label>
-        <label class="tg"><input type="checkbox" id="set-auto"> AUTO-FIRE</label>
+        <label class="tg" title="Phones and controllers only"><input type="checkbox" id="set-auto"> AUTO-FIRE <small>(touch + controller)</small></label>
         <label class="tg"><input type="checkbox" id="set-fps"> SHOW FPS</label>
         <label class="tg"><input type="checkbox" id="set-speed"> SPEED (M/S)</label>
       </div>
