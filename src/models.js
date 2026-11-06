@@ -1877,15 +1877,36 @@ BR.Models = (function () {
         col.push(c.r, c.g, c.b);
       }
     });
-    const out = new THREE.BufferGeometry();
+    let out = new THREE.BufferGeometry();
     out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
     out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    if (pos.length / 9 > 2500) out = clusterSimplify(out, 0.0085);       // v1.25: guns in other players' hands / on the ground: ~1/8 the triangles
     out.computeBoundingSphere();
     out._shared = true;
     return (mergedCache[key] = out);
   }
   let mergedMat = null;
+  // v1.25: vertex-clustering simplification for the world (3rd-person) gun meshes: snap every vertex to a grid cell,
+  // average the cell, drop the triangles that collapse. Keeps the silhouette and colours at a fraction of the cost.
+  function clusterSimplify(geo, cell) {
+    const P = geo.attributes.position, Cc = geo.attributes.color, n = P.count, map = new Map(), cid = new Int32Array(n);
+    const acc = [];
+    for (let i = 0; i < n; i++) {
+      const x = P.getX(i), y = P.getY(i), z = P.getZ(i), k = Math.floor(x / cell) + ',' + Math.floor(y / cell) + ',' + Math.floor(z / cell);
+      let j = map.get(k); if (j === undefined) { j = acc.length; map.set(k, j); acc.push([0, 0, 0, 0, 0, 0, 0]); }
+      const a = acc[j]; a[0] += x; a[1] += y; a[2] += z; a[3] += Cc.getX(i); a[4] += Cc.getY(i); a[5] += Cc.getZ(i); a[6]++; cid[i] = j;
+    }
+    const pos = [], col = [];
+    for (let t = 0; t < n; t += 3) {
+      const a = cid[t], b = cid[t + 1], c = cid[t + 2]; if (a === b || b === c || a === c) continue;
+      for (const j of [a, b, c]) { const q = acc[j]; pos.push(q[0] / q[6], q[1] / q[6], q[2] / q[6]); col.push(q[3] / q[6], q[4] / q[6], q[5] / q[6]); }
+    }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    out.computeVertexNormals();
+    return out;
+  }
 
   // ------------------------------------------------------------- blueprints
   // Weapon blueprints: original designs per gun, each with its own palette and

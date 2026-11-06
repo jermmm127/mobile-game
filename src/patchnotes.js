@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.25.0', date: '2026-11-06', title: 'New operator + shotgun fix', notes: [
+    'Fixed: the shotgun only ever did about 27 damage. The anti-cheat was treating a whole blast as one bullet and capping it. Every pellet now counts: 8 pellets x 8 damage = 64 for a full body blast, headshot pellets do more, and fewer pellets land the farther away you are.',
+    'New character model for every player and bot: a tactical operator in a hoodie jacket (in your team colour), cargo pants, boots, gloves, a chest rig and a black ski mask with an eye opening. Every animation works on it: running, crouching, sliding, aiming, knockdowns, deaths, the victory dance and the menu lineup.',
+    'Performance, aiming for a steady 60 fps on phones like the iPhone 15: the new characters draw in 2 calls instead of about 14, other players\' guns use a lighter model (about 1/8 the triangles), Medium graphics render at a slightly lower resolution on high-DPI screens, and if frames still drop at the lowest resolution the view distance shrinks a little until the game is smooth again.',
+  ] },
   { v: '1.24.2', date: '2026-11-06', title: 'Hand-cannon revolver', notes: [
     'Revolver: held one-handed, big in the lower right with the barrel angled up toward the centre of the screen.',
     'Revolver recoil is much heavier: every shot snaps the muzzle way up and rolls it out, the gun slams back toward you, the view punches and shakes, and the muzzle flash is bigger. Aiming tames it a little.',

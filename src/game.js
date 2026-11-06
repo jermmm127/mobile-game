@@ -55,13 +55,16 @@ BR.Game = class Game {
   adaptResolution(ms) {
     const P = this.perf; if (!P || (this.state !== 'playing' && this.state !== 'dead' && this.state !== 'won')) return;
     if (ms > 80) return;                                   // tab switch / hitch, not steady load
-    if (ms > 19.5) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);
-    if (P.slow > 12 && P.scale > 0.55) {
+    if (ms > 17.6) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);          // v1.25: aim for a solid 60 fps (16.7 ms)
+    if (P.slow > 10 && P.scale <= 0.56 && this.fogFar > 140) {         // v1.25: still slow at the lowest resolution: it's draw calls, not pixels, so draw less far
+      this.fogFar = Math.max(140, this.fogFar * 0.85); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; P.slow = 0; P.good = 0; P.shrunk = true;
+    } else if (P.slow > 10 && P.scale > 0.55) {
       P.cap = Math.min(P.cap, P.scale - 0.01); P.scale = Math.max(0.55, P.scale * 0.88); P.slow = 0; P.good = 0; P.calm = 0;
       this.renderer.setPixelRatio(this.basePR * P.scale); this.resize();
-    } else if (ms < 18) {
+    } else if (ms < 16.9) {
       P.good += ms / 1000; P.calm = (P.calm || 0) + ms / 1000;
       if (P.calm > 30 && P.cap < 1) { P.cap = Math.min(1, P.cap + 0.05); P.calm = 0; }   // a one-off hitch doesn't cap you forever
+      if (P.shrunk && P.good > 12) { const g0 = (BR.CONFIG.graphics[this.settings.gfx] || BR.CONFIG.graphics.medium).fogFar; this.fogFar = Math.min(g0, this.fogFar * 1.08); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; if (this.fogFar >= g0) P.shrunk = false; P.good = 0; }
       if (P.good > 8 && P.scale < P.cap) { P.scale = Math.min(P.cap, P.scale * 1.06); P.good = 0; this.renderer.setPixelRatio(this.basePR * P.scale); this.resize(); }
     } else P.good = 0;
   }

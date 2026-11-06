@@ -70,7 +70,7 @@ BR.AntiCheat = {
   active(g) { return g && !g.practice && !g.demo && !g.zm && !(g.mode && (g.mode.aim || g.mode.overdrive || g.mode.cls === 'aimmode')); },
   maxHit(wid) {
     const d = BR.CONFIG.weapons[wid]; if (!d) return 9999;
-    return Math.max(d.dmg * (d.head || 2), d.backstab || 0, d.dmg, d.blastDamage || 0) * 1.5 + 1;
+    return Math.max(d.dmg * (d.head || 2) * Math.max(1, d.pellets || 1), d.backstab || 0, d.dmg, d.blastDamage || 0) * 1.5 + 1;     // v1.24.3: a shotgun blast is all its pellets (this capped every blast at ~27)
   },
   // called by game.applyDamage for damage dealt BY the local player: returns the allowed damage
   checkHit(g, attacker, dmg, wid) {

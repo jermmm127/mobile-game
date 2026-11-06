@@ -1269,7 +1269,7 @@ const server = http.createServer((req, res) => {
       // light menu: no world behind it
       g.toMenu(); v.lightMenu = g.state === 'menu' && !g.scene && document.body.classList.contains('menulite') && getComputedStyle(document.querySelector('.menu-bg')).display === 'block';
       g.startMatch({ practice: true }); v.menuOff = !document.body.classList.contains('menulite') && !!g.scene; g.toMenu();
-      { const sg = BR.Models.weapon('shotgun', 'default', 'none', null), d = BR.CONFIG.weapons.shotgun; v.mastiff = !!sg.userData.pump && sg.userData.pump.children.length === 1 && d.pattern === 'line' && d.pellets === 8 && d.dmg * d.pellets === 112 && d.ads <= 0.4 && d.rpm === 66 && d.mag === 6 && d.shellReload; }     // v1.23 Apex Mastiff numbers
+      { const sg = BR.Models.weapon('shotgun', 'default', 'none', null), d = BR.CONFIG.weapons.shotgun; v.mastiff = !!sg.userData.pump && sg.userData.pump.children.length === 1 && d.pattern === 'line' && d.pellets === 8 && d.dmg === 8 && d.pellets === 8 && d.ads <= 0.4 && d.rpm === 66 && d.mag === 6 && d.shellReload; }     // v1.23 Apex Mastiff numbers
       out.v118 = v; }
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
@@ -1400,7 +1400,7 @@ const server = http.createServer((req, res) => {
     const eye = p.eye(new THREE.Vector3()), d = new THREE.Vector3(e.pos.x, e.pos.y + e.mover.h * 0.55, e.pos.z).sub(eye).normalize(); p.yaw = Math.atan2(-d.x, -d.z); p.pitch = Math.asin(d.y);
     const w = BR.Weapons.create('shotgun'); p.slots[0] = w; p.cur = 0; w.mag = 6; w.cool = 0; let got = 0; const ad = g.applyDamage.bind(g);
     g.applyDamage = (v, a, dmg, ...r) => { if (v === e) got += dmg; return ad(v, a, dmg, ...r); }; e.health = 5000; if (g.mode) { g.mode.frozen = false; g.mode.phase = 'fight'; } BR.Weapons.tryFire(g, p); out.shotDmg = Math.round(got); g.applyDamage = ad;
-    out.mastiff = Math.round(got) >= 98; const sd = out.shotDmg; delete out.shotDmg; window.__sd = sd;
+    out.mastiff = Math.round(got) >= 56; const sd = out.shotDmg; delete out.shotDmg; window.__sd = sd;
     // kill ammo pack
     g.toMenu(); BR.Lobby.preset = 'tdm'; BR.Lobby.size = 4; BR.Lobby.play({ map: 'suburb' }); await new Promise(r => setTimeout(r, 300)); for (let i = 0; i < 60; i++) g.update(1 / 30);
     out.suburb = g.world.mapId === 'suburb' && g.world.ffaSpots.length >= 12;

@@ -44,6 +44,27 @@ function solveArm(arm, target, side) {
   fore.applyQuaternion(_ikQ.copy(arm.sh.quaternion).invert());
   arm.el.quaternion.setFromUnitVectors(_DOWN, fore);
 }
+// v1.25: the imported character's shared geometry (built once from BR.CHAR_DATA) + a woven fabric detail map
+let charCache = null;
+function charAssets() {
+  if (charCache) return charCache;
+  const D = BR.CHAR_DATA, dec = (b, T) => { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new T(u.buffer); };
+  const pos = new THREE.BufferAttribute(dec(D.pos, Float32Array), 3), uv = new THREE.BufferAttribute(dec(D.uv, Float32Array), 2);
+  const col = new THREE.BufferAttribute(dec(D.col, Uint8Array), 3, true), si = new THREE.BufferAttribute(dec(D.si, Uint8Array), 4), sw = new THREE.BufferAttribute(dec(D.sw, Uint8Array), 4, true);
+  const full = new THREE.BufferGeometry(); full.setAttribute('position', pos);
+  full.setIndex(new THREE.BufferAttribute(new Uint16Array([...dec(D.ij, Uint16Array), ...dec(D.ir, Uint16Array)]), 1)); full.computeVertexNormals();
+  const nor = full.getAttribute('normal');
+  const mk = idx => { const g = new THREE.BufferGeometry(); g.setAttribute('position', pos); g.setAttribute('normal', nor); g.setAttribute('uv', uv); g.setAttribute('color', col);
+    g.setAttribute('skinIndex', si); g.setAttribute('skinWeight', sw); g.setIndex(new THREE.BufferAttribute(idx, 1));
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 2.2); return g; };
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d');
+  x.fillStyle = '#d8d8d8'; x.fillRect(0, 0, 64, 64);
+  for (let yy = 0; yy < 64; yy += 2) for (let xx = 0; xx < 64; xx += 2) { const v = 196 + ((xx + yy) % 4 ? 18 : -10) + Math.random() * 30; x.fillStyle = `rgb(${v},${v},${v})`; x.fillRect(xx, yy, 2, 2); }
+  for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(Math.random() * 64, Math.random() * 64, 6 + Math.random() * 12, 1); }
+  const fabric = new THREE.CanvasTexture(cv); fabric.wrapS = fabric.wrapT = THREE.RepeatWrapping;
+  return (charCache = { jacket: mk(dec(D.ij, Uint16Array)), rest: mk(dec(D.ir, Uint16Array)), fabric });
+}
+
 function sharedGeo() {
   if (SHARED.ready) return SHARED;
   const cyl = (r1, r2, len, seg) => { const g = new THREE.CylinderGeometry(r1, r2, len, seg || 8); g.translate(0, -len / 2, 0); g._shared = true; return g; }; // hangs down from its joint
@@ -264,6 +285,39 @@ BR.Actor = class Actor {
 
   // ---------------------------------------------------------------- visuals
   buildMesh() {
+    if (BR.CHAR_DATA && !this.zombie) return BR.Actor.prototype.buildCharMesh.call(this);      // (also called on plain objects: party stage)
+    return BR.Actor.prototype.buildProcMesh.call(this);
+  }
+  // v1.25: the imported character, skinned onto the same joints the procedural animations drive (every pose,
+  // run cycle, crouch, slide, knockdown, death and victory keeps working). Two draw calls: the jacket in the
+  // team colour, everything else in its region colours (pants, boots, gloves, chest rig, ski mask).
+  buildCharMesh() {
+    const C = charAssets(), g = new THREE.Group(), body = new THREE.Group();
+    const leg = x => { const hip = new THREE.Group(); hip.position.set(x, 0.96, 0); const knee = new THREE.Group(); knee.position.y = -0.44; hip.add(knee); return { hip, knee }; };
+    const L = leg(-0.1), R = leg(0.1); body.add(L.hip, R.hip);
+    const upper = new THREE.Group(); upper.position.y = 1.0;
+    const head = new THREE.Group(); head.position.y = 0.7; upper.add(head);
+    const arm = x => { const sh = new THREE.Group(); sh.position.set(x, 0.5, 0); upper.add(sh); const el = new THREE.Group(); el.position.y = -0.28; sh.add(el); return { sh, el }; };
+    const AR = arm(0.22), AL = arm(-0.22);
+    const gun = new THREE.Group(); gun.position.set(0.1, 0.38, -0.2); upper.add(gun);
+    body.add(upper); g.add(body);
+    // bind pose = the model's A-pose: arms out, elbows a touch bent, legs slightly apart
+    const B = BR.CHAR_DATA.bind;
+    AR.sh.rotation.z = B.sh; AL.sh.rotation.z = -B.sh; AR.el.rotation.z = B.el; AL.el.rotation.z = -B.el;
+    R.hip.rotation.z = B.hip; L.hip.rotation.z = -B.hip; R.knee.rotation.z = B.knee; L.knee.rotation.z = -B.knee;
+    g.updateMatrixWorld(true);
+    const skel = new THREE.Skeleton([body, upper, head, AR.sh, AR.el, AL.sh, AL.el, R.hip, R.knee, L.hip, L.knee]);
+    const mat = new THREE.MeshLambertMaterial({ color: this.color, map: C.fabric, skinning: true });
+    const mat2 = new THREE.MeshLambertMaterial({ vertexColors: true, map: C.fabric, skinning: true });
+    for (const [geo, m] of [[C.jacket, mat], [C.rest, mat2]]) { const sm = new THREE.SkinnedMesh(geo, m); sm.bind(skel); sm.userData.noMerge = true; g.add(sm); }
+    for (const o of [AR.sh, AL.sh, AR.el, AL.el, R.hip, L.hip, R.knee, L.knee]) o.rotation.set(0, 0, 0);     // back to the rig's rest pose
+    const chute = BR.Models.parachute(this.color, 0xf2f2f2);
+    chute.position.y = 1.5; chute.visible = false; g.add(chute);
+    g.userData = { body, upper, head, L, R, AR, AL, gun, mat, mat2, chute, t: 0, yaw: this.yaw, pitch: 0, char: true };
+    return g;
+  }
+
+  buildProcMesh() {
     // Low-poly humanoid. Joints: hips > thighs > knees > shins; waist > upper body
     // (chest, vest, neck, head, shoulders > arms holding the gun). All poses animate joints.
     const S = sharedGeo();
@@ -415,11 +469,10 @@ BR.Actor = class Actor {
   // Flash white briefly on hit
   flash() {
     if (!this.mesh) return;
-    const mat = this.mesh.userData.mat;
-    mat.emissive.setHex(0xffffff);
-    mat.emissiveIntensity = 0.7;
+    const u = this.mesh.userData, mats = u.mat2 ? [u.mat, u.mat2] : [u.mat];
+    for (const mat of mats) { mat.emissive.setHex(0xffffff); mat.emissiveIntensity = 0.7; }
     clearTimeout(this._flashTO);
-    this._flashTO = setTimeout(() => { mat.emissive.setHex(0x000000); }, 70);
+    this._flashTO = setTimeout(() => { for (const mat of mats) mat.emissive.setHex(0x000000); }, 70);
   }
 
   // Ragdoll-lite: topple over

@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.24.2',
+  version: '1.25.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -162,7 +162,7 @@ BR.CONFIG = {
     // Wide horizontal pellet line (tightens when aiming), shell-by-shell reload you can cancel by firing
     // v1.18.1 Mastiff-style: 8 heavy pellets in a wide horizontal line that tightens a lot when you aim,
     // a slow, heavy pump, shell-by-shell reload you can cancel by firing, and a longer reach than a normal shotgun
-    shotgun: { name: 'Breacher', ammo: 'shells', dmg: 14, pellets: 8, pattern: 'line', rpm: 66, mag: 6, reload: 0.375, shellReload: true, spread: 0.042, ads: 0.4, pelletAssist: 0.42, bloom: 0, bloomMax: 0, range: 22, head: 1.25, recoil: 0.06, kick: 1.4, zoom: 1.15, tier: 1, color: 0x22252a, knockback: 13, pump: true },     // v1.23 Mastiff stats: 8 x 14 = 112 a blast, 1.25x heads, 66 rpm, 6 shells
+    shotgun: { name: 'Breacher', ammo: 'shells', dmg: 8, pellets: 8, pattern: 'line', rpm: 66, mag: 6, reload: 0.375, shellReload: true, spread: 0.042, ads: 0.4, pelletAssist: 0.42, bloom: 0, bloomMax: 0, range: 22, head: 1.25, recoil: 0.06, kick: 1.4, zoom: 1.15, tier: 1, color: 0x22252a, knockback: 13, pump: true },     // v1.24.3: 8 pellets x 8 = 64 a body blast (more on heads), each pellet counted where it lands; 66 rpm, 6 shells
     rifle:   { name: 'Rifle',   ammo: 'heavy',  dmg: 21, pellets: 1, rpm: 600, mag: 45, reload: 2.4, spread: 0.020, ads: 0.35, bloom: 0.006, bloomMax: 0.035, range: 100, head: 1.7, recoil: 0.015, recoilH: 0.018, zoom: 1.5, tier: 2, color: 0x2e3136 },
     holoar:  { name: 'Holo AR', ammo: 'heavy',  dmg: 19, pellets: 1, rpm: 660, mag: 45, reload: 2.4, spread: 0.022, ads: 0.22, bloom: 0.005, bloomMax: 0.03, range: 110, head: 1.7, recoil: 0.008, recoilH: 0.009, zoom: 1.75, tier: 2, color: 0x33363c, suppressed: true, holo: true },
     // Lightweight bolt-action with open iron sights: accurate from the hip (easy no-scopes), moves fast
@@ -233,7 +233,7 @@ BR.CONFIG = {
 
   graphics: {
     low:    { pixelRatio: 1.0, fogFar: 170, detail: 0.4 },    // pixelRatio is capped by the device's own;
-    medium: { pixelRatio: 2.0, fogFar: 230, detail: 0.8 },    // adaptive resolution lowers it if frames drop
+    medium: { pixelRatio: 1.6, fogFar: 230, detail: 0.8 },    // (v1.25: 1.6 keeps a 60 Hz phone at 60 fps; still sharp on a 6 inch screen)    // adaptive resolution lowers it if frames drop
     high:   { pixelRatio: 3.0, fogFar: 300, detail: 1.0 },
   },
 
