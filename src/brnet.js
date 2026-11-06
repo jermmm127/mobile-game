@@ -35,6 +35,10 @@ BR.BRNet = class BRNet {
       if (k < others.length) {                                       // a party member: a puppet of their own browser
         const i = others[k]; b.netId = i; b.owner = H[i].pid; b.name = H[i].name; b.human = true; b.local = false;
         b.brain = null; b.netProxy = new BR.NetProxy();
+        const ch = H[i].ch; if (ch && typeof ch === 'object' && b.mesh) {        // wear the outfit + mask they equipped
+          b.look = { o: String(ch.o || 'default'), m: String(ch.m || 'default') };
+          const old = b.mesh; b.mesh = b.buildMesh(); b.mesh.position.copy(old.position); b.mesh.visible = old.visible; if (old.parent) { old.parent.add(b.mesh); old.parent.remove(old); }
+        }
       } else {
         b.netId = H.length + (k - others.length); b.owner = H[0].pid; b.local = this.host;
         if (!this.host) { b.brain = null; b.netProxy = new BR.NetProxy(); }

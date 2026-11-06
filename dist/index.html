@@ -1705,6 +1705,13 @@ body.menulite #menu .tagline { font-size: 12px; }
 #pt-stage, #pt-slots { right: 0; top: 13%; width: 51%; height: 87%; }
 @media (max-width: 760px) { #pt-stage, #pt-slots { width: 51%; height: 87%; } body.menulite #menu .mc-change span, body.menulite #menu .mc-change { display: none; } }
 body.menulite #menu .mc-change { display: none; }      /* the whole card opens the mode list; the pill only squeezed the name */
+/* v1.26 CHARACTER tab: rendered outfit / mask pictures */
+.card .sw.chr { height: 74px; background-size: contain, 100% 100%; background-repeat: no-repeat; background-position: center; background-color: rgba(0,0,0,0.25); }
+.card .sw.chr.mk { height: 60px; }
+.cs-card .sw.chr { height: 56px; background-color: transparent; }
+.gr-sw .sw.chr { height: 42px; }
+#shop-tabs .tab-char, #inv-tabs .tab-char { color: #ffd88a; }
+@media (orientation: landscape) and (max-height: 500px) { .card .sw.chr { height: 52px; } .card .sw.chr.mk { height: 44px; } }
 
 </style>
 </head>
@@ -1729,7 +1736,7 @@ body.menulite #menu .mc-change { display: none; }      /* the whole card opens t
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.25.1',
+  version: '1.26.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -2012,6 +2019,15 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.26.0', date: '2026-11-06', title: 'Character cosmetics', notes: [
+    'New CHARACTER section in the Inventory and the Shop. Pick OUTFIT or MASK, see your operator in 3D (drag to spin, pinch to zoom) holding your primary gun, and equip.',
+    '21 outfits that recolour the jacket, pants, boots and gloves. Some have prints (desert, woodland and ghillie camo, arctic digital, tiger, hazard, gold, galaxy, lava) and the rarest have glowing trims (neon circuits, magma cracks, starfields, light seams).',
+    '16 masks: knit colours, tiger and hazard prints, skull, a stitched grin, gold plate, nebula, glowing eyes, and add-ons such as goggles, a neon visor, demon horns, a floating halo, a crown and an antenna.',
+    'Buy them in the Shop, or get the exclusives from cases. The Release Case has Cobalt Strike, Hazmat, Jungle Phantom, Neon Runner, Magma Core, Stitched Grin, Neon Visor and Demon. The Nova Case has Golden Emperor, Cyber Ronin, Galaxy Walker, Void Reaper, Gold Plated, Nebula and Seraph.',
+    'Mastery unlocks (see Challenges): Marksman Ghillie (50 Sniper headshot kills), Blade Dancer (100 knife kills), Dead Walker (1,000 zombies), Champion (25 wins), Headhunter mask (500 headshot kills), Undying mask (round 30 in Zombies) and Kingpin crown (50 wins).',
+    'Your look shows on your victory celebration, on the party lineup in the menu, and to your party in online Battle Royale and Resurgence. Bots keep their team colours.',
+    'Every outfit and mask has a rendered picture on its card, in the case reels and on the challenge list.',
+  ] },
   { v: '1.25.1', date: '2026-11-06', title: 'Operator clean-up + your arms', notes: [
     'Character model fixed: a smoother body with more detail, no more spikes or shards on the jacket, sleeves, collar or waist when the arms move, and clean colour blends between the jacket, pants, boots and gloves.',
     'New head: a clean black knit ski mask with a proper eye opening, instead of the old lumpy face.',
@@ -10728,6 +10744,8 @@ function solveArm(arm, target, side) {
   fore.applyQuaternion(_ikQ.copy(arm.sh.quaternion).invert());
   arm.el.quaternion.setFromUnitVectors(_DOWN, fore);
 }
+// v1.26: whose look an actor wears ({ o: outfit id, m: mask id }): its own (party members, previews) or, for the player, the profile's
+BR.lookOf = a => (a && a.look) || (a && a.isPlayer && BR.Profile && BR.Profile.data && BR.Profile.charLook ? BR.Profile.charLook() : null);
 // v1.25: the imported character's shared geometry (built once from BR.CHAR_DATA) + a woven fabric detail map
 let charCache = null;
 function charAssets() {
@@ -10741,6 +10759,13 @@ function charAssets() {
   const team = dec(D.team, Uint8Array), cb = col.array, base = new Float32Array(cb.length), teamIdx = [];
   for (let i = 0; i < cb.length; i++) base[i] = cb[i] / 255;
   for (let i = 0; i < team.length; i++) if (team[i]) teamIdx.push(i);
+  // the other clothing regions by their base colour (pants / boots / gloves), for outfits that recolour them
+  const reg = { pants: [], boots: [], gloves: [] };
+  for (let i = 0; i < team.length; i++) if (!team[i]) { const r = col.array[i * 3]; const L = r === 56 ? reg.pants : r === 41 ? reg.boots : r === 26 ? reg.gloves : null; if (L) L.push(i); }
+  // the index split in two groups: jacket triangles first (patterned outfits give them their own material), then the rest
+  const ia = geoAll.index.array, jt = [], rt = [];
+  for (let t = 0; t < ia.length; t += 3) (team[ia[t]] && team[ia[t + 1]] && team[ia[t + 2]] ? jt : rt).push(ia[t], ia[t + 1], ia[t + 2]);
+  const split = { index: new THREE.BufferAttribute(new Uint16Array(jt.concat(rt)), 1), nj: jt.length, n: ia.length };
   const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d');
   x.fillStyle = '#d8d8d8'; x.fillRect(0, 0, 64, 64);
   for (let yy = 0; yy < 64; yy += 2) for (let xx = 0; xx < 64; xx += 2) { const v = 196 + ((xx + yy) % 4 ? 18 : -10) + Math.random() * 30; x.fillStyle = `rgb(${v},${v},${v})`; x.fillRect(xx, yy, 2, 2); }
@@ -10766,7 +10791,100 @@ function charAssets() {
   for (const dx of [-12, 12]) { m2.fillStyle = '#efe9e2'; m2.beginPath(); m2.ellipse(ex + dx, ey + 1, 4.6, 2.5, 0, 0, Math.PI * 2); m2.fill();
     m2.fillStyle = '#3a2a20'; m2.beginPath(); m2.arc(ex + dx, ey + 1, 2.0, 0, Math.PI * 2); m2.fill(); m2.fillStyle = '#000'; m2.beginPath(); m2.arc(ex + dx, ey + 1, 1.0, 0, Math.PI * 2); m2.fill(); }
   const maskTex = new THREE.CanvasTexture(mc);
-  return (charCache = { geo: geoAll, base, teamIdx, fabric, mask: mg, maskTex });
+  return (charCache = { geo: geoAll, base, teamIdx, reg, split, fabric, mask: mg, maskTex });
+}
+
+// v1.26 CHARACTER COSMETICS: outfits (jacket / pants / boots / gloves colours, a jacket pattern, a glowing trim)
+// and masks (knit colour + print, eye style, add-ons). Textures are painted once per item and cached.
+const lookTex = {};
+function rngFor(s) { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296; }
+const hexCss = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
+// paint a 256² tile: pattern `pat` with colours [a, b, c, d] (the weave is laid over it so it still reads as cloth)
+function paintPattern(x, pat, cols, R, S) {
+  const [a, b, c, d] = cols.map(hexCss);
+  x.fillStyle = a; x.fillRect(0, 0, S, S);
+  const blob = (col, n, r0, r1) => { x.fillStyle = col; for (let i = 0; i < n; i++) { const cx = R() * S, cy = R() * S, r = r0 + R() * (r1 - r0); for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { x.beginPath(); x.ellipse(cx + ox, cy + oy, r * (1 + R() * 0.8), r * (0.5 + R() * 0.5), R() * 3, 0, 7); x.fill(); } } };
+  if (pat === 'camo') { blob(b, 16, 14, 34); blob(c, 12, 10, 26); if (d) blob(d, 8, 6, 16); }
+  else if (pat === 'digital') { const q = 8; for (const [col, n] of [[b, 70], [c, 50], [d || c, 30]]) { x.fillStyle = col; for (let i = 0; i < n; i++) { const px = Math.floor(R() * S / q) * q, py = Math.floor(R() * S / q) * q, w = (1 + Math.floor(R() * 4)) * q, h = (1 + Math.floor(R() * 3)) * q; x.fillRect(px, py, w, h); x.fillRect(px - S, py, w, h); x.fillRect(px, py - S, w, h); } } }
+  else if (pat === 'tiger') { x.fillStyle = b; for (let i = 0; i < 9; i++) { const y0 = (i + R() * 0.5) * S / 9; x.beginPath(); x.moveTo(-10, y0); for (let t = 0; t <= S + 20; t += 16) x.lineTo(t, y0 + Math.sin(t * 0.05 + i) * 9 + (R() - 0.5) * 6); for (let t = S + 20; t >= -10; t -= 16) x.lineTo(t, y0 + 6 + Math.sin(t * 0.05 + i) * 9 + R() * 8 * (1 - Math.abs(t / S - 0.5))); x.fill(); } }
+  else if (pat === 'stripes') { x.fillStyle = b; for (let i = -S; i < S * 2; i += 40) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 18, 0); x.lineTo(i + 18 - S, S); x.lineTo(i - S, S); x.fill(); } }
+  else if (pat === 'hazard') { x.fillStyle = b; for (let i = -S; i < S * 2; i += 64) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 32, 0); x.lineTo(i + 32 - S, S); x.lineTo(i - S, S); x.fill(); } }
+  else if (pat === 'splatter') { blob(b, 26, 2, 9); blob(c, 14, 1, 5); }
+  else if (pat === 'galaxy') { const gr = x.createLinearGradient(0, 0, S, S); gr.addColorStop(0, a); gr.addColorStop(0.5, b); gr.addColorStop(1, a); x.fillStyle = gr; x.fillRect(0, 0, S, S); x.globalAlpha = 0.5; blob(c, 6, 20, 50); x.globalAlpha = 1; x.fillStyle = '#fff'; for (let i = 0; i < 120; i++) x.fillRect(R() * S, R() * S, R() < 0.1 ? 2 : 1, R() < 0.1 ? 2 : 1); }
+  else if (pat === 'gold') { for (let i = 0; i < 40; i++) { const gr = x.createLinearGradient(0, i * 7, S, i * 7 + 40); gr.addColorStop(0, i % 2 ? a : b); gr.addColorStop(1, c); x.globalAlpha = 0.35; x.fillStyle = gr; x.fillRect(0, i * 7, S, 7); } x.globalAlpha = 1; }
+  else if (pat === 'lava') { blob(b, 18, 10, 30); x.strokeStyle = c; x.lineWidth = 3; for (let i = 0; i < 18; i++) { x.beginPath(); let px = R() * S, py = R() * S; x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (R() - 0.5) * 50; py += (R() - 0.5) * 50; x.lineTo(px, py); } x.stroke(); } }
+  else if (pat === 'ghillie') { for (let i = 0; i < 900; i++) { x.strokeStyle = [b, c, d || b][i % 3]; x.lineWidth = 1 + R() * 2; const px = R() * S, py = R() * S; x.beginPath(); x.moveTo(px, py); x.lineTo(px + (R() - 0.5) * 10, py + 6 + R() * 12); x.stroke(); } }
+  else if (pat === 'split') { x.fillStyle = b; x.fillRect(S / 2, 0, S / 2, S); x.fillStyle = c; x.fillRect(S / 2 - 4, 0, 8, S); }
+  // the weave on top
+  for (let yy = 0; yy < S; yy += 2) for (let xx = 0; xx < S; xx += 2) if ((xx + yy) % 4 === 0) { x.fillStyle = `rgba(0,0,0,${0.05 + R() * 0.06})`; x.fillRect(xx, yy, 2, 2); }
+}
+// the glowing layer: black, with the glow lines in white (tinted by the item's glow colour)
+function paintGlow(x, kind, R, S) {
+  x.fillStyle = '#000'; x.fillRect(0, 0, S, S); x.strokeStyle = '#fff'; x.fillStyle = '#fff'; x.lineCap = 'round';
+  if (kind === 'circuit') { x.lineWidth = 2.5; for (let i = 0; i < 16; i++) { let px = Math.round(R() * 8) * 32, py = Math.round(R() * 8) * 32; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 4; k++) { if (R() < 0.5) px += (R() < 0.5 ? -1 : 1) * 32 * (1 + Math.floor(R() * 2)); else py += (R() < 0.5 ? -1 : 1) * 32 * (1 + Math.floor(R() * 2)); x.lineTo(px, py); } x.stroke(); x.beginPath(); x.arc(px, py, 4, 0, 7); x.fill(); } }
+  else if (kind === 'cracks') { x.lineWidth = 3; for (let i = 0; i < 16; i++) { x.beginPath(); let px = R() * S, py = R() * S; x.moveTo(px, py); for (let k = 0; k < 7; k++) { px += (R() - 0.5) * 46; py += (R() - 0.5) * 46; x.lineTo(px, py); } x.stroke(); } }
+  else if (kind === 'stars') { for (let i = 0; i < 90; i++) { const r = R() < 0.12 ? 2.4 : 1.1; x.beginPath(); x.arc(R() * S, R() * S, r, 0, 7); x.fill(); } }
+  else if (kind === 'seams') { x.lineWidth = 3; for (let i = 0; i < S; i += 64) { x.beginPath(); x.moveTo(i + 8, 0); x.lineTo(i + 8, S); x.stroke(); x.beginPath(); x.moveTo(0, i + 40); x.lineTo(S, i + 40); x.stroke(); } }
+  else if (kind === 'chevron') { x.lineWidth = 6; for (let y = 0; y < S + 64; y += 64) { x.beginPath(); x.moveTo(0, y); x.lineTo(S / 2, y - 32); x.lineTo(S, y); x.stroke(); } }
+}
+function outfitTex(id, O) {
+  if (lookTex['o:' + id]) return lookTex['o:' + id];
+  const S = 256, R = rngFor(id), out = {};
+  if (O.pat || O.glowPat) { const cv = document.createElement('canvas'); cv.width = cv.height = S; paintPattern(cv.getContext('2d'), O.pat || 'plain', O.cols || [0xffffff, 0xffffff, 0xffffff], R, S);
+    out.map = new THREE.CanvasTexture(cv); out.map.wrapS = out.map.wrapT = THREE.RepeatWrapping; out.map.repeat.set(O.scale || 0.3, O.scale || 0.3); }
+  if (O.glowPat) { const cv = document.createElement('canvas'); cv.width = cv.height = S; paintGlow(cv.getContext('2d'), O.glowPat, R, S);
+    out.glow = new THREE.CanvasTexture(cv); out.glow.wrapS = out.glow.wrapT = THREE.RepeatWrapping; out.glow.repeat.set(O.scale || 0.3, O.scale || 0.3); }
+  return (lookTex['o:' + id] = out);
+}
+// a mask texture (256x128, front at u 0.75) + its glow layer
+function maskTex(id, K) {
+  if (lookTex['m:' + id]) return lookTex['m:' + id];
+  const W = 256, H = 128, R = rngFor(id), cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
+  const gc = document.createElement('canvas'); gc.width = W; gc.height = H; const gx = gc.getContext('2d'); gx.fillStyle = '#000'; gx.fillRect(0, 0, W, H);
+  const base = hexCss(K.base !== undefined ? K.base : 0x17181b), b = hexCss(K.c2 !== undefined ? K.c2 : 0xffffff);
+  x.fillStyle = base; x.fillRect(0, 0, W, H);
+  if (K.pat && K.pat !== 'skull' && K.pat !== 'grin') { const t = document.createElement('canvas'); t.width = t.height = 128; paintPattern(t.getContext('2d'), K.pat, [K.base || 0x17181b, K.c2 || 0xffffff, K.c3 || K.c2 || 0x888888, K.c3], R, 128); x.drawImage(t, 0, 0, 128, 128); x.drawImage(t, 128, 0, 128, 128); }
+  for (let yy = 0; yy < H; yy += 2) for (let xx = 0; xx < W; xx += 3) if ((xx / 3 + yy / 2) % 2) { x.fillStyle = 'rgba(255,255,255,0.035)'; x.fillRect(xx, yy, 2, 2); }      // knit rib
+  const ex = 0.75 * W, ey = 0.44 * H;
+  if (K.pat === 'skull') {                                            // a bone-white skull print around the eye opening
+    x.fillStyle = b; x.beginPath(); x.ellipse(ex, ey + 4, 44, 34, 0, 0, 7); x.fill();
+    x.fillStyle = base; x.beginPath(); x.moveTo(ex - 3, ey + 16); x.lineTo(ex + 3, ey + 16); x.lineTo(ex, ey + 10); x.fill();   // nose
+    x.fillRect(ex - 22, ey + 26, 44, 3); for (let i = -20; i <= 20; i += 6) x.fillRect(ex + i, ey + 22, 2, 12);                   // teeth
+  }
+  if (K.pat === 'grin') {                                             // a stitched smile across the mouth
+    x.strokeStyle = b; x.lineWidth = 5; x.beginPath(); x.arc(ex, ey + 6, 30, 0.35, Math.PI - 0.35); x.stroke();
+    x.lineWidth = 3; for (let a = 0.45; a < Math.PI - 0.4; a += 0.22) { const px = ex + Math.cos(a) * 30, py = ey + 6 + Math.sin(a) * 30; x.beginPath(); x.moveTo(px - 3, py - 4); x.lineTo(px + 3, py + 4); x.stroke(); }
+    if (K.glow) { gx.strokeStyle = '#fff'; gx.lineWidth = 3; gx.beginPath(); gx.arc(ex, ey + 6, 30, 0.35, Math.PI - 0.35); gx.stroke(); }
+  }
+  if (K.trim !== undefined) { x.fillStyle = hexCss(K.trim); x.fillRect(0, H - 14, W, 6); x.fillRect(0, 4, W, 4); if (K.glow) { gx.fillStyle = '#fff'; gx.fillRect(0, H - 14, W, 6); } }
+  // the eye opening
+  x.fillStyle = '#0c0d0f'; x.beginPath(); x.ellipse(ex, ey, 34, 11, 0, 0, 7); x.fill();
+  if (K.eyes === 'glow') {                                            // no face inside: two glowing eyes
+    x.fillStyle = '#050505'; x.beginPath(); x.ellipse(ex, ey, 29, 8, 0, 0, 7); x.fill();
+    for (const dx of [-12, 12]) { x.fillStyle = hexCss(K.eyeCol || 0xff2030); x.beginPath(); x.ellipse(ex + dx, ey + 1, 6, 3, 0, 0, 7); x.fill();
+      gx.fillStyle = '#fff'; gx.beginPath(); gx.ellipse(ex + dx, ey + 1, 6, 3, 0, 0, 7); gx.fill(); }
+  } else {
+    x.fillStyle = '#b4866a'; x.beginPath(); x.ellipse(ex, ey, 29, 8, 0, 0, 7); x.fill();
+    x.fillStyle = 'rgba(80,50,35,0.35)'; x.fillRect(ex - 29, ey - 8, 58, 3);
+    for (const dx of [-12, 12]) { x.fillStyle = '#efe9e2'; x.beginPath(); x.ellipse(ex + dx, ey + 1, 4.6, 2.5, 0, 0, 7); x.fill();
+      x.fillStyle = '#3a2a20'; x.beginPath(); x.arc(ex + dx, ey + 1, 2.0, 0, 7); x.fill(); x.fillStyle = '#000'; x.beginPath(); x.arc(ex + dx, ey + 1, 1.0, 0, 7); x.fill(); }
+  }
+  const out = { map: new THREE.CanvasTexture(cv), glow: K.glow || K.eyes === 'glow' ? new THREE.CanvasTexture(gc) : null };
+  return (lookTex['m:' + id] = out);
+}
+// add-ons on the head joint (positions are relative to the mask's centre)
+function maskAddon(kind, K) {
+  const g = new THREE.Group(), gl = K.glow || K.eyeCol || 0x1de9ff;
+  const met = new THREE.MeshPhongMaterial({ color: K.addCol || 0x22252a, shininess: 80, specular: 0x888888 });
+  const neon = new THREE.MeshBasicMaterial({ color: gl });
+  if (kind === 'visor') { const v = new THREE.Mesh(new THREE.CylinderGeometry(0.112, 0.112, 0.035, 24, 1, true, Math.PI * 0.62, Math.PI * 0.76), neon); v.position.set(0, 0.008, 0); v.scale.set(1.04, 1, 1.06); g.add(v); }
+  else if (kind === 'goggles') { for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.008, 6, 16), met); r.position.set(s * 0.04, 0.025, -0.112); g.add(r); const l = new THREE.Mesh(new THREE.CircleGeometry(0.024, 16), neon); l.position.set(s * 0.04, 0.025, -0.114); l.rotation.y = Math.PI; g.add(l); }
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.108, 0.007, 4, 32), met); strap.rotation.x = Math.PI / 2; strap.position.y = 0.025; strap.scale.z = 1.12; g.add(strap); }
+  else if (kind === 'horns') { for (const s of [-1, 1]) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.12, 8), met); h.position.set(s * 0.07, 0.12, -0.02); h.rotation.set(-0.35, 0, -s * 0.55); g.add(h); } }
+  else if (kind === 'halo') { const h = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.009, 8, 36), neon); h.rotation.x = Math.PI / 2; h.position.y = 0.2; h.userData.spin = true; g.add(h); }
+  else if (kind === 'crown') { for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, s = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.05, 4), met); s.position.set(Math.cos(a) * 0.075, 0.15, Math.sin(a) * 0.075); g.add(s); } const band = new THREE.Mesh(new THREE.TorusGeometry(0.077, 0.01, 4, 28), met); band.rotation.x = Math.PI / 2; band.position.y = 0.125; g.add(band); }
+  else if (kind === 'antenna') { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.14, 4), met); s.position.set(0.06, 0.16, 0.02); s.rotation.z = -0.25; g.add(s); const t = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), neon); t.position.set(0.078, 0.23, 0.02); g.add(t); }
+  return g;
 }
 
 function sharedGeo() {
@@ -11018,15 +11136,33 @@ BR.Actor = class Actor {
     const colA = new THREE.BufferAttribute(new Float32Array(C.base), 3); geo.setAttribute('color', colA);
     const mat = new THREE.MeshLambertMaterial({ vertexColors: true, map: C.fabric, skinning: true });
     // existing code sets team colours with mat.color.setHex(...): route that into the jacket's vertex colours instead
-    const paint = hex => { const c = new THREE.Color(hex), a = colA.array; for (const i of C.teamIdx) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } colA.needsUpdate = true; };
-    mat.color.setHex = function (hex) { paint(hex); return this; };
+    const fill = (idx, hex) => { const c = new THREE.Color(hex), a = colA.array; for (const i of idx) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } colA.needsUpdate = true; };
+    const paint = hex => fill(C.teamIdx, hex);
+    // v1.26: the equipped outfit (players and party members) overrides the team colour
+    const own = (T, k) => T && k !== 'default' && Object.prototype.hasOwnProperty.call(T, k) ? T[k] : null;
+    const look = BR.lookOf(this), O = look && own(BR.OUTFITS, look.o), K = look && own(BR.MASKS, look.m);
+    mat.color.setHex = function (hex) { if (!O) paint(hex); return this; };
     mat.clone = function () { const m = THREE.MeshLambertMaterial.prototype.clone.call(this); m.color.setHex = mat.color.setHex; m.clone = mat.clone; return m; };     // (the enemy highlight clones it)
-    paint(this.color !== undefined ? this.color : 0x8899aa);
-    const sm = new THREE.SkinnedMesh(geo, mat); sm.bind(skel); sm.userData.noMerge = true; g.add(sm);
-    const mat2 = null;
-    // the ski mask head (smooth knit, eye opening) on the head joint
-    const mat3 = new THREE.MeshLambertMaterial({ map: C.maskTex });
+    paint(O ? O.jacket : this.color !== undefined ? this.color : 0x8899aa);
+    let mat2 = null;
+    if (O) {
+      if (O.pants !== undefined) fill(C.reg.pants, O.pants);
+      if (O.boots !== undefined) fill(C.reg.boots, O.boots);
+      if (O.gloves !== undefined) fill(C.reg.gloves, O.gloves);
+      if (O.pat || O.glowPat) {                                       // the jacket gets its own patterned / glowing material
+        const T = outfitTex(look.o, O);
+        mat2 = new THREE.MeshLambertMaterial({ vertexColors: true, map: T.map, skinning: true, emissive: T.glow ? O.glow : 0x000000, emissiveMap: T.glow || null });
+        mat2.userData.emi = T.glow ? O.glow : 0;
+        geo.setIndex(C.split.index); geo.addGroup(0, C.split.nj, 0); geo.addGroup(C.split.nj, C.split.n - C.split.nj, 1);
+      }
+    }
+    const sm = new THREE.SkinnedMesh(geo, mat2 ? [mat2, mat] : mat); sm.bind(skel); sm.userData.noMerge = true; g.add(sm);
+    // the ski mask head (smooth knit, eye opening) on the head joint, in the equipped mask's colours
+    const MT = K ? maskTex(look.m, K) : null;
+    const mat3 = new THREE.MeshLambertMaterial({ map: MT ? MT.map : C.maskTex, emissive: MT && MT.glow ? (K.glow || K.eyeCol || 0xff2030) : 0x000000, emissiveMap: MT && MT.glow || null });
+    mat3.userData.emi = MT && MT.glow ? (K.glow || K.eyeCol || 0xff2030) : 0;
     const mk = BR.CHAR_DATA.mask, maskM = new THREE.Mesh(C.mask, mat3); maskM.position.set(mk.c[0], mk.c[1] - 1.7, mk.c[2]); head.add(maskM);
+    if (K && K.add) maskM.add(maskAddon(K.add, K));
     for (const o of [AR.sh, AL.sh, AR.el, AL.el, R.hip, L.hip, R.knee, L.knee]) o.rotation.set(0, 0, 0);     // back to the rig's rest pose
     const chute = BR.Models.parachute(this.color, 0xf2f2f2);
     chute.position.y = 1.5; chute.visible = false; g.add(chute);
@@ -11189,7 +11325,7 @@ BR.Actor = class Actor {
     const u = this.mesh.userData, mats = [u.mat, u.mat2, u.mat3].filter(Boolean);
     for (const mat of mats) { mat.emissive.setHex(0xffffff); mat.emissiveIntensity = 0.7; }
     clearTimeout(this._flashTO);
-    this._flashTO = setTimeout(() => { for (const mat of mats) mat.emissive.setHex(0x000000); }, 70);
+    this._flashTO = setTimeout(() => { for (const mat of mats) { mat.emissive.setHex(mat.userData.emi || 0); mat.emissiveIntensity = 1; } }, 70);
   }
 
   // Ragdoll-lite: topple over
@@ -16837,6 +16973,57 @@ BR.FINISHERS = {
   thunderstrike: { name: 'Thunderstrike', caseOnly: true, case: 'nova', rarity: 'Legendary', c1: '#6fc8ff', c2: '#ffffff' },
   dragonsoul:    { name: 'Dragon Soul', caseOnly: true, case: 'nova', rarity: 'Exotic', c1: '#ff7a00', c2: '#ffe14d' },
 };
+// ---- v1.26 CHARACTER: outfits (your character's clothes) and masks. Bought in the shop, dropped by cases or earned by grinding.
+//   outfit: jacket / pants / boots / gloves colours; pat = jacket print (cols, scale); glowPat + glow = a glowing trim on the jacket
+//   mask:   base knit colour, pat (+ c2 / c3), eyes 'glow' (+ eyeCol), trim, glow, add = visor / goggles / horns / halo / crown / antenna
+BR.OUTFITS = {
+  default:   { name: 'Operator', price: 0, desc: 'Team-colour jacket' },
+  urban:     { name: 'Urban Grey', price: 500, rarity: 'Rare', jacket: 0x5d636b, pants: 0x2b2e33, boots: 0x1c1d20, gloves: 0x1a1b1e },
+  crimson:   { name: 'Crimson', price: 700, rarity: 'Rare', jacket: 0xb3202c, pants: 0x1e1f24, boots: 0x141416, gloves: 0x141416 },
+  desert:    { name: 'Desert Ops', price: 800, rarity: 'Epic', jacket: 0xffffff, pants: 0x9a8566, boots: 0x5a4430, gloves: 0x6b5a44, pat: 'camo', cols: [0xc9b48a, 0xa58a5e, 0x7c6444, 0xe0d2ac] },
+  woodland:  { name: 'Woodland', price: 900, rarity: 'Epic', jacket: 0xffffff, pants: 0x3b4630, boots: 0x2a2219, gloves: 0x2b3024, pat: 'camo', cols: [0x5c6b3e, 0x3a4528, 0x2a2219, 0x8b8a5a] },
+  arctic:    { name: 'Arctic Ghost', price: 1100, rarity: 'Epic', jacket: 0xffffff, pants: 0xc7cfd6, boots: 0x6c7680, gloves: 0xe6ebef, pat: 'digital', cols: [0xe9eef2, 0xb9c4cc, 0x8a96a0, 0xffffff] },
+  bengal:    { name: 'Bengal', price: 1500, rarity: 'Legendary', jacket: 0xffffff, pants: 0x1b1b1d, boots: 0x111112, gloves: 0x1b1b1d, pat: 'tiger', cols: [0xe8801f, 0x141414], scale: 0.24 },
+  midnight:  { name: 'Midnight Ops', price: 1800, rarity: 'Legendary', jacket: 0x23262d, pants: 0x14161a, boots: 0x0c0d0f, gloves: 0x101114, glowPat: 'seams', glow: 0x2f8bff },
+  // Release Case
+  cobalt:    { name: 'Cobalt Strike', caseOnly: true, rarity: 'Rare', jacket: 0x2453c8, pants: 0x1c2233, boots: 0x111522, gloves: 0x182038 },
+  hazmat:    { name: 'Hazmat', caseOnly: true, rarity: 'Epic', jacket: 0xffffff, pants: 0xc8c22a, boots: 0x161616, gloves: 0x161616, pat: 'hazard', cols: [0xe6dc1e, 0x161616], scale: 0.22 },
+  phantom:   { name: 'Jungle Phantom', caseOnly: true, rarity: 'Legendary', jacket: 0xffffff, pants: 0x1d2a1b, boots: 0x101410, gloves: 0x18201a, pat: 'camo', cols: [0x1f3a22, 0x0f1c11, 0x2f5a2a, 0x63a83a], glowPat: 'circuit', glow: 0x39ff88 },
+  neonrun:   { name: 'Neon Runner', caseOnly: true, rarity: 'Mythic', jacket: 0x111216, pants: 0x0b0c10, boots: 0xff2bd6, gloves: 0x0b0c10, glowPat: 'circuit', glow: 0xff2bd6 },
+  magma:     { name: 'Magma Core', caseOnly: true, rarity: 'Exotic', jacket: 0xffffff, pants: 0x1a0d08, boots: 0x0d0605, gloves: 0x1a0d08, pat: 'lava', cols: [0x241410, 0x3a1a0e, 0x5a2008], glowPat: 'cracks', glow: 0xff5a00 },
+  // Nova Case
+  emperor:   { name: 'Golden Emperor', caseOnly: true, case: 'nova', rarity: 'Legendary', jacket: 0xffffff, pants: 0x1a1a1a, boots: 0xb8860b, gloves: 0xd4a83a, pat: 'gold', cols: [0xffd86a, 0xc8921e, 0xfff2b0] },
+  samurai:   { name: 'Cyber Ronin', caseOnly: true, case: 'nova', rarity: 'Mythic', jacket: 0xffffff, pants: 0x18181c, boots: 0xc8102e, gloves: 0x18181c, pat: 'split', cols: [0xeeeeee, 0xc8102e, 0x111111], scale: 0.18, glowPat: 'chevron', glow: 0xff2040 },
+  galaxy:    { name: 'Galaxy Walker', caseOnly: true, case: 'nova', rarity: 'Mythic', jacket: 0xffffff, pants: 0x140a2a, boots: 0x0a0514, gloves: 0x1a0d36, pat: 'galaxy', cols: [0x12082a, 0x3b1a7a, 0xff3df2], glowPat: 'stars', glow: 0xbfe8ff },
+  voidreap:  { name: 'Void Reaper', caseOnly: true, case: 'nova', rarity: 'Exotic', jacket: 0x1a0b2a, pants: 0x07030c, boots: 0x07030c, gloves: 0x7b2cff, glowPat: 'cracks', glow: 0xb04bff },
+  // Mastery (grind)
+  ghillie:   { name: 'Marksman Ghillie', rarity: 'Legendary', jacket: 0xffffff, pants: 0x3a4529, boots: 0x231c14, gloves: 0x2b3020, pat: 'ghillie', cols: [0x4b5a30, 0x2e3a1c, 0x6f7a3e, 0x5a4a2a], grind: { stat: 'wh:sniper', n: 50, label: 'Get 50 headshot kills with the Sniper' } },
+  bladesong: { name: 'Blade Dancer', rarity: 'Mythic', jacket: 0xe8edf2, pants: 0x20242c, boots: 0x101216, gloves: 0x20242c, glowPat: 'seams', glow: 0x1de9ff, grind: { stat: 'knife', n: 100, label: 'Get 100 knife kills' } },
+  rotwalker: { name: 'Dead Walker', rarity: 'Legendary', jacket: 0xffffff, pants: 0x3a3a2a, boots: 0x1d1a14, gloves: 0x4a5a3a, pat: 'splatter', cols: [0x5d6a4a, 0x7a1a14, 0x2a2a1e], grind: { stat: 'zkills', n: 1000, label: 'Kill 1,000 zombies' } },
+  champion:  { name: 'Champion', rarity: 'Mythic', jacket: 0xf2f2f2, pants: 0xd4a83a, boots: 0x1a1a1a, gloves: 0xd4a83a, glowPat: 'chevron', glow: 0xffc83a, grind: { stat: 'wins', n: 25, label: 'Win 25 matches' } },
+};
+BR.MASKS = {
+  default:   { name: 'Black Knit', price: 0 },
+  charcoal:  { name: 'Charcoal', price: 300, rarity: 'Rare', base: 0x45484e },
+  olive:     { name: 'Olive Drab', price: 300, rarity: 'Rare', base: 0x3f4a2c },
+  tigerm:    { name: 'Tiger Stripe', price: 700, rarity: 'Epic', base: 0xe8801f, pat: 'tiger', c2: 0x141414 },
+  hazardm:   { name: 'Hazard', price: 700, rarity: 'Epic', base: 0xe6dc1e, pat: 'hazard', c2: 0x161616 },
+  skull:     { name: 'Skull', price: 900, rarity: 'Epic', base: 0x141416, pat: 'skull', c2: 0xe9e4d6 },
+  frost:     { name: 'Digital Frost', price: 1200, rarity: 'Legendary', base: 0xdfe6eb, pat: 'digital', c2: 0x9fb2c0, c3: 0x5d7486, add: 'goggles', glow: 0x6fd8ff },
+  redeye:    { name: 'Red Eye', price: 1400, rarity: 'Legendary', base: 0x0e0e10, eyes: 'glow', eyeCol: 0xff2030 },
+  // Release Case
+  stitched:  { name: 'Stitched Grin', caseOnly: true, rarity: 'Epic', base: 0x2a2a2e, pat: 'grin', c2: 0xd8d0c0 },
+  visor:     { name: 'Neon Visor', caseOnly: true, rarity: 'Mythic', base: 0x101114, trim: 0x1de9ff, glow: 0x1de9ff, add: 'visor' },
+  demon:     { name: 'Demon', caseOnly: true, rarity: 'Exotic', base: 0x5a0a0e, eyes: 'glow', eyeCol: 0xffb000, add: 'horns', addCol: 0x1a1414 },
+  // Nova Case
+  goldm:     { name: 'Gold Plated', caseOnly: true, case: 'nova', rarity: 'Legendary', base: 0xd4a83a, pat: 'gold', c2: 0xffe08a, c3: 0x8a6a1a },
+  galaxym:   { name: 'Nebula', caseOnly: true, case: 'nova', rarity: 'Mythic', base: 0x12082a, pat: 'galaxy', c2: 0x3b1a7a, c3: 0xff3df2, eyes: 'glow', eyeCol: 0xbfe8ff, add: 'antenna', glow: 0xff3df2 },
+  halo:      { name: 'Seraph', caseOnly: true, case: 'nova', rarity: 'Exotic', base: 0xf2f0ea, trim: 0xffd24a, eyes: 'glow', eyeCol: 0xffe08a, add: 'halo', glow: 0xffd24a },
+  // Mastery (grind)
+  headhunt:  { name: 'Headhunter', rarity: 'Legendary', base: 0x101012, pat: 'skull', c2: 0xd8d0c0, eyes: 'glow', eyeCol: 0xff2030, grind: { stat: 'heads', n: 500, label: 'Get 500 headshot kills' } },
+  undying:   { name: 'Undying', rarity: 'Mythic', base: 0x1d2a1b, pat: 'splatter', c2: 0x5d6a4a, c3: 0x7a1a14, eyes: 'glow', eyeCol: 0x39ff88, grind: { stat: 'zround', n: 30, label: 'Reach round 30 in Zombies' } },
+  kingpin:   { name: 'Kingpin', rarity: 'Mythic', base: 0x18181c, trim: 0xd4a83a, add: 'crown', addCol: 0xd4a83a, grind: { stat: 'wins', n: 50, label: 'Win 50 matches' } },
+};
 // ---- Cases: exclusive items you can only get by opening one. Rarer = flashier.
 BR.CASES = {
   release: { name: 'Release Case', price: 600, odds: { Rare: 52, Epic: 28, Legendary: 13, Mythic: 6, Exotic: 1 }, dupRefund: 0.35, label: 'RELEASE', sub: 'CASE · SEASON 1' },
@@ -16856,6 +17043,7 @@ BR.CaseItems = {
     const add = (cat, table, pre) => { for (const id in table) if (table[id].caseOnly) out.push({ cat, id: pre ? pre + id : id, item: table[id] }); };
     for (const w in M.BLUEPRINTS) add('blueprints', M.BLUEPRINTS[w], w + ':');
     add('skins', M.SKINS); add('gloves', M.GLOVES); add('tracers', M.TRACERS); add('feeds', BR.FEEDS); add('finishers', BR.FINISHERS);
+    add('outfits', BR.OUTFITS); add('masks', BR.MASKS);
     return (this._all = out);
   },
   roll(caseId, R) {
@@ -16882,8 +17070,8 @@ BR.Profile = {
     d = d || {};
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
-      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', melee: 'tracker' }, d.equip || {}),
+      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'], outfits: ['default'], masks: ['default'] }, d.owned || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', outfits: 'default', masks: 'default', melee: 'tracker' }, d.equip || {}),
       rp: typeof d.rp === 'number' ? d.rp : 0,
       cases: Object.assign({ opened: 0 }, d.cases || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0, deaths: 0 }, d.stats || {}),
@@ -16911,6 +17099,7 @@ BR.Profile = {
     if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
     if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
+    for (const k of ['outfits', 'masks']) { if (!this.data.owned[k]) this.data.owned[k] = ['default']; if (!this.data.equip[k]) this.data.equip[k] = 'default'; }     // v1.26 character
     // v1.14: new accounts start from scratch — default skins only, the Tracker knife, level 0.
     // Older saves get XP credited for what they already did (kills, wins, matches, zombies).
     if (this.data.xp === null) {
@@ -16940,6 +17129,7 @@ BR.Profile = {
     const add = (cat, ids) => { for (const id of ids) if (!o[cat].includes(id)) o[cat].push(id); };
     add('skins', Object.keys(M.SKINS)); add('tracers', Object.keys(M.TRACERS));
     add('charms', Object.keys(M.CHARMS)); add('gloves', Object.keys(M.GLOVES)); add('feeds', Object.keys(BR.FEEDS));
+    add('finishers', Object.keys(BR.FINISHERS)); add('outfits', Object.keys(BR.OUTFITS)); add('masks', Object.keys(BR.MASKS));
     for (const w in M.BLUEPRINTS) add('blueprints', Object.keys(M.BLUEPRINTS[w]).map(b => w + ':' + b));
   },
   save() { if (BR.AntiCheat) BR.AntiCheat.saveSigned(this.KEY, this.data); else BR.util.save(this.KEY, this.data); },
@@ -17034,6 +17224,7 @@ BR.Profile = {
     const M = BR.Models, out = [];
     for (const id in M.SKINS) if (M.SKINS[id].grind) out.push({ cat: 'skins', id, item: M.SKINS[id] });
     for (const w in M.BLUEPRINTS) for (const b in M.BLUEPRINTS[w]) if (M.BLUEPRINTS[w][b].grind) out.push({ cat: 'blueprints', id: w + ':' + b, item: M.BLUEPRINTS[w][b] });
+    for (const cat of ['outfits', 'masks']) { const T = BR.CHAR_TABLES[cat](); for (const id in T) if (T[id].grind) out.push({ cat, id, item: T[id] }); }
     return out;
   },
   grindProgress(item) { const G = this.grind(), g = item.grind; return [Math.min(g.n, Math.floor(G[g.stat] || 0)), g.n]; },
@@ -17079,6 +17270,8 @@ BR.Profile = {
     this.save();
     return { streak: d.daily.streak, coins, key };
   },
+  // v1.26: the character look you wear (outfit + mask ids)
+  charLook() { const e = this.data.equip, O = BR.OUTFITS || {}, K = BR.MASKS || {}; return { o: O[e.outfits] ? e.outfits : 'default', m: K[e.masks] ? e.masks : 'default' }; },
   keys(caseId) { return (this.data.keys && this.data.keys[caseId]) || 0; },
   // gloves worn with a weapon (per-weapon pick, else the default pair)
   skinFor(weapon) { const e = this.data.equip; return (e.skinByGun && e.skinByGun[weapon]) || 'default'; },
@@ -17173,9 +17366,55 @@ BR.Profile = {
   },
 };
 
+BR.CHAR_TABLES = { outfits: () => BR.OUTFITS, masks: () => BR.MASKS };
+// the look shown in the preview: what you wear, with the selected outfit / mask swapped in
+BR.lookPreview = (cat, id) => { const L = Object.assign({}, BR.Profile.charLook()); if (id) L[cat === 'outfits' ? 'o' : 'm'] = id; L.focus = cat === 'masks' ? 'head' : 'body'; const G = BR.Profile.loadoutGuns(); L.wid = G.primary; L.skin = BR.Profile.skinFor(G.primary); L.bp = (BR.Profile.data.equip.blueprints || {})[G.primary] || null; return L; };
 BR.MELEE = { bayonet: true, knife: true, butterfly: true, tracker: true };
 const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['launcher', 'Shockwave Launcher'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker']];
 const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
+
+// ---- v1.26: a posed character (the in-game model) wearing a look and holding a gun: shop/inventory preview + item icons
+BR.charFigure = (look, wid, skin, bp) => {
+  wid = BR.CONFIG.weapons[wid] ? wid : 'rifle';
+  const fake = { color: 0x8899aa, look, yaw: Math.PI, pitch: -0.05, downed: false, weapon: { id: wid },
+    mover: { pos: new THREE.Vector3(), vel: new THREE.Vector3(), speedH: 0, dropping: false, chute: false, sliding: false, crouched: false, onGround: true, wallRunning: false, wallN: new THREE.Vector3() } };
+  const mesh = BR.Actor.prototype.buildMesh.call(fake); fake.mesh = mesh; mesh.userData.yaw = fake.yaw;
+  BR.Actor.prototype.syncMesh.call(fake, 0.016);
+  const u = mesh.userData; while (u.gun.children.length) u.gun.remove(u.gun.children[0]);
+  let gm; try { gm = BR.Models.worldWeapon(wid, bp || null, skin || 'default'); } catch (e) { gm = BR.Models.worldWeapon(wid); }
+  gm.scale.setScalar(1.15); u.gun.add(gm); u.wid = wid; u.gp = BR.Models.gripPoints(wid); u.gunScale = 1.15;
+  BR.Actor.prototype.syncMesh.call(fake, 0.016);
+  return { fake, mesh };
+};
+// little rendered pictures of each outfit (full body) and mask (head), made once with a shared offscreen renderer
+BR.CharIcons = {
+  pics: {},
+  get(cat, id) {
+    const k = cat + ':' + id; if (this.pics[k] !== undefined) return this.pics[k];
+    let url = null;
+    try {
+      if (!this.r) {
+        const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
+        this.r = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, preserveDrawingBuffer: true }); this.r.setPixelRatio(1); this.r.setSize(128, 128, false); this.r.setClearColor(0, 0);
+        const sc = this.sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff, 0x50586a, 1.1));
+        const dl = new THREE.DirectionalLight(0xffffff, 0.9); dl.position.set(-1.5, 2.5, -2.5); sc.add(dl);
+        this.cam = new THREE.PerspectiveCamera(30, 1, 0.05, 20);
+      }
+      clearTimeout(this.idle); this.idle = setTimeout(() => this.drop(), 4000);         // give the WebGL context back when idle
+      const look = { o: cat === 'outfits' ? id : 'default', m: cat === 'masks' ? id : 'default' };
+      const fig = BR.charFigure(look, 'rifle'); fig.mesh.userData.gun.visible = cat !== 'masks';
+      this.sc.add(fig.mesh); fig.mesh.updateMatrixWorld(true);
+      const a = 0.5, c = this.cam;
+      const hp = new THREE.Vector3(); fig.mesh.userData.head.getWorldPosition(hp); hp.y += 0.06;      // (the figure faces +Z)
+      if (cat === 'masks') { c.position.set(hp.x + Math.sin(a) * 0.78, hp.y + 0.1, hp.z + Math.cos(a) * 0.78); c.lookAt(hp.x, hp.y + 0.03, hp.z); }
+      else { c.position.set(Math.sin(a) * 3.7, 1.15, Math.cos(a) * 3.7); c.lookAt(0, 0.93, 0); }
+      this.r.render(this.sc, c); url = this.r.domElement.toDataURL('image/png');
+      this.sc.remove(fig.mesh);
+    } catch (e) { url = null; }
+    return (this.pics[k] = url);
+  },
+  drop() { if (this.r) { this.r.dispose(); if (this.r.forceContextLoss) this.r.forceContextLoss(); this.r = null; } },
+};
 
 BR.Shop = class Shop {
   // Catalog for a category. Blueprints are per weapon; ids look like "rifle:vandal".
@@ -17187,7 +17426,7 @@ BR.Shop = class Shop {
       return out;
     }
     if (cat === 'feeds') return BR.FEEDS;
-    if (cat === 'finishers') { const out = {}; for (const k in BR.FINISHERS) if (!BR.FINISHERS[k].caseOnly || BR.Profile.owns(cat, k)) out[k] = BR.FINISHERS[k]; return out; }
+    if (cat === 'finishers' || BR.CHAR_TABLES[cat]) { const T = cat === 'finishers' ? BR.FINISHERS : BR.CHAR_TABLES[cat](), out = {}; for (const k in T) if (!T[k].caseOnly || BR.Profile.owns(cat, k)) out[k] = T[k]; return out; }
     const all = cat === 'skins' ? M.SKINS : cat === 'tracers' ? M.TRACERS : cat === 'gloves' ? M.GLOVES : M.CHARMS;
     // case-exclusive items live in the same tables but aren't sold
     const out = {}; for (const k in all) if (!all[k].caseOnly || BR.Profile.owns(cat, k)) out[k] = all[k];
@@ -17198,6 +17437,7 @@ BR.Shop = class Shop {
     if (cat === 'blueprints') { const [w, b] = id.split(':'); return M.BLUEPRINTS[w] && M.BLUEPRINTS[w][b]; }
     if (cat === 'feeds') return BR.FEEDS[id];
     if (cat === 'finishers') return BR.FINISHERS[id];
+    if (BR.CHAR_TABLES[cat]) return BR.CHAR_TABLES[cat]()[id];
     return (cat === 'skins' ? M.SKINS : cat === 'tracers' ? M.TRACERS : cat === 'gloves' ? M.GLOVES : M.CHARMS)[id];
   }
 
@@ -17209,10 +17449,11 @@ BR.Shop = class Shop {
     const $ = id => document.getElementById(id);
     this.el = { root: $('shop'), grid: $('shop-grid'), coins: $('shop-coins'), name: $('shop-sel-name'), action: $('shop-action'), msg: $('shop-msg'), weps: $('shop-weps') };
     this.el.weps.innerHTML = '<button data-w="all" class="w-all">ALL</button>' + SHOP_WEAPONS.map(([id, n]) => `<button data-w="${id}">${n}</button>`).join('');
+    this.slot = 'outfits';
     $('shop-tabs').addEventListener('click', e => {
       const b = e.target.closest('button[data-cat]');
       if (!b) return;
-      this.cat = b.dataset.cat;
+      this.cat = b.dataset.cat === 'character' ? this.slot : b.dataset.cat;
       this.sel = this.equippedId();
       this.render();
     });
@@ -17229,6 +17470,7 @@ BR.Shop = class Shop {
       this.sel = c.dataset.id;
       this.render();
     });
+    $('shop-char').addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (!b) return; this.slot = this.cat = b.dataset.s; this.sel = this.equippedId(); BR.Audio.click(); this.render(); });
     this.el.action.addEventListener('click', () => this.act());
     $('shop-back').addEventListener('click', () => this.close());
   }
@@ -17292,13 +17534,21 @@ BR.Shop = class Shop {
       const bg = it.color !== undefined ? hex(it.color) : GS[id] || '#666';
       return `<i class="sw gl" style="--c:${bg};background:${bg};${it.glow ? 'box-shadow:0 0 10px ' + hex(it.glow) : ''}">✋</i>`;
     }
+    if (BR.CHAR_TABLES[cat]) {
+      const pic = BR.CharIcons.get(cat, id), hx = c => c === undefined ? '#555' : hex(c);
+      const glow = it.glow !== undefined ? hex(it.glow) : it.eyeCol !== undefined ? hex(it.eyeCol) : 'transparent';
+      const bg = cat === 'outfits' ? `linear-gradient(180deg,${hx(it.jacket)} 0 55%,${hx(it.pants)} 55% 88%,${hx(it.boots)} 88%)` : hx(it.base);
+      return pic ? `<i class="sw chr${cat === 'masks' ? ' mk' : ''}" style="background-image:url(${pic}),radial-gradient(circle at 50% 60%,${glow === 'transparent' ? 'rgba(178,107,255,0.25)' : glow + '55'},transparent 70%)"></i>` : `<i class="sw" style="background:${bg}"></i>`;
+    }
     if (cat === 'feeds') return `<i class="sw fd"><span class="kf feed-${id}">${BR.Ranks.badge(BR.Profile.data.rp || 0)}<b class="me">You</b><i>✕</i></span></i>`;
     return `<i class="sw ch">${id === 'none' ? '—' : '◆'}</i>`;
   }
 
   render() {
-    const P = BR.Profile, cat = this.cat, items = Shop.catalog(cat, this.weapon);
-    document.querySelectorAll('#shop-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
+    const P = BR.Profile, cat = this.cat, items = Shop.catalog(cat, this.weapon), chr = !!BR.CHAR_TABLES[cat];
+    document.querySelectorAll('#shop-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === (chr ? 'character' : cat)));
+    document.getElementById('shop-char').classList.toggle('hidden', !chr);
+    document.querySelectorAll('#shop-char button').forEach(b => b.classList.toggle('sel', b.dataset.s === cat));
     const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers' || cat === 'gloves';
     this.el.weps.classList.toggle('hidden', !showWeps);
     this.el.weps.classList.toggle('gl', cat === 'gloves' || cat === 'skins');
@@ -17331,6 +17581,7 @@ BR.Shop = class Shop {
       gloves: cat === 'gloves' ? this.sel : P.gloveFor(wpn),
       showTracer: cat === 'tracers',
       showHands: cat === 'gloves',
+      character: chr ? BR.lookPreview(cat, this.sel) : null,
     });
   }
 };
@@ -17349,7 +17600,9 @@ BR.Inventory = class Inventory {
     this.el = { root: $('inventory'), grid: $('inv-grid'), weps: $('inv-weps'), action: $('inv-action'), msg: $('inv-msg'), count: $('inv-count'),
       name: $('inv-name'), rar: $('inv-rar'), sub: $('inv-sub'), feed: $('inv-feed'), stage: $('inv-stage') };
     this.el.weps.innerHTML = '<button data-w="all" class="w-all">ALL</button>' + SHOP_WEAPONS.map(([id, n]) => `<button data-w="${id}">${n}</button>`).join('');
-    $('inv-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-cat]'); if (!b) return; this.cat = b.dataset.cat; this.sel = null; this.render(); });
+    this.slot = 'outfits';
+    $('inv-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-cat]'); if (!b) return; this.cat = b.dataset.cat === 'character' ? this.slot : b.dataset.cat; this.sel = null; this.game.inspectReset(); this.render(); });
+    $('inv-char').addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (!b) return; this.slot = this.cat = b.dataset.s; this.sel = null; this.game.inspectReset(); BR.Audio.click(); this.render(); });
     this.el.weps.addEventListener('click', e => { const b = e.target.closest('button[data-w]'); if (!b) return; this.weapon = b.dataset.w; this.sel = null; this.render(); });
     this.el.grid.addEventListener('click', e => { const c = e.target.closest('[data-id]'); if (!c) return; this.sel = c.dataset.id; this.game.inspectReset(); this.render(); });
     // Melee: carry the bayonet, the karambit or the butterfly knife (one at a time)
@@ -17397,14 +17650,14 @@ BR.Inventory = class Inventory {
   collectible() {
     if (this._coll) return this._coll;
     const M = BR.Models; let n = 0;
-    for (const t of [M.SKINS, M.TRACERS, M.CHARMS, M.GLOVES, BR.FEEDS, BR.FINISHERS]) n += Object.keys(t).filter(k => k !== 'default' && k !== 'none' && k !== 'signature').length;
+    for (const t of [M.SKINS, M.TRACERS, M.CHARMS, M.GLOVES, BR.FEEDS, BR.FINISHERS, BR.OUTFITS, BR.MASKS]) n += Object.keys(t).filter(k => k !== 'default' && k !== 'none' && k !== 'signature').length;
     for (const w in M.BLUEPRINTS) n += Object.keys(M.BLUEPRINTS[w]).filter(k => k !== 'default').length;
     return (this._coll = n);
   }
   total() {
     const o = BR.Profile.data.owned; let n = 0;
-    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds', 'finishers']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
-    return n + (o.blueprints || []).length;
+    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds', 'finishers', 'outfits', 'masks']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
+    return n + (o.blueprints || []).filter(x => !x.endsWith(':default')).length;
   }
   open(focus) {
     if (focus) { this.cat = focus.cat; if (focus.cat === 'blueprints') this.weapon = focus.id.split(':')[0]; this.sel = focus.id; }
@@ -17439,8 +17692,10 @@ BR.Inventory = class Inventory {
   flash(t) { const m = this.el.msg; m.textContent = t; m.classList.remove('on'); void m.offsetWidth; m.classList.add('on'); }
 
   render() {
-    const P = BR.Profile, cat = this.cat, items = this.items();
-    document.querySelectorAll('#inv-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === cat));
+    const P = BR.Profile, cat = this.cat, items = this.items(), chr = !!BR.CHAR_TABLES[cat];
+    document.querySelectorAll('#inv-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.cat === (chr ? 'character' : cat)));
+    document.getElementById('inv-char').classList.toggle('hidden', !chr);
+    document.querySelectorAll('#inv-char button').forEach(b => b.classList.toggle('sel', b.dataset.s === cat));
     const showWeps = cat === 'blueprints' || cat === 'skins' || cat === 'tracers' || cat === 'gloves';
     this.el.weps.classList.toggle('hidden', !showWeps);
     this.el.weps.classList.toggle('gl', cat === 'gloves' || cat === 'skins');
@@ -17464,7 +17719,7 @@ BR.Inventory = class Inventory {
     this.el.name.textContent = it ? it.name : '';
     this.el.rar.textContent = it && it.rarity ? it.rarity.toUpperCase() : '';
     this.el.rar.style.color = it && it.rarity ? RARITY[it.rarity] : '';
-    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : 'Kill feed banner';
+    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : cat === 'outfits' ? 'Character outfit' + (it.grind && P.owns(cat, this.sel) ? ' · mastery' : '') : cat === 'masks' ? 'Character mask' : cat === 'finishers' ? 'Kill finisher' : 'Kill feed banner';
     const eq = it && P.isEquipped(cat, this.sel, this.weapon);
     this.el.action.textContent = !it ? '' : eq ? 'Equipped' : 'Equip';
     this.el.action.disabled = !it || eq;
@@ -17480,6 +17735,7 @@ BR.Inventory = class Inventory {
       tracer: cat === 'tracers' && this.sel ? (this.sel === 'signature' ? BR.Models.resolveTracer(wpn, eqd) : this.sel) : BR.Models.resolveTracer(wpn, eqd),
       gloves: cat === 'gloves' && this.sel ? this.sel : P.gloveFor(wpn),
       showTracer: cat === 'tracers', showHands: cat === 'gloves', hideGun: cat === 'feeds',
+      character: chr ? BR.lookPreview(cat, this.sel) : null,
     });
   }
 };
@@ -17941,8 +18197,9 @@ BR.HUD = class HUD {
       <div class="coins-pill"><i class="coin"></i><span id="shop-coins" class="num">0</span></div>
     </div>
     <div id="shop-tabs" class="seg">
-      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
+      <button data-cat="character" class="tab-char">CHARACTER</button><button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
+    <div id="shop-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button></div>
     <div id="shop-weps" class="chips"></div>
     <div id="shop-grid"></div>
     <div class="shop-foot">
@@ -17963,9 +18220,10 @@ BR.HUD = class HUD {
   <div class="shop-panel metal">
     <div class="shop-head"><div class="ptitle">INVENTORY</div><div class="coins-pill"><span id="inv-count" class="num">0</span>&nbsp;items</div></div>
     <div id="inv-tabs" class="seg">
-      <button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
+      <button data-cat="character" class="tab-char">CHARACTER</button><button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
     <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="tracker">TRACKER</button><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
+    <div id="inv-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button></div>
     <div id="inv-weps" class="chips"></div>
     <div id="inv-grid"></div>
     <div class="shop-foot">
@@ -20157,6 +20415,19 @@ BR.Game = class Game {
   setShopPreview(p) {
     this.shopPrev = p;
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
+    this.shopChar = null;
+    if (p.character) {                                       // v1.26 CHARACTER tab: the full character in the look, holding your gun
+      const L = p.character, fig = BR.charFigure({ o: L.o, m: L.m }, L.wid, L.skin, L.bp), head = L.focus === 'head';
+      const g = new THREE.Group(); g.add(fig.mesh);
+      fig.fake.yaw = Math.PI; fig.mesh.userData.yaw = Math.PI;
+      const k = this.inspect.on ? 1 : 0.75, sc = (head ? 3.6 : 1.2) * k;            // (the shop doesn't zoom out like the inventory)
+      fig.mesh.userData.gun.visible = !head;
+      g.scale.setScalar(sc);
+      g.position.set(0, head ? -1.75 * sc + 0.05 : this.inspect.on ? -1.1 : -0.52, 0);
+      g.rotation.y = head ? 0.5 : 0.35;
+      this.shopPivot.add(g); this.shopGun = null; this.shopChar = fig;
+      return;
+    }
     const wid = p.weapon || 'holoar';
     const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
     const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'bayonet' ? 3.3 : wid === 'tracker' ? 3.0 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'launcher' ? 1.8 : wid === 'revolver' ? 2.4 : 1.6;
@@ -20205,6 +20476,7 @@ BR.Game = class Game {
     }
     this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
     if (this.shopGun) BR.Models.animate(this.shopGun, this.time);
+    if (this.shopChar) { const f = this.shopChar.fake; f.pitch = -0.06 + Math.sin(this.time * 0.9) * 0.04; BR.Actor.prototype.syncMesh.call(f, dt); }
     const ch = this.shopGun && this.shopGun.userData.charmObj;
     if (ch) ch.rotation.z = Math.sin(this.time * 3) * 0.4;
     // Tracer preview: slow, bright streaks sweeping past the gun
@@ -20288,6 +20560,8 @@ BR.Game = class Game {
     // swapped knives? give the player the newly equipped one
     const p = this.player, mel = BR.Profile.melee();
     if (p && p.slots && p.slots[2] && p.slots[2].id !== mel) { p.slots[2] = BR.Weapons.create(mel); if (p.cur === 2) this.vmr.lastWeapon = null; }
+    if (p && p.mesh && p.mesh.userData.char) { this.scene.remove(p.mesh); p.mesh = null; }      // a new outfit: rebuilt when it's next shown
+    if (BR.Party && BR.Party.relook) BR.Party.relook();
   }
 
   render() {
@@ -20717,7 +20991,7 @@ BR.Game = class Game {
     const P = BR.Profile;
     $('grind-list').innerHTML = P.grindItems().map(e => {
       const [cur, n] = P.grindProgress(e.item), own = P.owns(e.cat, e.id), k = Math.min(1, cur / n);
-      const what = e.cat === 'skins' ? 'CAMO · any gun' : 'BLUEPRINT · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name;
+      const what = e.cat === 'skins' ? 'CAMO · any gun' : e.cat === 'outfits' ? 'OUTFIT · character' : e.cat === 'masks' ? 'MASK · character' : 'BLUEPRINT · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name;
       return `<div class="gr-row${own ? ' own' : ''}"><div class="gr-sw">${shop.swatch(e.cat, e.id, e.item)}</div><div class="gr-main"><div class="gr-top"><b>${e.item.name}</b><span class="rar" style="--r:${({ Epic: '#b06bff', Legendary: '#ffb020', Mythic: '#ff3df2', Exotic: '#39ffd0' })[e.item.rarity] || '#8d97a5'}">${e.item.rarity}</span><i>${what}</i></div>
         <div class="gr-lbl">${e.item.grind.label}</div><div class="gr-bar"><u style="width:${(k * 100).toFixed(1)}%"></u></div></div><div class="gr-n">${own ? 'UNLOCKED' : cur.toLocaleString() + ' / ' + n.toLocaleString()}</div></div>`;
     }).join('');
@@ -20827,7 +21101,7 @@ BR.Game = class Game {
   };
   // ---- Release Case: CS-style reel that decelerates onto the drop
   const RCOL = { Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
-  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed' };
+  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask' };
   const caseCard = (e, extra) => {
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
     const hex = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
@@ -21224,8 +21498,10 @@ BR.Game = class Game {
     // what the other players see of you in the lineup: the gun you'd drop in with, in your camo / blueprint
     look() {
       const Pr = BR.Profile, L = Pr.loadoutGuns(), eq = Pr.data.equip || {};
-      return { wid: L.primary, skin: Pr.skinFor(L.primary), bp: (eq.blueprints || {})[L.primary] || null, lv: Pr.level(), rp: Pr.data.rp || 0, col: P.colorFor(this.myId() || this.myName()) };
+      return { wid: L.primary, skin: Pr.skinFor(L.primary), bp: (eq.blueprints || {})[L.primary] || null, lv: Pr.level(), rp: Pr.data.rp || 0, col: P.colorFor(this.myId() || this.myName()), ch: Pr.charLook ? Pr.charLook() : null };
     },
+    // your look changed (inventory): show it to the party
+    relook() { const p = this.party; if (!p) return; if (p.leader) { const me = p.members.find(m => m.me); if (me) me.look = this.look(); this.pushParty(); } else p.sess.send('look', { look: this.look() }); },
     colorFor(key) { let h = 0; for (const c of String(key)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return new THREE.Color().setHSL((h % 360) / 360, 0.55, 0.55).getHex(); },
 
     // ---------------------------------------------------------------- presence
@@ -21420,7 +21696,7 @@ BR.Game = class Game {
       while (joined.length < H - 1 && Date.now() - t0 < 12000) await new Promise(r => setTimeout(r, 150));
       if (BR.Net.session !== S) return false;
       const st = BR.game.settings, squad = Math.min(4, Math.max(BR.squadFor ? BR.squadFor(modeId) : 1, joined.length + 1, 2));
-      const cfg = { seed: Math.floor(Math.random() * 2 ** 31), res, squad, bots: res ? 23 : st.bots, diff: st.difficulty, humans: [{ pid: 'H', name: this.myName() }].concat(joined) };
+      const cfg = { seed: Math.floor(Math.random() * 2 ** 31), res, squad, bots: res ? 23 : st.bots, diff: st.difficulty, humans: [{ pid: 'H', name: this.myName(), ch: BR.Profile.charLook() }].concat(joined.map(j => { const pm = this.party && this.party.members.find(x => x.name === j.name && !x.me); return Object.assign({}, j, { ch: pm && pm.look && pm.look.ch || null }); })) };
       const N = BR.BRNet.begin(BR.game, S, cfg);
       S.send('brstart', N.startMsg());
       if (joined.length < H - 1) BR.game.hud.toast('Some of your party didn’t connect in time', 2600);
@@ -21518,7 +21794,7 @@ BR.PartyStage = (function () {
   // a menu figure: the in-game character (actors.js) holding the member's gun in their finish
   const fig = (m, i) => {
     const L = m.look || {}, wid = BR.CONFIG.weapons[L.wid] ? L.wid : 'rifle', yaw = Math.PI - 0.62 + (i === 0 ? 0 : i % 2 ? 0.12 : -0.12);     // three-quarter view toward the camera: the gun shows side-on
-    const fake = { color: L.col || 0x8a6cff, yaw, pitch: -0.05, downed: false, weapon: { id: wid },
+    const fake = { color: L.col || 0x8a6cff, look: L.ch && typeof L.ch === 'object' ? { o: String(L.ch.o || 'default'), m: String(L.ch.m || 'default') } : null, yaw, pitch: -0.05, downed: false, weapon: { id: wid },
       mover: { pos: new THREE.Vector3(), vel: new THREE.Vector3(), speedH: 0, dropping: false, chute: false, sliding: false, crouched: false, onGround: true, wallRunning: false, wallN: new THREE.Vector3() } };
     fake.mover.pos.set(SLOT_X[i], 0, -SLOT_Z[i]);
     const mesh = BR.Actor.prototype.buildMesh.call(fake); fake.mesh = mesh; mesh.userData.yaw = yaw;
@@ -21608,6 +21884,10 @@ BR.BRNet = class BRNet {
       if (k < others.length) {                                       // a party member: a puppet of their own browser
         const i = others[k]; b.netId = i; b.owner = H[i].pid; b.name = H[i].name; b.human = true; b.local = false;
         b.brain = null; b.netProxy = new BR.NetProxy();
+        const ch = H[i].ch; if (ch && typeof ch === 'object' && b.mesh) {        // wear the outfit + mask they equipped
+          b.look = { o: String(ch.o || 'default'), m: String(ch.m || 'default') };
+          const old = b.mesh; b.mesh = b.buildMesh(); b.mesh.position.copy(old.position); b.mesh.visible = old.visible; if (old.parent) { old.parent.add(b.mesh); old.parent.remove(old); }
+        }
       } else {
         b.netId = H.length + (k - others.length); b.owner = H[0].pid; b.local = this.host;
         if (!this.host) { b.brain = null; b.netProxy = new BR.NetProxy(); }

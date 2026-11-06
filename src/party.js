@@ -39,8 +39,10 @@
     // what the other players see of you in the lineup: the gun you'd drop in with, in your camo / blueprint
     look() {
       const Pr = BR.Profile, L = Pr.loadoutGuns(), eq = Pr.data.equip || {};
-      return { wid: L.primary, skin: Pr.skinFor(L.primary), bp: (eq.blueprints || {})[L.primary] || null, lv: Pr.level(), rp: Pr.data.rp || 0, col: P.colorFor(this.myId() || this.myName()) };
+      return { wid: L.primary, skin: Pr.skinFor(L.primary), bp: (eq.blueprints || {})[L.primary] || null, lv: Pr.level(), rp: Pr.data.rp || 0, col: P.colorFor(this.myId() || this.myName()), ch: Pr.charLook ? Pr.charLook() : null };
     },
+    // your look changed (inventory): show it to the party
+    relook() { const p = this.party; if (!p) return; if (p.leader) { const me = p.members.find(m => m.me); if (me) me.look = this.look(); this.pushParty(); } else p.sess.send('look', { look: this.look() }); },
     colorFor(key) { let h = 0; for (const c of String(key)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return new THREE.Color().setHSL((h % 360) / 360, 0.55, 0.55).getHex(); },
 
     // ---------------------------------------------------------------- presence
@@ -235,7 +237,7 @@
       while (joined.length < H - 1 && Date.now() - t0 < 12000) await new Promise(r => setTimeout(r, 150));
       if (BR.Net.session !== S) return false;
       const st = BR.game.settings, squad = Math.min(4, Math.max(BR.squadFor ? BR.squadFor(modeId) : 1, joined.length + 1, 2));
-      const cfg = { seed: Math.floor(Math.random() * 2 ** 31), res, squad, bots: res ? 23 : st.bots, diff: st.difficulty, humans: [{ pid: 'H', name: this.myName() }].concat(joined) };
+      const cfg = { seed: Math.floor(Math.random() * 2 ** 31), res, squad, bots: res ? 23 : st.bots, diff: st.difficulty, humans: [{ pid: 'H', name: this.myName(), ch: BR.Profile.charLook() }].concat(joined.map(j => { const pm = this.party && this.party.members.find(x => x.name === j.name && !x.me); return Object.assign({}, j, { ch: pm && pm.look && pm.look.ch || null }); })) };
       const N = BR.BRNet.begin(BR.game, S, cfg);
       S.send('brstart', N.startMsg());
       if (joined.length < H - 1) BR.game.hud.toast('Some of your party didn’t connect in time', 2600);
@@ -333,7 +335,7 @@ BR.PartyStage = (function () {
   // a menu figure: the in-game character (actors.js) holding the member's gun in their finish
   const fig = (m, i) => {
     const L = m.look || {}, wid = BR.CONFIG.weapons[L.wid] ? L.wid : 'rifle', yaw = Math.PI - 0.62 + (i === 0 ? 0 : i % 2 ? 0.12 : -0.12);     // three-quarter view toward the camera: the gun shows side-on
-    const fake = { color: L.col || 0x8a6cff, yaw, pitch: -0.05, downed: false, weapon: { id: wid },
+    const fake = { color: L.col || 0x8a6cff, look: L.ch && typeof L.ch === 'object' ? { o: String(L.ch.o || 'default'), m: String(L.ch.m || 'default') } : null, yaw, pitch: -0.05, downed: false, weapon: { id: wid },
       mover: { pos: new THREE.Vector3(), vel: new THREE.Vector3(), speedH: 0, dropping: false, chute: false, sliding: false, crouched: false, onGround: true, wallRunning: false, wallN: new THREE.Vector3() } };
     fake.mover.pos.set(SLOT_X[i], 0, -SLOT_Z[i]);
     const mesh = BR.Actor.prototype.buildMesh.call(fake); fake.mesh = mesh; mesh.userData.yaw = yaw;

@@ -44,6 +44,8 @@ function solveArm(arm, target, side) {
   fore.applyQuaternion(_ikQ.copy(arm.sh.quaternion).invert());
   arm.el.quaternion.setFromUnitVectors(_DOWN, fore);
 }
+// v1.26: whose look an actor wears ({ o: outfit id, m: mask id }): its own (party members, previews) or, for the player, the profile's
+BR.lookOf = a => (a && a.look) || (a && a.isPlayer && BR.Profile && BR.Profile.data && BR.Profile.charLook ? BR.Profile.charLook() : null);
 // v1.25: the imported character's shared geometry (built once from BR.CHAR_DATA) + a woven fabric detail map
 let charCache = null;
 function charAssets() {
@@ -57,6 +59,13 @@ function charAssets() {
   const team = dec(D.team, Uint8Array), cb = col.array, base = new Float32Array(cb.length), teamIdx = [];
   for (let i = 0; i < cb.length; i++) base[i] = cb[i] / 255;
   for (let i = 0; i < team.length; i++) if (team[i]) teamIdx.push(i);
+  // the other clothing regions by their base colour (pants / boots / gloves), for outfits that recolour them
+  const reg = { pants: [], boots: [], gloves: [] };
+  for (let i = 0; i < team.length; i++) if (!team[i]) { const r = col.array[i * 3]; const L = r === 56 ? reg.pants : r === 41 ? reg.boots : r === 26 ? reg.gloves : null; if (L) L.push(i); }
+  // the index split in two groups: jacket triangles first (patterned outfits give them their own material), then the rest
+  const ia = geoAll.index.array, jt = [], rt = [];
+  for (let t = 0; t < ia.length; t += 3) (team[ia[t]] && team[ia[t + 1]] && team[ia[t + 2]] ? jt : rt).push(ia[t], ia[t + 1], ia[t + 2]);
+  const split = { index: new THREE.BufferAttribute(new Uint16Array(jt.concat(rt)), 1), nj: jt.length, n: ia.length };
   const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d');
   x.fillStyle = '#d8d8d8'; x.fillRect(0, 0, 64, 64);
   for (let yy = 0; yy < 64; yy += 2) for (let xx = 0; xx < 64; xx += 2) { const v = 196 + ((xx + yy) % 4 ? 18 : -10) + Math.random() * 30; x.fillStyle = `rgb(${v},${v},${v})`; x.fillRect(xx, yy, 2, 2); }
@@ -82,7 +91,100 @@ function charAssets() {
   for (const dx of [-12, 12]) { m2.fillStyle = '#efe9e2'; m2.beginPath(); m2.ellipse(ex + dx, ey + 1, 4.6, 2.5, 0, 0, Math.PI * 2); m2.fill();
     m2.fillStyle = '#3a2a20'; m2.beginPath(); m2.arc(ex + dx, ey + 1, 2.0, 0, Math.PI * 2); m2.fill(); m2.fillStyle = '#000'; m2.beginPath(); m2.arc(ex + dx, ey + 1, 1.0, 0, Math.PI * 2); m2.fill(); }
   const maskTex = new THREE.CanvasTexture(mc);
-  return (charCache = { geo: geoAll, base, teamIdx, fabric, mask: mg, maskTex });
+  return (charCache = { geo: geoAll, base, teamIdx, reg, split, fabric, mask: mg, maskTex });
+}
+
+// v1.26 CHARACTER COSMETICS: outfits (jacket / pants / boots / gloves colours, a jacket pattern, a glowing trim)
+// and masks (knit colour + print, eye style, add-ons). Textures are painted once per item and cached.
+const lookTex = {};
+function rngFor(s) { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296; }
+const hexCss = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
+// paint a 256² tile: pattern `pat` with colours [a, b, c, d] (the weave is laid over it so it still reads as cloth)
+function paintPattern(x, pat, cols, R, S) {
+  const [a, b, c, d] = cols.map(hexCss);
+  x.fillStyle = a; x.fillRect(0, 0, S, S);
+  const blob = (col, n, r0, r1) => { x.fillStyle = col; for (let i = 0; i < n; i++) { const cx = R() * S, cy = R() * S, r = r0 + R() * (r1 - r0); for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { x.beginPath(); x.ellipse(cx + ox, cy + oy, r * (1 + R() * 0.8), r * (0.5 + R() * 0.5), R() * 3, 0, 7); x.fill(); } } };
+  if (pat === 'camo') { blob(b, 16, 14, 34); blob(c, 12, 10, 26); if (d) blob(d, 8, 6, 16); }
+  else if (pat === 'digital') { const q = 8; for (const [col, n] of [[b, 70], [c, 50], [d || c, 30]]) { x.fillStyle = col; for (let i = 0; i < n; i++) { const px = Math.floor(R() * S / q) * q, py = Math.floor(R() * S / q) * q, w = (1 + Math.floor(R() * 4)) * q, h = (1 + Math.floor(R() * 3)) * q; x.fillRect(px, py, w, h); x.fillRect(px - S, py, w, h); x.fillRect(px, py - S, w, h); } } }
+  else if (pat === 'tiger') { x.fillStyle = b; for (let i = 0; i < 9; i++) { const y0 = (i + R() * 0.5) * S / 9; x.beginPath(); x.moveTo(-10, y0); for (let t = 0; t <= S + 20; t += 16) x.lineTo(t, y0 + Math.sin(t * 0.05 + i) * 9 + (R() - 0.5) * 6); for (let t = S + 20; t >= -10; t -= 16) x.lineTo(t, y0 + 6 + Math.sin(t * 0.05 + i) * 9 + R() * 8 * (1 - Math.abs(t / S - 0.5))); x.fill(); } }
+  else if (pat === 'stripes') { x.fillStyle = b; for (let i = -S; i < S * 2; i += 40) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 18, 0); x.lineTo(i + 18 - S, S); x.lineTo(i - S, S); x.fill(); } }
+  else if (pat === 'hazard') { x.fillStyle = b; for (let i = -S; i < S * 2; i += 64) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 32, 0); x.lineTo(i + 32 - S, S); x.lineTo(i - S, S); x.fill(); } }
+  else if (pat === 'splatter') { blob(b, 26, 2, 9); blob(c, 14, 1, 5); }
+  else if (pat === 'galaxy') { const gr = x.createLinearGradient(0, 0, S, S); gr.addColorStop(0, a); gr.addColorStop(0.5, b); gr.addColorStop(1, a); x.fillStyle = gr; x.fillRect(0, 0, S, S); x.globalAlpha = 0.5; blob(c, 6, 20, 50); x.globalAlpha = 1; x.fillStyle = '#fff'; for (let i = 0; i < 120; i++) x.fillRect(R() * S, R() * S, R() < 0.1 ? 2 : 1, R() < 0.1 ? 2 : 1); }
+  else if (pat === 'gold') { for (let i = 0; i < 40; i++) { const gr = x.createLinearGradient(0, i * 7, S, i * 7 + 40); gr.addColorStop(0, i % 2 ? a : b); gr.addColorStop(1, c); x.globalAlpha = 0.35; x.fillStyle = gr; x.fillRect(0, i * 7, S, 7); } x.globalAlpha = 1; }
+  else if (pat === 'lava') { blob(b, 18, 10, 30); x.strokeStyle = c; x.lineWidth = 3; for (let i = 0; i < 18; i++) { x.beginPath(); let px = R() * S, py = R() * S; x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (R() - 0.5) * 50; py += (R() - 0.5) * 50; x.lineTo(px, py); } x.stroke(); } }
+  else if (pat === 'ghillie') { for (let i = 0; i < 900; i++) { x.strokeStyle = [b, c, d || b][i % 3]; x.lineWidth = 1 + R() * 2; const px = R() * S, py = R() * S; x.beginPath(); x.moveTo(px, py); x.lineTo(px + (R() - 0.5) * 10, py + 6 + R() * 12); x.stroke(); } }
+  else if (pat === 'split') { x.fillStyle = b; x.fillRect(S / 2, 0, S / 2, S); x.fillStyle = c; x.fillRect(S / 2 - 4, 0, 8, S); }
+  // the weave on top
+  for (let yy = 0; yy < S; yy += 2) for (let xx = 0; xx < S; xx += 2) if ((xx + yy) % 4 === 0) { x.fillStyle = `rgba(0,0,0,${0.05 + R() * 0.06})`; x.fillRect(xx, yy, 2, 2); }
+}
+// the glowing layer: black, with the glow lines in white (tinted by the item's glow colour)
+function paintGlow(x, kind, R, S) {
+  x.fillStyle = '#000'; x.fillRect(0, 0, S, S); x.strokeStyle = '#fff'; x.fillStyle = '#fff'; x.lineCap = 'round';
+  if (kind === 'circuit') { x.lineWidth = 2.5; for (let i = 0; i < 16; i++) { let px = Math.round(R() * 8) * 32, py = Math.round(R() * 8) * 32; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 4; k++) { if (R() < 0.5) px += (R() < 0.5 ? -1 : 1) * 32 * (1 + Math.floor(R() * 2)); else py += (R() < 0.5 ? -1 : 1) * 32 * (1 + Math.floor(R() * 2)); x.lineTo(px, py); } x.stroke(); x.beginPath(); x.arc(px, py, 4, 0, 7); x.fill(); } }
+  else if (kind === 'cracks') { x.lineWidth = 3; for (let i = 0; i < 16; i++) { x.beginPath(); let px = R() * S, py = R() * S; x.moveTo(px, py); for (let k = 0; k < 7; k++) { px += (R() - 0.5) * 46; py += (R() - 0.5) * 46; x.lineTo(px, py); } x.stroke(); } }
+  else if (kind === 'stars') { for (let i = 0; i < 90; i++) { const r = R() < 0.12 ? 2.4 : 1.1; x.beginPath(); x.arc(R() * S, R() * S, r, 0, 7); x.fill(); } }
+  else if (kind === 'seams') { x.lineWidth = 3; for (let i = 0; i < S; i += 64) { x.beginPath(); x.moveTo(i + 8, 0); x.lineTo(i + 8, S); x.stroke(); x.beginPath(); x.moveTo(0, i + 40); x.lineTo(S, i + 40); x.stroke(); } }
+  else if (kind === 'chevron') { x.lineWidth = 6; for (let y = 0; y < S + 64; y += 64) { x.beginPath(); x.moveTo(0, y); x.lineTo(S / 2, y - 32); x.lineTo(S, y); x.stroke(); } }
+}
+function outfitTex(id, O) {
+  if (lookTex['o:' + id]) return lookTex['o:' + id];
+  const S = 256, R = rngFor(id), out = {};
+  if (O.pat || O.glowPat) { const cv = document.createElement('canvas'); cv.width = cv.height = S; paintPattern(cv.getContext('2d'), O.pat || 'plain', O.cols || [0xffffff, 0xffffff, 0xffffff], R, S);
+    out.map = new THREE.CanvasTexture(cv); out.map.wrapS = out.map.wrapT = THREE.RepeatWrapping; out.map.repeat.set(O.scale || 0.3, O.scale || 0.3); }
+  if (O.glowPat) { const cv = document.createElement('canvas'); cv.width = cv.height = S; paintGlow(cv.getContext('2d'), O.glowPat, R, S);
+    out.glow = new THREE.CanvasTexture(cv); out.glow.wrapS = out.glow.wrapT = THREE.RepeatWrapping; out.glow.repeat.set(O.scale || 0.3, O.scale || 0.3); }
+  return (lookTex['o:' + id] = out);
+}
+// a mask texture (256x128, front at u 0.75) + its glow layer
+function maskTex(id, K) {
+  if (lookTex['m:' + id]) return lookTex['m:' + id];
+  const W = 256, H = 128, R = rngFor(id), cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
+  const gc = document.createElement('canvas'); gc.width = W; gc.height = H; const gx = gc.getContext('2d'); gx.fillStyle = '#000'; gx.fillRect(0, 0, W, H);
+  const base = hexCss(K.base !== undefined ? K.base : 0x17181b), b = hexCss(K.c2 !== undefined ? K.c2 : 0xffffff);
+  x.fillStyle = base; x.fillRect(0, 0, W, H);
+  if (K.pat && K.pat !== 'skull' && K.pat !== 'grin') { const t = document.createElement('canvas'); t.width = t.height = 128; paintPattern(t.getContext('2d'), K.pat, [K.base || 0x17181b, K.c2 || 0xffffff, K.c3 || K.c2 || 0x888888, K.c3], R, 128); x.drawImage(t, 0, 0, 128, 128); x.drawImage(t, 128, 0, 128, 128); }
+  for (let yy = 0; yy < H; yy += 2) for (let xx = 0; xx < W; xx += 3) if ((xx / 3 + yy / 2) % 2) { x.fillStyle = 'rgba(255,255,255,0.035)'; x.fillRect(xx, yy, 2, 2); }      // knit rib
+  const ex = 0.75 * W, ey = 0.44 * H;
+  if (K.pat === 'skull') {                                            // a bone-white skull print around the eye opening
+    x.fillStyle = b; x.beginPath(); x.ellipse(ex, ey + 4, 44, 34, 0, 0, 7); x.fill();
+    x.fillStyle = base; x.beginPath(); x.moveTo(ex - 3, ey + 16); x.lineTo(ex + 3, ey + 16); x.lineTo(ex, ey + 10); x.fill();   // nose
+    x.fillRect(ex - 22, ey + 26, 44, 3); for (let i = -20; i <= 20; i += 6) x.fillRect(ex + i, ey + 22, 2, 12);                   // teeth
+  }
+  if (K.pat === 'grin') {                                             // a stitched smile across the mouth
+    x.strokeStyle = b; x.lineWidth = 5; x.beginPath(); x.arc(ex, ey + 6, 30, 0.35, Math.PI - 0.35); x.stroke();
+    x.lineWidth = 3; for (let a = 0.45; a < Math.PI - 0.4; a += 0.22) { const px = ex + Math.cos(a) * 30, py = ey + 6 + Math.sin(a) * 30; x.beginPath(); x.moveTo(px - 3, py - 4); x.lineTo(px + 3, py + 4); x.stroke(); }
+    if (K.glow) { gx.strokeStyle = '#fff'; gx.lineWidth = 3; gx.beginPath(); gx.arc(ex, ey + 6, 30, 0.35, Math.PI - 0.35); gx.stroke(); }
+  }
+  if (K.trim !== undefined) { x.fillStyle = hexCss(K.trim); x.fillRect(0, H - 14, W, 6); x.fillRect(0, 4, W, 4); if (K.glow) { gx.fillStyle = '#fff'; gx.fillRect(0, H - 14, W, 6); } }
+  // the eye opening
+  x.fillStyle = '#0c0d0f'; x.beginPath(); x.ellipse(ex, ey, 34, 11, 0, 0, 7); x.fill();
+  if (K.eyes === 'glow') {                                            // no face inside: two glowing eyes
+    x.fillStyle = '#050505'; x.beginPath(); x.ellipse(ex, ey, 29, 8, 0, 0, 7); x.fill();
+    for (const dx of [-12, 12]) { x.fillStyle = hexCss(K.eyeCol || 0xff2030); x.beginPath(); x.ellipse(ex + dx, ey + 1, 6, 3, 0, 0, 7); x.fill();
+      gx.fillStyle = '#fff'; gx.beginPath(); gx.ellipse(ex + dx, ey + 1, 6, 3, 0, 0, 7); gx.fill(); }
+  } else {
+    x.fillStyle = '#b4866a'; x.beginPath(); x.ellipse(ex, ey, 29, 8, 0, 0, 7); x.fill();
+    x.fillStyle = 'rgba(80,50,35,0.35)'; x.fillRect(ex - 29, ey - 8, 58, 3);
+    for (const dx of [-12, 12]) { x.fillStyle = '#efe9e2'; x.beginPath(); x.ellipse(ex + dx, ey + 1, 4.6, 2.5, 0, 0, 7); x.fill();
+      x.fillStyle = '#3a2a20'; x.beginPath(); x.arc(ex + dx, ey + 1, 2.0, 0, 7); x.fill(); x.fillStyle = '#000'; x.beginPath(); x.arc(ex + dx, ey + 1, 1.0, 0, 7); x.fill(); }
+  }
+  const out = { map: new THREE.CanvasTexture(cv), glow: K.glow || K.eyes === 'glow' ? new THREE.CanvasTexture(gc) : null };
+  return (lookTex['m:' + id] = out);
+}
+// add-ons on the head joint (positions are relative to the mask's centre)
+function maskAddon(kind, K) {
+  const g = new THREE.Group(), gl = K.glow || K.eyeCol || 0x1de9ff;
+  const met = new THREE.MeshPhongMaterial({ color: K.addCol || 0x22252a, shininess: 80, specular: 0x888888 });
+  const neon = new THREE.MeshBasicMaterial({ color: gl });
+  if (kind === 'visor') { const v = new THREE.Mesh(new THREE.CylinderGeometry(0.112, 0.112, 0.035, 24, 1, true, Math.PI * 0.62, Math.PI * 0.76), neon); v.position.set(0, 0.008, 0); v.scale.set(1.04, 1, 1.06); g.add(v); }
+  else if (kind === 'goggles') { for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.008, 6, 16), met); r.position.set(s * 0.04, 0.025, -0.112); g.add(r); const l = new THREE.Mesh(new THREE.CircleGeometry(0.024, 16), neon); l.position.set(s * 0.04, 0.025, -0.114); l.rotation.y = Math.PI; g.add(l); }
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.108, 0.007, 4, 32), met); strap.rotation.x = Math.PI / 2; strap.position.y = 0.025; strap.scale.z = 1.12; g.add(strap); }
+  else if (kind === 'horns') { for (const s of [-1, 1]) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.12, 8), met); h.position.set(s * 0.07, 0.12, -0.02); h.rotation.set(-0.35, 0, -s * 0.55); g.add(h); } }
+  else if (kind === 'halo') { const h = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.009, 8, 36), neon); h.rotation.x = Math.PI / 2; h.position.y = 0.2; h.userData.spin = true; g.add(h); }
+  else if (kind === 'crown') { for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, s = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.05, 4), met); s.position.set(Math.cos(a) * 0.075, 0.15, Math.sin(a) * 0.075); g.add(s); } const band = new THREE.Mesh(new THREE.TorusGeometry(0.077, 0.01, 4, 28), met); band.rotation.x = Math.PI / 2; band.position.y = 0.125; g.add(band); }
+  else if (kind === 'antenna') { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.14, 4), met); s.position.set(0.06, 0.16, 0.02); s.rotation.z = -0.25; g.add(s); const t = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), neon); t.position.set(0.078, 0.23, 0.02); g.add(t); }
+  return g;
 }
 
 function sharedGeo() {
@@ -334,15 +436,33 @@ BR.Actor = class Actor {
     const colA = new THREE.BufferAttribute(new Float32Array(C.base), 3); geo.setAttribute('color', colA);
     const mat = new THREE.MeshLambertMaterial({ vertexColors: true, map: C.fabric, skinning: true });
     // existing code sets team colours with mat.color.setHex(...): route that into the jacket's vertex colours instead
-    const paint = hex => { const c = new THREE.Color(hex), a = colA.array; for (const i of C.teamIdx) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } colA.needsUpdate = true; };
-    mat.color.setHex = function (hex) { paint(hex); return this; };
+    const fill = (idx, hex) => { const c = new THREE.Color(hex), a = colA.array; for (const i of idx) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } colA.needsUpdate = true; };
+    const paint = hex => fill(C.teamIdx, hex);
+    // v1.26: the equipped outfit (players and party members) overrides the team colour
+    const own = (T, k) => T && k !== 'default' && Object.prototype.hasOwnProperty.call(T, k) ? T[k] : null;
+    const look = BR.lookOf(this), O = look && own(BR.OUTFITS, look.o), K = look && own(BR.MASKS, look.m);
+    mat.color.setHex = function (hex) { if (!O) paint(hex); return this; };
     mat.clone = function () { const m = THREE.MeshLambertMaterial.prototype.clone.call(this); m.color.setHex = mat.color.setHex; m.clone = mat.clone; return m; };     // (the enemy highlight clones it)
-    paint(this.color !== undefined ? this.color : 0x8899aa);
-    const sm = new THREE.SkinnedMesh(geo, mat); sm.bind(skel); sm.userData.noMerge = true; g.add(sm);
-    const mat2 = null;
-    // the ski mask head (smooth knit, eye opening) on the head joint
-    const mat3 = new THREE.MeshLambertMaterial({ map: C.maskTex });
+    paint(O ? O.jacket : this.color !== undefined ? this.color : 0x8899aa);
+    let mat2 = null;
+    if (O) {
+      if (O.pants !== undefined) fill(C.reg.pants, O.pants);
+      if (O.boots !== undefined) fill(C.reg.boots, O.boots);
+      if (O.gloves !== undefined) fill(C.reg.gloves, O.gloves);
+      if (O.pat || O.glowPat) {                                       // the jacket gets its own patterned / glowing material
+        const T = outfitTex(look.o, O);
+        mat2 = new THREE.MeshLambertMaterial({ vertexColors: true, map: T.map, skinning: true, emissive: T.glow ? O.glow : 0x000000, emissiveMap: T.glow || null });
+        mat2.userData.emi = T.glow ? O.glow : 0;
+        geo.setIndex(C.split.index); geo.addGroup(0, C.split.nj, 0); geo.addGroup(C.split.nj, C.split.n - C.split.nj, 1);
+      }
+    }
+    const sm = new THREE.SkinnedMesh(geo, mat2 ? [mat2, mat] : mat); sm.bind(skel); sm.userData.noMerge = true; g.add(sm);
+    // the ski mask head (smooth knit, eye opening) on the head joint, in the equipped mask's colours
+    const MT = K ? maskTex(look.m, K) : null;
+    const mat3 = new THREE.MeshLambertMaterial({ map: MT ? MT.map : C.maskTex, emissive: MT && MT.glow ? (K.glow || K.eyeCol || 0xff2030) : 0x000000, emissiveMap: MT && MT.glow || null });
+    mat3.userData.emi = MT && MT.glow ? (K.glow || K.eyeCol || 0xff2030) : 0;
     const mk = BR.CHAR_DATA.mask, maskM = new THREE.Mesh(C.mask, mat3); maskM.position.set(mk.c[0], mk.c[1] - 1.7, mk.c[2]); head.add(maskM);
+    if (K && K.add) maskM.add(maskAddon(K.add, K));
     for (const o of [AR.sh, AL.sh, AR.el, AL.el, R.hip, L.hip, R.knee, L.knee]) o.rotation.set(0, 0, 0);     // back to the rig's rest pose
     const chute = BR.Models.parachute(this.color, 0xf2f2f2);
     chute.position.y = 1.5; chute.visible = false; g.add(chute);
@@ -505,7 +625,7 @@ BR.Actor = class Actor {
     const u = this.mesh.userData, mats = [u.mat, u.mat2, u.mat3].filter(Boolean);
     for (const mat of mats) { mat.emissive.setHex(0xffffff); mat.emissiveIntensity = 0.7; }
     clearTimeout(this._flashTO);
-    this._flashTO = setTimeout(() => { for (const mat of mats) mat.emissive.setHex(0x000000); }, 70);
+    this._flashTO = setTimeout(() => { for (const mat of mats) { mat.emissive.setHex(mat.userData.emi || 0); mat.emissiveIntensity = 1; } }, 70);
   }
 
   // Ragdoll-lite: topple over

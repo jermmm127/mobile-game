@@ -5,6 +5,15 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.26.0', date: '2026-11-06', title: 'Character cosmetics', notes: [
+    'New CHARACTER section in the Inventory and the Shop. Pick OUTFIT or MASK, see your operator in 3D (drag to spin, pinch to zoom) holding your primary gun, and equip.',
+    '21 outfits that recolour the jacket, pants, boots and gloves. Some have prints (desert, woodland and ghillie camo, arctic digital, tiger, hazard, gold, galaxy, lava) and the rarest have glowing trims (neon circuits, magma cracks, starfields, light seams).',
+    '16 masks: knit colours, tiger and hazard prints, skull, a stitched grin, gold plate, nebula, glowing eyes, and add-ons such as goggles, a neon visor, demon horns, a floating halo, a crown and an antenna.',
+    'Buy them in the Shop, or get the exclusives from cases. The Release Case has Cobalt Strike, Hazmat, Jungle Phantom, Neon Runner, Magma Core, Stitched Grin, Neon Visor and Demon. The Nova Case has Golden Emperor, Cyber Ronin, Galaxy Walker, Void Reaper, Gold Plated, Nebula and Seraph.',
+    'Mastery unlocks (see Challenges): Marksman Ghillie (50 Sniper headshot kills), Blade Dancer (100 knife kills), Dead Walker (1,000 zombies), Champion (25 wins), Headhunter mask (500 headshot kills), Undying mask (round 30 in Zombies) and Kingpin crown (50 wins).',
+    'Your look shows on your victory celebration, on the party lineup in the menu, and to your party in online Battle Royale and Resurgence. Bots keep their team colours.',
+    'Every outfit and mask has a rendered picture on its card, in the case reels and on the challenge list.',
+  ] },
   { v: '1.25.1', date: '2026-11-06', title: 'Operator clean-up + your arms', notes: [
     'Character model fixed: a smoother body with more detail, no more spikes or shards on the jacket, sleeves, collar or waist when the arms move, and clean colour blends between the jacket, pants, boots and gloves.',
     'New head: a clean black knit ski mask with a proper eye opening, instead of the old lumpy face.',

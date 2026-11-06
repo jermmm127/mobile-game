@@ -1299,6 +1299,19 @@ BR.Game = class Game {
   setShopPreview(p) {
     this.shopPrev = p;
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
+    this.shopChar = null;
+    if (p.character) {                                       // v1.26 CHARACTER tab: the full character in the look, holding your gun
+      const L = p.character, fig = BR.charFigure({ o: L.o, m: L.m }, L.wid, L.skin, L.bp), head = L.focus === 'head';
+      const g = new THREE.Group(); g.add(fig.mesh);
+      fig.fake.yaw = Math.PI; fig.mesh.userData.yaw = Math.PI;
+      const k = this.inspect.on ? 1 : 0.75, sc = (head ? 3.6 : 1.2) * k;            // (the shop doesn't zoom out like the inventory)
+      fig.mesh.userData.gun.visible = !head;
+      g.scale.setScalar(sc);
+      g.position.set(0, head ? -1.75 * sc + 0.05 : this.inspect.on ? -1.1 : -0.52, 0);
+      g.rotation.y = head ? 0.5 : 0.35;
+      this.shopPivot.add(g); this.shopGun = null; this.shopChar = fig;
+      return;
+    }
     const wid = p.weapon || 'holoar';
     const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
     const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'bayonet' ? 3.3 : wid === 'tracker' ? 3.0 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'launcher' ? 1.8 : wid === 'revolver' ? 2.4 : 1.6;
@@ -1347,6 +1360,7 @@ BR.Game = class Game {
     }
     this.shopFloor.position.x = this.shopPivot.position.x; this.shopFloor.position.y = this.shopBaseY - 0.55;
     if (this.shopGun) BR.Models.animate(this.shopGun, this.time);
+    if (this.shopChar) { const f = this.shopChar.fake; f.pitch = -0.06 + Math.sin(this.time * 0.9) * 0.04; BR.Actor.prototype.syncMesh.call(f, dt); }
     const ch = this.shopGun && this.shopGun.userData.charmObj;
     if (ch) ch.rotation.z = Math.sin(this.time * 3) * 0.4;
     // Tracer preview: slow, bright streaks sweeping past the gun
@@ -1430,6 +1444,8 @@ BR.Game = class Game {
     // swapped knives? give the player the newly equipped one
     const p = this.player, mel = BR.Profile.melee();
     if (p && p.slots && p.slots[2] && p.slots[2].id !== mel) { p.slots[2] = BR.Weapons.create(mel); if (p.cur === 2) this.vmr.lastWeapon = null; }
+    if (p && p.mesh && p.mesh.userData.char) { this.scene.remove(p.mesh); p.mesh = null; }      // a new outfit: rebuilt when it's next shown
+    if (BR.Party && BR.Party.relook) BR.Party.relook();
   }
 
   render() {

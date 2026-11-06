@@ -1689,3 +1689,10 @@ body.menulite #menu .tagline { font-size: 12px; }
 #pt-stage, #pt-slots { right: 0; top: 13%; width: 51%; height: 87%; }
 @media (max-width: 760px) { #pt-stage, #pt-slots { width: 51%; height: 87%; } body.menulite #menu .mc-change span, body.menulite #menu .mc-change { display: none; } }
 body.menulite #menu .mc-change { display: none; }      /* the whole card opens the mode list; the pill only squeezed the name */
+/* v1.26 CHARACTER tab: rendered outfit / mask pictures */
+.card .sw.chr { height: 74px; background-size: contain, 100% 100%; background-repeat: no-repeat; background-position: center; background-color: rgba(0,0,0,0.25); }
+.card .sw.chr.mk { height: 60px; }
+.cs-card .sw.chr { height: 56px; background-color: transparent; }
+.gr-sw .sw.chr { height: 42px; }
+#shop-tabs .tab-char, #inv-tabs .tab-char { color: #ffd88a; }
+@media (orientation: landscape) and (max-height: 500px) { .card .sw.chr { height: 52px; } .card .sw.chr.mk { height: 44px; } }

@@ -1414,6 +1414,43 @@ const server = http.createServer((req, res) => {
     g.toMenu(); BR.AntiCheat._testing = false; Object.assign(L, keepL);
     return out;
   });
+  // v1.26: CHARACTER cosmetics: outfits + masks (shop, cases, mastery), worn by your character, party lineup + preview
+  const v126 = await page.evaluate(async () => {
+    const g = BR.game, P = BR.Profile, out = {}, keep = JSON.stringify({ owned: P.data.owned, equip: P.data.equip, coins: P.data.coins, dev: P.data.dev, grind: P.data.grind });
+    const O = BR.OUTFITS, K = BR.MASKS, ids = T => Object.keys(T).filter(k => k !== 'default');
+    out.tables = ids(O).length >= 20 && ids(K).length >= 15;
+    const sold = T => ids(T).filter(k => !T[k].caseOnly && !T[k].grind && T[k].price > 0).length;
+    out.shop = sold(O) >= 6 && sold(K) >= 6;
+    out.cases = ['release', 'nova'].every(c => BR.CaseItems.all(c).some(e => e.cat === 'outfits') && BR.CaseItems.all(c).some(e => e.cat === 'masks'));
+    out.mastery = P.grindItems().filter(e => e.cat === 'outfits').length >= 3 && P.grindItems().filter(e => e.cat === 'masks').length >= 3;
+    out.defaults = P.owns('outfits', 'default') && P.owns('masks', 'default') && P.charLook().o === 'default' && P.charLook().m === 'default';
+    // buy + equip, then your character wears it (jacket in the outfit colour, not the team colour)
+    P.data.dev = false; P.data.coins = 5000; P.data.owned.outfits = ['default']; P.data.owned.masks = ['default'];
+    out.buy = P.buy('outfits', 'crimson') && P.buy('masks', 'redeye') && P.data.equip.outfits === 'crimson' && P.data.equip.masks === 'redeye' && P.data.coins === 5000 - O.crimson.price - K.redeye.price;
+    out.caseOnly = !P.buy('outfits', 'magma') && !BR.Shop.catalog('outfits').magma;
+    const fake = () => ({ isPlayer: true, color: 0x3366ff, yaw: 0, pitch: 0, weapon: { id: 'rifle' }, mover: { pos: new THREE.Vector3(), vel: new THREE.Vector3(), onGround: true, wallN: new THREE.Vector3() } });
+    const C = new THREE.Color(O.crimson.jacket), me = BR.Actor.prototype.buildMesh.call(fake()), sm = me.children.find(o => o.isSkinnedMesh), col = sm.geometry.attributes.color.array;
+    const ti = (() => { for (let i = 0; i < col.length / 3; i++) if (Math.abs(col[i * 3] - C.r) < 0.01 && Math.abs(col[i * 3 + 1] - C.g) < 0.01) return true; return false; })();
+    me.userData.mat.color.setHex(0x00ff00); let green = false; for (let i = 0; i < col.length; i += 3) if (col[i + 1] > 0.99 && col[i] < 0.01) green = true;
+    out.worn = ti && !green && !!me.userData.mat3.emissiveMap;
+    // a patterned + glowing outfit gets its own jacket material; masks with add-ons get them
+    P.data.owned.outfits.push('magma'); P.data.owned.masks.push('halo'); P.equip('outfits', 'magma'); P.equip('masks', 'halo');
+    const m2 = BR.Actor.prototype.buildMesh.call(fake()), u2 = m2.userData, sk2 = m2.children.find(o => o.isSkinnedMesh);
+    out.pattern = Array.isArray(sk2.material) && !!u2.mat2 && !!u2.mat2.map && !!u2.mat2.emissiveMap && sk2.geometry.groups.length === 2;
+    let addon = 0; u2.head.traverse(o => { if (o.isMesh && o.material && o.material.isMeshBasicMaterial) addon++; }); out.addon = addon >= 1;
+    out.untrusted = !!BR.Actor.prototype.buildMesh.call({ look: { o: '__proto__', m: 'constructor' }, color: 0x123456, yaw: 0, pitch: 0, weapon: { id: 'rifle' }, mover: { pos: new THREE.Vector3(), vel: new THREE.Vector3(), onGround: true, wallN: new THREE.Vector3() } }).userData.char;
+    // bots keep their team colours
+    g.startMatch({ practice: true }); const bot = g.actors.find(a => a !== g.player && a.mesh); out.bots = !bot || (!bot.mesh.userData.mat2 && bot.mesh.userData.mat3.map === bot.mesh.userData.mat3.map && !BR.lookOf(bot)); g.toMenu();
+    // the inventory has a CHARACTER tab with OUTFIT / MASK slots, pictures and a 3D character preview
+    BR.inventory.open(); document.querySelector('#inv-tabs [data-cat=character]').click();
+    out.tab = BR.inventory.cat === 'outfits' && !document.getElementById('inv-char').classList.contains('hidden') && document.querySelectorAll('#inv-grid .sw.chr').length >= 2 && !!g.shopChar;
+    document.querySelector('#inv-char [data-s=masks]').click(); out.maskTab = BR.inventory.cat === 'masks' && document.querySelectorAll('#inv-grid .card').length >= 2;
+    BR.inventory.close();
+    BR.shop.open(); document.querySelector('#shop-tabs [data-cat=character]').click(); out.shopTab = BR.shop.cat === 'outfits' && document.querySelectorAll('#shop-grid .card').length >= 8 && !!g.shopChar; BR.shop.close();
+    out.party = BR.Party.look().ch && BR.Party.look().ch.o === 'magma' && BR.Party.look().ch.m === 'halo';
+    const k = JSON.parse(keep); Object.assign(P.data, { owned: k.owned, equip: k.equip, coins: k.coins, dev: k.dev, grind: k.grind }); P.save();
+    return out;
+  });
   // v1.20: reloads never throw (the Breacher froze the game), new imports, launcher rules, friends + party
   const v120 = await page.evaluate(() => {
     const g = BR.game, out = {}; BR.AntiCheat._testing = true;
@@ -1436,6 +1473,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.26 CHARACTER: outfits + masks in the shop, both cases and mastery; bought / equipped looks are worn by your character (patterns, glow, mask add-ons), bots keep team colours, inventory + shop CHARACTER tab with preview, party look', Object.values(v126).every(Boolean), v126],
     ['v1.23 blueprints seated on the new models (fit groups + surface ribbons), Overdrive blueprints with energy veins, factory black guns, knife trail tips, Mastiff full blast, kill ammo packs, pause while dead, Cul-de-Sac + Skyline, sound engine', Object.values(v123).every(Boolean), v123],
     ['v1.21 knock = the kill, finishing = assist, give up when knocked, District FFA map + spread spawns, window vault, tracking runner, imported sniper / revolver / launcher / knives', ['knockCredit', 'giveUp', 'ffa', 'vault', 'runner', 'imports'].every(k => v121[k])],
     ['v1.20 every gun reloads without errors (the Breacher reload froze the game), Pistol / DMR / Kar98k imports (bolt cycles), launcher only in Sniper Duels picker (+ BR loot), friends + party UI', v120.reloads && v120.imports && v120.sniperPicker && v120.duelLists && v120.launcher && v120.party],
@@ -1607,7 +1645,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();
