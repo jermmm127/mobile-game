@@ -30,7 +30,29 @@ const server = http.createServer((req, res) => { const f = path.join(ROOT, decod
   await A.waitForTimeout(900);
   const kicked = await B.evaluate(() => ({ inMatch: !!BR.game.mode, sess: !!BR.Net.session, state: BR.game.state }));
   const hostConns = await A.evaluate(() => { const S = BR.Net.session; return S ? S.conns.size : -1; });
+  // fresh tabs for the party checks (close the first two: two Battle Royale islands at once is heavy for software GL)
+  await A.close(); await B.close();
+  const A2 = await ctx.newPage(), B2 = await ctx.newPage();
+  for (const p of [A2, B2]) { p.on('pageerror', e => errors.push(e.message)); await p.route(u => !/^http:\/\/(localhost|127\.0\.0\.1)/.test(u.href), r => r.abort()); await p.goto(url, { waitUntil: 'commit', timeout: 120000 }); await p.waitForFunction(() => window.BR && BR.game, null, { timeout: 60000 }); }
+  // (two tabs in one headless browser: only the front one runs at full speed, so let each have the focus in turn)
+  const pump = async () => { for (const pg of [B2, A2, B2, A2]) { await pg.bringToFront(); await pg.waitForTimeout(1400); } };
+  // v1.24 parties: invite a friend, then the leader queues Battle Royale / Duels and both land in the same match
+  for (const [pg, id, nm, fid, fnm] of [[A2, 'SRG-AAAA-1111', 'alpha', 'SRG-BBBB-2222', 'beta'], [B2, 'SRG-BBBB-2222', 'beta', 'SRG-AAAA-1111', 'alpha']])
+    await pg.evaluate(([id, nm, fid, fnm]) => { if (BR.game.state !== 'menu') BR.game.toMenu(); BR.Net.forceLocal = true; BR.Lobby.skipRoll = true; BR.Accounts.accountId = () => id; BR.Accounts.displayName = () => nm; BR.Profile.data.friends = [{ id: fid, name: fnm }]; BR.Party.stop(); BR.Party.start(); }, [id, nm, fid, fnm]);
+  await A2.waitForTimeout(600);
+  await A2.evaluate(() => BR.Party.invite('SRG-BBBB-2222')); await A2.waitForTimeout(900);
+  await B2.evaluate(() => BR.Party.joinInvite(BR.Party.invites[0].code)); await A2.waitForTimeout(1200);
+  await A2.evaluate(() => { BR.selectMode('br'); document.getElementById('btn-go').click(); }); await A2.waitForTimeout(1500); await pump();
+  const pst = pg => pg.evaluate(() => { const g = BR.game, p = g.player, o = g.actors.find(a => a.human); return { on: !!g.brnet && g.state === 'playing', seed: g.world.seed, n: g.actors.length, team: p.team, mate: !!o && o.team === p.team, seen: !!o && o.netProxy.seen }; });
+  for (const [x, y] of [[B2, A2], [A2, B2], [B2, A2]]) { await x.bringToFront(); await x.evaluate(() => BR.game.brnet && BR.game.brnet.update(1)); await y.bringToFront(); await y.waitForTimeout(600); }     // (send a snapshot each way)
+  const pA = await pst(A2), pB = await pst(B2);
+  await A2.evaluate(() => BR.game.toMenu()); await B2.evaluate(() => BR.game.toMenu()); await A2.waitForTimeout(500);
+  await A2.evaluate(() => { BR.selectMode('duels'); document.getElementById('btn-go').click(); }); await A2.waitForTimeout(1500);
+  for (let i = 0; i < 12; i++) { await pump(); if (await B2.evaluate(() => !!(BR.game.mode && BR.game.mode.preset === 'duel'))) break; }
+  const dA = await A2.evaluate(() => ({ preset: BR.game.mode && BR.game.mode.preset, team: BR.game.player.team })), dB = await B2.evaluate(() => ({ preset: BR.game.mode && BR.game.mode.preset, team: BR.game.player.team, net: !!(BR.game.mode && BR.game.mode.net) }));
   const checks = [
+    ['party Battle Royale: the leader queues, both drop into the same match (same island, same squad) and see each other', pA.on && pB.on && pA.seed === pB.seed && pA.n === pB.n && pA.mate && pB.mate && pA.seen && pB.seen],
+    ['party Duels: the leader queues, the lobby starts by itself, both play on the same team', dA.preset === 'duel' && dB.preset === 'duel' && dB.net && dA.team === dB.team],
     ['host can kick a player: they are sent back to the menu and dropped from the host', !kicked.inMatch && !kicked.sess && hostConns === 0],
     ['lobby: guest joins with the code, both see 2 players', lobby === 2 && lobbyB === 2],
     ['match starts on both with the same 8-player roster (2 humans + 6 AI)', sA.n === 8 && sB.n === 8 && sA.proxies === 1 && sB.proxies === 7],

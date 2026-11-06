@@ -251,20 +251,21 @@ BR.Game = class Game {
     this.endVictory(); this.freezeT = 0; this.hud.freeze(false);
     const S = this.settings, C = BR.CONFIG;
     this.duel = null; document.body.classList.remove('duel');
-    const practiceMode = !!(opts && opts.practice), resMode = !!(opts && opts.resurgence);
-    const squad = practiceMode ? 1 : Math.max(1, Math.min(resMode ? 3 : 4, (opts && opts.squad) | 0 || 1));     // v1.19 solos / duos / trios / squads
+    const practiceMode = !!(opts && opts.practice), resMode = !!(opts && opts.resurgence), online = !!(opts && opts.online);
+    if (this.brnet && !online) this.brnet.stop();
+    const squad = practiceMode ? 1 : Math.max(1, Math.min(resMode && !online ? 3 : 4, (opts && opts.squad) | 0 || 1));     // (a party of 4 can play Resurgence as a squad)     // v1.19 solos / duos / trios / squads
     this.squad = 1; this.teams = 0; this._spec = null;
     this.zonePhases = resMode ? BR.RESURGENCE_PHASES : null;
     this.buildScene(Math.floor(Math.random() * 1e9), false, resMode ? { reef: true } : undefined);     // Resurgence: the Ironreef island
     if (resMode) { this.resurgence = { lastPhase: 3, queue: [], credit: 0, kills: 0, redeploys: 0 }; document.body.classList.add('resurgence'); }
-    this.diff = C.difficulty[S.difficulty] || C.difficulty.normal;
+    this.diff = C.difficulty[(opts && opts.diff) || S.difficulty] || C.difficulty.normal;
     this.result = null;
     this.player = new BR.Actor(this, { id: 0, name: 'You', isPlayer: true });
     this.spawn(this.player);
     this.player.yaw = Math.atan2(this.player.pos.x, this.player.pos.z); // face map center
     this.player.pitch = -0.75;                                           // look down at the landing area
     this.actors.push(this.player);
-    let bots = practiceMode ? 0 : resMode ? 23 : Math.max(0, Math.min(C.match.maxBots, S.bots ?? C.match.defaultBots));
+    let bots = practiceMode ? 0 : resMode ? 23 : Math.max(0, Math.min(C.match.maxBots, opts && opts.bots != null ? opts.bots : S.bots ?? C.match.defaultBots));
     if (squad > 1) bots = Math.ceil(Math.max(bots + 1, squad * 2) / squad) * squad - 1;     // full teams only
     this.practice = bots === 0;
     document.body.classList.toggle('practice', this.practice);
@@ -308,7 +309,7 @@ BR.Game = class Game {
     const R = this.resurgence, p = this.player, on = this.zone.phase < R.lastPhase;
     if (p.kills > R.kills) { R.credit = Math.min(8, R.credit + (p.kills - R.kills) * 2); R.kills = p.kills; }
     // bots
-    for (const a of this.actors) if (a !== p && !a.alive && !a._rq) { a._rq = true; if (on) R.queue.push({ a, t: 10 + Math.random() * 4 }); }
+    for (const a of this.actors) if (a !== p && !a.alive && !a._rq && !a.netProxy && !(this.brnet && !this.brnet.host)) { a._rq = true; if (on) R.queue.push({ a, t: 10 + Math.random() * 4 }); }     // (party BR: the host redeploys the bots; players redeploy themselves)
     for (let i = R.queue.length - 1; i >= 0; i--) { const q = R.queue[i]; q.t -= dt; if (q.t <= 0) { R.queue.splice(i, 1); if (on) this.redeployBot(q.a); } }
     if (!on && R.queue.length) R.queue.length = 0;
     // you
@@ -341,6 +342,7 @@ BR.Game = class Game {
   redeployBot(old) {
     const C = BR.CONFIG, q = this.dropPoint();
     const b = new BR.Actor(this, { id: old.id, name: old.name, color: old.color || 0x8899aa });
+    if (old.netId !== undefined) { b.netId = old.netId; b.owner = old.owner; b.local = old.local; }
     b.mover.pos.set(q.x, C.match.dropHeight * 0.55, q.z); b.mover.dropping = true;
     b.brain = new BR.BotBrain(b, this, this.diff); b.brain.dropTarget = { x: q.x, z: q.z };
     if (old.team !== undefined) { b.team = old.team; b.brain.mateOfPlayer = !!(old.brain && old.brain.mateOfPlayer); if (b.mesh && b.mesh.userData.mat) b.mesh.userData.mat.color.setHex(b.color); }     // v1.19 squads
@@ -595,6 +597,7 @@ BR.Game = class Game {
 
   aliveCount() { let n = 0; for (const a of this.actors) if (a.alive) n++; return n; }
 
+  online() { return !!(this.brnet || (this.mode && this.mode.net)); }
   pause() {
     if (this.state !== 'playing') return;
     this.state = 'paused';
@@ -611,6 +614,7 @@ BR.Game = class Game {
   }
   toMenu() {
     this.state = 'menu';
+    if (this.brnet) this.brnet.stop();
     if (this.zm) { this.zm.dispose(); this.zm = null; document.body.classList.remove('zombies'); }
     this.endMode(); this.resurgence = null; document.body.classList.remove('resurgence', 'practice');
     if (this.duel) { this.duel = null; document.body.classList.remove('duel'); this.hud.show('duelmenu', false); }
@@ -639,7 +643,7 @@ BR.Game = class Game {
     if (this.victory) { this.victory.rt += dt; const k = Math.min(1, this.victory.rt / 1.8); dt *= 0.25 + 0.75 * k * k; }
     // v1.20: one bad frame (a script error) must never freeze the game: report it once, keep running
     try {
-      if (this.state === 'playing' || this.state === 'dead' || this.state === 'won') this.update(dt);
+      if (this.state === 'playing' || this.state === 'dead' || this.state === 'won' || (this.state === 'paused' && this.online())) this.update(dt);     // v1.24: an online match never stops for your pause menu
       else if (this.state === 'menu') { if (this.scene) this.updateDemo(dt); }
       else if (this.state === 'shop') this.updateShop(dt);
     } catch (e) { const k = String(e && e.message); this._errs = this._errs || {}; if (!this._errs[k]) { this._errs[k] = 1; console.error(e); } }
@@ -653,7 +657,7 @@ BR.Game = class Game {
     for (const a of this.actors) if (a.brain && a.alive && !frozen) a.brain.update(dt);
     for (const a of this.actors) a.update(dt);
     for (const a of this.actors) {
-      if (!a.alive || a.mover.dropping || a.zombie || a.downed) continue;
+      if (!a.alive || a.mover.dropping || a.zombie || a.downed || a.netProxy) continue;
       a.pickupT -= dt;
       if (a.pickupT <= 0) {
         a.pickupT = 0.12;
@@ -680,6 +684,7 @@ BR.Game = class Game {
     }
     if (this.squad > 1) BR.Squads.update(this, dt);
     while (this.recentShots.length && this.time - this.recentShots[0].t > 2) this.recentShots.shift();
+    if (this.brnet) this.brnet.update(dt);
     this.loot.update(dt, cp);
     this.fx.update(dt);
     if (this.shock) this.shock.update(dt);
@@ -1052,6 +1057,7 @@ BR.Game = class Game {
     if (!victim.alive) return;
     if (attacker && victim !== attacker && victim.team !== undefined && victim.team === attacker.team) return;     // no friendly fire
     if (this.mode && this.mode.netDamage && this.mode.netDamage(victim, attacker, dmg, head, at, weaponId)) return; // online: the victim's owner applies it
+    if (this.brnet && this.brnet.netDamage(victim, attacker, dmg, head, at, weaponId)) return;                      // v1.24 party BR: same
     const remoteHuman = attacker && attacker.netProxy;          // v1.16: another player online does full damage (the bot multipliers are for bots)
     if (victim.isPlayer && attacker && !attacker.isPlayer && !remoteHuman) dmg *= this.diff.playerDamageMult;
     else if (!victim.isPlayer && attacker && !attacker.isPlayer && !remoteHuman) dmg *= BR.CONFIG.match.botVsBotDamage;
@@ -1088,6 +1094,7 @@ BR.Game = class Game {
   }
 
   kill(victim, killer, weaponId, head) {
+    if (this.brnet && !this.brnet.canKill(victim, killer, weaponId, head)) return;     // v1.24 party BR: only the owner kills (and tells everyone)
     // v1.21: knocking someone down earns the elimination; finishing them off (or helping to) is an assist
     const kn = victim.downed ? victim.knocker : null;
     if (kn && kn !== victim && !(kn.team !== undefined && kn.team === victim.team)) {

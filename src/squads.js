@@ -53,7 +53,7 @@ BR.Squads = {
   tryDown(g, v, killer, wid, head) {
     if (!this.on(g) || v.downed || v.team === undefined) return false;
     if (!this.standing(g, v.team, v)) return false;
-    v.downed = true; v.health = this.DOWN_HP; v.shield = 0; v.downT = g.time;
+    v.downed = true; v.health = this.DOWN_HP; v.shield = 0; v.downT = g.time; if (g.brnet) g.brnet.onDown(v);
     v.knocker = killer || null; v.downWid = wid; v.reviver = null; v.reviveP = 0;
     v.fireHeld = false; v.ads = false; v.stimT = 0; v.stimHealT = 0; v.lunge = null;
     if (v.mover.grapple) v.mover.releaseGrapple();
@@ -95,6 +95,12 @@ BR.Squads = {
     const p = g.player;
     for (const a of g.actors) {
       if (!a.alive || !a.downed) continue;
+      if (a.netProxy) {                                      // v1.24 party BR: a downed party member / bot owned by another screen
+        const r = a.reviver;                                 // we only run the revive if one of OUR actors is doing it; the owner applies it
+        if (r && (r.netProxy || !r.alive || r.downed || r.fireHeld || r.pos.distanceTo(a.pos) > this.REVIVE_DIST + 0.4 || (r.isPlayer && Math.hypot(g.input.moveX, g.input.moveY) > 0.35))) { a.reviver = null; a.reviveP = 0; continue; }
+        if (r) { a.reviveP += dt; if (a.reviveP >= this.REVIVE_T) { a.reviver = null; a.reviveP = 0; g.brnet && g.brnet.reviveDone(a, r); if (r.isPlayer) g.hud.toast('Revived ' + a.name, 900); } }
+        continue;
+      }
       // revive in progress? the reviver must stay close, standing and not shooting
       const r = a.reviver;
       if (r && (!r.alive || r.downed || r.fireHeld || r.pos.distanceTo(a.pos) > this.REVIVE_DIST + 0.4 || (r.isPlayer && Math.hypot(g.input.moveX, g.input.moveY) > 0.35))) { a.reviver = null; a.reviveP = 0; if (r.isPlayer) g.hud.toast('Revive cancelled', 700); }

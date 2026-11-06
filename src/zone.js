@@ -32,7 +32,7 @@ BR.Zone = class Zone {
     const maxOff = Math.max(0, this.r - p.radius);
     const lim = this.half - p.radius - 5;
     for (let tries = 0; tries < 30; tries++) {
-      const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * maxOff * 0.9;
+      const rr = this.rng || Math.random, a = rr() * Math.PI * 2, d = Math.sqrt(rr()) * maxOff * 0.9;      // (v1.24 party BR: a shared seeded storm)
       const nx = this.x + Math.cos(a) * d, nz = this.z + Math.sin(a) * d;
       if (Math.abs(nx) <= Math.max(lim, 0) + 1e-6 && Math.abs(nz) <= Math.max(lim, 0) + 1e-6) { this.nextX = nx; this.nextZ = nz; break; }
       this.nextX = BR.util.clamp(nx, -Math.max(lim, 0), Math.max(lim, 0));

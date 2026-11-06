@@ -113,13 +113,14 @@
   // latest snapshot smoothly; never runs physics or AI locally.
   BR.NetProxy = class NetProxy {
     constructor() { this.x = 0; this.y = 0; this.z = 0; this.yaw = 0; this.pitch = 0; this.seen = false; this.w = null; }
-    set(s) { this.x = s[1]; this.y = s[2]; this.z = s[3]; this.yaw = s[4]; this.pitch = s[5]; this.w = s[6]; this.alive = !!s[7]; this.crouch = !!s[8]; this.hp = s[9]; if (!this.seen) { this.seen = true; this.snap = true; } }
+    set(s) { this.x = s[1]; this.y = s[2]; this.z = s[3]; this.yaw = s[4]; this.pitch = s[5]; this.w = s[6]; this.alive = !!s[7]; this.crouch = !!s[8]; this.hp = s[9]; this.downed = s[10] === undefined ? undefined : !!s[10]; this.drop = !!s[11]; if (!this.seen) { this.seen = true; this.snap = true; } }
     apply(a, dt) {
       const m = a.mover, k = this.snap ? 1 : 1 - Math.exp(-dt * 14); this.snap = false;
       const ox = m.pos.x, oz = m.pos.z;
       m.pos.x += (this.x - m.pos.x) * k; m.pos.y += (this.y - m.pos.y) * k; m.pos.z += (this.z - m.pos.z) * k;
       m.vel.set((m.pos.x - ox) / Math.max(dt, 1e-3), 0, (m.pos.z - oz) / Math.max(dt, 1e-3));
-      m.onGround = true; m.crouched = this.crouch; m.dropping = false;
+      m.onGround = !this.drop; m.crouched = this.crouch; m.dropping = this.drop;
+      if (this.downed !== undefined) { a.downed = this.downed; m.prone = this.downed; }            // v1.24 party BR: knocked down / still in the drop
       a.yaw = this.yaw; a.pitch = this.pitch;
       if (this.hp !== undefined) a.health = this.hp;
       const ids = BR.Net.WIDS, wid = ids[this.w];

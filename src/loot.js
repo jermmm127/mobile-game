@@ -271,7 +271,7 @@ BR.Loot = class Loot {
           took = true;
         } else if (d < swapD) { swapCandidate = it; swapD = d; }
       }
-      if (took) { this.game.onPickup(actor, it); this.remove(it); }
+      if (took) { this.game.onPickup(actor, it); if (this.game.brnet) this.game.brnet.took(actor, it); this.remove(it); }
     }
     if (swapCandidate && !actor.isPlayer) {
       const gs = actor.guns(), sc = gs.map(s => BR.weaponScore(s)), worst = Math.min(...sc);
@@ -301,7 +301,8 @@ BR.Loot = class Loot {
   // Burst a chest into a guaranteed gun (one tier better than the spot) + gear.
   openChest(actor, chest) {
     if (chest.taken) return;
-    const C = BR.CONFIG, U = BR.util, R = Math.random;
+    const N = this.game.brnet, C = BR.CONFIG, U = BR.util, R = N ? N.chestRng(chest) : Math.random;     // party BR: every screen opens it into the same loot
+    if (N) N.chest(actor, chest);
     const tier = Math.min(chest.tier + 1, C.loot.tables.length - 1);
     const wid = U.weighted(this.weaponTable(C.loot.tables[tier]), R);
     const def = C.weapons[wid];
@@ -323,6 +324,7 @@ BR.Loot = class Loot {
   // Drop the held weapon and take this one.
   swap(actor, item) {
     if (item.taken) return;
+    if (this.game.brnet) this.game.brnet.took(actor, item);
     // Holding the karambit: replace gun slot 0 (or fill an empty one)
     if (actor.cur === 2) actor.cur = actor.slots[0] && !actor.slots[1] ? 1 : 0;
     const old = actor.weapon;

@@ -5,6 +5,14 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.24.0', date: '2026-11-06', title: 'Play together', notes: [
+    'Parties can now play Battle Royale and Resurgence together. The leader taps PLAY and the whole party drops into the same match as one squad: duos for 2 players, trios for 3, squads for 4. You see each other, revive each other, share the same loot, storm and enemies, and kills, knockdowns and pickups show up for everyone.',
+    'Party Duels, Shotgun Duels, Sniper Duels, TDM and Free For All start by themselves as soon as everyone in the party has joined. The leader no longer has to tap START in a lobby, and the party plays on the same team.',
+    'Fixed: Duels refused to start for a party.',
+    'Fixed: leaving one online match could kick you out of the next one a moment after it started.',
+    'Online matches keep running while you have the pause menu open, so your character (and, for the leader, the bots) no longer freezes for everyone else.',
+    'Zombies, Overdrive, Practice and the Aim Trainer stay solo; the game now tells your party which modes you can play together.',
+  ] },
   { v: '1.23.0', date: '2026-11-05', title: 'Overdrive, sound + new maps', notes: [
     'Blueprints fixed for the new gun and knife models: every glow strip, panel, fin, gem and side decal now sits on the real model instead of floating beside it. Strips follow the gun\'s surface, small parts rest on it, a replacement drum mag sits on the real mag, and bulky shrouds that covered the new models\' detail are gone. Animated parts still move as designed.',
     'Knife blueprints: auras hug the new blades instead of turning into big glowing sheets, blade decals sit on the blade, and the blade trail starts at the real tip, follows the Karambit through its flips, and is longer and brighter with a white-hot edge.',

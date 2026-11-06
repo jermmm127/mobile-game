@@ -637,6 +637,7 @@
   };
   // v1.19 team size per mode (Battle Royale: solos to squads; Resurgence: solos to trios)
   const squadFor = id => { const S = BR.Squads.SIZES[id] || [1], v = (settings.squads || {})[id] | 0; return S.includes(v) ? v : 1; };
+  BR.squadFor = squadFor;
   const renderSquadPick = () => {
     const el = $('sq-pick'), S = BR.Squads.SIZES[settings.mode];
     el.classList.toggle('hidden', !S);

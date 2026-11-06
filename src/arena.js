@@ -275,7 +275,7 @@
         this.frozen = m.phase === 'countdown'; if (was === 'countdown' && m.phase === 'fight') this.g.hud.duelCount('FIGHT!'); if (m.lw !== undefined) this.roundBanner(m.lw); });
       N.on('end', m => { if (!this.host) this.applyEnd(m); });
       N.on('leave', m => { for (const a of this.g.actors) if (a.owner === m.from && a.alive) { a.alive = false; a.dieVisual(); a.deathT = this.g.time; } this.g.hud.toast('A player left the match', 1600); });
-      N.on('closed', () => { if (!this.ended) { this.g.hud.toast('The host closed the match', 2200); setTimeout(() => this.g.toMenu(), 1200); } });
+      N.on('closed', () => { if (!this.ended && this.g.mode === this) { this.g.hud.toast('The host closed the match', 2200); setTimeout(() => { if (this.g.mode === this) this.g.toMenu(); }, 1200); } });
     }
     netTick(dt) {
       this.sendT -= dt;

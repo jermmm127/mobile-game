@@ -18,7 +18,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const norm = s => String(s || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 40);
   const PRE_ID = 'surge-u-', PRE_NAME = 'surge-n-';
-  const ONLINE_MODES = { duel: 'duel', shotgun: 'shotgun', sniper: 'sniper', tdm: 'tdm', ffa: 'ffa' };
+  const ONLINE_MODES = { duels: 'duel', duel: 'duel', shotgun: 'shotgun', sniper: 'sniper', tdm: 'tdm', ffa: 'ffa' };
   const rid = () => Math.random().toString(36).slice(2, 10);
 
   const P = BR.Party = {
@@ -204,20 +204,53 @@
       if (!quiet) this.toast('You left the party');
       this.render(); BR.PartyStage && BR.PartyStage.sync();
     },
-    // leader: queue the party into an online mode (hosts the lobby; everyone else joins it)
+    // leader: queue the party into a mode everyone plays together.
+    //  * Duels / TDM / FFA: host an online lobby, everyone joins it, and it starts by itself once the whole party is in.
+    //  * Battle Royale / Resurgence (v1.24): host a party match (brnet.js); the party drops in as one squad.
     async queue(modeId) {
+      if (modeId === 'br' || modeId === 'resurgence') return this.queueBR(modeId);
       const preset = ONLINE_MODES[modeId];
-      if (!preset) { BR.game.hud.toast('Parties can queue into Duels, Shotgun Duels, Sniper Duels, TDM and FFA. Battle Royale with friends isn’t available yet.', 3600); return false; }
+      if (!preset) { BR.game.hud.toast('That mode is solo only. With a party, pick Battle Royale, Resurgence, Duels, Shotgun Duels, Sniper Duels, TDM or Free For All.', 3600); return false; }
       const L = BR.Lobby, PR = BR.ARENA_PRESETS[preset], n = this.party.members.length;
-      L.open(preset); L.size = PR.kind === 'duel' ? (n > 1 && PR.sizes.includes(2) ? 2 : PR.sizes[0]) : PR.sizes[0];
+      L.open(preset); L.size = PR.kind === 'duel' ? Math.min(Math.max(...PR.sizes), Math.max(PR.sizes[0], n)) : Math.max(PR.sizes[0], n);
       await L.host();
       if (!L.sess) return false;
       this.party.sess.send('go', { preset, size: L.size, code: L.sess.code });
+      // start as soon as everyone in the party has joined the lobby (or after 12 s with whoever made it)
+      const t0 = Date.now(), S = L.sess, want = () => this.party ? this.party.members.length : 1;
+      BR.game.hud.toast('Waiting for your party to join…', 2000);
+      while (L.sess === S && BR.game.state === 'menu' && L.players.length < want() && Date.now() - t0 < 12000) await new Promise(r => setTimeout(r, 200));
+      if (L.sess === S && BR.game.state === 'menu') L.start();
       return true;
     },
-    follow(m) {
-      const L = BR.Lobby; if (!BR.ARENA_PRESETS[m.preset]) return;
+    async queueBR(modeId) {
+      const res = modeId === 'resurgence', H = this.party.members.length, local = this.local();
+      BR.game.hud.toast('Starting your party match…', 2000);
+      let S; try { BR.Net.leave(); S = await BR.Net.host(this.myName(), local); } catch (e) { BR.game.hud.toast('Could not start the party match (' + (e.message || e) + ')', 3000); return false; }
+      const joined = [];
+      S.on('join', m => { if (!joined.some(j => j.pid === m.from)) joined.push({ pid: m.from, name: String(m.name || 'Player').slice(0, 16) }); });
+      S.on('leave', m => { const i = joined.findIndex(j => j.pid === m.from); if (i >= 0 && !BR.game.brnet) joined.splice(i, 1); });
+      this.party.sess.send('go', { kind: 'br', mode: modeId, code: S.code });
+      const t0 = Date.now();
+      while (joined.length < H - 1 && Date.now() - t0 < 12000) await new Promise(r => setTimeout(r, 150));
+      if (BR.Net.session !== S) return false;
+      const st = BR.game.settings, squad = Math.min(4, Math.max(BR.squadFor ? BR.squadFor(modeId) : 1, joined.length + 1, 2));
+      const cfg = { seed: Math.floor(Math.random() * 2 ** 31), res, squad, bots: res ? 23 : st.bots, diff: st.difficulty, humans: [{ pid: 'H', name: this.myName() }].concat(joined) };
+      const N = BR.BRNet.begin(BR.game, S, cfg);
+      S.send('brstart', N.startMsg());
+      if (joined.length < H - 1) BR.game.hud.toast('Some of your party didn’t connect in time', 2600);
+      return true;
+    },
+    async follow(m) {
       if (BR.game.state !== 'menu') BR.game.toMenu();
+      if (m.kind === 'br') {                                     // v1.24: join the leader's Battle Royale / Resurgence match
+        BR.game.hud.toast('Joining your party’s match…', 2000);
+        let S; try { BR.Net.leave(); S = await BR.Net.join(String(m.code), this.myName(), this.local()); } catch (e) { BR.game.hud.toast('Could not join your party’s match (' + (e.message || e) + ')', 3000); return; }
+        S.on('brstart', cfg => { if (BR.Net.session === S && !BR.game.brnet) BR.BRNet.begin(BR.game, S, cfg); });
+        S.on('closed', () => { if (!BR.game.brnet) BR.game.hud.toast('Your party leader cancelled the match', 2000); });
+        return;
+      }
+      const L = BR.Lobby; if (!BR.ARENA_PRESETS[m.preset]) return;
       L.open(m.preset); L.size = m.size; L.join(String(m.code));
       BR.game.hud.toast('Joining your party’s lobby…', 1600);
     },
