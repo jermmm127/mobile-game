@@ -17,8 +17,8 @@
   // right fist position (hx/hy/hz), empty left fist in view (left, lx/ly). window.__KP overrides for tuning.
   const KP = Object.assign({ x: -1.1, y: -0.1, z: -0.6, f: [0.85, -0.4, 0.35], hx: 0.08, hy: -0.075, hz: -0.34, left: 1, lx: 0.05, ly: -0.025 }, (typeof window !== 'undefined' && window.__KP) || {});
   const KI = { z1: 0.95, y1: -0.15, x1: 0.1, z2: -0.25, y2: -0.55, x2: 0 };      // karambit inspect show poses (wrist turns)
-  // v1.27.1 revolver hold (reference screenshot): wrist up from the bottom right, muzzle forward and up toward the centre, seen from behind: window.__RV overrides for tuning
-  const RV = Object.assign({ hx: 0.19, hy: -0.15, hz: -0.46, rx: 0.18, ry: 0.12, rz: 0.12 }, window.__RV || {});
+  // v1.27.3 revolver hold (reference screenshot): farther out (smaller), muzzle forward and up toward the centre, hand wrapped round the grip with the forearm running to the lower right: window.__RV overrides for tuning
+  const RV = Object.assign({ hx: 0.22, hy: -0.18, hz: -0.58, rx: 0.18, ry: 0.12, rz: 0.12, gx: 0.008, gy: 0.026, gz: 0.012, qx: 0, qy: -0.35, qz: 0, ex: 0.38, ey: -0.72, ez: 0.05 }, window.__RV || {});
   const BAYLIKE = id => id === 'bayonet' || id === 'tracker';      // v1.13: the Tracker shares the bayonet's fist + flips
   let SLEEVE = null;
   function sleeveParts() {
@@ -885,7 +885,10 @@
       } else {
         R.hand.position.copy(gp);
         R.hand.quaternion.copy(wq).multiply(this._qGrip || (this._qGrip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -Math.PI / 2))));
-        R.hand.translateX(0.0); R.hand.translateY(0.026); R.hand.translateZ(0.012);
+        if (ud.cylinder) {                    // v1.27.3: a full wrap round the revolver grip (back of the glove + wrist in view, reference)
+          R.hand.quaternion.multiply((this._rvq || (this._rvq = new THREE.Quaternion())).setFromEuler(new THREE.Euler(RV.qx, RV.qy, RV.qz)));
+          R.hand.translateX(RV.gx); R.hand.translateY(RV.gy); R.hand.translateZ(RV.gz);
+        } else { R.hand.translateX(0.0); R.hand.translateY(0.026); R.hand.translateZ(0.012); }
         if (rightTarget && rightTarget.w > 0 && ud.bolt) {
           // pinch the bolt knob: hand sits just behind/right of it, fingers forward
           const kp = ud.bolt.localToWorld((this._kb2 || (this._kb2 = new THREE.Vector3())).copy(ud.boltKnob));
@@ -903,7 +906,7 @@
       }
       H.visible = true;
       // the butterfly is held high in view, so its elbow sits low and forward (keeps the sleeve end off the camera)
-      const elbowR = spin ? this._v2.set(0.5 * s, -0.68, -0.3) : bf ? this._v2.copy(this._bfElbow) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
+      const elbowR = spin ? this._v2.set(0.5 * s, -0.68, -0.3) : bf ? this._v2.copy(this._bfElbow) : ud.cylinder && A < 0.5 ? this._v2.set(RV.ex * s, RV.ey, RV.ez) : this._v2.set(U.lerp(0.3, 0.2, A) * s, U.lerp(-0.62, -0.55, A), 0.08);
       H.updateMatrixWorld(true);
       this.limb(R.fore, H.localToWorld(new THREE.Vector3(0, 0, spin || bf ? 0.075 : 0.05)), elbowR, spin || bf ? 0.72 : 1);
       // left hand on the foregrip / mag / charging handle
