@@ -12,6 +12,7 @@ BR.Loot = class Loot {
   constructor(game) {
     this.game = game;
     this.items = [];
+    this.opening = [];             // v1.27: chests mid-opening (lid flying open, glow, then sinking away)
     this.nextId = 1;
     this.cullT = 0;
     this.geo = {
@@ -98,13 +99,13 @@ BR.Loot = class Loot {
     const g = new THREE.Group(), G = this.geo;
     if (item.kind === 'weapon') {
       const def = BR.CONFIG.weapons[item.wid];
-      // The real gun model, lying on its side and slowly turning, over a rarity ring
+      // v1.27: the real gun model floating upright (as if held) and slowly turning, over a rarity ring
       // shows the gun in your equipped blueprint / camo (so drops and loot look like your skins)
       const eq = BR.Profile && BR.Profile.data && BR.Profile.data.equip;
       const gun = BR.Models.worldWeapon(item.wid, eq && eq.blueprints ? eq.blueprints[item.wid] : null, eq ? BR.Profile.skinFor(item.wid) : null);
       gun.scale.setScalar(1.7);
-      gun.rotation.set(0, Math.PI / 2, Math.PI / 2 * 0.9);
-      gun.position.y = -0.05;
+      gun.rotation.set(0, Math.PI / 2, 0);
+      gun.position.y = 0.05;
       g.add(gun);
       const rar = item.rar | 0, RR = BR.RARITY[rar];
       const ring = new THREE.Mesh(G.ring, this.mat('rar' + rar, RR.col, true));
@@ -185,8 +186,13 @@ BR.Loot = class Loot {
     if (doCull) this.cullT = 0.3;
     const W = this.game.world;
     for (let i = this.items.length - 1; i >= 0; i--) { const it = this.items[i]; if (it.kind === 'scav' && t - it.t0 > 25) this.remove(it); }   // kill ammo packs fade after 25 s
+    this.updateOpening(dt);
     for (const it of this.items) {
       if (it.air) this.toss(it, dt, W);
+      if (it.air && it.spark !== undefined && it.mesh.visible) {                                   // chest loot leaves a sparkle trail
+        it.trailT = (it.trailT || 0) - dt;
+        if (it.trailT <= 0) { it.trailT = 0.03; const fx = this.game.fx, v = this._tv || (this._tv = new THREE.Vector3()); v.set(it.pos.x, it.pos.y + 0.35, it.pos.z); fx.burst(v, [it.spark, 0xffffff], 2, 0.8, 0.05, 0.4, 1); }
+      }
       if (doCull) {
         it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 50 && Math.abs(it.pos.z - viewer.z) < 50;
         const lb = it.mesh.userData.label;
@@ -198,7 +204,8 @@ BR.Loot = class Loot {
       it.spinA = (it.spinA || t * 1.4 + it.phase) + 1.6 * dt;
       it.mesh.rotation.y = it.spinA;
       // weapons do a little bounce on the ground; other items bob
-      it.mesh.position.y = it.kind === 'weapon' ? it.pos.y + 0.3 + Math.abs(Math.sin(t * 2.6 + it.phase)) * 0.2 : it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;
+      it.mesh.position.y = it.kind === 'weapon' ? it.pos.y + 0.62 + Math.sin(t * 2.2 + it.phase) * 0.1 : it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;      // guns hover and float up and down
+      if (it.kind === 'weapon' && it.mesh.userData.ring) it.mesh.userData.ring.position.y = it.pos.y + 0.03 - it.mesh.position.y;      // the rarity ring stays on the ground
       if (it.mesh.userData.ring) it.mesh.userData.ring.rotation.z = -it.mesh.rotation.y;
       if (it.mesh.userData.nade) BR.Models.animate(it.mesh.userData.nade, t);
       if (it.mesh.userData.cell) { const c = it.mesh.userData.cell, h = c.children[c.children.length - 1]; h.position.y = Math.sin(t * 2.2 + it.phase) * 0.12; h.scale.setScalar(1 + 0.08 * Math.sin(t * 4 + it.phase)); }
@@ -221,7 +228,15 @@ BR.Loot = class Loot {
     if (it.pos.y <= floor) {
       it.pos.y = floor;
       if (Math.abs(v.y) > 2.2) { v.y = -v.y * 0.42; v.x *= 0.6; v.z *= 0.6; it.spinV *= 0.65; if (this.game.player && it.pos.distanceTo(this.game.player.pos) < 25) BR.Audio.land(Math.abs(v.y) * 0.6); }
-      else { it.air = false; it.vel = null; }
+      else {
+        it.air = false; it.vel = null;
+        if (it.spark !== undefined && it.mesh.visible) {                                            // lands with a burst in its rarity colour
+          const fx = this.game.fx, v = this._lv || (this._lv = new THREE.Vector3()); v.set(it.pos.x, it.pos.y + 0.5, it.pos.z);
+          fx.burst(v, [it.spark, 0xffffff], it.kind === 'weapon' ? 22 : 10, 3.2, 0.07, 0.55, 5); fx.shock(v, it.spark, it.kind === 'weapon' ? 1.6 : 0.9, 0.35);
+          if (it.kind === 'weapon') { fx.pop(v, it.spark, 0.9, 0.22, 2.4); if (this.game.player && it.pos.distanceTo(this.game.player.pos) < 25) BR.Audio.lootLand && BR.Audio.lootLand(it.rar | 0); }
+          it.spark = undefined;
+        }
+      }
     }
   }
 
@@ -312,13 +327,50 @@ BR.Loot = class Loot {
     out.push(R() < 0.5 ? { kind: 'shield', amount: C.loot.shieldAmount } : { kind: 'heal', amount: C.loot.healAmount });
     if (R() < 0.6) out.push({ kind: 'shield', amount: C.loot.shieldAmount });
     // Spread items in front of the chest, toward the opener
-    const ang0 = Math.atan2(actor.pos.z - p.z, actor.pos.x - p.x);
+    const ang0 = Math.atan2(actor.pos.z - p.z, actor.pos.x - p.x), rar = out[0].rar | 0;
     out.forEach((d, i) => {
-      const a = ang0 + (i - (out.length - 1) / 2) * 0.7;
-      this.add(d, p.x + Math.cos(a) * 0.4, p.y + 0.6, p.z + Math.sin(a) * 0.4, new THREE.Vector3(Math.cos(a) * 2.6, 5.5 + Math.random() * 1.5, Math.sin(a) * 2.6));
+      const a = ang0 + (i - (out.length - 1) / 2) * 0.62, up = d.kind === 'weapon' ? 8.2 : 6.6 + Math.random() * 1.4;      // v1.27: a higher fountain, the gun on top
+      const it = this.add(d, p.x + Math.cos(a) * 0.15, p.y + 0.7, p.z + Math.sin(a) * 0.15, new THREE.Vector3(Math.cos(a) * 2.4, up, Math.sin(a) * 2.4));
+      it.spark = d.kind === 'weapon' ? BR.RARITY[d.rar | 0].col : d.kind === 'shield' ? 0x4aa8ff : d.kind === 'heal' ? 0x5dff8a : 0xffd24a;
     });
-    this.game.onChestOpened(actor, chest);
+    this.burstChest(chest, rar);
+    this.game.onChestOpened(actor, chest, out[0]);
+    this.opening.push({ g: chest.mesh, t: 0, rar });                 // the chest stays to play its opening, then sinks away
+    chest.mesh = new THREE.Group();
     this.remove(chest);
+  }
+
+  // v1.27: the opening show: a light column, a shock ring and a fountain of sparks in the loot's rarity colour
+  burstChest(chest, rar) {
+    const fx = this.game.fx, RR = BR.RARITY[rar], col = RR.col, v = new THREE.Vector3(chest.pos.x, chest.pos.y + 0.7, chest.pos.z);
+    fx.flash(v); fx.pop(v, 0xfff2c0, 1.4, 0.3, 2.6); fx.pop(v, col, 1.1, 0.45, 3.2);
+    fx.shock(v, 0xffd24a, 3.2, 0.5); fx.shock(v.clone().setY(chest.pos.y + 0.1), col, 4.2, 0.7);
+    fx.burst(v, [0xffd24a, col, 0xffffff], 46, 7, 0.08, 0.9, 7);
+    fx.burst(v, [col, 0xffffff], 24, 3, 0.05, 1.3, -1.5);                // floaty glitter drifting up
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 7, 16, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    beam.position.set(0, 3.6, 0); chest.mesh.add(beam); chest.mesh.userData.beam = beam;
+    const glow = new THREE.Sprite(this.glowMat(col)); glow.scale.setScalar(3.2); glow.position.y = 0.9; chest.mesh.add(glow); chest.mesh.userData.glow = glow;     // (a sprite, not a light: no shader rebuild mid-match)
+  }
+  glowMat(col) {
+    if (!this._glowTex) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+      g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,255,255,0.45)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); this._glowTex = new THREE.CanvasTexture(c); }
+    return new THREE.SpriteMaterial({ map: this._glowTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  }
+  updateOpening(dt) {
+    for (let i = this.opening.length - 1; i >= 0; i--) {
+      const o = this.opening[i], u = o.g.userData; o.t += dt; const t = o.t;
+      if (u.lid) {                                                 // the lid flies open on its back hinge with an overshoot, then settles
+        if (!u.hinge) { const h = new THREE.Group(); h.position.set(0, 0.68, -0.32); o.g.add(h); o.g.remove(u.lid); u.lid.position.set(0, -0.09, 0.32); h.add(u.lid); u.hinge = h; }
+        const k = Math.min(1, t / 0.32), over = 1 - Math.pow(1 - k, 3);
+        u.hinge.rotation.x = -(over * 2.05 - Math.sin(Math.min(1, t / 0.6) * Math.PI) * 0.25 * (t > 0.32 ? 1 : 0));
+      }
+      const shake = t < 0.25 ? Math.sin(t * 90) * 0.04 * (1 - t / 0.25) : 0; o.g.rotation.z = shake;
+      if (u.beam) { const k = Math.min(1, t / 0.15); u.beam.scale.set(1 + t * 0.6, k, 1 + t * 0.6); u.beam.material.opacity = 0.6 * Math.max(0, 1 - t / 1.3); }
+      if (u.glow) { u.glow.material.opacity = Math.max(0, 1 - t / 1.1); u.glow.scale.setScalar(3.2 + t * 2); }
+      if (u.ring) u.ring.material.opacity = Math.max(0, 0.8 - t);
+      if (t > 1.3) { const s = Math.max(0.01, 1 - (t - 1.3) / 0.5); o.g.scale.setScalar(s); o.g.position.y -= dt * 0.6; }
+      if (t > 1.8) { this.game.scene.remove(o.g); this.opening.splice(i, 1); }
+    }
   }
 
   // Drop the held weapon and take this one.

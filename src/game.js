@@ -706,6 +706,7 @@ BR.Game = class Game {
     if (p.alive && this.state === 'playing') this.controlPlayer(dt);
     else {
       p.fireHeld = false;
+      if (this.state === 'won' || this.freezeT > 0) { const I = p.input; I.mx = I.mz = 0; I.jump = I.crouch = false; }     // v1.27: the stick no longer walks you during the victory
       // v1.23: the menu (and map) still work while you're dead / waiting to respawn
       if (this.state === 'playing') { if (this.input.consume('pause')) this.pause(); if (this.input.consume('map')) this.hud.toggleMap(); }
     }
@@ -773,7 +774,7 @@ BR.Game = class Game {
         this.result = { win: true, place: 1, total: this.total, kills: p.kills, assists: p.assists || 0, damage: p.damageDealt, time: this.time, squad: this.squad, teams: this.teams };
         if (p.downed) { p.downed = false; p.reviver = null; p.mover.prone = false; p.health = Math.max(p.health, 1); }
         // freeze frame first (like the big shooters), then the victory show
-        this.freezeT = 1.0; p.fireHeld = false; this.hud.freeze(true); BR.Audio.freeze && BR.Audio.freeze();
+        this.freezeT = 1.0; p.fireHeld = false; p.input.mx = p.input.mz = 0; p.mover.vel.set(0, 0, 0); this.hud.freeze(true); BR.Audio.freeze && BR.Audio.freeze();
       }
     } else if (this.state === 'dead' || this.state === 'won') {
       this.endT -= dt;
@@ -797,6 +798,7 @@ BR.Game = class Game {
   startVictory() {
     const p = this.player;
     this.victory = { t: 0, rt: 0, nextFw: 0.35, nextConf: 0.1, yaw0: p.yaw, fw: 0 };
+    const I = p.input; I.mx = I.mz = 0; I.jump = I.crouch = false; p.mover.vel.set(0, 0, 0); p.mover.sliding = false; p.ads = false;     // v1.27: no more walking mid-celebration
     if (!p.mesh) { p.mesh = p.buildMesh(); this.scene.add(p.mesh); p.syncMesh(0.016); }
     p.mesh.visible = true; p.fireHeld = false;
     this.fx.victory && this.fx.victory(p.pos.clone());
@@ -807,18 +809,41 @@ BR.Game = class Game {
   updateVictory(dt) {
     const v = this.victory, p = this.player; v.t += dt;
     if (!p.mesh) return;
-    // celebrate: arms raised in a V with fist pumps, a hop at 0.5 s, a full spin at 1.4 s, then bouncing
-    const u = p.mesh.userData, t = v.t;
-    const pump = Math.sin(t * 7) * 0.22 * Math.min(1, t * 2);
-    if (u.AR && u.AL) {
-      u.AR.sh.rotation.set(-2.75 + pump, 0, -0.32); u.AL.sh.rotation.set(-2.75 - pump, 0, 0.32);
-      u.AR.el.rotation.set(-0.35 - Math.max(0, pump), 0, 0); u.AL.el.rotation.set(-0.35 - Math.max(0, -pump), 0, 0);
-    }
-    const hop = t > 0.5 && t < 1.05 ? Math.sin((t - 0.5) / 0.55 * Math.PI) * 0.55 : Math.abs(Math.sin(t * 4.2)) * 0.06 * Math.min(1, Math.max(0, t - 1.1));
-    p.mesh.position.y = p.mover.pos.y + hop;
-    const spin = BR.util.clamp((t - 1.4) / 0.7, 0, 1);
-    p.mesh.rotation.y = (u.yaw || p.yaw) + Math.PI * 2 * (spin * spin * (3 - 2 * spin));
-    if (u.head) u.head.rotation.x = -0.3;
+    // v1.27 dance, five beats: a burst jump with arms flung up, alternating fist pumps on the beat, a spin with
+    // arms out, a side-step shuffle, then a hero pose pointing at the sky. Poses blend smoothly into each other.
+    const u = p.mesh.userData, t = v.t, U = BR.util, S = x => x * x * (3 - 2 * x);
+    const m = p.mover; m.vel.set(0, 0, 0);                                      // stand still for the whole show
+    const beat = t * 2.6 * Math.PI, bb = Math.sin(beat), bounce = Math.abs(Math.sin(beat));
+    const poses = [
+      // [start, pose fn] - each returns { R, L (hand targets in the upper body's space), hl, kl, hr, kr, hz, y, yaw, lean, roll, head }
+      [0, () => { const k = U.clamp(t / 0.25, 0, 1), air = t > 0.25 && t < 0.8 ? Math.sin((t - 0.25) / 0.55 * Math.PI) : 0;
+        return { R: [0.42, 1.1, 0.05], L: [-0.42, 1.1, 0.05], hl: -0.4 * (1 - k) - air * 0.5, kl: 0.9 * (1 - k) + air * 0.9, hr: -0.4 * (1 - k) - air * 0.3, kr: 0.9 * (1 - k) + air * 0.6,
+          hz: 0.1, y: -0.22 * (1 - k) + air * 0.6, yaw: 0, lean: -0.15 * air, roll: 0, head: -0.45 }; }],
+      [0.9, () => { const up = bb > 0;
+        return { R: up ? [0.22, 1.18, -0.05] : [0.1, 0.42, -0.24], L: up ? [-0.1, 0.42, -0.24] : [-0.22, 1.18, -0.05], hl: -0.15 * bounce, kl: 0.35 * bounce, hr: -0.15 * bounce, kr: 0.35 * bounce,
+          hz: 0.08, y: -0.07 * bounce, yaw: bb * 0.18, lean: 0.06 * bounce, roll: bb * 0.08, head: -0.2 - 0.15 * bounce }; }],
+      [2.3, () => { const k = S(U.clamp((t - 2.3) / 0.8, 0, 1));
+        return { R: [0.8, 0.62, 0], L: [-0.8, 0.62, 0], hl: -0.1, kl: 0.25, hr: -0.1, kr: 0.25, hz: 0.12, y: -0.06, yaw: Math.PI * 2 * k, lean: -0.05, roll: 0, head: -0.25 }; }],
+      [3.15, () => { const s1 = Math.sin(beat * 0.5), side = s1 > 0 ? 1 : -1, kick = Math.abs(s1);
+        return { R: [0.0 + s1 * 0.25, 0.32, -0.38], L: [-0.0 + s1 * 0.25, 0.3, -0.36], hl: side < 0 ? -0.55 * kick : 0.05, kl: side < 0 ? 0.25 : 0.4 * kick, hr: side > 0 ? -0.55 * kick : 0.05, kr: side > 0 ? 0.25 : 0.4 * kick,
+          hz: 0.1 + kick * 0.25, y: -0.05 * bounce, yaw: s1 * 0.45, lean: 0.08, roll: -s1 * 0.12, head: -0.1 }; }],
+      [4.4, () => { const br = Math.sin(t * 2.2) * 0.015;
+        return { R: [0.34, 1.22, -0.32], L: [-0.24, 0.02, -0.04], hl: 0.0, kl: 0.05, hr: -0.12, kr: 0.12, hz: 0.18, y: br, yaw: -0.25, lean: -0.12, roll: 0.05, head: -0.55 }; }],
+    ];
+    let i = 0; while (i < poses.length - 1 && t >= poses[i + 1][0]) i++;
+    const A = poses[i][1](), nx = poses[i + 1], w = nx ? S(U.clamp((t - (nx[0] - 0.18)) / 0.18, 0, 1)) : 0;
+    const B = w > 0 ? nx[1]() : A, L = (a, b) => a + (b - a) * w, L3 = (a, b) => [L(a[0], b[0]), L(a[1], b[1]), L(a[2], b[2])];
+    const P = { R: L3(A.R, B.R), L: L3(A.L, B.L) }; for (const k of ['hl', 'kl', 'hr', 'kr', 'hz', 'y', 'yaw', 'lean', 'roll', 'head']) P[k] = L(A[k], B[k]);
+    if (i === 2 && w > 0) P.yaw = A.yaw + (B.yaw + Math.PI * 2 - A.yaw) * w;      // finish the spin forward, not back
+    const keep = this._vp || (this._vp = new THREE.Vector3()), keep2 = this._vp2 || (this._vp2 = new THREE.Vector3());
+    if (u.AR && u.AL && BR.solveArm) { BR.solveArm(u.AR, keep.set(P.R[0], P.R[1], P.R[2]), 1); BR.solveArm(u.AL, keep2.set(P.L[0], P.L[1], P.L[2]), -1); }
+    u.L.hip.rotation.x = P.hl; u.L.knee.rotation.x = P.kl; u.R.hip.rotation.x = P.hr; u.R.knee.rotation.x = P.kr;
+    u.L.hip.rotation.z = -P.hz; u.R.hip.rotation.z = P.hz;
+    u.body.position.y = P.y; u.body.rotation.set(0, 0, P.roll); u.body.position.x = 0; u.body.position.z = 0;
+    u.upper.rotation.set(P.lean, -P.yaw * 0.35, -P.roll * 0.6);
+    p.mesh.position.set(m.pos.x, m.pos.y, m.pos.z);
+    p.mesh.rotation.y = (v.yaw0 !== undefined ? v.yaw0 : p.yaw) + P.yaw;
+    if (u.head) u.head.rotation.set(P.head, P.yaw * 0.2, 0);
     if (u.gun) u.gun.visible = false;
     // fireworks + confetti
     const at = this._vfw || (this._vfw = new THREE.Vector3());
@@ -991,10 +1016,15 @@ BR.Game = class Game {
     if (ev.tech) { this.hud.tech(ev.tech); BR.Audio.tech(); }
   }
 
-  onChestOpened(actor, chest) {
-    const d = Math.hypot(actor.pos.x - this.camera.position.x, actor.pos.z - this.camera.position.z);
-    if (d < 40) BR.Audio.chest(d);
-    if (actor === this.player) this.hud.toast('Chest opened', 900);
+  onChestOpened(actor, chest, gun) {
+    const d = Math.hypot(actor.pos.x - this.camera.position.x, actor.pos.z - this.camera.position.z), rar = gun ? gun.rar | 0 : 0;
+    if (d < 40) BR.Audio.chest(d, rar);
+    if (actor === this.player) {                                   // v1.27: a kick, a buzz and the loot called out in its rarity
+      this.cam.shake = Math.max(this.cam.shake, 0.12); this.cam.hitFov = Math.min(6, (this.cam.hitFov || 0) + 3);
+      try { if (navigator.vibrate) navigator.vibrate(rar >= 4 ? [30, 40, 60] : 35); } catch (e) { /* no haptics */ }
+      const R = BR.RARITY[rar];
+      this.hud.toast(gun && R ? `${R.name.toUpperCase()} ${BR.CONFIG.weapons[gun.wid].name.toUpperCase()}!` : 'Chest opened', 1400);
+    }
   }
 
   // ----------------------------------------------------------------- combat
@@ -1014,6 +1044,12 @@ BR.Game = class Game {
       if (tc < -1 - bh || tc > best + 1 + bh) continue;
       const cull = HB ? (bh * 0.5 + br + hr + 0.5) ** 2 : 4.8;
       if (lx * lx + ly * ly + lz * lz - tc * tc > cull) continue;
+      if (a.downed && !HB) {                           // v1.27: lying flat: head, chest, hips and legs along the body (matches the crawl pose)
+        const yw = a.mesh ? a.mesh.rotation.y : a.yaw, fx = -Math.sin(yw), fz = -Math.cos(yw), py = m.pos.y;
+        const S = this._downS || (this._downS = [[0.8, 0.3, 0.2, true], [0.42, 0.22, 0.27, false], [0.0, 0.2, 0.26, false], [-0.5, 0.16, 0.2, false], [-0.88, 0.14, 0.17, false]]);
+        for (const [f, y, r, hd] of S) { const tt = U.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, m.pos.x + fx * f, py + y, m.pos.z + fz * f, r, best); if (tt < best) { best = tt; actor = a; head = hd; } }
+        continue;
+      }
       const th = U.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, cx, m.pos.y + hy, cz, hr, best);
       if (th < best) { best = th; actor = a; head = true; }
       box.x0 = cx - br; box.x1 = cx + br; box.z0 = cz - br; box.z1 = cz + br;
@@ -1301,13 +1337,13 @@ BR.Game = class Game {
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
     this.shopChar = null;
     if (p.character) {                                       // v1.26 CHARACTER tab: the full character in the look, holding your gun
-      const L = p.character, fig = BR.charFigure({ o: L.o, m: L.m }, L.wid, L.skin, L.bp), head = L.focus === 'head';
+      const L = p.character, fig = BR.charFigure({ o: L.o, m: L.m, h: L.h }, L.wid, L.skin, L.bp), head = L.focus !== 'body', hat = L.focus === 'hat';
       const g = new THREE.Group(); g.add(fig.mesh);
       fig.fake.yaw = Math.PI; fig.mesh.userData.yaw = Math.PI;
-      const k = this.inspect.on ? 1 : 0.75, sc = (head ? 3.6 : 1.2) * k;            // (the shop doesn't zoom out like the inventory)
+      const k = this.inspect.on ? 1 : 0.75, sc = (hat ? 2.5 : head ? 3.6 : 1.2) * k;            // (the shop doesn't zoom out like the inventory)
       fig.mesh.userData.gun.visible = !head;
       g.scale.setScalar(sc);
-      g.position.set(0, head ? -1.75 * sc + 0.05 : this.inspect.on ? -1.1 : -0.52, 0);
+      g.position.set(0, hat ? -1.83 * sc : head ? -1.75 * sc + 0.05 : this.inspect.on ? -1.1 : -0.52, 0);
       g.rotation.y = head ? 0.5 : 0.35;
       this.shopPivot.add(g); this.shopGun = null; this.shopChar = fig;
       return;

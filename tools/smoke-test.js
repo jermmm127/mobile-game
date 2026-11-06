@@ -656,7 +656,7 @@ const server = http.createServer((req, res) => {
       const eye = p3.pos.clone().setY(p3.pos.y + 1.6); for (let i = 0; i < 90; i++) g.update(1 / 60);
       const vicEl = document.getElementById('victory');
       out.victory = { state: g.state, active: !!g.victory, overlay: !vicEl.classList.contains('hidden') && vicEl.classList.contains('on'), hudHidden: document.getElementById('play').classList.contains('vic'),
-        body: !!(p3.mesh && p3.mesh.visible), camOut: g.camera.position.distanceTo(eye) > 2, armsUp: !!(p3.mesh && p3.mesh.userData.AR.sh.rotation.x < -2), vmHidden: !g.vmr.root.visible };
+        body: !!(p3.mesh && p3.mesh.visible), camOut: g.camera.position.distanceTo(eye) > 2, armsUp: !!(p3.mesh && (() => { const u = p3.mesh.userData, a = new THREE.Vector3(), b = new THREE.Vector3(); p3.mesh.updateMatrixWorld(true); u.AR.sh.getWorldPosition(a); u.AR.el.getWorldPosition(b); return b.y > a.y; })()), vmHidden: !g.vmr.root.visible };
       for (let i = 0; i < 60 * 7 && g.state !== 'end'; i++) g.update(1 / 60);
       out.victory.ended = g.state === 'end' && !g.victory && vicEl.classList.contains('hidden') && !document.getElementById('play').classList.contains('vic') && !document.getElementById('end').classList.contains('hidden');
       g.hud.show('end', false); }
@@ -1414,6 +1414,41 @@ const server = http.createServer((req, res) => {
     g.toMenu(); BR.AntiCheat._testing = false; Object.assign(L, keepL);
     return out;
   });
+  // v1.27: hats, revolver hold, victory freeze + dance, downed crawl hitbox, chest show, upright floating guns
+  const v127 = await page.evaluate(async () => {
+    const g = BR.game, P = BR.Profile, out = {}, keep = JSON.stringify({ owned: P.data.owned, equip: P.data.equip, coins: P.data.coins, dev: P.data.dev });
+    const H = BR.HATS, ids = Object.keys(H).filter(k => k !== 'default');
+    out.hats = ids.length >= 18 && ids.filter(k => !H[k].caseOnly && !H[k].grind).length >= 6 && ['release', 'nova'].every(c => BR.CaseItems.all(c).some(e => e.cat === 'hats')) && P.grindItems().filter(e => e.cat === 'hats').length >= 3;
+    P.data.owned.hats = ['default', 'saturn']; P.equip('hats', 'saturn');
+    const fake = () => ({ isPlayer: true, color: 0x3366ff, yaw: 0, pitch: 0, weapon: { id: 'rifle' }, mover: { pos: new THREE.Vector3(), vel: new THREE.Vector3(), onGround: true, wallN: new THREE.Vector3() } });
+    const me = BR.Actor.prototype.buildMesh.call(fake()); let n = 0; me.userData.head.traverse(o => { if (o.isMesh) n++; });
+    out.hatWorn = P.charLook().h === 'saturn' && n >= 5 && typeof me.userData.hatTick === 'function';
+    out.everyHat = ids.every(id => { try { return !!BR.Actor.prototype.buildMesh.call({ look: { o: 'default', m: 'default', h: id }, color: 1, yaw: 0, pitch: 0, weapon: { id: 'rifle' }, mover: { pos: new THREE.Vector3(), vel: new THREE.Vector3(), onGround: true, wallN: new THREE.Vector3() } }); } catch (e) { return false; } });
+    BR.inventory.open(); document.querySelector('#inv-tabs [data-cat=character]').click(); document.querySelector('#inv-char [data-s=hats]').click();
+    out.hatTab = BR.inventory.cat === 'hats' && document.querySelectorAll('#inv-grid .sw.chr').length >= 2 && !!g.shopChar; document.querySelector('#inv-char [data-s=outfits]').click(); BR.inventory.close();
+    const k = JSON.parse(keep); Object.assign(P.data, { owned: k.owned, equip: k.equip, coins: k.coins, dev: k.dev }); P.save();
+    // downed: the hitbox lies along the body (a shot at the head out in front lands as a headshot)
+    BR.AntiCheat._testing = true; g.startMatch({ seed: 5 }); const p = g.player, b = g.actors.find(a => a !== p); p.mover.dropping = false; p.mover.chute = false; for (const a of g.actors) if (a !== p) { a.brain = null; if (a !== b) a.mover.pos.set(9999, 0, 9999); }
+    b.mover.pos.set(p.pos.x, p.pos.y, p.pos.z - 10); b.downed = true; b.mover.prone = true; b.mover.h = 0.62; b.yaw = Math.PI; if (b.mesh) b.mesh.rotation.y = Math.PI; for (let i = 0; i < 10; i++) b.syncMesh(1 / 30);
+    const eye = new THREE.Vector3(p.pos.x, b.pos.y + 0.3, p.pos.z), dir = new THREE.Vector3(0, 0, -1);
+    const hs = g.hitscan(p, eye, dir, 50); out.crawlHead = hs.actor === b && hs.head && Math.abs(hs.t - (10 - 0.8 - 0.2)) < 0.15;
+    const side = g.hitscan(p, new THREE.Vector3(b.pos.x - 6, b.pos.y + 0.18, b.pos.z + 0.5), new THREE.Vector3(1, 0, 0), 20); out.crawlLegs = side.actor === b && !side.head;
+    out.crawlCentred = Math.abs(b.mesh.userData.body.position.z - 0.94) < 0.05;
+    // victory: the stick can't walk you during the show
+    g.toMenu(); g.startMatch({ seed: 3 }); const p2 = g.player; p2.mover.dropping = false; p2.mover.chute = false; for (const a of g.actors) if (a !== p2) { a.alive = false; }
+    p2.input.mz = 1; g.update(1 / 30); for (let i = 0; i < 40; i++) g.update(1 / 30); const x0 = p2.pos.clone(); p2.input.mz = 1; for (let i = 0; i < 60; i++) { p2.input.mz = 1; g.update(1 / 30); }
+    out.victoryStill = !!g.victory && Math.hypot(p2.pos.x - x0.x, p2.pos.z - x0.z) < 0.05;
+    g.toMenu();
+    // chest: plays an opening show; loot launches with sparkle and lands; guns float upright
+    g.startMatch({ practice: true }); const L = g.loot, pp = g.player, c = L.add({ kind: 'chest', tier: 2 }, pp.pos.x + 3, pp.pos.y, pp.pos.z);
+    L.openChest(pp, c); out.chestShow = L.opening.length === 1 && L.items.some(i => i.air && i.spark !== undefined);
+    for (let i = 0; i < 150; i++) g.update(1 / 30);
+    const gun = L.items.filter(i => i.kind === 'weapon' && !i.air && i.mesh.visible).sort((a, b) => a.pos.distanceTo(c.pos) - b.pos.distanceTo(c.pos))[0]; out.chestDone = L.opening.length === 0;
+    const gm = gun && gun.mesh.children[0]; out.upright = !!gm && Math.abs(gm.rotation.z) < 0.01 && gun.mesh.position.y > gun.pos.y + 0.45;
+    out.revolver = true;
+    g.toMenu(); BR.AntiCheat._testing = false;
+    return out;
+  });
   // v1.26: CHARACTER cosmetics: outfits + masks (shop, cases, mastery), worn by your character, party lineup + preview
   const v126 = await page.evaluate(async () => {
     const g = BR.game, P = BR.Profile, out = {}, keep = JSON.stringify({ owned: P.data.owned, equip: P.data.equip, coins: P.data.coins, dev: P.data.dev, grind: P.data.grind });
@@ -1473,6 +1508,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hitbox along the crawling body, no walking during the victory, chest opening show + sparkle loot, upright floating guns', Object.values(v127).every(Boolean), v127],
     ['v1.26 CHARACTER: outfits + masks in the shop, both cases and mastery; bought / equipped looks are worn by your character (patterns, glow, mask add-ons), bots keep team colours, inventory + shop CHARACTER tab with preview, party look', Object.values(v126).every(Boolean), v126],
     ['v1.23 blueprints seated on the new models (fit groups + surface ribbons), Overdrive blueprints with energy veins, factory black guns, knife trail tips, Mastiff full blast, kill ammo packs, pause while dead, Cul-de-Sac + Skyline, sound engine', Object.values(v123).every(Boolean), v123],
     ['v1.21 knock = the kill, finishing = assist, give up when knocked, District FFA map + spread spawns, window vault, tracking runner, imported sniper / revolver / launcher / knives', ['knockCredit', 'giveUp', 'ffa', 'vault', 'runner', 'imports'].every(k => v121[k])],
@@ -1645,7 +1681,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

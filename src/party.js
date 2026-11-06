@@ -335,7 +335,7 @@ BR.PartyStage = (function () {
   // a menu figure: the in-game character (actors.js) holding the member's gun in their finish
   const fig = (m, i) => {
     const L = m.look || {}, wid = BR.CONFIG.weapons[L.wid] ? L.wid : 'rifle', yaw = Math.PI - 0.62 + (i === 0 ? 0 : i % 2 ? 0.12 : -0.12);     // three-quarter view toward the camera: the gun shows side-on
-    const fake = { color: L.col || 0x8a6cff, look: L.ch && typeof L.ch === 'object' ? { o: String(L.ch.o || 'default'), m: String(L.ch.m || 'default') } : null, yaw, pitch: -0.05, downed: false, weapon: { id: wid },
+    const fake = { color: L.col || 0x8a6cff, look: L.ch && typeof L.ch === 'object' ? { o: String(L.ch.o || 'default'), m: String(L.ch.m || 'default'), h: String(L.ch.h || 'default') } : null, yaw, pitch: -0.05, downed: false, weapon: { id: wid },
       mover: { pos: new THREE.Vector3(), vel: new THREE.Vector3(), speedH: 0, dropping: false, chute: false, sliding: false, crouched: false, onGround: true, wallRunning: false, wallN: new THREE.Vector3() } };
     fake.mover.pos.set(SLOT_X[i], 0, -SLOT_Z[i]);
     const mesh = BR.Actor.prototype.buildMesh.call(fake); fake.mesh = mesh; mesh.userData.yaw = yaw;

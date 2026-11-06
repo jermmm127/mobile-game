@@ -124,6 +124,32 @@ BR.MASKS = {
   undying:   { name: 'Undying', rarity: 'Mythic', base: 0x1d2a1b, pat: 'splatter', c2: 0x5d6a4a, c3: 0x7a1a14, eyes: 'glow', eyeCol: 0x39ff88, grind: { stat: 'zround', n: 30, label: 'Reach round 30 in Zombies' } },
   kingpin:   { name: 'Kingpin', rarity: 'Mythic', base: 0x18181c, trim: 0xd4a83a, add: 'crown', addCol: 0xd4a83a, grind: { stat: 'wins', n: 50, label: 'Win 50 matches' } },
 };
+// ---- v1.27 HATS: worn over the mask. kind = the model (actors.js buildHat), c1 / c2 / glow = its colours. Some animate.
+BR.HATS = {
+  default:   { name: 'No Hat', price: 0 },
+  bandana:   { name: 'Red Bandana', price: 300, rarity: 'Rare', kind: 'bandana', c1: 0xc8102e },
+  beanie:    { name: 'Pom Beanie', price: 400, rarity: 'Rare', kind: 'beanie', c1: 0xff7a00, c2: 0xfff2d6 },
+  snapback:  { name: 'Snapback', price: 450, rarity: 'Rare', kind: 'cap', c1: 0x1d6bff, c2: 0xffd24a },
+  bucket:    { name: 'Bucket Hat', price: 800, rarity: 'Epic', kind: 'bucket', c1: 0x39d98a, c2: 0x1b6b45 },
+  beret:     { name: 'Commando Beret', price: 900, rarity: 'Epic', kind: 'beret', c1: 0x7a0f1d, c2: 0xffd24a },
+  tophat:    { name: 'Neon Top Hat', price: 1600, rarity: 'Legendary', kind: 'tophat', c1: 0x111114, glow: 0xff2bd6 },
+  catears:   { name: 'Glow Cat Ears', price: 1500, rarity: 'Legendary', kind: 'catears', c1: 0x18181c, glow: 0x1de9ff },
+  // Release Case
+  backcap:   { name: 'Backwards Cap', caseOnly: true, rarity: 'Rare', kind: 'backcap', c1: 0xffd24a, c2: 0x111111, glow: 0xffd24a },
+  cone:      { name: 'Traffic Cone', caseOnly: true, rarity: 'Epic', kind: 'cone', c1: 0xff6a00 },
+  kabuto:    { name: 'Shogun Kabuto', caseOnly: true, rarity: 'Legendary', kind: 'kabuto', c1: 0x7a0a12, c2: 0xffc83a, glow: 0xff3030 },
+  headset:   { name: 'RGB Headset', caseOnly: true, rarity: 'Mythic', kind: 'headset', c1: 0x15161a, glow: 0x39ff88 },
+  flame:     { name: 'Inferno Crown', caseOnly: true, rarity: 'Exotic', kind: 'flame', c1: 0xffc83a, c2: 0xffe14d, glow: 0xff4a00 },
+  // Nova Case
+  antlers:   { name: 'Spirit Antlers', caseOnly: true, case: 'nova', rarity: 'Legendary', kind: 'antlers', glow: 0x6fd8ff },
+  wizard:    { name: 'Archmage', caseOnly: true, case: 'nova', rarity: 'Mythic', kind: 'wizard', c1: 0x3b1a9a, c2: 0xffd24a, glow: 0xff3df2 },
+  saturn:    { name: 'Saturn Orbit', caseOnly: true, case: 'nova', rarity: 'Exotic', kind: 'saturn', c1: 0x1de9ff, c2: 0xff3df2, glow: 0xffd24a },
+  // Mastery (grind)
+  viking:    { name: 'Warlord Helm', rarity: 'Legendary', kind: 'viking', c1: 0x8a929c, c2: 0xb8860b, grind: { stat: 'kills', n: 1000, label: 'Get 1,000 kills' } },
+  gunslinger:{ name: 'Gunslinger', rarity: 'Legendary', kind: 'cowboy', c1: 0x5a3a22, c2: 0xd4a83a, grind: { stat: 'w:revolver', n: 150, label: 'Get 150 kills with the Revolver' } },
+  mohawk:    { name: 'Neon Mohawk', rarity: 'Mythic', kind: 'mohawk', c1: 0xff2bd6, c2: 0x39ff88, grind: { stat: 'heads', n: 1000, label: 'Get 1,000 headshot kills' } },
+  brainjar:  { name: 'Brain Jar', rarity: 'Mythic', kind: 'brainjar', c1: 0xff8ab0, glow: 0x39ff88, grind: { stat: 'zkills', n: 2500, label: 'Kill 2,500 zombies' } },
+};
 // ---- Cases: exclusive items you can only get by opening one. Rarer = flashier.
 BR.CASES = {
   release: { name: 'Release Case', price: 600, odds: { Rare: 52, Epic: 28, Legendary: 13, Mythic: 6, Exotic: 1 }, dupRefund: 0.35, label: 'RELEASE', sub: 'CASE · SEASON 1' },
@@ -143,7 +169,7 @@ BR.CaseItems = {
     const add = (cat, table, pre) => { for (const id in table) if (table[id].caseOnly) out.push({ cat, id: pre ? pre + id : id, item: table[id] }); };
     for (const w in M.BLUEPRINTS) add('blueprints', M.BLUEPRINTS[w], w + ':');
     add('skins', M.SKINS); add('gloves', M.GLOVES); add('tracers', M.TRACERS); add('feeds', BR.FEEDS); add('finishers', BR.FINISHERS);
-    add('outfits', BR.OUTFITS); add('masks', BR.MASKS);
+    add('outfits', BR.OUTFITS); add('masks', BR.MASKS); add('hats', BR.HATS);
     return (this._all = out);
   },
   roll(caseId, R) {
@@ -170,8 +196,8 @@ BR.Profile = {
     d = d || {};
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
-      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'], outfits: ['default'], masks: ['default'] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', outfits: 'default', masks: 'default', melee: 'tracker' }, d.equip || {}),
+      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'], outfits: ['default'], masks: ['default'], hats: ['default'] }, d.owned || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', outfits: 'default', masks: 'default', hats: 'default', melee: 'tracker' }, d.equip || {}),
       rp: typeof d.rp === 'number' ? d.rp : 0,
       cases: Object.assign({ opened: 0 }, d.cases || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0, deaths: 0 }, d.stats || {}),
@@ -199,7 +225,7 @@ BR.Profile = {
     if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
     if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
-    for (const k of ['outfits', 'masks']) { if (!this.data.owned[k]) this.data.owned[k] = ['default']; if (!this.data.equip[k]) this.data.equip[k] = 'default'; }     // v1.26 character
+    for (const k of ['outfits', 'masks', 'hats']) { if (!this.data.owned[k]) this.data.owned[k] = ['default']; if (!this.data.equip[k]) this.data.equip[k] = 'default'; }     // v1.26 character
     // v1.14: new accounts start from scratch — default skins only, the Tracker knife, level 0.
     // Older saves get XP credited for what they already did (kills, wins, matches, zombies).
     if (this.data.xp === null) {
@@ -229,7 +255,7 @@ BR.Profile = {
     const add = (cat, ids) => { for (const id of ids) if (!o[cat].includes(id)) o[cat].push(id); };
     add('skins', Object.keys(M.SKINS)); add('tracers', Object.keys(M.TRACERS));
     add('charms', Object.keys(M.CHARMS)); add('gloves', Object.keys(M.GLOVES)); add('feeds', Object.keys(BR.FEEDS));
-    add('finishers', Object.keys(BR.FINISHERS)); add('outfits', Object.keys(BR.OUTFITS)); add('masks', Object.keys(BR.MASKS));
+    add('finishers', Object.keys(BR.FINISHERS)); add('outfits', Object.keys(BR.OUTFITS)); add('masks', Object.keys(BR.MASKS)); add('hats', Object.keys(BR.HATS));
     for (const w in M.BLUEPRINTS) add('blueprints', Object.keys(M.BLUEPRINTS[w]).map(b => w + ':' + b));
   },
   save() { if (BR.AntiCheat) BR.AntiCheat.saveSigned(this.KEY, this.data); else BR.util.save(this.KEY, this.data); },
@@ -324,7 +350,7 @@ BR.Profile = {
     const M = BR.Models, out = [];
     for (const id in M.SKINS) if (M.SKINS[id].grind) out.push({ cat: 'skins', id, item: M.SKINS[id] });
     for (const w in M.BLUEPRINTS) for (const b in M.BLUEPRINTS[w]) if (M.BLUEPRINTS[w][b].grind) out.push({ cat: 'blueprints', id: w + ':' + b, item: M.BLUEPRINTS[w][b] });
-    for (const cat of ['outfits', 'masks']) { const T = BR.CHAR_TABLES[cat](); for (const id in T) if (T[id].grind) out.push({ cat, id, item: T[id] }); }
+    for (const cat of ['outfits', 'masks', 'hats']) { const T = BR.CHAR_TABLES[cat](); for (const id in T) if (T[id].grind) out.push({ cat, id, item: T[id] }); }
     return out;
   },
   grindProgress(item) { const G = this.grind(), g = item.grind; return [Math.min(g.n, Math.floor(G[g.stat] || 0)), g.n]; },
@@ -371,7 +397,7 @@ BR.Profile = {
     return { streak: d.daily.streak, coins, key };
   },
   // v1.26: the character look you wear (outfit + mask ids)
-  charLook() { const e = this.data.equip, O = BR.OUTFITS || {}, K = BR.MASKS || {}; return { o: O[e.outfits] ? e.outfits : 'default', m: K[e.masks] ? e.masks : 'default' }; },
+  charLook() { const e = this.data.equip, O = BR.OUTFITS || {}, K = BR.MASKS || {}, H = BR.HATS || {}; return { o: O[e.outfits] ? e.outfits : 'default', m: K[e.masks] ? e.masks : 'default', h: H[e.hats] ? e.hats : 'default' }; },
   keys(caseId) { return (this.data.keys && this.data.keys[caseId]) || 0; },
   // gloves worn with a weapon (per-weapon pick, else the default pair)
   skinFor(weapon) { const e = this.data.equip; return (e.skinByGun && e.skinByGun[weapon]) || 'default'; },
@@ -466,9 +492,9 @@ BR.Profile = {
   },
 };
 
-BR.CHAR_TABLES = { outfits: () => BR.OUTFITS, masks: () => BR.MASKS };
+BR.CHAR_TABLES = { outfits: () => BR.OUTFITS, masks: () => BR.MASKS, hats: () => BR.HATS };
 // the look shown in the preview: what you wear, with the selected outfit / mask swapped in
-BR.lookPreview = (cat, id) => { const L = Object.assign({}, BR.Profile.charLook()); if (id) L[cat === 'outfits' ? 'o' : 'm'] = id; L.focus = cat === 'masks' ? 'head' : 'body'; const G = BR.Profile.loadoutGuns(); L.wid = G.primary; L.skin = BR.Profile.skinFor(G.primary); L.bp = (BR.Profile.data.equip.blueprints || {})[G.primary] || null; return L; };
+BR.lookPreview = (cat, id) => { const L = Object.assign({}, BR.Profile.charLook()); if (id) L[cat === 'outfits' ? 'o' : cat === 'hats' ? 'h' : 'm'] = id; L.focus = cat === 'outfits' ? 'body' : cat === 'hats' ? 'hat' : 'head'; const G = BR.Profile.loadoutGuns(); L.wid = G.primary; L.skin = BR.Profile.skinFor(G.primary); L.bp = (BR.Profile.data.equip.blueprints || {})[G.primary] || null; return L; };
 BR.MELEE = { bayonet: true, knife: true, butterfly: true, tracker: true };
 const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['launcher', 'Shockwave Launcher'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker']];
 const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
@@ -501,12 +527,13 @@ BR.CharIcons = {
         this.cam = new THREE.PerspectiveCamera(30, 1, 0.05, 20);
       }
       clearTimeout(this.idle); this.idle = setTimeout(() => this.drop(), 4000);         // give the WebGL context back when idle
-      const look = { o: cat === 'outfits' ? id : 'default', m: cat === 'masks' ? id : 'default' };
-      const fig = BR.charFigure(look, 'rifle'); fig.mesh.userData.gun.visible = cat !== 'masks';
+      const look = { o: cat === 'outfits' ? id : 'default', m: cat === 'masks' ? id : 'default', h: cat === 'hats' ? id : 'default' }, head = cat !== 'outfits';
+      const fig = BR.charFigure(look, 'rifle'); fig.mesh.userData.gun.visible = !head;
       this.sc.add(fig.mesh); fig.mesh.updateMatrixWorld(true);
       const a = 0.5, c = this.cam;
       const hp = new THREE.Vector3(); fig.mesh.userData.head.getWorldPosition(hp); hp.y += 0.06;      // (the figure faces +Z)
-      if (cat === 'masks') { c.position.set(hp.x + Math.sin(a) * 0.78, hp.y + 0.1, hp.z + Math.cos(a) * 0.78); c.lookAt(hp.x, hp.y + 0.03, hp.z); }
+      if (cat === 'hats') { c.position.set(hp.x + Math.sin(a) * 1.0, hp.y + 0.3, hp.z + Math.cos(a) * 1.0); c.lookAt(hp.x, hp.y + 0.1, hp.z); }
+      else if (cat === 'masks') { c.position.set(hp.x + Math.sin(a) * 0.78, hp.y + 0.1, hp.z + Math.cos(a) * 0.78); c.lookAt(hp.x, hp.y + 0.03, hp.z); }
       else { c.position.set(Math.sin(a) * 3.7, 1.15, Math.cos(a) * 3.7); c.lookAt(0, 0.93, 0); }
       this.r.render(this.sc, c); url = this.r.domElement.toDataURL('image/png');
       this.sc.remove(fig.mesh);
@@ -638,7 +665,7 @@ BR.Shop = class Shop {
       const pic = BR.CharIcons.get(cat, id), hx = c => c === undefined ? '#555' : hex(c);
       const glow = it.glow !== undefined ? hex(it.glow) : it.eyeCol !== undefined ? hex(it.eyeCol) : 'transparent';
       const bg = cat === 'outfits' ? `linear-gradient(180deg,${hx(it.jacket)} 0 55%,${hx(it.pants)} 55% 88%,${hx(it.boots)} 88%)` : hx(it.base);
-      return pic ? `<i class="sw chr${cat === 'masks' ? ' mk' : ''}" style="background-image:url(${pic}),radial-gradient(circle at 50% 60%,${glow === 'transparent' ? 'rgba(178,107,255,0.25)' : glow + '55'},transparent 70%)"></i>` : `<i class="sw" style="background:${bg}"></i>`;
+      return pic ? `<i class="sw chr${cat !== 'outfits' ? ' mk' : ''}" style="background-image:url(${pic}),radial-gradient(circle at 50% 60%,${glow === 'transparent' ? 'rgba(178,107,255,0.25)' : glow + '55'},transparent 70%)"></i>` : `<i class="sw" style="background:${bg}"></i>`;
     }
     if (cat === 'feeds') return `<i class="sw fd"><span class="kf feed-${id}">${BR.Ranks.badge(BR.Profile.data.rp || 0)}<b class="me">You</b><i>✕</i></span></i>`;
     return `<i class="sw ch">${id === 'none' ? '—' : '◆'}</i>`;
@@ -750,13 +777,13 @@ BR.Inventory = class Inventory {
   collectible() {
     if (this._coll) return this._coll;
     const M = BR.Models; let n = 0;
-    for (const t of [M.SKINS, M.TRACERS, M.CHARMS, M.GLOVES, BR.FEEDS, BR.FINISHERS, BR.OUTFITS, BR.MASKS]) n += Object.keys(t).filter(k => k !== 'default' && k !== 'none' && k !== 'signature').length;
+    for (const t of [M.SKINS, M.TRACERS, M.CHARMS, M.GLOVES, BR.FEEDS, BR.FINISHERS, BR.OUTFITS, BR.MASKS, BR.HATS]) n += Object.keys(t).filter(k => k !== 'default' && k !== 'none' && k !== 'signature').length;
     for (const w in M.BLUEPRINTS) n += Object.keys(M.BLUEPRINTS[w]).filter(k => k !== 'default').length;
     return (this._coll = n);
   }
   total() {
     const o = BR.Profile.data.owned; let n = 0;
-    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds', 'finishers', 'outfits', 'masks']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
+    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds', 'finishers', 'outfits', 'masks', 'hats']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
     return n + (o.blueprints || []).filter(x => !x.endsWith(':default')).length;
   }
   open(focus) {
@@ -819,7 +846,7 @@ BR.Inventory = class Inventory {
     this.el.name.textContent = it ? it.name : '';
     this.el.rar.textContent = it && it.rarity ? it.rarity.toUpperCase() : '';
     this.el.rar.style.color = it && it.rarity ? RARITY[it.rarity] : '';
-    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : cat === 'outfits' ? 'Character outfit' + (it.grind && P.owns(cat, this.sel) ? ' · mastery' : '') : cat === 'masks' ? 'Character mask' : cat === 'finishers' ? 'Kill finisher' : 'Kill feed banner';
+    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : cat === 'outfits' ? 'Character outfit' + (it.grind && P.owns(cat, this.sel) ? ' · mastery' : '') : cat === 'masks' ? 'Character mask' : cat === 'hats' ? 'Character hat' : cat === 'finishers' ? 'Kill finisher' : 'Kill feed banner';
     const eq = it && P.isEquipped(cat, this.sel, this.weapon);
     this.el.action.textContent = !it ? '' : eq ? 'Equipped' : 'Equip';
     this.el.action.disabled = !it || eq;

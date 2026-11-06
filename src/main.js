@@ -404,7 +404,7 @@
     const P = BR.Profile;
     $('grind-list').innerHTML = P.grindItems().map(e => {
       const [cur, n] = P.grindProgress(e.item), own = P.owns(e.cat, e.id), k = Math.min(1, cur / n);
-      const what = e.cat === 'skins' ? 'CAMO · any gun' : e.cat === 'outfits' ? 'OUTFIT · character' : e.cat === 'masks' ? 'MASK · character' : 'BLUEPRINT · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name;
+      const what = e.cat === 'skins' ? 'CAMO · any gun' : e.cat === 'outfits' ? 'OUTFIT · character' : e.cat === 'masks' ? 'MASK · character' : e.cat === 'hats' ? 'HAT · character' : 'BLUEPRINT · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name;
       return `<div class="gr-row${own ? ' own' : ''}"><div class="gr-sw">${shop.swatch(e.cat, e.id, e.item)}</div><div class="gr-main"><div class="gr-top"><b>${e.item.name}</b><span class="rar" style="--r:${({ Epic: '#b06bff', Legendary: '#ffb020', Mythic: '#ff3df2', Exotic: '#39ffd0' })[e.item.rarity] || '#8d97a5'}">${e.item.rarity}</span><i>${what}</i></div>
         <div class="gr-lbl">${e.item.grind.label}</div><div class="gr-bar"><u style="width:${(k * 100).toFixed(1)}%"></u></div></div><div class="gr-n">${own ? 'UNLOCKED' : cur.toLocaleString() + ' / ' + n.toLocaleString()}</div></div>`;
     }).join('');
@@ -514,7 +514,7 @@
   };
   // ---- Release Case: CS-style reel that decelerates onto the drop
   const RCOL = { Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
-  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask' };
+  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask', hats: 'Hat' };
   const caseCard = (e, extra) => {
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
     const hex = c => '#' + (c >>> 0).toString(16).padStart(6, '0');

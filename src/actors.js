@@ -44,6 +44,7 @@ function solveArm(arm, target, side) {
   fore.applyQuaternion(_ikQ.copy(arm.sh.quaternion).invert());
   arm.el.quaternion.setFromUnitVectors(_DOWN, fore);
 }
+BR.solveArm = (arm, target, side) => solveArm(arm, target, side);      // (the victory dance poses the arms by IK)
 // v1.26: whose look an actor wears ({ o: outfit id, m: mask id }): its own (party members, previews) or, for the player, the profile's
 BR.lookOf = a => (a && a.look) || (a && a.isPlayer && BR.Profile && BR.Profile.data && BR.Profile.charLook ? BR.Profile.charLook() : null);
 // v1.25: the imported character's shared geometry (built once from BR.CHAR_DATA) + a woven fabric detail map
@@ -171,6 +172,79 @@ function maskTex(id, K) {
   }
   const out = { map: new THREE.CanvasTexture(cv), glow: K.glow || K.eyes === 'glow' ? new THREE.CanvasTexture(gc) : null };
   return (lookTex['m:' + id] = out);
+}
+// v1.27 HATS: built from primitives around the mask (origin = mask centre, top of the head at y 0.132, front = -Z).
+// A hat can animate: group.userData.tick(t) is called from syncMesh with the time in seconds.
+function buildHat(id, H) {
+  const g = new THREE.Group(), c1 = H.c1 !== undefined ? H.c1 : 0x333333, c2 = H.c2 !== undefined ? H.c2 : 0xffffff, gl = H.glow !== undefined ? H.glow : c2;
+  const lam = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+  const pho = (c, o) => new THREE.MeshPhongMaterial(Object.assign({ color: c, shininess: 90, specular: 0x666666 }, o || {}));
+  const neon = (c, o) => new THREE.MeshBasicMaterial(Object.assign({ color: c }, o || {}));
+  const add = (geo, mat, x, y, z, rx, ry, rz, par) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); (par || g).add(m); return m; };
+  const dome = (r, sy, k) => new THREE.SphereGeometry(r, 22, 12, 0, Math.PI * 2, 0, Math.PI * (k || 0.5));
+  const ticks = [];
+  switch (H.kind) {
+    case 'beanie': { const d = add(dome(0.114), lam(c1), 0, 0.02); d.scale.set(1, 1.15, 1.08);
+      add(new THREE.CylinderGeometry(0.117, 0.117, 0.045, 22), lam(c2), 0, 0.03).scale.z = 1.08;
+      add(new THREE.SphereGeometry(0.032, 10, 8), lam(c2), 0, 0.16); break; }
+    case 'cap': case 'backcap': { const back = H.kind === 'backcap', d = add(dome(0.11), lam(c1), 0, 0.03); d.scale.set(1, 0.95, 1.08);
+      const b = add(new THREE.CylinderGeometry(0.08, 0.08, 0.008, 20, 1, false, Math.PI * 0.5, Math.PI), lam(c2), 0, 0.045, back ? 0.09 : -0.09, back ? -0.12 : 0.12); b.scale.z = 1.25; if (back) b.rotation.y = Math.PI;
+      add(new THREE.SphereGeometry(0.012, 8, 6), lam(c2), 0, 0.135); if (H.glow !== undefined) add(new THREE.TorusGeometry(0.111, 0.004, 4, 32), neon(gl), 0, 0.035, 0, Math.PI / 2).scale.y = 1.08; break; }
+    case 'bucket': { add(new THREE.CylinderGeometry(0.1, 0.118, 0.09, 22), lam(c1), 0, 0.06); add(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 22), lam(c1), 0, 0.105);
+      add(new THREE.CylinderGeometry(0.118, 0.17, 0.04, 26, 1, true), lam(c2, { side: THREE.DoubleSide }), 0, 0.0); add(new THREE.CylinderGeometry(0.119, 0.119, 0.018, 22), lam(c2), 0, 0.02); break; }
+    case 'bandana': { const t = add(new THREE.TorusGeometry(0.108, 0.016, 6, 30), lam(c1), 0, 0.06, 0, Math.PI / 2); t.scale.y = 1.1;
+      for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.02, 0.07, 0.008), lam(c1), s * 0.02, 0.02, 0.125, 0.4, 0, s * 0.35); if (H.glow !== undefined) add(new THREE.TorusGeometry(0.11, 0.004, 4, 30), neon(gl), 0, 0.06, 0, Math.PI / 2).scale.y = 1.12; break; }
+    case 'beret': { const b = add(new THREE.SphereGeometry(0.125, 20, 10), lam(c1), 0.02, 0.11, 0.005, 0, 0, 0.22); b.scale.set(1.05, 0.32, 1.05); add(new THREE.CylinderGeometry(0.006, 0.004, 0.025, 6), lam(c1), 0.0, 0.155, 0);
+      add(new THREE.OctahedronGeometry(0.018), pho(c2, { emissive: c2, emissiveIntensity: 0.4 }), -0.03, 0.11, -0.11, 0, 0, 0); break; }
+    case 'tophat': { add(new THREE.CylinderGeometry(0.16, 0.16, 0.012, 28), pho(c1), 0, 0.1); const body = add(new THREE.CylinderGeometry(0.088, 0.083, 0.19, 24), pho(c1), 0, 0.2);
+      const band = add(new THREE.CylinderGeometry(0.091, 0.091, 0.03, 24), neon(gl), 0, 0.125);
+      ticks.push(t => { band.material.color.setHSL(((t * 0.15) % 1), 1, 0.55); }); void body; break; }
+    case 'cowboy': { const pts = [[0.001, 0.2], [0.07, 0.205], [0.085, 0.17], [0.092, 0.1], [0.1, 0.07], [0.17, 0.075], [0.2, 0.11], [0.205, 0.115]].map(p => new THREE.Vector2(p[0], p[1]));
+      add(new THREE.LatheGeometry(pts, 28), lam(c1, { side: THREE.DoubleSide }), 0, -0.01).scale.set(1, 1, 0.85);
+      add(new THREE.CylinderGeometry(0.094, 0.098, 0.022, 24), pho(c2), 0, 0.075); break; }
+    case 'catears': { add(new THREE.TorusGeometry(0.112, 0.008, 6, 30, Math.PI), lam(c1), 0, 0.02, 0, 0, Math.PI / 2, 0);
+      for (const s of [-1, 1]) { add(new THREE.ConeGeometry(0.04, 0.08, 4), lam(c1), s * 0.065, 0.14, 0.0, 0, Math.PI / 4, -s * 0.3); add(new THREE.ConeGeometry(0.025, 0.055, 4), neon(gl), s * 0.064, 0.136, -0.012, 0, Math.PI / 4, -s * 0.3); } break; }
+    case 'cone': { const cone = add(new THREE.ConeGeometry(0.1, 0.3, 24), lam(c1), 0, 0.24); void cone;
+      for (const y of [0.2, 0.28]) add(new THREE.CylinderGeometry(0.1 * (0.39 - y + 0.09) / 0.3 + 0.001, 0.1 * (0.39 - y + 0.09 - 0.03) / 0.3 + 0.004, 0.03, 24), lam(0xffffff), 0, y);
+      add(new THREE.BoxGeometry(0.24, 0.018, 0.24), lam(c1), 0, 0.09); break; }
+    case 'headset': { add(new THREE.TorusGeometry(0.128, 0.013, 6, 30, Math.PI), pho(c1), 0, 0.02, 0);
+      for (const s of [-1, 1]) { add(new THREE.CylinderGeometry(0.045, 0.045, 0.035, 18), pho(c1), s * 0.115, -0.01, 0, 0, 0, Math.PI / 2); const r = add(new THREE.TorusGeometry(0.038, 0.006, 6, 20), neon(gl), s * 0.134, -0.01, 0, 0, Math.PI / 2, 0); ticks.push(t => r.material.color.setHSL(((t * 0.25 + (s > 0 ? 0.5 : 0)) % 1), 1, 0.55)); }
+      const boom = add(new THREE.CylinderGeometry(0.004, 0.004, 0.11, 6), pho(c1), 0.11, -0.06, -0.06, 0.9, 0, 0); void boom; add(new THREE.SphereGeometry(0.012, 8, 6), neon(gl), 0.105, -0.095, -0.105); break; }
+    case 'kabuto': { const d = add(dome(0.122, 1, 0.5), pho(c1), 0, 0.015); d.scale.set(1, 0.95, 1.05);
+      add(new THREE.CylinderGeometry(0.125, 0.185, 0.08, 24, 1, true, -Math.PI * 0.7, Math.PI * 1.4), pho(c1, { side: THREE.DoubleSide }), 0, -0.035, 0.005);
+      add(new THREE.TorusGeometry(0.075, 0.008, 6, 20, Math.PI), pho(c2, { emissive: c2, emissiveIntensity: 0.3 }), 0, 0.2, -0.105, 0, 0, Math.PI);
+      add(new THREE.CylinderGeometry(0.008, 0.012, 0.07, 6), pho(c2), 0, 0.14, -0.11);
+      add(new THREE.SphereGeometry(0.018, 10, 8), neon(gl), 0, 0.09, -0.125); break; }
+    case 'viking': { const d = add(dome(0.12), pho(c1), 0, 0.015); d.scale.set(1, 1.05, 1.06); add(new THREE.CylinderGeometry(0.123, 0.123, 0.025, 24), pho(c2), 0, 0.025);
+      add(new THREE.BoxGeometry(0.018, 0.1, 0.02), pho(c2), 0, 0.06, -0.12);
+      for (const s of [-1, 1]) { const h = add(new THREE.TorusGeometry(0.08, 0.018, 8, 16, Math.PI * 0.55), lam(0xefe6cf), s * 0.13, 0.07, 0, 0, 0, s > 0 ? -0.3 : Math.PI + 0.3 - Math.PI * 0.55); h.scale.set(1, 1, 1); } break; }
+    case 'wizard': { const cone = add(new THREE.ConeGeometry(0.115, 0.36, 24), lam(c1), 0, 0.28, 0.02, -0.15, 0, 0.08); void cone; add(new THREE.CylinderGeometry(0.19, 0.19, 0.01, 28), lam(c1), 0, 0.1);
+      const orb = new THREE.Group(); orb.position.y = 0.2; g.add(orb);
+      for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; add(new THREE.OctahedronGeometry(0.018), neon(i % 2 ? gl : c2), Math.cos(a) * 0.17, Math.sin(i * 1.7) * 0.05, Math.sin(a) * 0.17, 0, 0, 0, orb); }
+      ticks.push(t => { orb.rotation.y = t * 1.4; }); break; }
+    case 'antlers': { for (const s of [-1, 1]) { const root = new THREE.Group(); root.position.set(s * 0.06, 0.1, 0); root.rotation.z = -s * 0.4; g.add(root);
+        add(new THREE.CylinderGeometry(0.007, 0.011, 0.16, 6), neon(gl), 0, 0.08, 0, 0, 0, 0, root);
+        for (const [y, a, l] of [[0.06, 0.9, 0.07], [0.11, -0.8, 0.06], [0.14, 0.7, 0.05]]) add(new THREE.CylinderGeometry(0.005, 0.007, l, 6), neon(gl), Math.sin(a) * l * 0.5 * -s, y + Math.cos(a) * l * 0.5, 0, 0, 0, a * s, root); }
+      ticks.push(t => g.children.forEach(r => r.children.forEach(m => m.material.color.setHex(gl).multiplyScalar(0.75 + 0.25 * Math.sin(t * 4))))); break; }
+    case 'mohawk': { for (let i = 0; i < 7; i++) { const k = i / 6, z = -0.09 + k * 0.19, h = 0.07 + Math.sin(k * Math.PI) * 0.06, y = Math.sqrt(Math.max(0, 1 - (z / 0.12) ** 2)) * 0.12;
+        const c = new THREE.Color(c1).lerp(new THREE.Color(c2), k); add(new THREE.ConeGeometry(0.028, h * 1.5, 6), neon(c.getHex()), 0, y + h * 0.75 - 0.01, z, -(z / 0.12) * 0.6).scale.x = 0.45; }
+      const sp = g.children.slice(); ticks.push(t => sp.forEach((m, i) => { m.scale.y = 1 + 0.12 * Math.sin(t * 6 + i); })); break; }
+    case 'flame': { add(new THREE.CylinderGeometry(0.115, 0.115, 0.035, 24, 1, true), pho(c1, { side: THREE.DoubleSide, emissive: 0x332200 }), 0, 0.075);
+      const fl = []; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; const f = add(new THREE.ConeGeometry(0.026, 0.11, 6), neon(i % 2 ? c2 : gl, { transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }), Math.cos(a) * 0.1, 0.14, Math.sin(a) * 0.1); fl.push(f); }
+      ticks.push(t => fl.forEach((f, i) => { f.scale.set(1, 0.8 + 0.4 * Math.abs(Math.sin(t * 9 + i * 1.3)), 1); f.position.y = 0.13 + f.scale.y * 0.05; })); break; }
+    case 'saturn': { const R = new THREE.Group(); R.position.y = 0.2; R.rotation.set(0.35, 0, 0.25); g.add(R);
+      add(new THREE.TorusGeometry(0.17, 0.006, 6, 48), neon(c1), 0, 0, 0, Math.PI / 2, 0, 0, R); add(new THREE.TorusGeometry(0.2, 0.003, 6, 48), neon(c2), 0, 0, 0, Math.PI / 2, 0, 0, R);
+      const core = add(new THREE.SphereGeometry(0.05, 16, 12), pho(gl, { emissive: gl, emissiveIntensity: 0.7 }), 0, 0, 0, 0, 0, 0, R);
+      const moons = []; for (let i = 0; i < 3; i++) moons.push(add(new THREE.SphereGeometry(0.016, 10, 8), neon(i === 1 ? c2 : c1), 0, 0, 0, 0, 0, 0, R));
+      ticks.push(t => { moons.forEach((m, i) => { const a = t * (1.2 + i * 0.4) + i * 2.1; m.position.set(Math.cos(a) * 0.17, 0, Math.sin(a) * 0.17); }); core.rotation.y = t; R.position.y = 0.2 + Math.sin(t * 2) * 0.012; }); break; }
+    case 'brainjar': { add(new THREE.CylinderGeometry(0.115, 0.118, 0.03, 24), pho(0x8a9099), 0, 0.03);
+      const br = add(new THREE.SphereGeometry(0.075, 18, 12), pho(c1, { emissive: c1, emissiveIntensity: 0.25, shininess: 20 }), 0, 0.1); br.scale.set(1, 0.8, 1.15);
+      add(new THREE.SphereGeometry(0.125, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), new THREE.MeshPhongMaterial({ color: gl, transparent: true, opacity: 0.28, shininess: 120, specular: 0xffffff, depthWrite: false }), 0, 0.075);
+      const bub = []; for (let i = 0; i < 4; i++) bub.push(add(new THREE.SphereGeometry(0.008, 6, 4), neon(gl), (i - 1.5) * 0.04, 0.05, (i % 2 - 0.5) * 0.06));
+      ticks.push(t => { bub.forEach((b, i) => { b.position.y = 0.05 + ((t * 0.35 + i * 0.25) % 1) * 0.12; }); br.rotation.y = Math.sin(t) * 0.2; }); break; }
+  }
+  g.userData.tick = ticks.length ? t => { for (const f of ticks) f(t); } : null;
+  return g;
 }
 // add-ons on the head joint (positions are relative to the mask's centre)
 function maskAddon(kind, K) {
@@ -440,7 +514,7 @@ BR.Actor = class Actor {
     const paint = hex => fill(C.teamIdx, hex);
     // v1.26: the equipped outfit (players and party members) overrides the team colour
     const own = (T, k) => T && k !== 'default' && Object.prototype.hasOwnProperty.call(T, k) ? T[k] : null;
-    const look = BR.lookOf(this), O = look && own(BR.OUTFITS, look.o), K = look && own(BR.MASKS, look.m);
+    const look = BR.lookOf(this), O = look && own(BR.OUTFITS, look.o), K = look && own(BR.MASKS, look.m), Hh = look && own(BR.HATS, look.h);
     mat.color.setHex = function (hex) { if (!O) paint(hex); return this; };
     mat.clone = function () { const m = THREE.MeshLambertMaterial.prototype.clone.call(this); m.color.setHex = mat.color.setHex; m.clone = mat.clone; return m; };     // (the enemy highlight clones it)
     paint(O ? O.jacket : this.color !== undefined ? this.color : 0x8899aa);
@@ -463,10 +537,12 @@ BR.Actor = class Actor {
     mat3.userData.emi = MT && MT.glow ? (K.glow || K.eyeCol || 0xff2030) : 0;
     const mk = BR.CHAR_DATA.mask, maskM = new THREE.Mesh(C.mask, mat3); maskM.position.set(mk.c[0], mk.c[1] - 1.7, mk.c[2]); head.add(maskM);
     if (K && K.add) maskM.add(maskAddon(K.add, K));
+    let hatTick = null;
+    if (Hh) { const hat = buildHat(look.h, Hh); maskM.add(hat); hatTick = hat.userData.tick; }        // v1.27 hats
     for (const o of [AR.sh, AL.sh, AR.el, AL.el, R.hip, L.hip, R.knee, L.knee]) o.rotation.set(0, 0, 0);     // back to the rig's rest pose
     const chute = BR.Models.parachute(this.color, 0xf2f2f2);
     chute.position.y = 1.5; chute.visible = false; g.add(chute);
-    g.userData = { body, upper, head, L, R, AR, AL, gun, mat, mat2, mat3, chute, t: 0, yaw: this.yaw, pitch: 0, char: true };
+    g.userData = { body, upper, head, L, R, AR, AL, gun, mat, mat2, mat3, chute, t: 0, yaw: this.yaw, pitch: 0, char: true, hatTick };
     return g;
   }
 
@@ -527,6 +603,7 @@ BR.Actor = class Actor {
   syncMesh(dt) {
     const m = this.mover, u = this.mesh.userData, U = BR.util;
     this.mesh.position.copy(m.pos);
+    if (u.hatTick) u.hatTick(performance.now() / 1000);
     const sp = m.speedH;
     // Smooth turning: the body eases toward where it's facing (or sliding), the
     // upper body / head / gun ease toward the aim — no snapping on either end.
@@ -542,9 +619,13 @@ BR.Actor = class Actor {
     // targets: [hipL, kneeL, hipR, kneeR, lean, bodyY, bodyX]
     let hL = 0, kL = 0, hR = 0, kR = 0, lean = 0, bodyY = 0, bodyX = 0, armsUp = 0, armsOut = 0, hipYaw = 0, hipRoll = 0, hipShift = 0;
     let crawl = 0;
-    if (this.downed) {                            // v1.19 knocked down: prone, crawling on the elbows
-      const c = Math.sin(u.t * 1.6);
-      bodyX = -1.38; bodyY = 0.24; hL = 0.2 + c * 0.35; kL = 0.4 + Math.max(0, c) * 0.9; hR = 0.2 - c * 0.35; kR = 0.4 + Math.max(0, -c) * 0.9; armsUp = 1; crawl = c;
+    let crawlZ = 0;
+    if (this.downed) {                            // v1.27 knocked down: flat on the belly, centred on the hitbox, pulling forward on the elbows
+      u.ct = (u.ct || 0) + dt * (1.2 + Math.min(1, sp) * 3.2);   // the crawl cycle runs with the crawl speed (slow wriggle when still)
+      const c = Math.sin(u.ct);
+      bodyX = -1.47; bodyY = 0.2; crawlZ = 0.94;
+      hL = 0.14 - c * 0.18; kL = -(0.25 + Math.max(0, -c) * 0.85); hR = 0.14 + c * 0.18; kR = -(0.25 + Math.max(0, c) * 0.85);     // frog-kick: the knee comes up on the side that pushes
+      hipRoll = c * 0.08; crawl = c || 0.0001;
     } else if (m.dropping && !m.chute) {                 // freefall: belly down, limbs spread
       bodyX = -1.4; bodyY = 1.0; hL = 0.3; kL = 0.6; hR = 0.25; kR = 0.5; armsOut = 1.1;
     } else if (m.dropping) {                      // under canopy: holding the lines, legs dangling
@@ -581,12 +662,13 @@ BR.Actor = class Actor {
     D(u.body.rotation, 'x', bodyX, 7);
     D(u.body.position, 'y', bodyY, 12);
     D(u.body.rotation, 'z', (m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : m.sliding ? 0.1 : 0) + hipRoll, 10);
-    D(u.body.rotation, 'y', hipYaw, 12); D(u.body.position, 'x', hipShift, 12);
+    D(u.body.rotation, 'y', hipYaw, 12); D(u.body.position, 'x', hipShift, 12); D(u.body.position, 'z', crawlZ, 10);
+    if (this.downed) { const c = crawl; D(u.L.hip.rotation, 'z', -0.16 - Math.max(0, -c) * 0.26, 10); D(u.R.hip.rotation, 'z', 0.16 + Math.max(0, c) * 0.26, 10); }
     D(u.upper.rotation, 'z', -hipRoll * 0.8, 12);
     u.hipYaw = u.body.rotation.y;
     // Aim: head + arms + gun follow the (smoothed) pitch together
     const aimP = u.pitch - u.upper.rotation.x;
-    u.head.rotation.x = aimP * 0.6;
+    u.head.rotation.x = this.downed ? 1.15 : aimP * 0.6;           // downed: chin up, looking ahead
     u.gun.rotation.x = aimP;
     // Arms: two-bone IK puts the right hand on the grip and the left on the foregrip
     // of whatever gun is held; blends to holding the risers (canopy) or spread (freefall).
@@ -597,7 +679,9 @@ BR.Actor = class Actor {
     if (u.gun.userData.knife) tL.set(-0.2, 0.08, -0.08);           // off hand guards while holding the knife
     const up = Math.max(armsUp, 0), out = Math.min(armsOut, 1);
     if (up > 0) { tR.lerp(_ikV.set(0.2, 1.08, 0.02), up); tL.lerp(_ikC.set(-0.2, 1.08, 0.02), up); }
-    if (crawl) { tR.y += crawl * 0.12; tL.y -= crawl * 0.12; tR.z -= 0.12; tL.z -= 0.12; }
+    if (crawl) {                                   // elbows on the ground ahead of the shoulders, reaching and pulling in turn
+      tR.set(0.26, 0.72 + crawl * 0.2, -0.2 + Math.max(0, -crawl) * 0.08); tL.set(-0.26, 0.72 - crawl * 0.2, -0.2 + Math.max(0, crawl) * 0.08);
+    }
     if (out > 0) { tR.lerp(_ikV.set(0.62, 0.58, 0.05), out); tL.lerp(_ikC.set(-0.62, 0.58, 0.05), out); }
     if (!u.hR) { u.hR = tR.clone(); u.hL = tL.clone(); }
     const kk = 1 - Math.exp(-dt * 18);

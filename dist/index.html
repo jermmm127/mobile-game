@@ -1736,7 +1736,7 @@ body.menulite #menu .mc-change { display: none; }      /* the whole card opens t
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.26.0',
+  version: '1.27.0',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -2019,6 +2019,17 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.27.0', date: '2026-11-06', title: 'Hats, chest hype + victory dance', notes: [
+    'New HAT slot in the CHARACTER section, with 20 hats. In the Shop: Red Bandana, Pom Beanie, Snapback, Bucket Hat, Commando Beret, a colour-cycling Neon Top Hat and Glow Cat Ears.',
+    'Release Case hats: Backwards Cap, Traffic Cone, Shogun Kabuto, an RGB Headset whose ear cups cycle colours, and the Exotic Inferno Crown with flickering flames.',
+    'Nova Case hats: glowing Spirit Antlers, the Archmage hat with stars orbiting it, and the Exotic Saturn Orbit (rings with circling moons).',
+    'Mastery hats: Warlord Helm (1,000 kills), Gunslinger (150 Revolver kills), Neon Mohawk (1,000 headshot kills) and Brain Jar (2,500 zombie kills).',
+    'Revolver: held farther out with the arm extended from the lower right, gun turned to show its side, like the reference screenshot. The per-shot kick is unchanged.',
+    'Victory: a new five-part dance (a burst jump, fist pumps on the beat, a spin with arms out, a side-step shuffle and a hero pose pointing at the sky). Your character no longer walks off if you were holding the stick when you won.',
+    'Chests: the lid flies open with a shake, a light column, shock rings and a spark fountain in the loot\'s rarity colour. The loot launches higher with sparkle trails and bursts in its rarity colour when it lands. New layered chest sound (more notes for rarer loot), a camera kick, a phone buzz, and the gun called out by rarity ("LEGENDARY HUNTING RIFLE!").',
+    'Dropped and loot weapons now float upright, hovering and slowly turning, instead of lying on their side.',
+    'Downed players: a new crawl, flat on the belly with the chin up, pulling forward on the elbows with frog-kicking legs. The body now lies centred on the spot it is hit at, and the hitbox follows it (head out in front, then chest, hips and legs), so what you see is what you hit.',
+  ] },
   { v: '1.26.0', date: '2026-11-06', title: 'Character cosmetics', notes: [
     'New CHARACTER section in the Inventory and the Shop. Pick OUTFIT or MASK, see your operator in 3D (drag to spin, pinch to zoom) holding your primary gun, and equip.',
     '21 outfits that recolour the jacket, pants, boots and gloves. Some have prints (desert, woodland and ghillie camo, arctic digital, tiger, hazard, gold, galaxy, lava) and the rarest have glowing trims (neon circuits, magma cracks, starfields, light seams).',
@@ -2667,7 +2678,16 @@ BR.Audio = {
   wallrun() { this.burst(1200, 0.5, 0.25, 0.06, 0, 'bandpass'); },
   zone() { this.tone(220, 180, 0.6, 0.18, 'sawtooth'); },
   tech() { this.tone(700, 1400, 0.12, 0.12, 'triangle'); this.tone(1050, 2100, 0.16, 0.08, 'sine'); },
-  chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
+  // v1.27 chest: wood creak + latch, a whoosh, then a rising sparkly arpeggio (longer and brighter for rarer loot)
+  chest(dist, rar) {
+    const v = 1 / (1 + dist / 10); rar = rar || 0;
+    this.nz({ type: 'bandpass', f0: 380, f1: 220, dur: 0.18, vol: 0.16 * v, q: 3 }); this.metal(1900, 0.08 * v, 0.05);
+    this.nz({ type: 'bandpass', f0: 600, f1: 4200, dur: 0.45, vol: 0.12 * v, q: 0.9, attack: 0.05 });
+    const notes = [523, 659, 784, 1047, 1319, 1568].slice(0, 3 + Math.min(3, rar));
+    notes.forEach((f, i) => setTimeout(() => { this.tone(f, f * 1.003, 0.32, 0.13 * v, 'triangle'); this.tone(f * 2, f * 2, 0.22, 0.05 * v, 'sine'); }, 60 + i * 70));
+    setTimeout(() => this.nz({ type: 'highpass', f0: 6500, dur: 0.6, vol: 0.06 * v * (1 + rar * 0.2), rate: 0.5 }), 90 + notes.length * 70);
+  },
+  lootLand(rar) { const f = 880 + (rar || 0) * 110; this.tone(f, f * 1.5, 0.18, 0.08 + (rar || 0) * 0.015, 'sine'); this.metal(3200, 0.04, 0.04); },
   grapple() { this.metal(1800, 0.12, 0.05); this.nz({ type: 'bandpass', f0: 1500, f1: 5000, dur: 0.22, vol: 0.08, q: 4 });
   },
   stim() { this.metal(3000, 0.06, 0.04); this.nz({ type: 'highpass', f0: 5000, dur: 0.2, vol: 0.08, at: 0.04 }); this.osc({ f0: 600, f1: 1200, dur: 0.25, vol: 0.05, at: 0.1, rev: 0.3 });
@@ -9553,8 +9573,8 @@ BR.Models = (function () {
   // right fist position (hx/hy/hz), empty left fist in view (left, lx/ly). window.__KP overrides for tuning.
   const KP = Object.assign({ x: -1.1, y: -0.1, z: -0.6, f: [0.85, -0.4, 0.35], hx: 0.08, hy: -0.075, hz: -0.34, left: 1, lx: 0.05, ly: -0.025 }, (typeof window !== 'undefined' && window.__KP) || {});
   const KI = { z1: 0.95, y1: -0.15, x1: 0.1, z2: -0.25, y2: -0.55, x2: 0 };      // karambit inspect show poses (wrist turns)
-  // v1.24.2 revolver hip hold (reference screenshot): window.__RV overrides for tuning
-  const RV = Object.assign({ hx: 0.155, hy: -0.125, hz: -0.34, rx: 0.06, ry: 0.24, rz: 0.1 }, window.__RV || {});
+  // v1.27 revolver hold (reference screenshot): arm extended, gun farther out, side-on: window.__RV overrides for tuning
+  const RV = Object.assign({ hx: 0.2, hy: -0.165, hz: -0.5, rx: -0.02, ry: 0.3, rz: 0.12 }, window.__RV || {});
   const BAYLIKE = id => id === 'bayonet' || id === 'tracker';      // v1.13: the Tracker shares the bayonet's fist + flips
   let SLEEVE = null;
   function sleeveParts() {
@@ -10744,6 +10764,7 @@ function solveArm(arm, target, side) {
   fore.applyQuaternion(_ikQ.copy(arm.sh.quaternion).invert());
   arm.el.quaternion.setFromUnitVectors(_DOWN, fore);
 }
+BR.solveArm = (arm, target, side) => solveArm(arm, target, side);      // (the victory dance poses the arms by IK)
 // v1.26: whose look an actor wears ({ o: outfit id, m: mask id }): its own (party members, previews) or, for the player, the profile's
 BR.lookOf = a => (a && a.look) || (a && a.isPlayer && BR.Profile && BR.Profile.data && BR.Profile.charLook ? BR.Profile.charLook() : null);
 // v1.25: the imported character's shared geometry (built once from BR.CHAR_DATA) + a woven fabric detail map
@@ -10871,6 +10892,79 @@ function maskTex(id, K) {
   }
   const out = { map: new THREE.CanvasTexture(cv), glow: K.glow || K.eyes === 'glow' ? new THREE.CanvasTexture(gc) : null };
   return (lookTex['m:' + id] = out);
+}
+// v1.27 HATS: built from primitives around the mask (origin = mask centre, top of the head at y 0.132, front = -Z).
+// A hat can animate: group.userData.tick(t) is called from syncMesh with the time in seconds.
+function buildHat(id, H) {
+  const g = new THREE.Group(), c1 = H.c1 !== undefined ? H.c1 : 0x333333, c2 = H.c2 !== undefined ? H.c2 : 0xffffff, gl = H.glow !== undefined ? H.glow : c2;
+  const lam = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+  const pho = (c, o) => new THREE.MeshPhongMaterial(Object.assign({ color: c, shininess: 90, specular: 0x666666 }, o || {}));
+  const neon = (c, o) => new THREE.MeshBasicMaterial(Object.assign({ color: c }, o || {}));
+  const add = (geo, mat, x, y, z, rx, ry, rz, par) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); (par || g).add(m); return m; };
+  const dome = (r, sy, k) => new THREE.SphereGeometry(r, 22, 12, 0, Math.PI * 2, 0, Math.PI * (k || 0.5));
+  const ticks = [];
+  switch (H.kind) {
+    case 'beanie': { const d = add(dome(0.114), lam(c1), 0, 0.02); d.scale.set(1, 1.15, 1.08);
+      add(new THREE.CylinderGeometry(0.117, 0.117, 0.045, 22), lam(c2), 0, 0.03).scale.z = 1.08;
+      add(new THREE.SphereGeometry(0.032, 10, 8), lam(c2), 0, 0.16); break; }
+    case 'cap': case 'backcap': { const back = H.kind === 'backcap', d = add(dome(0.11), lam(c1), 0, 0.03); d.scale.set(1, 0.95, 1.08);
+      const b = add(new THREE.CylinderGeometry(0.08, 0.08, 0.008, 20, 1, false, Math.PI * 0.5, Math.PI), lam(c2), 0, 0.045, back ? 0.09 : -0.09, back ? -0.12 : 0.12); b.scale.z = 1.25; if (back) b.rotation.y = Math.PI;
+      add(new THREE.SphereGeometry(0.012, 8, 6), lam(c2), 0, 0.135); if (H.glow !== undefined) add(new THREE.TorusGeometry(0.111, 0.004, 4, 32), neon(gl), 0, 0.035, 0, Math.PI / 2).scale.y = 1.08; break; }
+    case 'bucket': { add(new THREE.CylinderGeometry(0.1, 0.118, 0.09, 22), lam(c1), 0, 0.06); add(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 22), lam(c1), 0, 0.105);
+      add(new THREE.CylinderGeometry(0.118, 0.17, 0.04, 26, 1, true), lam(c2, { side: THREE.DoubleSide }), 0, 0.0); add(new THREE.CylinderGeometry(0.119, 0.119, 0.018, 22), lam(c2), 0, 0.02); break; }
+    case 'bandana': { const t = add(new THREE.TorusGeometry(0.108, 0.016, 6, 30), lam(c1), 0, 0.06, 0, Math.PI / 2); t.scale.y = 1.1;
+      for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.02, 0.07, 0.008), lam(c1), s * 0.02, 0.02, 0.125, 0.4, 0, s * 0.35); if (H.glow !== undefined) add(new THREE.TorusGeometry(0.11, 0.004, 4, 30), neon(gl), 0, 0.06, 0, Math.PI / 2).scale.y = 1.12; break; }
+    case 'beret': { const b = add(new THREE.SphereGeometry(0.125, 20, 10), lam(c1), 0.02, 0.11, 0.005, 0, 0, 0.22); b.scale.set(1.05, 0.32, 1.05); add(new THREE.CylinderGeometry(0.006, 0.004, 0.025, 6), lam(c1), 0.0, 0.155, 0);
+      add(new THREE.OctahedronGeometry(0.018), pho(c2, { emissive: c2, emissiveIntensity: 0.4 }), -0.03, 0.11, -0.11, 0, 0, 0); break; }
+    case 'tophat': { add(new THREE.CylinderGeometry(0.16, 0.16, 0.012, 28), pho(c1), 0, 0.1); const body = add(new THREE.CylinderGeometry(0.088, 0.083, 0.19, 24), pho(c1), 0, 0.2);
+      const band = add(new THREE.CylinderGeometry(0.091, 0.091, 0.03, 24), neon(gl), 0, 0.125);
+      ticks.push(t => { band.material.color.setHSL(((t * 0.15) % 1), 1, 0.55); }); void body; break; }
+    case 'cowboy': { const pts = [[0.001, 0.2], [0.07, 0.205], [0.085, 0.17], [0.092, 0.1], [0.1, 0.07], [0.17, 0.075], [0.2, 0.11], [0.205, 0.115]].map(p => new THREE.Vector2(p[0], p[1]));
+      add(new THREE.LatheGeometry(pts, 28), lam(c1, { side: THREE.DoubleSide }), 0, -0.01).scale.set(1, 1, 0.85);
+      add(new THREE.CylinderGeometry(0.094, 0.098, 0.022, 24), pho(c2), 0, 0.075); break; }
+    case 'catears': { add(new THREE.TorusGeometry(0.112, 0.008, 6, 30, Math.PI), lam(c1), 0, 0.02, 0, 0, Math.PI / 2, 0);
+      for (const s of [-1, 1]) { add(new THREE.ConeGeometry(0.04, 0.08, 4), lam(c1), s * 0.065, 0.14, 0.0, 0, Math.PI / 4, -s * 0.3); add(new THREE.ConeGeometry(0.025, 0.055, 4), neon(gl), s * 0.064, 0.136, -0.012, 0, Math.PI / 4, -s * 0.3); } break; }
+    case 'cone': { const cone = add(new THREE.ConeGeometry(0.1, 0.3, 24), lam(c1), 0, 0.24); void cone;
+      for (const y of [0.2, 0.28]) add(new THREE.CylinderGeometry(0.1 * (0.39 - y + 0.09) / 0.3 + 0.001, 0.1 * (0.39 - y + 0.09 - 0.03) / 0.3 + 0.004, 0.03, 24), lam(0xffffff), 0, y);
+      add(new THREE.BoxGeometry(0.24, 0.018, 0.24), lam(c1), 0, 0.09); break; }
+    case 'headset': { add(new THREE.TorusGeometry(0.128, 0.013, 6, 30, Math.PI), pho(c1), 0, 0.02, 0);
+      for (const s of [-1, 1]) { add(new THREE.CylinderGeometry(0.045, 0.045, 0.035, 18), pho(c1), s * 0.115, -0.01, 0, 0, 0, Math.PI / 2); const r = add(new THREE.TorusGeometry(0.038, 0.006, 6, 20), neon(gl), s * 0.134, -0.01, 0, 0, Math.PI / 2, 0); ticks.push(t => r.material.color.setHSL(((t * 0.25 + (s > 0 ? 0.5 : 0)) % 1), 1, 0.55)); }
+      const boom = add(new THREE.CylinderGeometry(0.004, 0.004, 0.11, 6), pho(c1), 0.11, -0.06, -0.06, 0.9, 0, 0); void boom; add(new THREE.SphereGeometry(0.012, 8, 6), neon(gl), 0.105, -0.095, -0.105); break; }
+    case 'kabuto': { const d = add(dome(0.122, 1, 0.5), pho(c1), 0, 0.015); d.scale.set(1, 0.95, 1.05);
+      add(new THREE.CylinderGeometry(0.125, 0.185, 0.08, 24, 1, true, -Math.PI * 0.7, Math.PI * 1.4), pho(c1, { side: THREE.DoubleSide }), 0, -0.035, 0.005);
+      add(new THREE.TorusGeometry(0.075, 0.008, 6, 20, Math.PI), pho(c2, { emissive: c2, emissiveIntensity: 0.3 }), 0, 0.2, -0.105, 0, 0, Math.PI);
+      add(new THREE.CylinderGeometry(0.008, 0.012, 0.07, 6), pho(c2), 0, 0.14, -0.11);
+      add(new THREE.SphereGeometry(0.018, 10, 8), neon(gl), 0, 0.09, -0.125); break; }
+    case 'viking': { const d = add(dome(0.12), pho(c1), 0, 0.015); d.scale.set(1, 1.05, 1.06); add(new THREE.CylinderGeometry(0.123, 0.123, 0.025, 24), pho(c2), 0, 0.025);
+      add(new THREE.BoxGeometry(0.018, 0.1, 0.02), pho(c2), 0, 0.06, -0.12);
+      for (const s of [-1, 1]) { const h = add(new THREE.TorusGeometry(0.08, 0.018, 8, 16, Math.PI * 0.55), lam(0xefe6cf), s * 0.13, 0.07, 0, 0, 0, s > 0 ? -0.3 : Math.PI + 0.3 - Math.PI * 0.55); h.scale.set(1, 1, 1); } break; }
+    case 'wizard': { const cone = add(new THREE.ConeGeometry(0.115, 0.36, 24), lam(c1), 0, 0.28, 0.02, -0.15, 0, 0.08); void cone; add(new THREE.CylinderGeometry(0.19, 0.19, 0.01, 28), lam(c1), 0, 0.1);
+      const orb = new THREE.Group(); orb.position.y = 0.2; g.add(orb);
+      for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; add(new THREE.OctahedronGeometry(0.018), neon(i % 2 ? gl : c2), Math.cos(a) * 0.17, Math.sin(i * 1.7) * 0.05, Math.sin(a) * 0.17, 0, 0, 0, orb); }
+      ticks.push(t => { orb.rotation.y = t * 1.4; }); break; }
+    case 'antlers': { for (const s of [-1, 1]) { const root = new THREE.Group(); root.position.set(s * 0.06, 0.1, 0); root.rotation.z = -s * 0.4; g.add(root);
+        add(new THREE.CylinderGeometry(0.007, 0.011, 0.16, 6), neon(gl), 0, 0.08, 0, 0, 0, 0, root);
+        for (const [y, a, l] of [[0.06, 0.9, 0.07], [0.11, -0.8, 0.06], [0.14, 0.7, 0.05]]) add(new THREE.CylinderGeometry(0.005, 0.007, l, 6), neon(gl), Math.sin(a) * l * 0.5 * -s, y + Math.cos(a) * l * 0.5, 0, 0, 0, a * s, root); }
+      ticks.push(t => g.children.forEach(r => r.children.forEach(m => m.material.color.setHex(gl).multiplyScalar(0.75 + 0.25 * Math.sin(t * 4))))); break; }
+    case 'mohawk': { for (let i = 0; i < 7; i++) { const k = i / 6, z = -0.09 + k * 0.19, h = 0.07 + Math.sin(k * Math.PI) * 0.06, y = Math.sqrt(Math.max(0, 1 - (z / 0.12) ** 2)) * 0.12;
+        const c = new THREE.Color(c1).lerp(new THREE.Color(c2), k); add(new THREE.ConeGeometry(0.028, h * 1.5, 6), neon(c.getHex()), 0, y + h * 0.75 - 0.01, z, -(z / 0.12) * 0.6).scale.x = 0.45; }
+      const sp = g.children.slice(); ticks.push(t => sp.forEach((m, i) => { m.scale.y = 1 + 0.12 * Math.sin(t * 6 + i); })); break; }
+    case 'flame': { add(new THREE.CylinderGeometry(0.115, 0.115, 0.035, 24, 1, true), pho(c1, { side: THREE.DoubleSide, emissive: 0x332200 }), 0, 0.075);
+      const fl = []; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; const f = add(new THREE.ConeGeometry(0.026, 0.11, 6), neon(i % 2 ? c2 : gl, { transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }), Math.cos(a) * 0.1, 0.14, Math.sin(a) * 0.1); fl.push(f); }
+      ticks.push(t => fl.forEach((f, i) => { f.scale.set(1, 0.8 + 0.4 * Math.abs(Math.sin(t * 9 + i * 1.3)), 1); f.position.y = 0.13 + f.scale.y * 0.05; })); break; }
+    case 'saturn': { const R = new THREE.Group(); R.position.y = 0.2; R.rotation.set(0.35, 0, 0.25); g.add(R);
+      add(new THREE.TorusGeometry(0.17, 0.006, 6, 48), neon(c1), 0, 0, 0, Math.PI / 2, 0, 0, R); add(new THREE.TorusGeometry(0.2, 0.003, 6, 48), neon(c2), 0, 0, 0, Math.PI / 2, 0, 0, R);
+      const core = add(new THREE.SphereGeometry(0.05, 16, 12), pho(gl, { emissive: gl, emissiveIntensity: 0.7 }), 0, 0, 0, 0, 0, 0, R);
+      const moons = []; for (let i = 0; i < 3; i++) moons.push(add(new THREE.SphereGeometry(0.016, 10, 8), neon(i === 1 ? c2 : c1), 0, 0, 0, 0, 0, 0, R));
+      ticks.push(t => { moons.forEach((m, i) => { const a = t * (1.2 + i * 0.4) + i * 2.1; m.position.set(Math.cos(a) * 0.17, 0, Math.sin(a) * 0.17); }); core.rotation.y = t; R.position.y = 0.2 + Math.sin(t * 2) * 0.012; }); break; }
+    case 'brainjar': { add(new THREE.CylinderGeometry(0.115, 0.118, 0.03, 24), pho(0x8a9099), 0, 0.03);
+      const br = add(new THREE.SphereGeometry(0.075, 18, 12), pho(c1, { emissive: c1, emissiveIntensity: 0.25, shininess: 20 }), 0, 0.1); br.scale.set(1, 0.8, 1.15);
+      add(new THREE.SphereGeometry(0.125, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), new THREE.MeshPhongMaterial({ color: gl, transparent: true, opacity: 0.28, shininess: 120, specular: 0xffffff, depthWrite: false }), 0, 0.075);
+      const bub = []; for (let i = 0; i < 4; i++) bub.push(add(new THREE.SphereGeometry(0.008, 6, 4), neon(gl), (i - 1.5) * 0.04, 0.05, (i % 2 - 0.5) * 0.06));
+      ticks.push(t => { bub.forEach((b, i) => { b.position.y = 0.05 + ((t * 0.35 + i * 0.25) % 1) * 0.12; }); br.rotation.y = Math.sin(t) * 0.2; }); break; }
+  }
+  g.userData.tick = ticks.length ? t => { for (const f of ticks) f(t); } : null;
+  return g;
 }
 // add-ons on the head joint (positions are relative to the mask's centre)
 function maskAddon(kind, K) {
@@ -11140,7 +11234,7 @@ BR.Actor = class Actor {
     const paint = hex => fill(C.teamIdx, hex);
     // v1.26: the equipped outfit (players and party members) overrides the team colour
     const own = (T, k) => T && k !== 'default' && Object.prototype.hasOwnProperty.call(T, k) ? T[k] : null;
-    const look = BR.lookOf(this), O = look && own(BR.OUTFITS, look.o), K = look && own(BR.MASKS, look.m);
+    const look = BR.lookOf(this), O = look && own(BR.OUTFITS, look.o), K = look && own(BR.MASKS, look.m), Hh = look && own(BR.HATS, look.h);
     mat.color.setHex = function (hex) { if (!O) paint(hex); return this; };
     mat.clone = function () { const m = THREE.MeshLambertMaterial.prototype.clone.call(this); m.color.setHex = mat.color.setHex; m.clone = mat.clone; return m; };     // (the enemy highlight clones it)
     paint(O ? O.jacket : this.color !== undefined ? this.color : 0x8899aa);
@@ -11163,10 +11257,12 @@ BR.Actor = class Actor {
     mat3.userData.emi = MT && MT.glow ? (K.glow || K.eyeCol || 0xff2030) : 0;
     const mk = BR.CHAR_DATA.mask, maskM = new THREE.Mesh(C.mask, mat3); maskM.position.set(mk.c[0], mk.c[1] - 1.7, mk.c[2]); head.add(maskM);
     if (K && K.add) maskM.add(maskAddon(K.add, K));
+    let hatTick = null;
+    if (Hh) { const hat = buildHat(look.h, Hh); maskM.add(hat); hatTick = hat.userData.tick; }        // v1.27 hats
     for (const o of [AR.sh, AL.sh, AR.el, AL.el, R.hip, L.hip, R.knee, L.knee]) o.rotation.set(0, 0, 0);     // back to the rig's rest pose
     const chute = BR.Models.parachute(this.color, 0xf2f2f2);
     chute.position.y = 1.5; chute.visible = false; g.add(chute);
-    g.userData = { body, upper, head, L, R, AR, AL, gun, mat, mat2, mat3, chute, t: 0, yaw: this.yaw, pitch: 0, char: true };
+    g.userData = { body, upper, head, L, R, AR, AL, gun, mat, mat2, mat3, chute, t: 0, yaw: this.yaw, pitch: 0, char: true, hatTick };
     return g;
   }
 
@@ -11227,6 +11323,7 @@ BR.Actor = class Actor {
   syncMesh(dt) {
     const m = this.mover, u = this.mesh.userData, U = BR.util;
     this.mesh.position.copy(m.pos);
+    if (u.hatTick) u.hatTick(performance.now() / 1000);
     const sp = m.speedH;
     // Smooth turning: the body eases toward where it's facing (or sliding), the
     // upper body / head / gun ease toward the aim — no snapping on either end.
@@ -11242,9 +11339,13 @@ BR.Actor = class Actor {
     // targets: [hipL, kneeL, hipR, kneeR, lean, bodyY, bodyX]
     let hL = 0, kL = 0, hR = 0, kR = 0, lean = 0, bodyY = 0, bodyX = 0, armsUp = 0, armsOut = 0, hipYaw = 0, hipRoll = 0, hipShift = 0;
     let crawl = 0;
-    if (this.downed) {                            // v1.19 knocked down: prone, crawling on the elbows
-      const c = Math.sin(u.t * 1.6);
-      bodyX = -1.38; bodyY = 0.24; hL = 0.2 + c * 0.35; kL = 0.4 + Math.max(0, c) * 0.9; hR = 0.2 - c * 0.35; kR = 0.4 + Math.max(0, -c) * 0.9; armsUp = 1; crawl = c;
+    let crawlZ = 0;
+    if (this.downed) {                            // v1.27 knocked down: flat on the belly, centred on the hitbox, pulling forward on the elbows
+      u.ct = (u.ct || 0) + dt * (1.2 + Math.min(1, sp) * 3.2);   // the crawl cycle runs with the crawl speed (slow wriggle when still)
+      const c = Math.sin(u.ct);
+      bodyX = -1.47; bodyY = 0.2; crawlZ = 0.94;
+      hL = 0.14 - c * 0.18; kL = -(0.25 + Math.max(0, -c) * 0.85); hR = 0.14 + c * 0.18; kR = -(0.25 + Math.max(0, c) * 0.85);     // frog-kick: the knee comes up on the side that pushes
+      hipRoll = c * 0.08; crawl = c || 0.0001;
     } else if (m.dropping && !m.chute) {                 // freefall: belly down, limbs spread
       bodyX = -1.4; bodyY = 1.0; hL = 0.3; kL = 0.6; hR = 0.25; kR = 0.5; armsOut = 1.1;
     } else if (m.dropping) {                      // under canopy: holding the lines, legs dangling
@@ -11281,12 +11382,13 @@ BR.Actor = class Actor {
     D(u.body.rotation, 'x', bodyX, 7);
     D(u.body.position, 'y', bodyY, 12);
     D(u.body.rotation, 'z', (m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : m.sliding ? 0.1 : 0) + hipRoll, 10);
-    D(u.body.rotation, 'y', hipYaw, 12); D(u.body.position, 'x', hipShift, 12);
+    D(u.body.rotation, 'y', hipYaw, 12); D(u.body.position, 'x', hipShift, 12); D(u.body.position, 'z', crawlZ, 10);
+    if (this.downed) { const c = crawl; D(u.L.hip.rotation, 'z', -0.16 - Math.max(0, -c) * 0.26, 10); D(u.R.hip.rotation, 'z', 0.16 + Math.max(0, c) * 0.26, 10); }
     D(u.upper.rotation, 'z', -hipRoll * 0.8, 12);
     u.hipYaw = u.body.rotation.y;
     // Aim: head + arms + gun follow the (smoothed) pitch together
     const aimP = u.pitch - u.upper.rotation.x;
-    u.head.rotation.x = aimP * 0.6;
+    u.head.rotation.x = this.downed ? 1.15 : aimP * 0.6;           // downed: chin up, looking ahead
     u.gun.rotation.x = aimP;
     // Arms: two-bone IK puts the right hand on the grip and the left on the foregrip
     // of whatever gun is held; blends to holding the risers (canopy) or spread (freefall).
@@ -11297,7 +11399,9 @@ BR.Actor = class Actor {
     if (u.gun.userData.knife) tL.set(-0.2, 0.08, -0.08);           // off hand guards while holding the knife
     const up = Math.max(armsUp, 0), out = Math.min(armsOut, 1);
     if (up > 0) { tR.lerp(_ikV.set(0.2, 1.08, 0.02), up); tL.lerp(_ikC.set(-0.2, 1.08, 0.02), up); }
-    if (crawl) { tR.y += crawl * 0.12; tL.y -= crawl * 0.12; tR.z -= 0.12; tL.z -= 0.12; }
+    if (crawl) {                                   // elbows on the ground ahead of the shoulders, reaching and pulling in turn
+      tR.set(0.26, 0.72 + crawl * 0.2, -0.2 + Math.max(0, -crawl) * 0.08); tL.set(-0.26, 0.72 - crawl * 0.2, -0.2 + Math.max(0, crawl) * 0.08);
+    }
     if (out > 0) { tR.lerp(_ikV.set(0.62, 0.58, 0.05), out); tL.lerp(_ikC.set(-0.62, 0.58, 0.05), out); }
     if (!u.hR) { u.hR = tR.clone(); u.hL = tL.clone(); }
     const kk = 1 - Math.exp(-dt * 18);
@@ -14672,6 +14776,7 @@ BR.Loot = class Loot {
   constructor(game) {
     this.game = game;
     this.items = [];
+    this.opening = [];             // v1.27: chests mid-opening (lid flying open, glow, then sinking away)
     this.nextId = 1;
     this.cullT = 0;
     this.geo = {
@@ -14758,13 +14863,13 @@ BR.Loot = class Loot {
     const g = new THREE.Group(), G = this.geo;
     if (item.kind === 'weapon') {
       const def = BR.CONFIG.weapons[item.wid];
-      // The real gun model, lying on its side and slowly turning, over a rarity ring
+      // v1.27: the real gun model floating upright (as if held) and slowly turning, over a rarity ring
       // shows the gun in your equipped blueprint / camo (so drops and loot look like your skins)
       const eq = BR.Profile && BR.Profile.data && BR.Profile.data.equip;
       const gun = BR.Models.worldWeapon(item.wid, eq && eq.blueprints ? eq.blueprints[item.wid] : null, eq ? BR.Profile.skinFor(item.wid) : null);
       gun.scale.setScalar(1.7);
-      gun.rotation.set(0, Math.PI / 2, Math.PI / 2 * 0.9);
-      gun.position.y = -0.05;
+      gun.rotation.set(0, Math.PI / 2, 0);
+      gun.position.y = 0.05;
       g.add(gun);
       const rar = item.rar | 0, RR = BR.RARITY[rar];
       const ring = new THREE.Mesh(G.ring, this.mat('rar' + rar, RR.col, true));
@@ -14845,8 +14950,13 @@ BR.Loot = class Loot {
     if (doCull) this.cullT = 0.3;
     const W = this.game.world;
     for (let i = this.items.length - 1; i >= 0; i--) { const it = this.items[i]; if (it.kind === 'scav' && t - it.t0 > 25) this.remove(it); }   // kill ammo packs fade after 25 s
+    this.updateOpening(dt);
     for (const it of this.items) {
       if (it.air) this.toss(it, dt, W);
+      if (it.air && it.spark !== undefined && it.mesh.visible) {                                   // chest loot leaves a sparkle trail
+        it.trailT = (it.trailT || 0) - dt;
+        if (it.trailT <= 0) { it.trailT = 0.03; const fx = this.game.fx, v = this._tv || (this._tv = new THREE.Vector3()); v.set(it.pos.x, it.pos.y + 0.35, it.pos.z); fx.burst(v, [it.spark, 0xffffff], 2, 0.8, 0.05, 0.4, 1); }
+      }
       if (doCull) {
         it.mesh.visible = Math.abs(it.pos.x - viewer.x) < 50 && Math.abs(it.pos.z - viewer.z) < 50;
         const lb = it.mesh.userData.label;
@@ -14858,7 +14968,8 @@ BR.Loot = class Loot {
       it.spinA = (it.spinA || t * 1.4 + it.phase) + 1.6 * dt;
       it.mesh.rotation.y = it.spinA;
       // weapons do a little bounce on the ground; other items bob
-      it.mesh.position.y = it.kind === 'weapon' ? it.pos.y + 0.3 + Math.abs(Math.sin(t * 2.6 + it.phase)) * 0.2 : it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;
+      it.mesh.position.y = it.kind === 'weapon' ? it.pos.y + 0.62 + Math.sin(t * 2.2 + it.phase) * 0.1 : it.pos.y + 0.45 + Math.sin(t * 2.5 + it.phase) * 0.08;      // guns hover and float up and down
+      if (it.kind === 'weapon' && it.mesh.userData.ring) it.mesh.userData.ring.position.y = it.pos.y + 0.03 - it.mesh.position.y;      // the rarity ring stays on the ground
       if (it.mesh.userData.ring) it.mesh.userData.ring.rotation.z = -it.mesh.rotation.y;
       if (it.mesh.userData.nade) BR.Models.animate(it.mesh.userData.nade, t);
       if (it.mesh.userData.cell) { const c = it.mesh.userData.cell, h = c.children[c.children.length - 1]; h.position.y = Math.sin(t * 2.2 + it.phase) * 0.12; h.scale.setScalar(1 + 0.08 * Math.sin(t * 4 + it.phase)); }
@@ -14881,7 +14992,15 @@ BR.Loot = class Loot {
     if (it.pos.y <= floor) {
       it.pos.y = floor;
       if (Math.abs(v.y) > 2.2) { v.y = -v.y * 0.42; v.x *= 0.6; v.z *= 0.6; it.spinV *= 0.65; if (this.game.player && it.pos.distanceTo(this.game.player.pos) < 25) BR.Audio.land(Math.abs(v.y) * 0.6); }
-      else { it.air = false; it.vel = null; }
+      else {
+        it.air = false; it.vel = null;
+        if (it.spark !== undefined && it.mesh.visible) {                                            // lands with a burst in its rarity colour
+          const fx = this.game.fx, v = this._lv || (this._lv = new THREE.Vector3()); v.set(it.pos.x, it.pos.y + 0.5, it.pos.z);
+          fx.burst(v, [it.spark, 0xffffff], it.kind === 'weapon' ? 22 : 10, 3.2, 0.07, 0.55, 5); fx.shock(v, it.spark, it.kind === 'weapon' ? 1.6 : 0.9, 0.35);
+          if (it.kind === 'weapon') { fx.pop(v, it.spark, 0.9, 0.22, 2.4); if (this.game.player && it.pos.distanceTo(this.game.player.pos) < 25) BR.Audio.lootLand && BR.Audio.lootLand(it.rar | 0); }
+          it.spark = undefined;
+        }
+      }
     }
   }
 
@@ -14972,13 +15091,50 @@ BR.Loot = class Loot {
     out.push(R() < 0.5 ? { kind: 'shield', amount: C.loot.shieldAmount } : { kind: 'heal', amount: C.loot.healAmount });
     if (R() < 0.6) out.push({ kind: 'shield', amount: C.loot.shieldAmount });
     // Spread items in front of the chest, toward the opener
-    const ang0 = Math.atan2(actor.pos.z - p.z, actor.pos.x - p.x);
+    const ang0 = Math.atan2(actor.pos.z - p.z, actor.pos.x - p.x), rar = out[0].rar | 0;
     out.forEach((d, i) => {
-      const a = ang0 + (i - (out.length - 1) / 2) * 0.7;
-      this.add(d, p.x + Math.cos(a) * 0.4, p.y + 0.6, p.z + Math.sin(a) * 0.4, new THREE.Vector3(Math.cos(a) * 2.6, 5.5 + Math.random() * 1.5, Math.sin(a) * 2.6));
+      const a = ang0 + (i - (out.length - 1) / 2) * 0.62, up = d.kind === 'weapon' ? 8.2 : 6.6 + Math.random() * 1.4;      // v1.27: a higher fountain, the gun on top
+      const it = this.add(d, p.x + Math.cos(a) * 0.15, p.y + 0.7, p.z + Math.sin(a) * 0.15, new THREE.Vector3(Math.cos(a) * 2.4, up, Math.sin(a) * 2.4));
+      it.spark = d.kind === 'weapon' ? BR.RARITY[d.rar | 0].col : d.kind === 'shield' ? 0x4aa8ff : d.kind === 'heal' ? 0x5dff8a : 0xffd24a;
     });
-    this.game.onChestOpened(actor, chest);
+    this.burstChest(chest, rar);
+    this.game.onChestOpened(actor, chest, out[0]);
+    this.opening.push({ g: chest.mesh, t: 0, rar });                 // the chest stays to play its opening, then sinks away
+    chest.mesh = new THREE.Group();
     this.remove(chest);
+  }
+
+  // v1.27: the opening show: a light column, a shock ring and a fountain of sparks in the loot's rarity colour
+  burstChest(chest, rar) {
+    const fx = this.game.fx, RR = BR.RARITY[rar], col = RR.col, v = new THREE.Vector3(chest.pos.x, chest.pos.y + 0.7, chest.pos.z);
+    fx.flash(v); fx.pop(v, 0xfff2c0, 1.4, 0.3, 2.6); fx.pop(v, col, 1.1, 0.45, 3.2);
+    fx.shock(v, 0xffd24a, 3.2, 0.5); fx.shock(v.clone().setY(chest.pos.y + 0.1), col, 4.2, 0.7);
+    fx.burst(v, [0xffd24a, col, 0xffffff], 46, 7, 0.08, 0.9, 7);
+    fx.burst(v, [col, 0xffffff], 24, 3, 0.05, 1.3, -1.5);                // floaty glitter drifting up
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 7, 16, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    beam.position.set(0, 3.6, 0); chest.mesh.add(beam); chest.mesh.userData.beam = beam;
+    const glow = new THREE.Sprite(this.glowMat(col)); glow.scale.setScalar(3.2); glow.position.y = 0.9; chest.mesh.add(glow); chest.mesh.userData.glow = glow;     // (a sprite, not a light: no shader rebuild mid-match)
+  }
+  glowMat(col) {
+    if (!this._glowTex) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+      g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,255,255,0.45)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); this._glowTex = new THREE.CanvasTexture(c); }
+    return new THREE.SpriteMaterial({ map: this._glowTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  }
+  updateOpening(dt) {
+    for (let i = this.opening.length - 1; i >= 0; i--) {
+      const o = this.opening[i], u = o.g.userData; o.t += dt; const t = o.t;
+      if (u.lid) {                                                 // the lid flies open on its back hinge with an overshoot, then settles
+        if (!u.hinge) { const h = new THREE.Group(); h.position.set(0, 0.68, -0.32); o.g.add(h); o.g.remove(u.lid); u.lid.position.set(0, -0.09, 0.32); h.add(u.lid); u.hinge = h; }
+        const k = Math.min(1, t / 0.32), over = 1 - Math.pow(1 - k, 3);
+        u.hinge.rotation.x = -(over * 2.05 - Math.sin(Math.min(1, t / 0.6) * Math.PI) * 0.25 * (t > 0.32 ? 1 : 0));
+      }
+      const shake = t < 0.25 ? Math.sin(t * 90) * 0.04 * (1 - t / 0.25) : 0; o.g.rotation.z = shake;
+      if (u.beam) { const k = Math.min(1, t / 0.15); u.beam.scale.set(1 + t * 0.6, k, 1 + t * 0.6); u.beam.material.opacity = 0.6 * Math.max(0, 1 - t / 1.3); }
+      if (u.glow) { u.glow.material.opacity = Math.max(0, 1 - t / 1.1); u.glow.scale.setScalar(3.2 + t * 2); }
+      if (u.ring) u.ring.material.opacity = Math.max(0, 0.8 - t);
+      if (t > 1.3) { const s = Math.max(0.01, 1 - (t - 1.3) / 0.5); o.g.scale.setScalar(s); o.g.position.y -= dt * 0.6; }
+      if (t > 1.8) { this.game.scene.remove(o.g); this.opening.splice(i, 1); }
+    }
   }
 
   // Drop the held weapon and take this one.
@@ -17024,6 +17180,32 @@ BR.MASKS = {
   undying:   { name: 'Undying', rarity: 'Mythic', base: 0x1d2a1b, pat: 'splatter', c2: 0x5d6a4a, c3: 0x7a1a14, eyes: 'glow', eyeCol: 0x39ff88, grind: { stat: 'zround', n: 30, label: 'Reach round 30 in Zombies' } },
   kingpin:   { name: 'Kingpin', rarity: 'Mythic', base: 0x18181c, trim: 0xd4a83a, add: 'crown', addCol: 0xd4a83a, grind: { stat: 'wins', n: 50, label: 'Win 50 matches' } },
 };
+// ---- v1.27 HATS: worn over the mask. kind = the model (actors.js buildHat), c1 / c2 / glow = its colours. Some animate.
+BR.HATS = {
+  default:   { name: 'No Hat', price: 0 },
+  bandana:   { name: 'Red Bandana', price: 300, rarity: 'Rare', kind: 'bandana', c1: 0xc8102e },
+  beanie:    { name: 'Pom Beanie', price: 400, rarity: 'Rare', kind: 'beanie', c1: 0xff7a00, c2: 0xfff2d6 },
+  snapback:  { name: 'Snapback', price: 450, rarity: 'Rare', kind: 'cap', c1: 0x1d6bff, c2: 0xffd24a },
+  bucket:    { name: 'Bucket Hat', price: 800, rarity: 'Epic', kind: 'bucket', c1: 0x39d98a, c2: 0x1b6b45 },
+  beret:     { name: 'Commando Beret', price: 900, rarity: 'Epic', kind: 'beret', c1: 0x7a0f1d, c2: 0xffd24a },
+  tophat:    { name: 'Neon Top Hat', price: 1600, rarity: 'Legendary', kind: 'tophat', c1: 0x111114, glow: 0xff2bd6 },
+  catears:   { name: 'Glow Cat Ears', price: 1500, rarity: 'Legendary', kind: 'catears', c1: 0x18181c, glow: 0x1de9ff },
+  // Release Case
+  backcap:   { name: 'Backwards Cap', caseOnly: true, rarity: 'Rare', kind: 'backcap', c1: 0xffd24a, c2: 0x111111, glow: 0xffd24a },
+  cone:      { name: 'Traffic Cone', caseOnly: true, rarity: 'Epic', kind: 'cone', c1: 0xff6a00 },
+  kabuto:    { name: 'Shogun Kabuto', caseOnly: true, rarity: 'Legendary', kind: 'kabuto', c1: 0x7a0a12, c2: 0xffc83a, glow: 0xff3030 },
+  headset:   { name: 'RGB Headset', caseOnly: true, rarity: 'Mythic', kind: 'headset', c1: 0x15161a, glow: 0x39ff88 },
+  flame:     { name: 'Inferno Crown', caseOnly: true, rarity: 'Exotic', kind: 'flame', c1: 0xffc83a, c2: 0xffe14d, glow: 0xff4a00 },
+  // Nova Case
+  antlers:   { name: 'Spirit Antlers', caseOnly: true, case: 'nova', rarity: 'Legendary', kind: 'antlers', glow: 0x6fd8ff },
+  wizard:    { name: 'Archmage', caseOnly: true, case: 'nova', rarity: 'Mythic', kind: 'wizard', c1: 0x3b1a9a, c2: 0xffd24a, glow: 0xff3df2 },
+  saturn:    { name: 'Saturn Orbit', caseOnly: true, case: 'nova', rarity: 'Exotic', kind: 'saturn', c1: 0x1de9ff, c2: 0xff3df2, glow: 0xffd24a },
+  // Mastery (grind)
+  viking:    { name: 'Warlord Helm', rarity: 'Legendary', kind: 'viking', c1: 0x8a929c, c2: 0xb8860b, grind: { stat: 'kills', n: 1000, label: 'Get 1,000 kills' } },
+  gunslinger:{ name: 'Gunslinger', rarity: 'Legendary', kind: 'cowboy', c1: 0x5a3a22, c2: 0xd4a83a, grind: { stat: 'w:revolver', n: 150, label: 'Get 150 kills with the Revolver' } },
+  mohawk:    { name: 'Neon Mohawk', rarity: 'Mythic', kind: 'mohawk', c1: 0xff2bd6, c2: 0x39ff88, grind: { stat: 'heads', n: 1000, label: 'Get 1,000 headshot kills' } },
+  brainjar:  { name: 'Brain Jar', rarity: 'Mythic', kind: 'brainjar', c1: 0xff8ab0, glow: 0x39ff88, grind: { stat: 'zkills', n: 2500, label: 'Kill 2,500 zombies' } },
+};
 // ---- Cases: exclusive items you can only get by opening one. Rarer = flashier.
 BR.CASES = {
   release: { name: 'Release Case', price: 600, odds: { Rare: 52, Epic: 28, Legendary: 13, Mythic: 6, Exotic: 1 }, dupRefund: 0.35, label: 'RELEASE', sub: 'CASE · SEASON 1' },
@@ -17043,7 +17225,7 @@ BR.CaseItems = {
     const add = (cat, table, pre) => { for (const id in table) if (table[id].caseOnly) out.push({ cat, id: pre ? pre + id : id, item: table[id] }); };
     for (const w in M.BLUEPRINTS) add('blueprints', M.BLUEPRINTS[w], w + ':');
     add('skins', M.SKINS); add('gloves', M.GLOVES); add('tracers', M.TRACERS); add('feeds', BR.FEEDS); add('finishers', BR.FINISHERS);
-    add('outfits', BR.OUTFITS); add('masks', BR.MASKS);
+    add('outfits', BR.OUTFITS); add('masks', BR.MASKS); add('hats', BR.HATS);
     return (this._all = out);
   },
   roll(caseId, R) {
@@ -17070,8 +17252,8 @@ BR.Profile = {
     d = d || {};
     this.data = {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
-      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'], outfits: ['default'], masks: ['default'] }, d.owned || {}),
-      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', outfits: 'default', masks: 'default', melee: 'tracker' }, d.equip || {}),
+      owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'], outfits: ['default'], masks: ['default'], hats: ['default'] }, d.owned || {}),
+      equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', outfits: 'default', masks: 'default', hats: 'default', melee: 'tracker' }, d.equip || {}),
       rp: typeof d.rp === 'number' ? d.rp : 0,
       cases: Object.assign({ opened: 0 }, d.cases || {}),
       stats: Object.assign({ matches: 0, wins: 0, kills: 0, deaths: 0 }, d.stats || {}),
@@ -17099,7 +17281,7 @@ BR.Profile = {
     if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
     if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
-    for (const k of ['outfits', 'masks']) { if (!this.data.owned[k]) this.data.owned[k] = ['default']; if (!this.data.equip[k]) this.data.equip[k] = 'default'; }     // v1.26 character
+    for (const k of ['outfits', 'masks', 'hats']) { if (!this.data.owned[k]) this.data.owned[k] = ['default']; if (!this.data.equip[k]) this.data.equip[k] = 'default'; }     // v1.26 character
     // v1.14: new accounts start from scratch — default skins only, the Tracker knife, level 0.
     // Older saves get XP credited for what they already did (kills, wins, matches, zombies).
     if (this.data.xp === null) {
@@ -17129,7 +17311,7 @@ BR.Profile = {
     const add = (cat, ids) => { for (const id of ids) if (!o[cat].includes(id)) o[cat].push(id); };
     add('skins', Object.keys(M.SKINS)); add('tracers', Object.keys(M.TRACERS));
     add('charms', Object.keys(M.CHARMS)); add('gloves', Object.keys(M.GLOVES)); add('feeds', Object.keys(BR.FEEDS));
-    add('finishers', Object.keys(BR.FINISHERS)); add('outfits', Object.keys(BR.OUTFITS)); add('masks', Object.keys(BR.MASKS));
+    add('finishers', Object.keys(BR.FINISHERS)); add('outfits', Object.keys(BR.OUTFITS)); add('masks', Object.keys(BR.MASKS)); add('hats', Object.keys(BR.HATS));
     for (const w in M.BLUEPRINTS) add('blueprints', Object.keys(M.BLUEPRINTS[w]).map(b => w + ':' + b));
   },
   save() { if (BR.AntiCheat) BR.AntiCheat.saveSigned(this.KEY, this.data); else BR.util.save(this.KEY, this.data); },
@@ -17224,7 +17406,7 @@ BR.Profile = {
     const M = BR.Models, out = [];
     for (const id in M.SKINS) if (M.SKINS[id].grind) out.push({ cat: 'skins', id, item: M.SKINS[id] });
     for (const w in M.BLUEPRINTS) for (const b in M.BLUEPRINTS[w]) if (M.BLUEPRINTS[w][b].grind) out.push({ cat: 'blueprints', id: w + ':' + b, item: M.BLUEPRINTS[w][b] });
-    for (const cat of ['outfits', 'masks']) { const T = BR.CHAR_TABLES[cat](); for (const id in T) if (T[id].grind) out.push({ cat, id, item: T[id] }); }
+    for (const cat of ['outfits', 'masks', 'hats']) { const T = BR.CHAR_TABLES[cat](); for (const id in T) if (T[id].grind) out.push({ cat, id, item: T[id] }); }
     return out;
   },
   grindProgress(item) { const G = this.grind(), g = item.grind; return [Math.min(g.n, Math.floor(G[g.stat] || 0)), g.n]; },
@@ -17271,7 +17453,7 @@ BR.Profile = {
     return { streak: d.daily.streak, coins, key };
   },
   // v1.26: the character look you wear (outfit + mask ids)
-  charLook() { const e = this.data.equip, O = BR.OUTFITS || {}, K = BR.MASKS || {}; return { o: O[e.outfits] ? e.outfits : 'default', m: K[e.masks] ? e.masks : 'default' }; },
+  charLook() { const e = this.data.equip, O = BR.OUTFITS || {}, K = BR.MASKS || {}, H = BR.HATS || {}; return { o: O[e.outfits] ? e.outfits : 'default', m: K[e.masks] ? e.masks : 'default', h: H[e.hats] ? e.hats : 'default' }; },
   keys(caseId) { return (this.data.keys && this.data.keys[caseId]) || 0; },
   // gloves worn with a weapon (per-weapon pick, else the default pair)
   skinFor(weapon) { const e = this.data.equip; return (e.skinByGun && e.skinByGun[weapon]) || 'default'; },
@@ -17366,9 +17548,9 @@ BR.Profile = {
   },
 };
 
-BR.CHAR_TABLES = { outfits: () => BR.OUTFITS, masks: () => BR.MASKS };
+BR.CHAR_TABLES = { outfits: () => BR.OUTFITS, masks: () => BR.MASKS, hats: () => BR.HATS };
 // the look shown in the preview: what you wear, with the selected outfit / mask swapped in
-BR.lookPreview = (cat, id) => { const L = Object.assign({}, BR.Profile.charLook()); if (id) L[cat === 'outfits' ? 'o' : 'm'] = id; L.focus = cat === 'masks' ? 'head' : 'body'; const G = BR.Profile.loadoutGuns(); L.wid = G.primary; L.skin = BR.Profile.skinFor(G.primary); L.bp = (BR.Profile.data.equip.blueprints || {})[G.primary] || null; return L; };
+BR.lookPreview = (cat, id) => { const L = Object.assign({}, BR.Profile.charLook()); if (id) L[cat === 'outfits' ? 'o' : cat === 'hats' ? 'h' : 'm'] = id; L.focus = cat === 'outfits' ? 'body' : cat === 'hats' ? 'hat' : 'head'; const G = BR.Profile.loadoutGuns(); L.wid = G.primary; L.skin = BR.Profile.skinFor(G.primary); L.bp = (BR.Profile.data.equip.blueprints || {})[G.primary] || null; return L; };
 BR.MELEE = { bayonet: true, knife: true, butterfly: true, tracker: true };
 const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['launcher', 'Shockwave Launcher'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker']];
 const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
@@ -17401,12 +17583,13 @@ BR.CharIcons = {
         this.cam = new THREE.PerspectiveCamera(30, 1, 0.05, 20);
       }
       clearTimeout(this.idle); this.idle = setTimeout(() => this.drop(), 4000);         // give the WebGL context back when idle
-      const look = { o: cat === 'outfits' ? id : 'default', m: cat === 'masks' ? id : 'default' };
-      const fig = BR.charFigure(look, 'rifle'); fig.mesh.userData.gun.visible = cat !== 'masks';
+      const look = { o: cat === 'outfits' ? id : 'default', m: cat === 'masks' ? id : 'default', h: cat === 'hats' ? id : 'default' }, head = cat !== 'outfits';
+      const fig = BR.charFigure(look, 'rifle'); fig.mesh.userData.gun.visible = !head;
       this.sc.add(fig.mesh); fig.mesh.updateMatrixWorld(true);
       const a = 0.5, c = this.cam;
       const hp = new THREE.Vector3(); fig.mesh.userData.head.getWorldPosition(hp); hp.y += 0.06;      // (the figure faces +Z)
-      if (cat === 'masks') { c.position.set(hp.x + Math.sin(a) * 0.78, hp.y + 0.1, hp.z + Math.cos(a) * 0.78); c.lookAt(hp.x, hp.y + 0.03, hp.z); }
+      if (cat === 'hats') { c.position.set(hp.x + Math.sin(a) * 1.0, hp.y + 0.3, hp.z + Math.cos(a) * 1.0); c.lookAt(hp.x, hp.y + 0.1, hp.z); }
+      else if (cat === 'masks') { c.position.set(hp.x + Math.sin(a) * 0.78, hp.y + 0.1, hp.z + Math.cos(a) * 0.78); c.lookAt(hp.x, hp.y + 0.03, hp.z); }
       else { c.position.set(Math.sin(a) * 3.7, 1.15, Math.cos(a) * 3.7); c.lookAt(0, 0.93, 0); }
       this.r.render(this.sc, c); url = this.r.domElement.toDataURL('image/png');
       this.sc.remove(fig.mesh);
@@ -17538,7 +17721,7 @@ BR.Shop = class Shop {
       const pic = BR.CharIcons.get(cat, id), hx = c => c === undefined ? '#555' : hex(c);
       const glow = it.glow !== undefined ? hex(it.glow) : it.eyeCol !== undefined ? hex(it.eyeCol) : 'transparent';
       const bg = cat === 'outfits' ? `linear-gradient(180deg,${hx(it.jacket)} 0 55%,${hx(it.pants)} 55% 88%,${hx(it.boots)} 88%)` : hx(it.base);
-      return pic ? `<i class="sw chr${cat === 'masks' ? ' mk' : ''}" style="background-image:url(${pic}),radial-gradient(circle at 50% 60%,${glow === 'transparent' ? 'rgba(178,107,255,0.25)' : glow + '55'},transparent 70%)"></i>` : `<i class="sw" style="background:${bg}"></i>`;
+      return pic ? `<i class="sw chr${cat !== 'outfits' ? ' mk' : ''}" style="background-image:url(${pic}),radial-gradient(circle at 50% 60%,${glow === 'transparent' ? 'rgba(178,107,255,0.25)' : glow + '55'},transparent 70%)"></i>` : `<i class="sw" style="background:${bg}"></i>`;
     }
     if (cat === 'feeds') return `<i class="sw fd"><span class="kf feed-${id}">${BR.Ranks.badge(BR.Profile.data.rp || 0)}<b class="me">You</b><i>✕</i></span></i>`;
     return `<i class="sw ch">${id === 'none' ? '—' : '◆'}</i>`;
@@ -17650,13 +17833,13 @@ BR.Inventory = class Inventory {
   collectible() {
     if (this._coll) return this._coll;
     const M = BR.Models; let n = 0;
-    for (const t of [M.SKINS, M.TRACERS, M.CHARMS, M.GLOVES, BR.FEEDS, BR.FINISHERS, BR.OUTFITS, BR.MASKS]) n += Object.keys(t).filter(k => k !== 'default' && k !== 'none' && k !== 'signature').length;
+    for (const t of [M.SKINS, M.TRACERS, M.CHARMS, M.GLOVES, BR.FEEDS, BR.FINISHERS, BR.OUTFITS, BR.MASKS, BR.HATS]) n += Object.keys(t).filter(k => k !== 'default' && k !== 'none' && k !== 'signature').length;
     for (const w in M.BLUEPRINTS) n += Object.keys(M.BLUEPRINTS[w]).filter(k => k !== 'default').length;
     return (this._coll = n);
   }
   total() {
     const o = BR.Profile.data.owned; let n = 0;
-    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds', 'finishers', 'outfits', 'masks']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
+    for (const k of ['skins', 'tracers', 'charms', 'gloves', 'feeds', 'finishers', 'outfits', 'masks', 'hats']) n += (o[k] || []).filter(x => x !== 'default' && x !== 'none' && x !== 'signature').length;
     return n + (o.blueprints || []).filter(x => !x.endsWith(':default')).length;
   }
   open(focus) {
@@ -17719,7 +17902,7 @@ BR.Inventory = class Inventory {
     this.el.name.textContent = it ? it.name : '';
     this.el.rar.textContent = it && it.rarity ? it.rarity.toUpperCase() : '';
     this.el.rar.style.color = it && it.rarity ? RARITY[it.rarity] : '';
-    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : cat === 'outfits' ? 'Character outfit' + (it.grind && P.owns(cat, this.sel) ? ' · mastery' : '') : cat === 'masks' ? 'Character mask' : cat === 'finishers' ? 'Kill finisher' : 'Kill feed banner';
+    this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : cat === 'outfits' ? 'Character outfit' + (it.grind && P.owns(cat, this.sel) ? ' · mastery' : '') : cat === 'masks' ? 'Character mask' : cat === 'hats' ? 'Character hat' : cat === 'finishers' ? 'Kill finisher' : 'Kill feed banner';
     const eq = it && P.isEquipped(cat, this.sel, this.weapon);
     this.el.action.textContent = !it ? '' : eq ? 'Equipped' : 'Equip';
     this.el.action.disabled = !it || eq;
@@ -18199,7 +18382,7 @@ BR.HUD = class HUD {
     <div id="shop-tabs" class="seg">
       <button data-cat="character" class="tab-char">CHARACTER</button><button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
-    <div id="shop-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button></div>
+    <div id="shop-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button><button data-s="hats">HAT</button></div>
     <div id="shop-weps" class="chips"></div>
     <div id="shop-grid"></div>
     <div class="shop-foot">
@@ -18223,7 +18406,7 @@ BR.HUD = class HUD {
       <button data-cat="character" class="tab-char">CHARACTER</button><button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
     <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="tracker">TRACKER</button><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
-    <div id="inv-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button></div>
+    <div id="inv-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button><button data-s="hats">HAT</button></div>
     <div id="inv-weps" class="chips"></div>
     <div id="inv-grid"></div>
     <div class="shop-foot">
@@ -19822,6 +20005,7 @@ BR.Game = class Game {
     if (p.alive && this.state === 'playing') this.controlPlayer(dt);
     else {
       p.fireHeld = false;
+      if (this.state === 'won' || this.freezeT > 0) { const I = p.input; I.mx = I.mz = 0; I.jump = I.crouch = false; }     // v1.27: the stick no longer walks you during the victory
       // v1.23: the menu (and map) still work while you're dead / waiting to respawn
       if (this.state === 'playing') { if (this.input.consume('pause')) this.pause(); if (this.input.consume('map')) this.hud.toggleMap(); }
     }
@@ -19889,7 +20073,7 @@ BR.Game = class Game {
         this.result = { win: true, place: 1, total: this.total, kills: p.kills, assists: p.assists || 0, damage: p.damageDealt, time: this.time, squad: this.squad, teams: this.teams };
         if (p.downed) { p.downed = false; p.reviver = null; p.mover.prone = false; p.health = Math.max(p.health, 1); }
         // freeze frame first (like the big shooters), then the victory show
-        this.freezeT = 1.0; p.fireHeld = false; this.hud.freeze(true); BR.Audio.freeze && BR.Audio.freeze();
+        this.freezeT = 1.0; p.fireHeld = false; p.input.mx = p.input.mz = 0; p.mover.vel.set(0, 0, 0); this.hud.freeze(true); BR.Audio.freeze && BR.Audio.freeze();
       }
     } else if (this.state === 'dead' || this.state === 'won') {
       this.endT -= dt;
@@ -19913,6 +20097,7 @@ BR.Game = class Game {
   startVictory() {
     const p = this.player;
     this.victory = { t: 0, rt: 0, nextFw: 0.35, nextConf: 0.1, yaw0: p.yaw, fw: 0 };
+    const I = p.input; I.mx = I.mz = 0; I.jump = I.crouch = false; p.mover.vel.set(0, 0, 0); p.mover.sliding = false; p.ads = false;     // v1.27: no more walking mid-celebration
     if (!p.mesh) { p.mesh = p.buildMesh(); this.scene.add(p.mesh); p.syncMesh(0.016); }
     p.mesh.visible = true; p.fireHeld = false;
     this.fx.victory && this.fx.victory(p.pos.clone());
@@ -19923,18 +20108,41 @@ BR.Game = class Game {
   updateVictory(dt) {
     const v = this.victory, p = this.player; v.t += dt;
     if (!p.mesh) return;
-    // celebrate: arms raised in a V with fist pumps, a hop at 0.5 s, a full spin at 1.4 s, then bouncing
-    const u = p.mesh.userData, t = v.t;
-    const pump = Math.sin(t * 7) * 0.22 * Math.min(1, t * 2);
-    if (u.AR && u.AL) {
-      u.AR.sh.rotation.set(-2.75 + pump, 0, -0.32); u.AL.sh.rotation.set(-2.75 - pump, 0, 0.32);
-      u.AR.el.rotation.set(-0.35 - Math.max(0, pump), 0, 0); u.AL.el.rotation.set(-0.35 - Math.max(0, -pump), 0, 0);
-    }
-    const hop = t > 0.5 && t < 1.05 ? Math.sin((t - 0.5) / 0.55 * Math.PI) * 0.55 : Math.abs(Math.sin(t * 4.2)) * 0.06 * Math.min(1, Math.max(0, t - 1.1));
-    p.mesh.position.y = p.mover.pos.y + hop;
-    const spin = BR.util.clamp((t - 1.4) / 0.7, 0, 1);
-    p.mesh.rotation.y = (u.yaw || p.yaw) + Math.PI * 2 * (spin * spin * (3 - 2 * spin));
-    if (u.head) u.head.rotation.x = -0.3;
+    // v1.27 dance, five beats: a burst jump with arms flung up, alternating fist pumps on the beat, a spin with
+    // arms out, a side-step shuffle, then a hero pose pointing at the sky. Poses blend smoothly into each other.
+    const u = p.mesh.userData, t = v.t, U = BR.util, S = x => x * x * (3 - 2 * x);
+    const m = p.mover; m.vel.set(0, 0, 0);                                      // stand still for the whole show
+    const beat = t * 2.6 * Math.PI, bb = Math.sin(beat), bounce = Math.abs(Math.sin(beat));
+    const poses = [
+      // [start, pose fn] - each returns { R, L (hand targets in the upper body's space), hl, kl, hr, kr, hz, y, yaw, lean, roll, head }
+      [0, () => { const k = U.clamp(t / 0.25, 0, 1), air = t > 0.25 && t < 0.8 ? Math.sin((t - 0.25) / 0.55 * Math.PI) : 0;
+        return { R: [0.42, 1.1, 0.05], L: [-0.42, 1.1, 0.05], hl: -0.4 * (1 - k) - air * 0.5, kl: 0.9 * (1 - k) + air * 0.9, hr: -0.4 * (1 - k) - air * 0.3, kr: 0.9 * (1 - k) + air * 0.6,
+          hz: 0.1, y: -0.22 * (1 - k) + air * 0.6, yaw: 0, lean: -0.15 * air, roll: 0, head: -0.45 }; }],
+      [0.9, () => { const up = bb > 0;
+        return { R: up ? [0.22, 1.18, -0.05] : [0.1, 0.42, -0.24], L: up ? [-0.1, 0.42, -0.24] : [-0.22, 1.18, -0.05], hl: -0.15 * bounce, kl: 0.35 * bounce, hr: -0.15 * bounce, kr: 0.35 * bounce,
+          hz: 0.08, y: -0.07 * bounce, yaw: bb * 0.18, lean: 0.06 * bounce, roll: bb * 0.08, head: -0.2 - 0.15 * bounce }; }],
+      [2.3, () => { const k = S(U.clamp((t - 2.3) / 0.8, 0, 1));
+        return { R: [0.8, 0.62, 0], L: [-0.8, 0.62, 0], hl: -0.1, kl: 0.25, hr: -0.1, kr: 0.25, hz: 0.12, y: -0.06, yaw: Math.PI * 2 * k, lean: -0.05, roll: 0, head: -0.25 }; }],
+      [3.15, () => { const s1 = Math.sin(beat * 0.5), side = s1 > 0 ? 1 : -1, kick = Math.abs(s1);
+        return { R: [0.0 + s1 * 0.25, 0.32, -0.38], L: [-0.0 + s1 * 0.25, 0.3, -0.36], hl: side < 0 ? -0.55 * kick : 0.05, kl: side < 0 ? 0.25 : 0.4 * kick, hr: side > 0 ? -0.55 * kick : 0.05, kr: side > 0 ? 0.25 : 0.4 * kick,
+          hz: 0.1 + kick * 0.25, y: -0.05 * bounce, yaw: s1 * 0.45, lean: 0.08, roll: -s1 * 0.12, head: -0.1 }; }],
+      [4.4, () => { const br = Math.sin(t * 2.2) * 0.015;
+        return { R: [0.34, 1.22, -0.32], L: [-0.24, 0.02, -0.04], hl: 0.0, kl: 0.05, hr: -0.12, kr: 0.12, hz: 0.18, y: br, yaw: -0.25, lean: -0.12, roll: 0.05, head: -0.55 }; }],
+    ];
+    let i = 0; while (i < poses.length - 1 && t >= poses[i + 1][0]) i++;
+    const A = poses[i][1](), nx = poses[i + 1], w = nx ? S(U.clamp((t - (nx[0] - 0.18)) / 0.18, 0, 1)) : 0;
+    const B = w > 0 ? nx[1]() : A, L = (a, b) => a + (b - a) * w, L3 = (a, b) => [L(a[0], b[0]), L(a[1], b[1]), L(a[2], b[2])];
+    const P = { R: L3(A.R, B.R), L: L3(A.L, B.L) }; for (const k of ['hl', 'kl', 'hr', 'kr', 'hz', 'y', 'yaw', 'lean', 'roll', 'head']) P[k] = L(A[k], B[k]);
+    if (i === 2 && w > 0) P.yaw = A.yaw + (B.yaw + Math.PI * 2 - A.yaw) * w;      // finish the spin forward, not back
+    const keep = this._vp || (this._vp = new THREE.Vector3()), keep2 = this._vp2 || (this._vp2 = new THREE.Vector3());
+    if (u.AR && u.AL && BR.solveArm) { BR.solveArm(u.AR, keep.set(P.R[0], P.R[1], P.R[2]), 1); BR.solveArm(u.AL, keep2.set(P.L[0], P.L[1], P.L[2]), -1); }
+    u.L.hip.rotation.x = P.hl; u.L.knee.rotation.x = P.kl; u.R.hip.rotation.x = P.hr; u.R.knee.rotation.x = P.kr;
+    u.L.hip.rotation.z = -P.hz; u.R.hip.rotation.z = P.hz;
+    u.body.position.y = P.y; u.body.rotation.set(0, 0, P.roll); u.body.position.x = 0; u.body.position.z = 0;
+    u.upper.rotation.set(P.lean, -P.yaw * 0.35, -P.roll * 0.6);
+    p.mesh.position.set(m.pos.x, m.pos.y, m.pos.z);
+    p.mesh.rotation.y = (v.yaw0 !== undefined ? v.yaw0 : p.yaw) + P.yaw;
+    if (u.head) u.head.rotation.set(P.head, P.yaw * 0.2, 0);
     if (u.gun) u.gun.visible = false;
     // fireworks + confetti
     const at = this._vfw || (this._vfw = new THREE.Vector3());
@@ -20107,10 +20315,15 @@ BR.Game = class Game {
     if (ev.tech) { this.hud.tech(ev.tech); BR.Audio.tech(); }
   }
 
-  onChestOpened(actor, chest) {
-    const d = Math.hypot(actor.pos.x - this.camera.position.x, actor.pos.z - this.camera.position.z);
-    if (d < 40) BR.Audio.chest(d);
-    if (actor === this.player) this.hud.toast('Chest opened', 900);
+  onChestOpened(actor, chest, gun) {
+    const d = Math.hypot(actor.pos.x - this.camera.position.x, actor.pos.z - this.camera.position.z), rar = gun ? gun.rar | 0 : 0;
+    if (d < 40) BR.Audio.chest(d, rar);
+    if (actor === this.player) {                                   // v1.27: a kick, a buzz and the loot called out in its rarity
+      this.cam.shake = Math.max(this.cam.shake, 0.12); this.cam.hitFov = Math.min(6, (this.cam.hitFov || 0) + 3);
+      try { if (navigator.vibrate) navigator.vibrate(rar >= 4 ? [30, 40, 60] : 35); } catch (e) { /* no haptics */ }
+      const R = BR.RARITY[rar];
+      this.hud.toast(gun && R ? `${R.name.toUpperCase()} ${BR.CONFIG.weapons[gun.wid].name.toUpperCase()}!` : 'Chest opened', 1400);
+    }
   }
 
   // ----------------------------------------------------------------- combat
@@ -20130,6 +20343,12 @@ BR.Game = class Game {
       if (tc < -1 - bh || tc > best + 1 + bh) continue;
       const cull = HB ? (bh * 0.5 + br + hr + 0.5) ** 2 : 4.8;
       if (lx * lx + ly * ly + lz * lz - tc * tc > cull) continue;
+      if (a.downed && !HB) {                           // v1.27: lying flat: head, chest, hips and legs along the body (matches the crawl pose)
+        const yw = a.mesh ? a.mesh.rotation.y : a.yaw, fx = -Math.sin(yw), fz = -Math.cos(yw), py = m.pos.y;
+        const S = this._downS || (this._downS = [[0.8, 0.3, 0.2, true], [0.42, 0.22, 0.27, false], [0.0, 0.2, 0.26, false], [-0.5, 0.16, 0.2, false], [-0.88, 0.14, 0.17, false]]);
+        for (const [f, y, r, hd] of S) { const tt = U.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, m.pos.x + fx * f, py + y, m.pos.z + fz * f, r, best); if (tt < best) { best = tt; actor = a; head = hd; } }
+        continue;
+      }
       const th = U.raySphere(o.x, o.y, o.z, d.x, d.y, d.z, cx, m.pos.y + hy, cz, hr, best);
       if (th < best) { best = th; actor = a; head = true; }
       box.x0 = cx - br; box.x1 = cx + br; box.z0 = cz - br; box.z1 = cz + br;
@@ -20417,13 +20636,13 @@ BR.Game = class Game {
     while (this.shopPivot.children.length) this.shopPivot.remove(this.shopPivot.children[0]);
     this.shopChar = null;
     if (p.character) {                                       // v1.26 CHARACTER tab: the full character in the look, holding your gun
-      const L = p.character, fig = BR.charFigure({ o: L.o, m: L.m }, L.wid, L.skin, L.bp), head = L.focus === 'head';
+      const L = p.character, fig = BR.charFigure({ o: L.o, m: L.m, h: L.h }, L.wid, L.skin, L.bp), head = L.focus !== 'body', hat = L.focus === 'hat';
       const g = new THREE.Group(); g.add(fig.mesh);
       fig.fake.yaw = Math.PI; fig.mesh.userData.yaw = Math.PI;
-      const k = this.inspect.on ? 1 : 0.75, sc = (head ? 3.6 : 1.2) * k;            // (the shop doesn't zoom out like the inventory)
+      const k = this.inspect.on ? 1 : 0.75, sc = (hat ? 2.5 : head ? 3.6 : 1.2) * k;            // (the shop doesn't zoom out like the inventory)
       fig.mesh.userData.gun.visible = !head;
       g.scale.setScalar(sc);
-      g.position.set(0, head ? -1.75 * sc + 0.05 : this.inspect.on ? -1.1 : -0.52, 0);
+      g.position.set(0, hat ? -1.83 * sc : head ? -1.75 * sc + 0.05 : this.inspect.on ? -1.1 : -0.52, 0);
       g.rotation.y = head ? 0.5 : 0.35;
       this.shopPivot.add(g); this.shopGun = null; this.shopChar = fig;
       return;
@@ -20991,7 +21210,7 @@ BR.Game = class Game {
     const P = BR.Profile;
     $('grind-list').innerHTML = P.grindItems().map(e => {
       const [cur, n] = P.grindProgress(e.item), own = P.owns(e.cat, e.id), k = Math.min(1, cur / n);
-      const what = e.cat === 'skins' ? 'CAMO · any gun' : e.cat === 'outfits' ? 'OUTFIT · character' : e.cat === 'masks' ? 'MASK · character' : 'BLUEPRINT · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name;
+      const what = e.cat === 'skins' ? 'CAMO · any gun' : e.cat === 'outfits' ? 'OUTFIT · character' : e.cat === 'masks' ? 'MASK · character' : e.cat === 'hats' ? 'HAT · character' : 'BLUEPRINT · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name;
       return `<div class="gr-row${own ? ' own' : ''}"><div class="gr-sw">${shop.swatch(e.cat, e.id, e.item)}</div><div class="gr-main"><div class="gr-top"><b>${e.item.name}</b><span class="rar" style="--r:${({ Epic: '#b06bff', Legendary: '#ffb020', Mythic: '#ff3df2', Exotic: '#39ffd0' })[e.item.rarity] || '#8d97a5'}">${e.item.rarity}</span><i>${what}</i></div>
         <div class="gr-lbl">${e.item.grind.label}</div><div class="gr-bar"><u style="width:${(k * 100).toFixed(1)}%"></u></div></div><div class="gr-n">${own ? 'UNLOCKED' : cur.toLocaleString() + ' / ' + n.toLocaleString()}</div></div>`;
     }).join('');
@@ -21101,7 +21320,7 @@ BR.Game = class Game {
   };
   // ---- Release Case: CS-style reel that decelerates onto the drop
   const RCOL = { Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
-  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask' };
+  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask', hats: 'Hat' };
   const caseCard = (e, extra) => {
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
     const hex = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
@@ -21794,7 +22013,7 @@ BR.PartyStage = (function () {
   // a menu figure: the in-game character (actors.js) holding the member's gun in their finish
   const fig = (m, i) => {
     const L = m.look || {}, wid = BR.CONFIG.weapons[L.wid] ? L.wid : 'rifle', yaw = Math.PI - 0.62 + (i === 0 ? 0 : i % 2 ? 0.12 : -0.12);     // three-quarter view toward the camera: the gun shows side-on
-    const fake = { color: L.col || 0x8a6cff, look: L.ch && typeof L.ch === 'object' ? { o: String(L.ch.o || 'default'), m: String(L.ch.m || 'default') } : null, yaw, pitch: -0.05, downed: false, weapon: { id: wid },
+    const fake = { color: L.col || 0x8a6cff, look: L.ch && typeof L.ch === 'object' ? { o: String(L.ch.o || 'default'), m: String(L.ch.m || 'default'), h: String(L.ch.h || 'default') } : null, yaw, pitch: -0.05, downed: false, weapon: { id: wid },
       mover: { pos: new THREE.Vector3(), vel: new THREE.Vector3(), speedH: 0, dropping: false, chute: false, sliding: false, crouched: false, onGround: true, wallRunning: false, wallN: new THREE.Vector3() } };
     fake.mover.pos.set(SLOT_X[i], 0, -SLOT_Z[i]);
     const mesh = BR.Actor.prototype.buildMesh.call(fake); fake.mesh = mesh; mesh.userData.yaw = yaw;
@@ -21885,7 +22104,7 @@ BR.BRNet = class BRNet {
         const i = others[k]; b.netId = i; b.owner = H[i].pid; b.name = H[i].name; b.human = true; b.local = false;
         b.brain = null; b.netProxy = new BR.NetProxy();
         const ch = H[i].ch; if (ch && typeof ch === 'object' && b.mesh) {        // wear the outfit + mask they equipped
-          b.look = { o: String(ch.o || 'default'), m: String(ch.m || 'default') };
+          b.look = { o: String(ch.o || 'default'), m: String(ch.m || 'default'), h: String(ch.h || 'default') };
           const old = b.mesh; b.mesh = b.buildMesh(); b.mesh.position.copy(old.position); b.mesh.visible = old.visible; if (old.parent) { old.parent.add(b.mesh); old.parent.remove(old); }
         }
       } else {

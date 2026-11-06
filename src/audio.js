@@ -231,7 +231,16 @@ BR.Audio = {
   wallrun() { this.burst(1200, 0.5, 0.25, 0.06, 0, 'bandpass'); },
   zone() { this.tone(220, 180, 0.6, 0.18, 'sawtooth'); },
   tech() { this.tone(700, 1400, 0.12, 0.12, 'triangle'); this.tone(1050, 2100, 0.16, 0.08, 'sine'); },
-  chest(dist) { const v = 1 / (1 + dist / 10); this.tone(520, 780, 0.12, 0.18 * v, 'triangle'); this.tone(780, 1170, 0.25, 0.14 * v, 'sine'); },
+  // v1.27 chest: wood creak + latch, a whoosh, then a rising sparkly arpeggio (longer and brighter for rarer loot)
+  chest(dist, rar) {
+    const v = 1 / (1 + dist / 10); rar = rar || 0;
+    this.nz({ type: 'bandpass', f0: 380, f1: 220, dur: 0.18, vol: 0.16 * v, q: 3 }); this.metal(1900, 0.08 * v, 0.05);
+    this.nz({ type: 'bandpass', f0: 600, f1: 4200, dur: 0.45, vol: 0.12 * v, q: 0.9, attack: 0.05 });
+    const notes = [523, 659, 784, 1047, 1319, 1568].slice(0, 3 + Math.min(3, rar));
+    notes.forEach((f, i) => setTimeout(() => { this.tone(f, f * 1.003, 0.32, 0.13 * v, 'triangle'); this.tone(f * 2, f * 2, 0.22, 0.05 * v, 'sine'); }, 60 + i * 70));
+    setTimeout(() => this.nz({ type: 'highpass', f0: 6500, dur: 0.6, vol: 0.06 * v * (1 + rar * 0.2), rate: 0.5 }), 90 + notes.length * 70);
+  },
+  lootLand(rar) { const f = 880 + (rar || 0) * 110; this.tone(f, f * 1.5, 0.18, 0.08 + (rar || 0) * 0.015, 'sine'); this.metal(3200, 0.04, 0.04); },
   grapple() { this.metal(1800, 0.12, 0.05); this.nz({ type: 'bandpass', f0: 1500, f1: 5000, dur: 0.22, vol: 0.08, q: 4 });
   },
   stim() { this.metal(3000, 0.06, 0.04); this.nz({ type: 'highpass', f0: 5000, dur: 0.2, vol: 0.08, at: 0.04 }); this.osc({ f0: 600, f1: 1200, dur: 0.25, vol: 0.05, at: 0.1, rev: 0.3 });

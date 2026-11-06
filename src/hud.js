@@ -455,7 +455,7 @@ BR.HUD = class HUD {
     <div id="shop-tabs" class="seg">
       <button data-cat="character" class="tab-char">CHARACTER</button><button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="charms">CHARMS</button><button data-cat="gloves">GLOVES</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
-    <div id="shop-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button></div>
+    <div id="shop-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button><button data-s="hats">HAT</button></div>
     <div id="shop-weps" class="chips"></div>
     <div id="shop-grid"></div>
     <div class="shop-foot">
@@ -479,7 +479,7 @@ BR.HUD = class HUD {
       <button data-cat="character" class="tab-char">CHARACTER</button><button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
     <div id="inv-melee" class="melee-pick"><span>MELEE</span><button data-m="tracker">TRACKER</button><button data-m="bayonet">BAYONET</button><button data-m="knife">KARAMBIT</button><button data-m="butterfly">BUTTERFLY</button></div>
-    <div id="inv-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button></div>
+    <div id="inv-char" class="melee-pick hidden"><span>SLOT</span><button data-s="outfits">OUTFIT</button><button data-s="masks">MASK</button><button data-s="hats">HAT</button></div>
     <div id="inv-weps" class="chips"></div>
     <div id="inv-grid"></div>
     <div class="shop-foot">

@@ -5,6 +5,17 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.27.0', date: '2026-11-06', title: 'Hats, chest hype + victory dance', notes: [
+    'New HAT slot in the CHARACTER section, with 20 hats. In the Shop: Red Bandana, Pom Beanie, Snapback, Bucket Hat, Commando Beret, a colour-cycling Neon Top Hat and Glow Cat Ears.',
+    'Release Case hats: Backwards Cap, Traffic Cone, Shogun Kabuto, an RGB Headset whose ear cups cycle colours, and the Exotic Inferno Crown with flickering flames.',
+    'Nova Case hats: glowing Spirit Antlers, the Archmage hat with stars orbiting it, and the Exotic Saturn Orbit (rings with circling moons).',
+    'Mastery hats: Warlord Helm (1,000 kills), Gunslinger (150 Revolver kills), Neon Mohawk (1,000 headshot kills) and Brain Jar (2,500 zombie kills).',
+    'Revolver: held farther out with the arm extended from the lower right, gun turned to show its side, like the reference screenshot. The per-shot kick is unchanged.',
+    'Victory: a new five-part dance (a burst jump, fist pumps on the beat, a spin with arms out, a side-step shuffle and a hero pose pointing at the sky). Your character no longer walks off if you were holding the stick when you won.',
+    'Chests: the lid flies open with a shake, a light column, shock rings and a spark fountain in the loot\'s rarity colour. The loot launches higher with sparkle trails and bursts in its rarity colour when it lands. New layered chest sound (more notes for rarer loot), a camera kick, a phone buzz, and the gun called out by rarity ("LEGENDARY HUNTING RIFLE!").',
+    'Dropped and loot weapons now float upright, hovering and slowly turning, instead of lying on their side.',
+    'Downed players: a new crawl, flat on the belly with the chin up, pulling forward on the elbows with frog-kicking legs. The body now lies centred on the spot it is hit at, and the hitbox follows it (head out in front, then chest, hips and legs), so what you see is what you hit.',
+  ] },
   { v: '1.26.0', date: '2026-11-06', title: 'Character cosmetics', notes: [
     'New CHARACTER section in the Inventory and the Shop. Pick OUTFIT or MASK, see your operator in 3D (drag to spin, pinch to zoom) holding your primary gun, and equip.',
     '21 outfits that recolour the jacket, pants, boots and gloves. Some have prints (desert, woodland and ghillie camo, arctic digital, tiger, hazard, gold, galaxy, lava) and the rarest have glowing trims (neon circuits, magma cracks, starfields, light seams).',
