@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.27.5',
+  version: '1.27.6',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -169,14 +169,14 @@ BR.CONFIG = {
     hunter:  { name: 'Hunting Rifle', ammo: 'heavy', dmg: 78, pellets: 1, rpm: 75, mag: 5, reload: 2.0, spread: 0.006, ads: 0.05, bloom: 0, bloomMax: 0, range: 250, head: 2.0, recoil: 0.05, kick: 1.5, zoom: 1.45, tier: 2, color: 0x24272c, bolt: true, easyHip: true, speedMult: 1.05, knockback: 2 },
     // Light machine gun: 80-round belt box, long sustained fire, slower to move with and reload
     // LMG: ACOG-style 4x prism scope -> its own round eyepiece when aimed (2x view zoom)
-    lmg:     { name: 'LMG', ammo: 'heavy', dmg: 20, pellets: 1, rpm: 720, mag: 80, reload: 3.6, spread: 0.03, ads: 0.32, bloom: 0.004, bloomMax: 0.045, range: 90, head: 1.5, recoil: 0.012, recoilH: 0.02, kick: 0.6, zoom: 2.0, optic: 'acog', tier: 2, color: 0x3a3d33, speedMult: 0.9 },
+    lmg:     { name: 'LMG', ammo: 'heavy', dmg: 20, pellets: 1, rpm: 720, mag: 80, reload: 3.6, spread: 0.03, ads: 0.32, bloom: 0.004, bloomMax: 0.045, range: 90, head: 1.5, recoil: 0.012, recoilH: 0.02, kick: 0.6, zoom: 2.0, optic: 'acog', tier: 2, color: 0x3a3d33, speedMult: 0.78, adsRate: 8.5, drawTime: 0.9 },     // v1.27.6: heavy: slow to move, aim and swap to
     // Designated marksman rifle: semi-auto, hard-hitting, low-power prism optic
     dmr:     { name: 'DMR', ammo: 'heavy', dmg: 44, pellets: 1, rpm: 240, mag: 12, reload: 2.3, spread: 0.012, ads: 0.15, bloom: 0.012, bloomMax: 0.04, range: 200, head: 2.0, recoil: 0.03, kick: 0.9, zoom: 2.6, tier: 2, color: 0x5a5448, optic: 'prism' },
     // v1.17.2 Shockwave Launcher: lobs the purple shockwave grenade from a 4-round drum. Faster + flatter
     // than a thrown one, bursts on contact for more damage, and launches anyone caught in it (you too:
     // fire at your feet to rocket-jump). Shares shells with the Breacher.
     launcher: { name: 'Shockwave Launcher', ammo: 'shells', dmg: 0, pellets: 1, rpm: 80, mag: 4, reload: 2.9, spread: 0.008, ads: 0.6, bloom: 0, bloomMax: 0, range: 60, head: 1, recoil: 0.045, kick: 1.6, zoom: 1.3, tier: 2, color: 0x2a2433, launcher: true, launchSpeed: 38, blastDamage: 42 },
-    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4 },
+    sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4, speedMult: 0.8, adsRate: 8, drawTime: 0.85 },     // v1.27.6: heavy: slow to move, scope in and swap to
   },
 
   // Loot rolls by spot tier. Weights are relative.

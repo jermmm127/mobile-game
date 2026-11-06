@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.27.6', date: '2026-11-06', title: 'Heavy weapons', notes: [
+    'The Sniper and the LMG are now heavy. You move about 20% slower holding them (Sniper 80% speed, LMG 78%; the LMG was 90%).',
+    'They are also slower to aim down sights and slower to swap to. Switch to your sidearm or knife to run.',
+  ] },
   { v: '1.27.5', date: '2026-11-06', title: 'Karambit distance', notes: [
     'The Karambit is held a little farther from the screen (about 13%), in the same spot, so it looks slightly smaller. Draw, inspect, the twirl and the swings are unchanged.',
   ] },

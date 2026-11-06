@@ -343,7 +343,7 @@
       // New weapon in hand: draw animation
       if (w !== this.lastWeapon) {
         this.lastWeapon = w;
-        this.drawDur = this.drawT = w.id === 'tracker' ? 0.9 : def.melee ? 1.05 : 0.55;
+        this.drawDur = this.drawT = w.id === 'tracker' ? 0.9 : def.melee ? 1.05 : def.drawTime || 0.55;
         this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0; this.pumpT = 0; this.pumpDelay = 0;
         if (def.melee) BR.Audio.unsheathe(); else BR.Audio.mech('draw');
       }

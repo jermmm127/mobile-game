@@ -219,7 +219,7 @@ const server = http.createServer((req, res) => {
     r.botAim = { first: steps[0], peak: Math.max(...steps), cap: bb.d.turnRate / 60, err: Math.abs(BR.util.wrapAngle(ba.yaw + Math.PI / 2)) };
     g.practiceSpawn('clearbots');
     // stim: 4s cooldown, 3s speed boost, heals 10 ticks/s for 5s
-    P.health = 20; P.stimCd = 0;
+    P.health = 20; P.stimCd = 0; P.slots[0] = BR.Weapons.create('rifle'); P.cur = 0;     // (a normal-weight gun: the Sniper / LMG slow you since v1.27.6)
     const used = P.tryStim(), again = P.tryStim();
     const realWorld = P.mover.world, realPos = P.mover.pos.clone();
     P.mover.world = flat; P.mover.pos.set(0, 0, 0);          // open flat ground: nothing to run into
@@ -1446,6 +1446,9 @@ const server = http.createServer((req, res) => {
     const gun = L.items.filter(i => i.kind === 'weapon' && !i.air && i.mesh.visible).sort((a, b) => a.pos.distanceTo(c.pos) - b.pos.distanceTo(c.pos))[0]; out.chestDone = L.opening.length === 0;
     const gm = gun && gun.mesh.children[0]; out.upright = !!gm && Math.abs(gm.rotation.z) < 0.01 && gun.mesh.position.y > gun.pos.y + 0.45;
     out.revolver = true;
+    // v1.27.6: heavy guns: holding the Sniper or LMG slows you (vs the Rifle), and they aim + swap in slower
+    const spd = id => { pp.slots[0] = BR.Weapons.create(id); pp.cur = 0; pp.update(1 / 60); return pp.input.speedMult; };
+    const W = BR.CONFIG.weapons; out.heavy = spd('sniper') <= 0.8 && spd('lmg') <= 0.8 && spd('rifle') === 1 && W.sniper.adsRate < 13 && W.lmg.adsRate < 13 && W.sniper.drawTime > 0.55;
     g.toMenu(); BR.AntiCheat._testing = false;
     return out;
   });
@@ -1508,7 +1511,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
-    ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hands-and-knees crawl + hitbox along the body, no walking during the victory, chest opening show + sparkle loot, upright floating guns', Object.values(v127).every(Boolean), v127],
+    ['v1.27 hats (shop, cases, mastery, worn, animated, HAT slot), downed hands-and-knees crawl + hitbox along the body, no walking during the victory, chest opening show + sparkle loot, upright floating guns, heavy Sniper + LMG', Object.values(v127).every(Boolean), v127],
     ['v1.26 CHARACTER: outfits + masks in the shop, both cases and mastery; bought / equipped looks are worn by your character (patterns, glow, mask add-ons), bots keep team colours, inventory + shop CHARACTER tab with preview, party look', Object.values(v126).every(Boolean), v126],
     ['v1.23 blueprints seated on the new models (fit groups + surface ribbons), Overdrive blueprints with energy veins, factory black guns, knife trail tips, Mastiff full blast, kill ammo packs, pause while dead, Cul-de-Sac + Skyline, sound engine', Object.values(v123).every(Boolean), v123],
     ['v1.21 knock = the kill, finishing = assist, give up when knocked, District FFA map + spread spawns, window vault, tracking runner, imported sniper / revolver / launcher / knives', ['knockCredit', 'giveUp', 'ffa', 'vault', 'runner', 'imports'].every(k => v121[k])],
