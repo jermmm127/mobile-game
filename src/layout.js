@@ -181,7 +181,7 @@ BR.Fullscreen = {
       if (!this.supported()) { onFail(); return; }
       const d = document.documentElement;
       const p = (d.requestFullscreen || d.webkitRequestFullscreen).call(d, { navigationUI: 'hide' });
-      const lock = () => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) { /* optional */ } };
+      const lock = () => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) { /* optional */ } if (BR.KeyGuard) BR.KeyGuard.lockKeys(); };     // v1.30: + keyboard lock
       if (p && p.then) p.then(lock).catch(onFail); else lock();
     } catch (e) { onFail(); }
   },

@@ -453,3 +453,48 @@ BR.Keybinds = {
     return code;
   },
 };
+
+// =============================================================================
+// v1.30 KEY GUARD: in a match, the keys you press go to the game and not to the browser / computer.
+//  * Shortcuts a page can cancel are cancelled: save / print / find / bookmark / history / reload (Ctrl+S P F D H R,
+//    F5), Backspace, F1 / F3 / F6 / F7 / F10, Alt (Windows menu bar), Space / Tab / arrows (page scroll / focus),
+//    Ctrl + scroll zoom, the mouse's back / forward buttons.
+//  * In fullscreen (FULL or the pop-out window) the Keyboard Lock API (Chrome / Edge) also captures the ones a
+//    page normally can't: Ctrl+W / T / N / Q, the Windows key, Alt+Tab where the OS allows it. Hold Esc to leave.
+//  * Anything still left (closing the window, Alt+F4 outside fullscreen) asks "Leave site?" first.
+// Menus and text boxes work normally.
+// =============================================================================
+BR.KeyGuard = {
+  on: true,
+  inMatch() { const g = BR.game; return !!(g && (g.state === 'playing' || g.state === 'paused' || g.state === 'dead' || g.state === 'won') && !BR.Keybinds.capturing); },
+  typing(e) { const t = e.target; return !!(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)); },
+  CTRL: new Set(['KeyS', 'KeyP', 'KeyF', 'KeyD', 'KeyH', 'KeyR', 'KeyO', 'KeyU', 'KeyJ', 'KeyG', 'KeyL', 'KeyE', 'KeyK', 'KeyB', 'KeyW', 'KeyT', 'KeyN', 'KeyQ', 'Equal', 'Minus', 'Digit0', 'NumpadAdd', 'NumpadSubtract', 'Tab', 'PageUp', 'PageDown']),
+  KEYS: new Set(['F1', 'F3', 'F5', 'F6', 'F7', 'F10', 'Backspace', 'Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', 'AltLeft', 'AltRight', 'ContextMenu', 'MetaLeft', 'MetaRight', 'BrowserBack', 'BrowserForward', 'BrowserRefresh', 'BrowserSearch']),
+  block(e) { return this.on && this.inMatch() && !this.typing(e) && ((e.ctrlKey || e.metaKey) && this.CTRL.has(e.code) || this.KEYS.has(e.code) || (e.altKey && /^(Arrow|Key)/.test(e.code))); },
+  lockKeys() { try { if (this.on && navigator.keyboard && navigator.keyboard.lock && BR.Fullscreen.el()) return navigator.keyboard.lock().then(() => { this.locked = true; }).catch(() => {}); } catch (e) { /* not supported */ } return null; },
+  unlockKeys() { try { if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch (e) { /* not supported */ } this.locked = false; },
+  install() {
+    // capture phase: before the page (or the browser's default action) sees it
+    window.addEventListener('keydown', e => { if (this.block(e)) e.preventDefault(); }, true);
+    window.addEventListener('keyup', e => { if (this.on && this.inMatch() && !this.typing(e) && (e.code === 'AltLeft' || e.code === 'AltRight' || e.code === 'F10' || e.code === 'MetaLeft' || e.code === 'MetaRight')) e.preventDefault(); }, true);
+    window.addEventListener('wheel', e => { if (e.ctrlKey && this.on) e.preventDefault(); }, { passive: false, capture: true });          // no Ctrl+scroll page zoom
+    const mb = e => { if ((e.button === 3 || e.button === 4) && this.on) { e.preventDefault(); e.stopPropagation(); } };                // mouse back / forward don't leave the page
+    window.addEventListener('mouseup', mb, true); window.addEventListener('mousedown', mb, true); window.addEventListener('auxclick', mb, true);
+    window.addEventListener('beforeunload', e => { if (this.on && this.inMatch()) { e.preventDefault(); e.returnValue = ''; return ''; } });   // closing / reloading mid-match asks first
+    document.addEventListener('fullscreenchange', () => { if (BR.Fullscreen.el()) this.lockKeys(); else this.unlockKeys(); });
+    document.addEventListener('webkitfullscreenchange', () => { if (BR.Fullscreen.el()) this.lockKeys(); else this.unlockKeys(); });
+    window.addEventListener('dragstart', e => { if (this.inMatch()) e.preventDefault(); });
+  },
+  // v1.30 pop-out: the game in its own window (no tabs / address bar), sized to the screen
+  popOut() {
+    const w = Math.min(1600, Math.round(screen.availWidth * 0.9)), h = Math.min(900, Math.round(screen.availHeight * 0.9));
+    const left = Math.round((screen.availWidth - w) / 2), top = Math.round((screen.availHeight - h) / 2);
+    let url = location.href.split('#')[0]; url += (url.includes('?') ? '&' : '?') + 'popout=1';
+    let win = null;
+    try { win = window.open(url, 'surge-game', `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes`); } catch (e) { win = null; }
+    if (win) { try { win.focus(); } catch (e) { /* ok */ } return true; }
+    return false;
+  },
+  isPopOut() { return /[?&]popout=1/.test(location.search) || window.name === 'surge-game'; },
+};
+BR.KeyGuard.install();

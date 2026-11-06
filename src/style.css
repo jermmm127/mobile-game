@@ -1703,3 +1703,4 @@ body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint 
 .fatal ul { margin: 8px 0 14px 18px; line-height: 1.5; } .fatal .fatal-err { opacity: 0.55; font-size: 12px; margin-top: 12px; }
 .fatal.ctx-lost { position: fixed; inset: 0; z-index: 9999; max-width: none; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: rgba(8, 6, 16, 0.92); color: #fff; cursor: pointer; }
 .gl-diag { margin-top: 16px; font-size: 13px; line-height: 1.45; } .gl-diag details { margin-top: 8px; opacity: 0.8; } .gl-diag ol { margin: 6px 0 6px 20px; font-size: 12px; } .fatal { overflow-y: auto; max-height: 100vh; }
+body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a desktop thing */

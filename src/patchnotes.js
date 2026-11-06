@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.30.0', date: '2026-11-06', title: 'Pop-out window + key guard', notes: [
+    'New POP OUT button on the menu (computers): the game opens in its own window with no tabs or address bar. If nothing opens, allow pop-ups for the site.',
+    'Key guard: in a match, the keys you press stay in the game. Browser shortcuts like save, print, find, bookmark, history and reload (Ctrl+S / P / F / D / H / R, F5), Backspace, Alt (the Windows menu bar), F1 / F3 / F6 / F7 / F10, Space / Tab / arrow scrolling, Ctrl+scroll zoom and the mouse\'s back / forward buttons no longer do anything outside the game.',
+    'Press FULL (fullscreen) to also lock the keys a browser normally keeps for itself: Ctrl+W / T / N / Q and the Windows key (Chrome and Edge). Hold Esc to leave fullscreen.',
+    'Closing or reloading the game during a match asks "Leave site?" first, so a stray key can\'t end your match. Menus and text boxes work normally.',
+  ] },
   { v: '1.29.3', date: '2026-11-06', title: 'Auto-fire changes', notes: [
     'Auto-fire now only works on phones/tablets (touch) and with a controller. It never fires for keyboard and mouse players. Touching the keyboard or mouse switches a controller off until you press something on it again.',
     'Auto-fire nerf: an enemy has to stay under your crosshair for a short moment (0.18 s) before it starts shooting, and it only fires out to the gun\'s normal range (it used to reach 1.6× further).',

@@ -1415,6 +1415,20 @@ const server = http.createServer((req, res) => {
     g.toMenu(); BR.AntiCheat._testing = false; Object.assign(L, keepL);
     return out;
   });
+  // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v130 = await page.evaluate(() => {
+    const g = BR.game, out = {}, k = (code, o) => { const e = new KeyboardEvent('keydown', Object.assign({ code, key: code, cancelable: true, bubbles: true }, o || {})); document.body.dispatchEvent(e); return e.defaultPrevented; };
+    const leave = () => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; };
+    if (g.state !== 'menu') g.toMenu();
+    out.menuFree = !k('KeyS', { ctrlKey: true }) && !k('F5') && !leave();
+    BR.AntiCheat._testing = true; g.startMatch({ practice: true });
+    out.matchBlocks = k('KeyS', { ctrlKey: true }) && k('KeyR', { ctrlKey: true }) && k('F5') && k('Backspace') && k('AltLeft', { altKey: true }) && k('KeyW', { ctrlKey: true });
+    out.leaveAsks = leave();
+    out.gameKeysStillWork = (() => { g.input.reset(); window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'w', bubbles: true })); const v = g.input.moveY > 0; window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', key: 'w', bubbles: true })); return v; })();
+    out.popout = typeof BR.KeyGuard.popOut === 'function' && !!document.getElementById('btn-pop') && typeof BR.KeyGuard.lockKeys === 'function';
+    g.toMenu(); BR.AntiCheat._testing = false;
+    return out;
+  });
   // v1.29.2: the map roll stops on the card of the map that actually loads
   const v1292 = await page.evaluate(async () => {
     const g = BR.game, L = BR.Lobby, keepL = { skipRoll: L.skipRoll, preset: L.preset, size: L.size }; BR.AntiCheat._testing = true;
@@ -1652,6 +1666,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.30 key guard: menus untouched; in a match Ctrl+S / Ctrl+R / F5 / Backspace / Alt / Ctrl+W are cancelled, game keys still work, leaving asks first; pop-out + keyboard lock helpers', Object.values(v130).every(Boolean), v130],
     ['v1.29.2 map roll: the reel stops on the card of the map that actually loads (and the label + loaded map match)', Object.values(v1292).every(Boolean), v1292],
     ['v1.29.1 2v2 / 3v3 duels: killed = knocked while a teammate stands, teammates revive, the last one standing dying finishes the knocked and ends the round, new rounds clear knocks, 1v1 still kills', Object.values(v1291).every(Boolean), v1291],
     ['v1.28.4 duels: stim / hook / grenade cooldowns used in a round are ready again when the next round starts', Object.values(v1284).every(Boolean), v1284],
@@ -1830,7 +1845,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

@@ -1719,6 +1719,7 @@ body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint 
 .fatal ul { margin: 8px 0 14px 18px; line-height: 1.5; } .fatal .fatal-err { opacity: 0.55; font-size: 12px; margin-top: 12px; }
 .fatal.ctx-lost { position: fixed; inset: 0; z-index: 9999; max-width: none; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: rgba(8, 6, 16, 0.92); color: #fff; cursor: pointer; }
 .gl-diag { margin-top: 16px; font-size: 13px; line-height: 1.45; } .gl-diag details { margin-top: 8px; opacity: 0.8; } .gl-diag ol { margin: 6px 0 6px 20px; font-size: 12px; } .fatal { overflow-y: auto; max-height: 100vh; }
+body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a desktop thing */
 
 </style>
 </head>
@@ -1743,7 +1744,7 @@ body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint 
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.29.3',
+  version: '1.30.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2027,6 +2028,12 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.30.0', date: '2026-11-06', title: 'Pop-out window + key guard', notes: [
+    'New POP OUT button on the menu (computers): the game opens in its own window with no tabs or address bar. If nothing opens, allow pop-ups for the site.',
+    'Key guard: in a match, the keys you press stay in the game. Browser shortcuts like save, print, find, bookmark, history and reload (Ctrl+S / P / F / D / H / R, F5), Backspace, Alt (the Windows menu bar), F1 / F3 / F6 / F7 / F10, Space / Tab / arrow scrolling, Ctrl+scroll zoom and the mouse\'s back / forward buttons no longer do anything outside the game.',
+    'Press FULL (fullscreen) to also lock the keys a browser normally keeps for itself: Ctrl+W / T / N / Q and the Windows key (Chrome and Edge). Hold Esc to leave fullscreen.',
+    'Closing or reloading the game during a match asks "Leave site?" first, so a stray key can\'t end your match. Menus and text boxes work normally.',
+  ] },
   { v: '1.29.3', date: '2026-11-06', title: 'Auto-fire changes', notes: [
     'Auto-fire now only works on phones/tablets (touch) and with a controller. It never fires for keyboard and mouse players. Touching the keyboard or mouse switches a controller off until you press something on it again.',
     'Auto-fire nerf: an enemy has to stay under your crosshair for a short moment (0.18 s) before it starts shooting, and it only fires out to the gun\'s normal range (it used to reach 1.6× further).',
@@ -16574,6 +16581,51 @@ BR.Keybinds = {
   },
 };
 
+// =============================================================================
+// v1.30 KEY GUARD: in a match, the keys you press go to the game and not to the browser / computer.
+//  * Shortcuts a page can cancel are cancelled: save / print / find / bookmark / history / reload (Ctrl+S P F D H R,
+//    F5), Backspace, F1 / F3 / F6 / F7 / F10, Alt (Windows menu bar), Space / Tab / arrows (page scroll / focus),
+//    Ctrl + scroll zoom, the mouse's back / forward buttons.
+//  * In fullscreen (FULL or the pop-out window) the Keyboard Lock API (Chrome / Edge) also captures the ones a
+//    page normally can't: Ctrl+W / T / N / Q, the Windows key, Alt+Tab where the OS allows it. Hold Esc to leave.
+//  * Anything still left (closing the window, Alt+F4 outside fullscreen) asks "Leave site?" first.
+// Menus and text boxes work normally.
+// =============================================================================
+BR.KeyGuard = {
+  on: true,
+  inMatch() { const g = BR.game; return !!(g && (g.state === 'playing' || g.state === 'paused' || g.state === 'dead' || g.state === 'won') && !BR.Keybinds.capturing); },
+  typing(e) { const t = e.target; return !!(t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)); },
+  CTRL: new Set(['KeyS', 'KeyP', 'KeyF', 'KeyD', 'KeyH', 'KeyR', 'KeyO', 'KeyU', 'KeyJ', 'KeyG', 'KeyL', 'KeyE', 'KeyK', 'KeyB', 'KeyW', 'KeyT', 'KeyN', 'KeyQ', 'Equal', 'Minus', 'Digit0', 'NumpadAdd', 'NumpadSubtract', 'Tab', 'PageUp', 'PageDown']),
+  KEYS: new Set(['F1', 'F3', 'F5', 'F6', 'F7', 'F10', 'Backspace', 'Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', 'AltLeft', 'AltRight', 'ContextMenu', 'MetaLeft', 'MetaRight', 'BrowserBack', 'BrowserForward', 'BrowserRefresh', 'BrowserSearch']),
+  block(e) { return this.on && this.inMatch() && !this.typing(e) && ((e.ctrlKey || e.metaKey) && this.CTRL.has(e.code) || this.KEYS.has(e.code) || (e.altKey && /^(Arrow|Key)/.test(e.code))); },
+  lockKeys() { try { if (this.on && navigator.keyboard && navigator.keyboard.lock && BR.Fullscreen.el()) return navigator.keyboard.lock().then(() => { this.locked = true; }).catch(() => {}); } catch (e) { /* not supported */ } return null; },
+  unlockKeys() { try { if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch (e) { /* not supported */ } this.locked = false; },
+  install() {
+    // capture phase: before the page (or the browser's default action) sees it
+    window.addEventListener('keydown', e => { if (this.block(e)) e.preventDefault(); }, true);
+    window.addEventListener('keyup', e => { if (this.on && this.inMatch() && !this.typing(e) && (e.code === 'AltLeft' || e.code === 'AltRight' || e.code === 'F10' || e.code === 'MetaLeft' || e.code === 'MetaRight')) e.preventDefault(); }, true);
+    window.addEventListener('wheel', e => { if (e.ctrlKey && this.on) e.preventDefault(); }, { passive: false, capture: true });          // no Ctrl+scroll page zoom
+    const mb = e => { if ((e.button === 3 || e.button === 4) && this.on) { e.preventDefault(); e.stopPropagation(); } };                // mouse back / forward don't leave the page
+    window.addEventListener('mouseup', mb, true); window.addEventListener('mousedown', mb, true); window.addEventListener('auxclick', mb, true);
+    window.addEventListener('beforeunload', e => { if (this.on && this.inMatch()) { e.preventDefault(); e.returnValue = ''; return ''; } });   // closing / reloading mid-match asks first
+    document.addEventListener('fullscreenchange', () => { if (BR.Fullscreen.el()) this.lockKeys(); else this.unlockKeys(); });
+    document.addEventListener('webkitfullscreenchange', () => { if (BR.Fullscreen.el()) this.lockKeys(); else this.unlockKeys(); });
+    window.addEventListener('dragstart', e => { if (this.inMatch()) e.preventDefault(); });
+  },
+  // v1.30 pop-out: the game in its own window (no tabs / address bar), sized to the screen
+  popOut() {
+    const w = Math.min(1600, Math.round(screen.availWidth * 0.9)), h = Math.min(900, Math.round(screen.availHeight * 0.9));
+    const left = Math.round((screen.availWidth - w) / 2), top = Math.round((screen.availHeight - h) / 2);
+    let url = location.href.split('#')[0]; url += (url.includes('?') ? '&' : '?') + 'popout=1';
+    let win = null;
+    try { win = window.open(url, 'surge-game', `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes`); } catch (e) { win = null; }
+    if (win) { try { win.focus(); } catch (e) { /* ok */ } return true; }
+    return false;
+  },
+  isPopOut() { return /[?&]popout=1/.test(location.search) || window.name === 'surge-game'; },
+};
+BR.KeyGuard.install();
+
 </script>
 <script>
 'use strict';
@@ -16759,7 +16811,7 @@ BR.Fullscreen = {
       if (!this.supported()) { onFail(); return; }
       const d = document.documentElement;
       const p = (d.requestFullscreen || d.webkitRequestFullscreen).call(d, { navigationUI: 'hide' });
-      const lock = () => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) { /* optional */ } };
+      const lock = () => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) { /* optional */ } if (BR.KeyGuard) BR.KeyGuard.lockKeys(); };     // v1.30: + keyboard lock
       if (p && p.then) p.then(lock).catch(onFail); else lock();
     } catch (e) { onFail(); }
   },
@@ -18574,6 +18626,7 @@ BR.HUD = class HUD {
         <button id="btn-notes" class="dk notes"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/></svg><span>NOTES</span><em>NEW</em></button>
         <button id="btn-settings" class="dk"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>SETTINGS</span></button>
         <button id="btn-hud" class="dk"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="8" cy="12" r="1.6"/><circle cx="16" cy="12" r="1.6"/></svg><span>HUD</span></button>
+        <button id="btn-pop" class="dk desk-only" title="Open the game in its own window"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span>POP OUT</span></button>
         <button id="btn-fs" class="dk"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>FULL</span></button>
       </div>
     </nav>
@@ -21355,6 +21408,9 @@ BR.Game = class Game {
     if (!BR.Fullscreen.el() && BR.Fullscreen.supported() && window.matchMedia('(pointer: coarse)').matches) BR.Fullscreen.toggle(() => {});
   };
   $('btn-fs').addEventListener('click', toggleFs);
+  // v1.30 pop-out window (desktop): the game in its own app-style window; the key guard keeps your keys in the game
+  $('btn-pop').addEventListener('click', () => { BR.Audio.init(); if (BR.KeyGuard.popOut()) game.hud.toast('Opened in its own window · press FULL there to lock your keys to the game', 2600); else game.hud.toast('Your browser blocked the pop-up · allow pop-ups for this site, then try again', 3200); });
+  if (BR.KeyGuard.isPopOut()) { document.body.classList.add('popout'); $('btn-pop').classList.add('hidden'); setTimeout(() => game.hud.toast('surge · its own window · press FULL to lock your keys to the game (hold Esc to leave)', 3200), 1200); }
   $('fs-game').addEventListener('click', toggleFs);
   $('fs-tip-ok').addEventListener('click', () => $('fs-tip').classList.add('hidden'));
   if (BR.Fullscreen.standalone()) { document.body.classList.add('standalone'); $('btn-fs').classList.add('hidden'); }

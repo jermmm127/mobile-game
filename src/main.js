@@ -207,6 +207,9 @@
     if (!BR.Fullscreen.el() && BR.Fullscreen.supported() && window.matchMedia('(pointer: coarse)').matches) BR.Fullscreen.toggle(() => {});
   };
   $('btn-fs').addEventListener('click', toggleFs);
+  // v1.30 pop-out window (desktop): the game in its own app-style window; the key guard keeps your keys in the game
+  $('btn-pop').addEventListener('click', () => { BR.Audio.init(); if (BR.KeyGuard.popOut()) game.hud.toast('Opened in its own window · press FULL there to lock your keys to the game', 2600); else game.hud.toast('Your browser blocked the pop-up · allow pop-ups for this site, then try again', 3200); });
+  if (BR.KeyGuard.isPopOut()) { document.body.classList.add('popout'); $('btn-pop').classList.add('hidden'); setTimeout(() => game.hud.toast('surge · its own window · press FULL to lock your keys to the game (hold Esc to leave)', 3200), 1200); }
   $('fs-game').addEventListener('click', toggleFs);
   $('fs-tip-ok').addEventListener('click', () => $('fs-tip').classList.add('hidden'));
   if (BR.Fullscreen.standalone()) { document.body.classList.add('standalone'); $('btn-fs').classList.add('hidden'); }
