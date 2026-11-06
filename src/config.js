@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.24.1',
+  version: '1.24.2',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -147,7 +147,7 @@ BR.CONFIG = {
   // tier = loot rarity, knockback = self-push when airborne / aimed at your feet
   weapons: {
     // Revolver: six heavy rounds, big punch, swing-out cylinder + speedloader reload
-    revolver: { name: 'Revolver', ammo: 'heavy', dmg: 58, pellets: 1, rpm: 150, mag: 6, reload: 2.2, spread: 0.012, ads: 0.3, bloom: 0.012, bloomMax: 0.04, range: 90, head: 2.0, recoil: 0.055, zoom: 1.25, tier: 2, color: 0x8a8f96, revolver: true, knockback: 2 },
+    revolver: { name: 'Revolver', ammo: 'heavy', dmg: 58, pellets: 1, rpm: 150, mag: 6, reload: 2.2, spread: 0.012, ads: 0.3, bloom: 0.012, bloomMax: 0.04, range: 90, head: 2.0, recoil: 0.07, kick: 2.4, zoom: 1.25, tier: 2, color: 0x8a8f96, revolver: true, knockback: 2 },     // v1.24.2: heavy kick
     butterfly: { name: 'Butterfly Knife', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 150, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.4, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x9aa0a8, speedMult: 1.2 },
     // Default knife: M9-style bayonet (flipped into the hand on draw)
     bayonet: { name: 'M9 Bayonet', melee: true, ammo: null, dmg: 45, backstab: 110, pellets: 1, rpm: 140, mag: 0, reload: 0, spread: 0, ads: 1, bloom: 0, bloomMax: 0, range: 2.5, lunge: 4.8, head: 1.3, recoil: 0, zoom: 1, tier: -1, color: 0x1c1e22, speedMult: 1.2 },

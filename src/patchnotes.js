@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.24.2', date: '2026-11-06', title: 'Hand-cannon revolver', notes: [
+    'Revolver: held one-handed, big in the lower right with the barrel angled up toward the centre of the screen.',
+    'Revolver recoil is much heavier: every shot snaps the muzzle way up and rolls it out, the gun slams back toward you, the view punches and shakes, and the muzzle flash is bigger. Aiming tames it a little.',
+  ] },
   { v: '1.24.1', date: '2026-11-06', title: 'New dev account', notes: [
     'Added a third built-in developer account, laishadev, with the same dev tools as the other dev accounts.',
   ] },

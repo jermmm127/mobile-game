@@ -17,6 +17,8 @@
   // right fist position (hx/hy/hz), empty left fist in view (left, lx/ly). window.__KP overrides for tuning.
   const KP = Object.assign({ x: -1.1, y: -0.1, z: -0.6, f: [0.85, -0.4, 0.35], hx: 0.08, hy: -0.075, hz: -0.34, left: 1, lx: 0.05, ly: -0.025 }, (typeof window !== 'undefined' && window.__KP) || {});
   const KI = { z1: 0.95, y1: -0.15, x1: 0.1, z2: -0.25, y2: -0.55, x2: 0 };      // karambit inspect show poses (wrist turns)
+  // v1.24.2 revolver hip hold (reference screenshot): window.__RV overrides for tuning
+  const RV = Object.assign({ hx: 0.155, hy: -0.125, hz: -0.34, rx: 0.06, ry: 0.24, rz: 0.1 }, window.__RV || {});
   const BAYLIKE = id => id === 'bayonet' || id === 'tracker';      // v1.13: the Tracker shares the bayonet's fist + flips
   let SLEEVE = null;
   function sleeveParts() {
@@ -267,7 +269,17 @@
       // v1.22: brass ejects to the right (shotguns: a red shell when the pump racks; bolt actions: when the bolt cycles)
       if (!d.melee && !d.launcher && !d.revolver) (this.ejects || (this.ejects = [])).push({ t: d.pump ? 0.22 : d.bolt ? 0.42 : 0, kind: d.pellets > 1 ? 'shell' : d.bolt || d.dmg >= 40 ? 'big' : 'brass', w });
       this.inspectT = 0;
-      if (d.revolver) this.cylTarget = (this.cylTarget || 0) + Math.PI / 3;          // index one chamber
+      if (d.revolver) {
+        this.cylTarget = (this.cylTarget || 0) + Math.PI / 3;          // index one chamber
+        // v1.24.2: a hand-cannon kick. The wrist snaps the muzzle way up and rolls it outward, the gun slams
+        // back toward you and lifts, then settles before the next shot (aiming tames it a little)
+        const ak = 1 - this.adsW * 0.45;
+        this.kickR.x.vel += (7.5 + Math.random() * 1.5) * ak;          // big muzzle flip
+        this.kickR.z.vel -= (2.4 + Math.random() * 0.8) * ak;           // rolls out to the right
+        this.kickR.y.vel -= (0.9 + Math.random() * 0.4) * ak;           // and twists toward you
+        this.kick.z.vel += 1.9 * ak; this.kick.y.vel += 0.75 * ak; this.kick.x.vel += 0.35 * ak;
+        this.flashS *= 1.5;
+      }
       // Bolt action: cycle the bolt after every shot (unless that was the last round)
       if (d.bolt && w.mag > 0) { this.boltDelay = 0.12; this.boltDur = Math.min(0.9, 60 / d.rpm * 0.72); this.boltT = 0; }
       // Pump action: rack the forend back and forward after every shot
@@ -336,6 +348,7 @@
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
       if (w.id === 'smg') { hx = 0.172 * s; hy = -0.176; hz = -0.515; }     // v1.19: SMG held closer = bigger in the hand, same spot on screen
       if (w.id === 'hunter') { hx = 0.15 * s; hy = -0.165; hz = -0.47; }     // v1.16.2: closer + bigger at the hip, muzzle toward the centre (reference)
+      if (w.id === 'revolver') { hx = RV.hx * s; hy = RV.hy; hz = RV.hz; }    // v1.24.2: big, one-handed, low right, barrel angled up to the centre (reference)
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
       if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; } if (w.id === 'tracker') { hx = 0.082 * s; hy = -0.129; hz = -0.47; }     // v1.17.1: a touch farther = smaller on screen, same spot   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
       let bUp2 = 0;              // bayonet: blend toward the second show face
@@ -351,6 +364,7 @@
       const by = -(0.5 + 0.5 * Math.cos(this.bob * 2)) * 0.013 * this.bobAmt * nA;     // v1.21: smooth (no cusp at the bottom of each step)
       let tx = U.lerp(hx, ax, A) + bx, ty = U.lerp(hy, ay, A) + by, tz = U.lerp(hz, az, A);
       let rx = 0, ry = 0, rz = 0;
+      if (w.id === 'revolver') { const k = 1 - A; rx += RV.rx * k; ry += RV.ry * k; rz += RV.rz * k; }
       // Sway: the gun lags behind where you look
       ry += U.clamp(-lookDX * 0.0022, -0.12, 0.12) * nA;
       rx += U.clamp(-lookDY * 0.0018, -0.1, 0.1) * nA;
@@ -366,7 +380,7 @@
 
       // ---- keyframed overlays (added after the springs) -------------------------
       let ox = 0, oy = 0, oz = 0, orx = 0, ory = 0, orz = 0;
-      let leftTarget = null, magOff = null, magVis = true, spinAng = 0, ringW = 0, leftHidden = !!def.melee, bfly = null;
+      let leftTarget = null, magOff = null, magVis = true, spinAng = 0, ringW = 0, leftHidden = !!def.melee || (w.id === 'revolver' && !reloading && this.adsW < 0.5), bfly = null;     // (the revolver is held one-handed at the hip)
       // Draw
       if (this.drawT > 0) {
         const t = 1 - this.drawT / this.drawDur;
