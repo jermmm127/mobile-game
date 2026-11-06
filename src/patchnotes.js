@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.28.3', date: '2026-11-06', title: 'More 3D fallbacks + diagnostics', notes: [
+    'Even more ways to start 3D on limited browsers: if the usual requests are refused, the game now asks for every kind of WebGL context in every basic form, including the bare "no options" request that some console and embedded browsers need, on a properly sized canvas.',
+    'If a browser still refuses, the help screen now says exactly why: whether the browser has WebGL at all, the reason the browser gave, every attempt and its result, and the browser ID. Take a photo of it if you need help.',
+  ] },
   { v: '1.28.2', date: '2026-11-06', title: 'Arena walls, auto-fire + sound fixes', notes: [
     'Duels, TDM and FFA maps (the Yard, Killhouse, Cargo, District, Cul-de-Sac, Skyline) now have a hard play area. No grapple, wall-run, jump pad or vault can take you over, onto or round the outer walls, and the grapple won\'t hook onto the outside. Battle Royale is unchanged.',
     'Auto-fire no longer shoots when a teammate is under your crosshair (it still fires at enemies).',

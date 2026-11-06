@@ -20,6 +20,8 @@
 // canvas, because a canvas that already handed out one kind of context can't give another.
 // Returns { renderer, canvas, lite } (lite = a fallback was needed: skip extra 3D views, use low graphics).
 BR.makeRenderer = (canvas, want) => {
+  // v1.28.3: what happened, for the help screen (is WebGL there at all, every try, the browser's own reason)
+  const D = BR.glDiag = { api: typeof WebGLRenderingContext !== 'undefined', api2: typeof WebGL2RenderingContext !== 'undefined', tries: [], reason: '' };
   const base = Object.assign({}, want); delete base.canvas;
   const tries = [
     base,
@@ -28,17 +30,25 @@ BR.makeRenderer = (canvas, want) => {
     { antialias: false, alpha: false, stencil: false, depth: true, powerPreference: 'low-power', precision: 'mediump', failIfMajorPerformanceCaveat: false },
   ];
   let cv = canvas, lastErr = null;
-  const fresh = () => { const n = cv.cloneNode(false); if (cv.parentNode) cv.parentNode.replaceChild(n, cv); cv = n; };
+  const listen = c => c.addEventListener('webglcontextcreationerror', e => { if (e && e.statusMessage) D.reason = e.statusMessage; }, false);   // WebKit / Chrome say why they refused
+  const fresh = () => { const n = cv.cloneNode(false); if (cv.parentNode) cv.parentNode.replaceChild(n, cv); else document.body.appendChild(n); cv = n; listen(cv); if (!cv.width) { cv.width = 640; cv.height = 360; } };
+  listen(cv);
+  const msg = e => String(e && e.message || e).slice(0, 80);
   for (let i = 0; i < tries.length; i++) {
-    try { return { renderer: new THREE.WebGLRenderer(Object.assign({ canvas: cv }, tries[i])), canvas: cv, lite: i > 0 }; }
-    catch (e) { lastErr = e; fresh(); }
+    try { const r = new THREE.WebGLRenderer(Object.assign({ canvas: cv }, tries[i])); D.tries.push('three #' + (i + 1) + ': ok'); return { renderer: r, canvas: cv, lite: i > 0 }; }
+    catch (e) { lastErr = e; D.tries.push('three #' + (i + 1) + ': ' + msg(e)); fresh(); }
   }
-  for (const kind of ['webgl', 'experimental-webgl']) {                 // last chance: ask for WebGL 1 ourselves
-    try {
-      const ctx = cv.getContext(kind, { antialias: false, alpha: false, stencil: false, depth: true, failIfMajorPerformanceCaveat: false, powerPreference: 'low-power' });
-      if (ctx) return { renderer: new THREE.WebGLRenderer({ canvas: cv, context: ctx }), canvas: cv, lite: true };
-    } catch (e) { lastErr = e; }
-    fresh();
+  // last chances: ask for each kind of context ourselves, from no options at all to fully spelled-out basic ones
+  // (some console / embedded browsers only answer one exact form), on an attached, sized canvas
+  const ATTRS = [undefined, {}, { antialias: false, failIfMajorPerformanceCaveat: false },
+    { antialias: false, alpha: false, depth: true, stencil: false, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'default', failIfMajorPerformanceCaveat: false }];
+  for (const kind of ['webgl', 'experimental-webgl', 'webgl2']) for (let k = 0; k < ATTRS.length; k++) {
+    const label = kind + (ATTRS[k] === undefined ? ' (no options)' : k === 1 ? ' {}' : ' basic ' + k);
+    let ctx = null;
+    try { ctx = ATTRS[k] === undefined ? cv.getContext(kind) : cv.getContext(kind, ATTRS[k]); } catch (e) { D.tries.push(label + ': threw ' + msg(e)); fresh(); continue; }
+    if (!ctx) { D.tries.push(label + ': refused'); continue; }           // (nothing handed out: the same canvas can try the next form)
+    try { const r = new THREE.WebGLRenderer({ canvas: cv, context: ctx }); D.tries.push(label + ': ok'); return { renderer: r, canvas: cv, lite: true }; }
+    catch (e) { lastErr = e; D.tries.push(label + ': context ok but three failed: ' + msg(e)); fresh(); }
   }
   throw lastErr || new Error('WebGL unavailable');
 };

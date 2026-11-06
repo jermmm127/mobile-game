@@ -17,6 +17,14 @@
   BR.Profile.load();
   setTimeout(() => { try { daily(); } catch (e) { /* (no game: 3D failed to start) */ } }, 0);
 
+  // v1.28.3: what the browser said about 3D, shown on the help screen (send a photo of it to get help)
+  const glReport = err => {
+    const D = BR.glDiag || { tries: [] }, esc = x => String(x).replace(/[<&]/g, c => c === '<' ? '&lt;' : '&amp;');
+    const verdict = !D.api ? 'This browser has no WebGL at all (3D is switched off or not built in), so no website can show 3D here.'
+      : 'This browser has WebGL, but it refused every request' + (D.reason ? ': "' + esc(D.reason) + '"' : '') + '.';
+    return '<div class="gl-diag"><b>' + verdict + '</b><details open><summary>Details (' + D.tries.length + ' tries)</summary><p>WebGL 1: ' + (D.api ? 'present' : 'missing') + ' · WebGL 2: ' + (D.api2 ? 'present' : 'missing') +
+      (D.reason ? ' · reason: ' + esc(D.reason) : '') + '</p><ol>' + D.tries.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol><p class="fatal-err">' + esc(navigator.userAgent) + '<br>(' + esc(err && err.message || err) + ')</p></details></div>';
+  };
   let game;
   try {
     game = new BR.Game(settings);
@@ -26,8 +34,7 @@
       '<li>Use Chrome, Edge, Safari or Firefox (game-console and in-app browsers often block 3D)</li>' +
       '<li>Turn on hardware acceleration in the browser settings, and update the browser</li>' +
       '<li>Close other tabs or apps using 3D, turn off battery saver, then reload</li></ul>' +
-      '<button class="mbtn hot" onclick="location.reload()">TRY AGAIN</button><p class="fatal-err">(' +
-      String(err && err.message || err).replace(/</g, '&lt;') + ')</p></div>';
+      '<button class="mbtn hot" onclick="location.reload()">TRY AGAIN</button>' + glReport(err) + '</div>';
     return;
   }
   document.body.classList.add('in-menu');
