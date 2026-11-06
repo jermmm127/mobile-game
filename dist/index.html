@@ -689,13 +689,15 @@ body.duel #topbar .dp { display: flex; }
 #hitcrit.kill { border-color: #ff3048; box-shadow: 0 0 16px rgba(255,40,70,0.9), inset 0 0 10px rgba(255,40,70,0.5); }
 #hitcrit.on { animation: crit 0.4s ease-out; }
 @keyframes crit { 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.4); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.9); } }
-#dmg-nums .dnum { font: 800 20px var(--ui); letter-spacing: 0.02em; color: #fff; white-space: nowrap;
+#dmg-nums .dnum { transform: translate(-50%, -50%); font: 800 20px var(--ui); letter-spacing: 0.02em; color: #fff; white-space: nowrap;
   text-shadow: -1.5px -1.5px 0 #0b0d12, 1.5px -1.5px 0 #0b0d12, -1.5px 1.5px 0 #0b0d12, 1.5px 1.5px 0 #0b0d12, 0 3px 8px rgba(0,0,0,0.6); }
 #dmg-nums .dnum.shield { color: #7fd0ff; }
 #dmg-nums .dnum.head { font-size: 27px; background: linear-gradient(180deg, #fff6c2 0%, #ffd24a 45%, #ff8a1f 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
   -webkit-text-stroke: 1.2px #2a1400; text-shadow: 0 0 12px rgba(255,170,40,0.55); }
 #dmg-nums .dnum.head i { font-style: normal; font-size: 0.7em; margin-right: 3px; vertical-align: 0.15em; }
 #dmg-nums .dnum.pop { animation: dpop 0.32s cubic-bezier(.2,1.8,.4,1); }
+#dmg-nums .dnum.pellet { font-size: 16px; }
+#dmg-nums .dnum.pellet.head { font-size: 20px; }
 @keyframes dpop { 0% { scale: 1.9; } 60% { scale: 0.92; } 100% { scale: 1; } }
 
 /* ---- shockwave grenade ---- */
@@ -1744,7 +1746,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.30.1',
+  version: '1.31.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2028,6 +2030,13 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.31.0', date: '2026-11-06', title: 'Gun finish, knife height, pellet numbers', notes: [
+    'The default guns look better: the plastic shine is gone. They now have a matte, worn gunmetal finish with fine grain, scratches and wear.',
+    'Smoother gun models: lumpy surfaces and rough, chewed-looking edges on the gun models are cleaned up. Flat panels look flat and hard corners stay crisp.',
+    'On desktop (mouse and keyboard, or a controller), knives now sit higher on screen. On phones and tablets they stay in the same spot.',
+    'Shotguns show a separate damage number for each pellet that hits, so you can see how many landed. Headshot pellets show in gold.',
+    'Fixed damage numbers jumping across the screen for a moment when they pop up.',
+  ] },
   { v: '1.30.1', date: '2026-11-06', title: 'Your stuff saves between updates', notes: [
     'Friends and friend requests now stay saved after updates. Before, an update could wipe your friends list.',
     'Challenge progress, weapon mastery, your daily streak and keys also stay saved after updates now.',
@@ -5793,13 +5802,15 @@ BR.Weapons = {
       if (hit.target) {                                              // a custom-mode target (aim trainer / Overdrive)
         const falloff = hit.t <= d.range ? 1 : Math.max(0.55, 1 - 0.45 * (hit.t - d.range) / d.range);
         const dmg = d.dmg * falloff * (hit.head ? d.head : 1), tm = this._thits || (this._thits = new Map()), prev = tm.get(hit.target);
-        if (prev) { prev.dmg += dmg; prev.head = prev.head || hit.head; } else tm.set(hit.target, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z });
+        const pl = { dmg, head: hit.head, x: end.x, y: end.y, z: end.z };                  // v1.31: every pellet keeps its own hit (its own damage number)
+        if (prev) { prev.dmg += dmg; prev.head = prev.head || hit.head; prev.pellets.push(pl); } else tm.set(hit.target, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z, pellets: [pl] });
       } else if (hit.actor) {
         const falloff = hit.t <= d.range ? 1 : Math.max(0.55, 1 - 0.45 * (hit.t - d.range) / d.range);
         const dmg = d.dmg * falloff * (hit.head ? d.head : 1);
         const prev = hits.get(hit.actor);
-        if (prev) { prev.dmg += dmg; prev.head = prev.head || hit.head; }
-        else hits.set(hit.actor, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z });
+        const pl = { dmg, head: hit.head, x: end.x, y: end.y, z: end.z };
+        if (prev) { prev.dmg += dmg; prev.head = prev.head || hit.head; prev.pellets.push(pl); }
+        else hits.set(hit.actor, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z, pellets: [pl] });
       } else if (hit.t < maxRange) {
         game.fx.impact(end, false);
         // bullet hole on the face that was hit (your shots only)
@@ -5827,7 +5838,7 @@ BR.Weapons = {
         hits.forEach((h, victim) => { const c = victim.pos, cy = c.y + (victim.mover ? victim.mover.h * 0.55 : 0.9), dx = c.x - eye.x, dy = cy - eye.y, dz = c.z - eye.z;
           const along = dx * m.d.x + dy * m.d.y + dz * m.d.z; if (along <= 0 || along > d.range * 1.3 || m.t < along - 0.3) return;
           const off = Math.sqrt(Math.max(0, dx * dx + dy * dy + dz * dz - along * along)); if (off < bd) { bd = off; best = h; } });
-        if (best) best.dmg += d.dmg;
+        if (best) { best.dmg += d.dmg; const q = best.pellets[best.pellets.length - 1] || best; best.pellets.push({ dmg: d.dmg, head: false, x: q.x + (Math.random() - 0.5) * 0.3, y: q.y + (Math.random() - 0.5) * 0.3, z: q.z + (Math.random() - 0.5) * 0.3 }); }
       }
       this._miss.length = 0;
     }
@@ -6668,13 +6679,13 @@ BR.Models = (function () {
       for (let i = 0; i < 46; i++) { const x = R() * S, y = R() * S, r = 18 + R() * 60, g2 = c.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, R() < 0.5 ? css(0.05) : css(-0.09)); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = 0.38; c.fillStyle = g2; c.fillRect(x - r, y - r, r * 2, r * 2); }
       c.globalAlpha = 1;
       for (let i = 0; i < 22; i++) { c.fillStyle = `rgba(20,16,10,${0.05 + R() * 0.08})`; const x = R() * S; c.fillRect(x, R() * S, 2 + R() * 5, 20 + R() * 70); }          // grime streaks
-      const nS = kind === 'metal' ? 150 : kind === 'blade' ? 260 : 45;
+      const nS = kind === 'metal' ? 150 : kind === 'blade' ? 260 : kind === 'gun' ? 90 : 45, gun = kind === 'gun';
       c.lineCap = 'round';
       for (let i = 0; i < nS; i++) { const x = R() * S, y = R() * S, a = kind === 'blade' ? (R() - 0.5) * 0.3 : R() * Math.PI, l = 2 + R() * (kind === 'blade' ? 50 : 12);
-        c.strokeStyle = kind === 'blade' ? `rgba(255,255,255,${0.05 + R() * 0.09})` : css(0.3 + R() * 0.25); c.globalAlpha = kind === 'blade' ? 1 : 0.06 + R() * 0.14; c.lineWidth = R() < 0.85 ? 0.8 : 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
+        c.strokeStyle = kind === 'blade' ? `rgba(255,255,255,${0.05 + R() * 0.09})` : css(gun ? 0.16 + R() * 0.12 : 0.3 + R() * 0.25); c.globalAlpha = kind === 'blade' ? 1 : gun ? 0.05 + R() * 0.08 : 0.06 + R() * 0.14; c.lineWidth = R() < 0.85 ? 0.8 : 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
       c.globalAlpha = 1;
-      for (let i = 0; i < (kind === 'polymer' ? 40 : 90); i++) { c.fillStyle = css(0.4 + R() * 0.3); c.globalAlpha = 0.18 + R() * 0.3; c.fillRect(R() * S, R() * S, 1 + R() * 2.4, 1 + R() * 1.6); }      // chips
-      for (let i = 0; i < 500; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.14)'; c.globalAlpha = 1; c.fillRect(R() * S, R() * S, 1, 1); }        // dust
+      for (let i = 0; i < (kind === 'polymer' ? 40 : gun ? 30 : 90); i++) { c.fillStyle = css(gun ? 0.18 + R() * 0.1 : 0.4 + R() * 0.3); c.globalAlpha = gun ? 0.1 + R() * 0.12 : 0.18 + R() * 0.3; c.fillRect(R() * S, R() * S, 1 + R() * 2.4, 1 + R() * 1.6); }      // chips
+      for (let i = 0; i < (gun ? 2400 : 500); i++) { c.fillStyle = R() < 0.5 ? `rgba(255,255,255,${gun ? 0.05 : 0.10})` : `rgba(0,0,0,${gun ? 0.12 : 0.14})`; c.globalAlpha = 1; c.fillRect(R() * S, R() * S, 1, 1); }        // dust
     }, 256);
   }
   // fabric for gloves: the glove colour with a woven grain + soft wear
@@ -7849,6 +7860,28 @@ BR.Models = (function () {
     }
     return prims;
   }
+  // v1.31: the imported gun sculpts are decimated meshes with noisy normals, so flat faces shade lumpy and
+  // edges look chewed. Two passes: a crease-aware Taubin smooth of the positions (shrink-free, only across
+  // gentle angles so hard edges stay crisp), then crease-aware normal averaging (smooth panels, sharp corners).
+  function smoothSculpt(P) {
+    const nv = P.pos.length / 3, idx = P.idx, adj = Array.from({ length: nv }, () => []);
+    for (let t = 0; t < idx.length; t += 3) for (let k = 0; k < 3; k++) { const a = idx[t + k], b = idx[t + (k + 1) % 3]; adj[a].push(b); adj[b].push(a); }
+    const N = P.nor, dot = (a, b) => N[a * 3] * N[b * 3] + N[a * 3 + 1] * N[b * 3 + 1] + N[a * 3 + 2] * N[b * 3 + 2];
+    const step = (src, f, lim) => { const out = new Float32Array(src);
+      for (let v = 0; v < nv; v++) { let x = 0, y = 0, z = 0, c = 0;
+        for (const u of adj[v]) if (dot(u, v) > lim) { x += src[u * 3]; y += src[u * 3 + 1]; z += src[u * 3 + 2]; c++; }
+        if (c) { out[v * 3] += f * (x / c - src[v * 3]); out[v * 3 + 1] += f * (y / c - src[v * 3 + 1]); out[v * 3 + 2] += f * (z / c - src[v * 3 + 2]); } }
+      return out; };
+    let pos = P.pos; for (let i = 0; i < 2; i++) { pos = step(pos, 0.5, 0.82); pos = step(pos, -0.53, 0.82); }
+    P.pos = pos;
+    let nor = N; for (let i = 0; i < 3; i++) {
+      const out = new Float32Array(nv * 3);
+      for (let v = 0; v < nv; v++) { let x = nor[v * 3], y = nor[v * 3 + 1], z = nor[v * 3 + 2];
+        for (const u of adj[v]) { const d = nor[u * 3] * nor[v * 3] + nor[u * 3 + 1] * nor[v * 3 + 1] + nor[u * 3 + 2] * nor[v * 3 + 2]; if (d > 0.7) { x += nor[u * 3]; y += nor[u * 3 + 1]; z += nor[u * 3 + 2]; } }
+        const l = Math.hypot(x, y, z) || 1; out[v * 3] = x / l; out[v * 3 + 1] = y / l; out[v * 3 + 2] = z / l; }
+      nor = out; }
+    P.nor = nor;
+  }
   function importedParts(id) {
     if (IMPORT_CACHE[id] !== undefined) return IMPORT_CACHE[id];
     const C = BR.IMPORTED && BR.IMPORTED[id], data = BR.MODEL_DATA && BR.MODEL_DATA[id];
@@ -7862,6 +7895,7 @@ BR.Models = (function () {
       const tp = (x, y, z) => { const a = ax(x, y, z); tv.set(a[0] * s, a[1] * s, a[2] * s); if (R) tv.sub(new THREE.Vector3(...pv)).applyMatrix4(R).add(new THREE.Vector3(...pv)); return [tv.x + dx, tv.y + dy, tv.z + dz]; };
       const tn = (x, y, z) => { const a = ax(x, y, z); tv.set(a[0], a[1], a[2]); if (R) tv.applyMatrix4(R); return [tv.x, tv.y, tv.z]; };
       for (const P of parseGLB(data)) {
+        if (!P.map && P.idx && P.nor && !C.knife) smoothSculpt(P);     // v1.31: clean up the decimated sculpt (lumpy shading, rough edges)
         const mat = new THREE.MeshPhongMaterial({ map: P.map, normalMap: P.normalMap, color: P.map ? 0xffffff : (P.color || 0x888888), specular: 0x6a6a6a, shininess: C.shininess || 45, envMap: BR.weaponEnv(), reflectivity: C.reflect || 0.12, side: THREE.DoubleSide });
         if (P.normalMap) mat.normalScale.set(1, -1);
         const parts = { body: [], mag: [], pump: [], bolt: [], blade: [], cyl: [], hA: [], hB: [] }, n = P.idx ? P.idx.length : P.pos.length / 3;
@@ -7903,8 +7937,11 @@ BR.Models = (function () {
       // set to finish: 'factory') wear the game's own worn black factory finish (box-mapped in realPass).
       let mat = std ? p.mat : S;
       if (std && C.finish === 'factory') {                    // keep the model's sculpted detail (normal map), drop its paint
-        const key = 'factory:' + id; mat = cache.mat[key] || (cache.mat[key] = new THREE.MeshPhongMaterial({ color: C.factoryColor || 0x2b2e33, normalMap: p.mat.normalMap, normalScale: p.mat.normalScale, specular: 0x5a6068, shininess: 38, specularMap: DETAIL.finish(), envMap: BR.weaponEnv(), reflectivity: 0.08, side: THREE.DoubleSide }));
-        cache.mat[key].userData.real = true; textured = true;
+        // v1.31: matte worn finish with real surface texture. Models with their own normal map (the Rifle) keep it on
+        // their UVs; untextured sculpts get a box-mapped worn albedo + scratch / grain normal map (realPass maps it).
+        const own = !!p.mat.normalMap, key = 'factory:' + id;
+        mat = cache.mat[key] || (cache.mat[key] = new THREE.MeshPhongMaterial({ color: 0xffffff, map: wearTex(C.factoryColor || 0x33373d, 'gun'), normalMap: own ? p.mat.normalMap : NRM.scratch(), normalScale: own ? p.mat.normalScale : new THREE.Vector2(0.55, 0.55), specular: 0x3c4148, shininess: 20, specularMap: DETAIL.finish(), envMap: BR.weaponEnv(), reflectivity: 0.035, side: THREE.DoubleSide }));
+        cache.mat[key].userData.real = true; if (own) textured = true;
       } else if (std && !p.mat.map) mat = S;
       else if (std) textured = true;
       if (p.key === 'blade') mat = bladeMat;
@@ -9749,6 +9786,10 @@ BR.Models = (function () {
   }
   const S3 = (k, z) => ({ x: new Spring(k, z), y: new Spring(k, z), z: new Spring(k, z) });
 
+  // v1.31: desktop = not using the touch controls and no touch-only screen (phones / tablets have a coarse pointer and no fine one)
+  let coarse = null;
+  BR.Desk = () => { if (coarse === null) { try { coarse = matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches; } catch (e) { coarse = false; } }
+    return !coarse && !(BR.game && BR.game.input && BR.game.input.usingTouch); };
   BR.Viewmodel = class Viewmodel {
     constructor(game) {
       this.game = game;
@@ -10034,6 +10075,9 @@ BR.Models = (function () {
       if (w.id === 'revolver') { hx = RV.hx * s; hy = RV.hy; hz = RV.hz; }    // v1.24.2: big, one-handed, low right, barrel angled up to the centre (reference)
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
       if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; } if (w.id === 'tracker') { hx = 0.082 * s; hy = -0.129; hz = -0.47; }     // v1.17.1: a touch farther = smaller on screen, same spot   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
+      // v1.31: on desktop (mouse + keyboard, or a controller on a TV) every knife sits higher in view; touch phones and tablets keep
+      // the same spot. The lift scales with depth so each knife moves the same amount on screen.
+      if (def.melee && BR.Desk()) hy += 0.045 * (-hz / 0.43);
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
@@ -13767,7 +13811,7 @@ BR.Squads = {
         g.hud.hitmarker(false, true); BR.Audio.pop ? BR.Audio.pop(0.35) : BR.Audio.hit(false);
         this.spawnFor(R.id, t.cell);
       } else {
-        t.hp -= dmg; g.hud.damageNumber(v, dmg, head, t, false); g.fx.burst(v, head ? [0xffd24a, 0xffffff] : [0x45e0ff, 0xffffff], head ? 10 : 5, 4, 0.05, 0.3, 0);
+        t.hp -= dmg; g.hud.damageNumber(v, dmg, head, t, false, at); g.fx.burst(v, head ? [0xffd24a, 0xffffff] : [0x45e0ff, 0xffffff], head ? 10 : 5, 4, 0.05, 0.3, 0);
         t.bar.scale.x = Math.max(0.01, t.hp / t.max);
         if (t.hp <= 0) {
           R.kills++; R.score += head ? 200 : 100; R.ttk.push(g.time - t.born);
@@ -14050,11 +14094,11 @@ BR.Squads = {
       grp.userData.limbs = { la, ra, ll, rl, head };
       return torso;
     }
-    damage(e, dmg, at, head, src) {
+    damage(e, dmg, at, head, src, hit) {
       if (e.dead) return;
       const g = this.g; let crit; [dmg, crit] = this.crit(dmg * this.dmgMult);
       e.hp -= dmg; e.flash = 0.06;
-      if (at) g.hud.damageNumber(at, dmg, head || crit, e, false);
+      if (at) g.hud.damageNumber(at, dmg, head || crit, e, false, hit);
       if (e.hp <= 0) this.killEnemy(e, src);
     }
     killEnemy(e, src) {
@@ -14116,7 +14160,7 @@ BR.Squads = {
       const g = this.g, v = this._hv || (this._hv = new THREE.Vector3()); v.set(at.x, at.y, at.z);
       // weak spot: shots near the eye count as headshots
       const hs = e.E.humanoid ? !!head : Math.hypot(at.x - e.x, at.y - (e.y + e.r * 0.25), at.z - e.z) < e.r * 0.45;
-      this.damage(e, dmg * (hs ? 1.6 : 1), v, hs, 'gun');
+      this.damage(e, dmg * (hs ? 1.6 : 1), v, hs, 'gun', at);
       g.fx.burst(v, [e.E.col, 0xffffff], 5, 3.5, 0.05, 0.25, 0);
       g.hud.hitmarker(hs, !!e.dead); if (!e.dead) BR.Audio.hit(hs);
       // knockback from your gun
@@ -14806,7 +14850,7 @@ BR.Squads = {
       this.net.send('hit', { v: victim.rosterId, a: attacker ? attacker.rosterId : -1, d: +dmg.toFixed(2), h: !!head, w: wid, at: [+at.x.toFixed(2), +at.y.toFixed(2), +at.z.toFixed(2)] }, victim.owner === this.me ? undefined : victim.owner);
       if (attacker === this.g.player) {
         const v = this._v || (this._v = new THREE.Vector3()); v.set(at.x, at.y, at.z);
-        this.g.hud.hitmarker(head, victim.health - dmg <= 0); this.g.hud.damageNumber(v, dmg, head, victim, false); BR.Audio.hit(head);
+        this.g.hud.hitmarker(head, victim.health - dmg <= 0); this.g.hud.damageNumber(v, dmg, head, victim, false, at); BR.Audio.hit(head);
         this.g.fx.burst(v, head ? [0xffd24a, 0xffffff] : [0xff4a5a, 0xffffff], head ? 12 : 6, 5, 0.06, 0.35);
       }
       return true;
@@ -19068,7 +19112,7 @@ BR.HUD = class HUD {
     this.bm = $('bigmap-cv').getContext('2d');
     this.el.bigmap = $('bigmap'); this.el.loc = $('loc');
     this.numPool = [];
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 40; i++) {             // (v1.31: room for a shotgun's worth of separate pellet numbers)
       const d = document.createElement('div');
       d.className = 'dnum';
       this.el.dmgNums.appendChild(d);
@@ -19461,19 +19505,34 @@ BR.HUD = class HUD {
 
   // Damage numbers stack per target (Apex-style): rapid hits on the same enemy add up in
   // one number that re-pops; headshots are gold crits, shield hits are blue.
-  damageNumber(pos, dmg, head, victim, shield) {
+  // v1.31: a shotgun blast shows one number per pellet that landed, each at its own impact (scaled so they add up to the
+  // damage actually dealt after multipliers). They don't stack, so you can read how many pellets connected.
+  damageNumber(pos, dmg, head, victim, shield, at) {
+    const P = at && at.pellets;
+    if (P && P.length > 1) {
+      let sum = 0; for (const q of P) sum += q.dmg; const k = sum > 0 ? dmg / sum : 1;
+      P.forEach((q, i) => {
+        const n = this.numPool[this.ni++ % this.numPool.length];
+        n.victim = null; n.total = q.dmg * k; n.age = 0; n.life = 0.95 + i * 0.03; n.head = q.head;
+        n.pos.set(q.x, q.y, q.z); n.dx = (i - (P.length - 1) / 2) * 19 + (Math.random() - 0.5) * 6; n.dy = (i % 2 ? -17 : 0) + (Math.random() - 0.5) * 6;     // fanned out so each one reads
+        const el = n.el; el.innerHTML = (q.head ? '<i>✦</i>' : '') + Math.max(1, Math.round(n.total));
+        el.className = 'dnum pellet' + (q.head ? ' head' : shield ? ' shield' : ''); el.style.animationDelay = (i * 0.018).toFixed(3) + 's';
+        void el.offsetWidth; el.classList.add('pop'); el.style.opacity = 1;
+      });
+      return;
+    }
     let n = victim && this.numPool.find(q => q.victim === victim && q.life > 0.25 && q.age < 1.1);
     if (n) { n.total += dmg; n.age = Math.min(n.age, 0.2); }
     else {
       n = this.numPool[this.ni++ % this.numPool.length];
       n.victim = victim; n.total = dmg; n.age = 0;
-      n.pos.copy(pos); n.dx = (Math.random() - 0.5) * 40;
+      n.pos.copy(pos); n.dx = (Math.random() - 0.5) * 40; n.dy = 0;
     }
     n.life = 1.0;
     n.head = n.head && n.age > 0 ? n.head || head : head;
     const el = n.el;
     el.innerHTML = (head ? '<i>✦</i>' : '') + Math.round(n.total);
-    el.className = 'dnum' + (head ? ' head' : shield ? ' shield' : '');
+    el.className = 'dnum' + (head ? ' head' : shield ? ' shield' : ''); el.style.animationDelay = '';
     void el.offsetWidth; el.classList.add('pop');
     el.style.opacity = 1;
   }
@@ -19486,7 +19545,7 @@ BR.HUD = class HUD {
       n.pos.y += dt * 0.55;
       v.copy(n.pos).project(cam);
       if (n.life <= 0 || v.z > 1) { n.el.style.opacity = 0; n.life = 0; continue; }
-      n.el.style.transform = `translate(${(v.x * 0.5 + 0.5) * W + n.dx}px, ${(-v.y * 0.5 + 0.5) * H - 26}px) translate(-50%, -50%)`;
+      n.el.style.translate = `${((v.x * 0.5 + 0.5) * W + n.dx).toFixed(1)}px ${((-v.y * 0.5 + 0.5) * H - 26 + (n.dy || 0)).toFixed(1)}px`;     // (v1.31: the position lives in `translate`, so the pop's scale grows the number in place instead of flinging it across the screen)
       n.el.style.opacity = Math.min(1, n.life * 3);
     }
   }
@@ -20816,7 +20875,7 @@ BR.Game = class Game {
     victim.flash();
     if (attacker && attacker === this.player) {
       this.hud.hitmarker(head, died);
-      this.hud.damageNumber(this._v3, dmg, head, victim, shieldHit);
+      this.hud.damageNumber(this._v3, dmg, head, victim, shieldHit, at);
       if (!died) BR.Audio.hit(head, shieldHit);
       // impact sparks: gold crit burst on the head, team-colour/shield-blue on the body
       this.fx.burst(this._v3, head ? [0xffd24a, 0xffffff, 0xff9a1f] : shieldHit ? [0x6fc8ff, 0xffffff] : [0xff4a5a, 0xffffff], head ? 14 : 7, head ? 7 : 4.5, head ? 0.07 : 0.05, head ? 0.45 : 0.3);
@@ -22635,7 +22694,7 @@ BR.BRNet = class BRNet {
     this.net.send('hit', { v: victim.netId, a: attacker ? attacker.netId : -1, d: +dmg.toFixed(2), h: !!head, w: wid, at: [+at.x.toFixed(2), +at.y.toFixed(2), +at.z.toFixed(2)] }, victim.owner === this.me ? undefined : victim.owner);
     if (attacker === this.g.player) {
       const v = this._v || (this._v = new THREE.Vector3()); v.set(at.x, at.y, at.z);
-      this.g.hud.hitmarker(head, victim.health - dmg <= 0); this.g.hud.damageNumber(v, dmg, head, victim, victim.shield > 0); BR.Audio.hit(head, victim.shield > 0);
+      this.g.hud.hitmarker(head, victim.health - dmg <= 0); this.g.hud.damageNumber(v, dmg, head, victim, victim.shield > 0, at); BR.Audio.hit(head, victim.shield > 0);
       this.g.fx.burst(v, head ? [0xffd24a, 0xffffff] : [0xff4a5a, 0xffffff], head ? 12 : 6, 5, 0.06, 0.35);
     }
     return true;
@@ -22962,7 +23021,7 @@ BR.BRNet = class BRNet {
         if (attacker !== g.player) return true;
         this.net.send('zh', { id: victim.zid, a: g.player.netId, d: +dmg.toFixed(2), h: !!head, w: wid, at: [+at.x.toFixed(2), +at.y.toFixed(2), +at.z.toFixed(2)] }, 'H');
         const v = this._v || (this._v = new THREE.Vector3()); v.set(at.x, at.y, at.z);
-        g.hud.hitmarker(head, false); g.hud.damageNumber(v, dmg, head, victim, false); BR.Audio.hit(head, false);
+        g.hud.hitmarker(head, false); g.hud.damageNumber(v, dmg, head, victim, false, at); BR.Audio.hit(head, false);
         zm.onHit(victim, dmg, head); victim.flash && victim.flash();
         return true;
       }

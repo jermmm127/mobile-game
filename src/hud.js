@@ -797,7 +797,7 @@ BR.HUD = class HUD {
     this.bm = $('bigmap-cv').getContext('2d');
     this.el.bigmap = $('bigmap'); this.el.loc = $('loc');
     this.numPool = [];
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 40; i++) {             // (v1.31: room for a shotgun's worth of separate pellet numbers)
       const d = document.createElement('div');
       d.className = 'dnum';
       this.el.dmgNums.appendChild(d);
@@ -1190,19 +1190,34 @@ BR.HUD = class HUD {
 
   // Damage numbers stack per target (Apex-style): rapid hits on the same enemy add up in
   // one number that re-pops; headshots are gold crits, shield hits are blue.
-  damageNumber(pos, dmg, head, victim, shield) {
+  // v1.31: a shotgun blast shows one number per pellet that landed, each at its own impact (scaled so they add up to the
+  // damage actually dealt after multipliers). They don't stack, so you can read how many pellets connected.
+  damageNumber(pos, dmg, head, victim, shield, at) {
+    const P = at && at.pellets;
+    if (P && P.length > 1) {
+      let sum = 0; for (const q of P) sum += q.dmg; const k = sum > 0 ? dmg / sum : 1;
+      P.forEach((q, i) => {
+        const n = this.numPool[this.ni++ % this.numPool.length];
+        n.victim = null; n.total = q.dmg * k; n.age = 0; n.life = 0.95 + i * 0.03; n.head = q.head;
+        n.pos.set(q.x, q.y, q.z); n.dx = (i - (P.length - 1) / 2) * 19 + (Math.random() - 0.5) * 6; n.dy = (i % 2 ? -17 : 0) + (Math.random() - 0.5) * 6;     // fanned out so each one reads
+        const el = n.el; el.innerHTML = (q.head ? '<i>✦</i>' : '') + Math.max(1, Math.round(n.total));
+        el.className = 'dnum pellet' + (q.head ? ' head' : shield ? ' shield' : ''); el.style.animationDelay = (i * 0.018).toFixed(3) + 's';
+        void el.offsetWidth; el.classList.add('pop'); el.style.opacity = 1;
+      });
+      return;
+    }
     let n = victim && this.numPool.find(q => q.victim === victim && q.life > 0.25 && q.age < 1.1);
     if (n) { n.total += dmg; n.age = Math.min(n.age, 0.2); }
     else {
       n = this.numPool[this.ni++ % this.numPool.length];
       n.victim = victim; n.total = dmg; n.age = 0;
-      n.pos.copy(pos); n.dx = (Math.random() - 0.5) * 40;
+      n.pos.copy(pos); n.dx = (Math.random() - 0.5) * 40; n.dy = 0;
     }
     n.life = 1.0;
     n.head = n.head && n.age > 0 ? n.head || head : head;
     const el = n.el;
     el.innerHTML = (head ? '<i>✦</i>' : '') + Math.round(n.total);
-    el.className = 'dnum' + (head ? ' head' : shield ? ' shield' : '');
+    el.className = 'dnum' + (head ? ' head' : shield ? ' shield' : ''); el.style.animationDelay = '';
     void el.offsetWidth; el.classList.add('pop');
     el.style.opacity = 1;
   }
@@ -1215,7 +1230,7 @@ BR.HUD = class HUD {
       n.pos.y += dt * 0.55;
       v.copy(n.pos).project(cam);
       if (n.life <= 0 || v.z > 1) { n.el.style.opacity = 0; n.life = 0; continue; }
-      n.el.style.transform = `translate(${(v.x * 0.5 + 0.5) * W + n.dx}px, ${(-v.y * 0.5 + 0.5) * H - 26}px) translate(-50%, -50%)`;
+      n.el.style.translate = `${((v.x * 0.5 + 0.5) * W + n.dx).toFixed(1)}px ${((-v.y * 0.5 + 0.5) * H - 26 + (n.dy || 0)).toFixed(1)}px`;     // (v1.31: the position lives in `translate`, so the pop's scale grows the number in place instead of flinging it across the screen)
       n.el.style.opacity = Math.min(1, n.life * 3);
     }
   }

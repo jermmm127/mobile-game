@@ -279,7 +279,7 @@
         if (attacker !== g.player) return true;
         this.net.send('zh', { id: victim.zid, a: g.player.netId, d: +dmg.toFixed(2), h: !!head, w: wid, at: [+at.x.toFixed(2), +at.y.toFixed(2), +at.z.toFixed(2)] }, 'H');
         const v = this._v || (this._v = new THREE.Vector3()); v.set(at.x, at.y, at.z);
-        g.hud.hitmarker(head, false); g.hud.damageNumber(v, dmg, head, victim, false); BR.Audio.hit(head, false);
+        g.hud.hitmarker(head, false); g.hud.damageNumber(v, dmg, head, victim, false, at); BR.Audio.hit(head, false);
         zm.onHit(victim, dmg, head); victim.flash && victim.flash();
         return true;
       }

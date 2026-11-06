@@ -119,13 +119,15 @@ BR.Weapons = {
       if (hit.target) {                                              // a custom-mode target (aim trainer / Overdrive)
         const falloff = hit.t <= d.range ? 1 : Math.max(0.55, 1 - 0.45 * (hit.t - d.range) / d.range);
         const dmg = d.dmg * falloff * (hit.head ? d.head : 1), tm = this._thits || (this._thits = new Map()), prev = tm.get(hit.target);
-        if (prev) { prev.dmg += dmg; prev.head = prev.head || hit.head; } else tm.set(hit.target, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z });
+        const pl = { dmg, head: hit.head, x: end.x, y: end.y, z: end.z };                  // v1.31: every pellet keeps its own hit (its own damage number)
+        if (prev) { prev.dmg += dmg; prev.head = prev.head || hit.head; prev.pellets.push(pl); } else tm.set(hit.target, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z, pellets: [pl] });
       } else if (hit.actor) {
         const falloff = hit.t <= d.range ? 1 : Math.max(0.55, 1 - 0.45 * (hit.t - d.range) / d.range);
         const dmg = d.dmg * falloff * (hit.head ? d.head : 1);
         const prev = hits.get(hit.actor);
-        if (prev) { prev.dmg += dmg; prev.head = prev.head || hit.head; }
-        else hits.set(hit.actor, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z });
+        const pl = { dmg, head: hit.head, x: end.x, y: end.y, z: end.z };
+        if (prev) { prev.dmg += dmg; prev.head = prev.head || hit.head; prev.pellets.push(pl); }
+        else hits.set(hit.actor, { dmg, head: hit.head, x: end.x, y: end.y, z: end.z, pellets: [pl] });
       } else if (hit.t < maxRange) {
         game.fx.impact(end, false);
         // bullet hole on the face that was hit (your shots only)
@@ -153,7 +155,7 @@ BR.Weapons = {
         hits.forEach((h, victim) => { const c = victim.pos, cy = c.y + (victim.mover ? victim.mover.h * 0.55 : 0.9), dx = c.x - eye.x, dy = cy - eye.y, dz = c.z - eye.z;
           const along = dx * m.d.x + dy * m.d.y + dz * m.d.z; if (along <= 0 || along > d.range * 1.3 || m.t < along - 0.3) return;
           const off = Math.sqrt(Math.max(0, dx * dx + dy * dy + dz * dz - along * along)); if (off < bd) { bd = off; best = h; } });
-        if (best) best.dmg += d.dmg;
+        if (best) { best.dmg += d.dmg; const q = best.pellets[best.pellets.length - 1] || best; best.pellets.push({ dmg: d.dmg, head: false, x: q.x + (Math.random() - 0.5) * 0.3, y: q.y + (Math.random() - 0.5) * 0.3, z: q.z + (Math.random() - 0.5) * 0.3 }); }
       }
       this._miss.length = 0;
     }

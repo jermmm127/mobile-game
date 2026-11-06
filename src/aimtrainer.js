@@ -228,7 +228,7 @@
         g.hud.hitmarker(false, true); BR.Audio.pop ? BR.Audio.pop(0.35) : BR.Audio.hit(false);
         this.spawnFor(R.id, t.cell);
       } else {
-        t.hp -= dmg; g.hud.damageNumber(v, dmg, head, t, false); g.fx.burst(v, head ? [0xffd24a, 0xffffff] : [0x45e0ff, 0xffffff], head ? 10 : 5, 4, 0.05, 0.3, 0);
+        t.hp -= dmg; g.hud.damageNumber(v, dmg, head, t, false, at); g.fx.burst(v, head ? [0xffd24a, 0xffffff] : [0x45e0ff, 0xffffff], head ? 10 : 5, 4, 0.05, 0.3, 0);
         t.bar.scale.x = Math.max(0.01, t.hp / t.max);
         if (t.hp <= 0) {
           R.kills++; R.score += head ? 200 : 100; R.ttk.push(g.time - t.born);

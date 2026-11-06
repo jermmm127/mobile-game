@@ -310,7 +310,7 @@
       this.net.send('hit', { v: victim.rosterId, a: attacker ? attacker.rosterId : -1, d: +dmg.toFixed(2), h: !!head, w: wid, at: [+at.x.toFixed(2), +at.y.toFixed(2), +at.z.toFixed(2)] }, victim.owner === this.me ? undefined : victim.owner);
       if (attacker === this.g.player) {
         const v = this._v || (this._v = new THREE.Vector3()); v.set(at.x, at.y, at.z);
-        this.g.hud.hitmarker(head, victim.health - dmg <= 0); this.g.hud.damageNumber(v, dmg, head, victim, false); BR.Audio.hit(head);
+        this.g.hud.hitmarker(head, victim.health - dmg <= 0); this.g.hud.damageNumber(v, dmg, head, victim, false, at); BR.Audio.hit(head);
         this.g.fx.burst(v, head ? [0xffd24a, 0xffffff] : [0xff4a5a, 0xffffff], head ? 12 : 6, 5, 0.06, 0.35);
       }
       return true;

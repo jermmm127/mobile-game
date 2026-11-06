@@ -83,6 +83,10 @@
   }
   const S3 = (k, z) => ({ x: new Spring(k, z), y: new Spring(k, z), z: new Spring(k, z) });
 
+  // v1.31: desktop = not using the touch controls and no touch-only screen (phones / tablets have a coarse pointer and no fine one)
+  let coarse = null;
+  BR.Desk = () => { if (coarse === null) { try { coarse = matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches; } catch (e) { coarse = false; } }
+    return !coarse && !(BR.game && BR.game.input && BR.game.input.usingTouch); };
   BR.Viewmodel = class Viewmodel {
     constructor(game) {
       this.game = game;
@@ -368,6 +372,9 @@
       if (w.id === 'revolver') { hx = RV.hx * s; hy = RV.hy; hz = RV.hz; }    // v1.24.2: big, one-handed, low right, barrel angled up to the centre (reference)
       let bUp = 0;               // butterfly: 0 = flat idle, 1 = upright
       if (BAYLIKE(w.id)) { hx = 0.04 * s; hy = -0.108; hz = -0.42; } if (w.id === 'tracker') { hx = 0.082 * s; hy = -0.129; hz = -0.47; }     // v1.17.1: a touch farther = smaller on screen, same spot   // v1.11: fist + sleeve in view at the bottom right   // farther from the eye: same spot on screen, smaller
+      // v1.31: on desktop (mouse + keyboard, or a controller on a TV) every knife sits higher in view; touch phones and tablets keep
+      // the same spot. The lift scales with depth so each knife moves the same amount on screen.
+      if (def.melee && BR.Desk()) hy += 0.045 * (-hz / 0.43);
       let bUp2 = 0;              // bayonet: blend toward the second show face
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to

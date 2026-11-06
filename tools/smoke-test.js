@@ -1416,6 +1416,29 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v131 = await page.evaluate(async () => {
+    const g = BR.game, L = BR.Lobby, out = {};
+    // gun finish: the default guns are matte + textured
+    const gun = BR.Models.weapon('holoar'); let mat = null; gun.traverse(o => { if (!mat && o.isMesh && o.material && o.material.userData && o.material.userData.real && o.material.map) mat = o.material; });
+    out.matte = !!mat && mat.shininess <= 22 && mat.reflectivity <= 0.05 && !!mat.normalMap;
+    // knives: desktop lifts them, touch keeps the old spot
+    out.desk = typeof BR.Desk === 'function' && BR.Desk() === true && (g.input.usingTouch = true, BR.Desk() === false); g.input.usingTouch = false;
+    // shotgun: one damage number per pellet, adding up to the damage dealt
+    g.toMenu(); L.skipRoll = true; L.preset = 'tdm'; L.size = 2; L.play({ map: 'yard' }); await new Promise(r => setTimeout(r, 250)); if (g.mode) g.mode.frozen = false;
+    const p = g.player, foe = g.actors.find(a => a.team !== p.team); for (const a of g.actors) if (a !== p) a.brain = null;
+    const sp = g.world.spawns[0]; p.mover.pos.set(sp.x, g.world.groundAt(sp.x, sp.z, 20), sp.z); p.yaw = sp.yaw || 0; p.mover.vel.set(0, 0, 0);
+    const x = p.pos.x - Math.sin(p.yaw) * 4, z = p.pos.z - Math.cos(p.yaw) * 4; foe.mover.pos.set(x, g.world.groundAt(x, z, p.pos.y + 3), z); foe.mover.vel.set(0, 0, 0); foe.health = 5000; foe.shield = 0;
+    for (let i = 0; i < 3; i++) g.update(1 / 60);
+    const e = p.eye(new THREE.Vector3()); p.pitch = Math.atan2(foe.pos.y + foe.mover.h * 0.55 - e.y, 4);
+    p.slots[0] = BR.Weapons.create('shotgun'); p.cur = 0; p.ammo.shells = 50; for (let i = 0; i < 40; i++) g.update(1 / 60);
+    for (const n of g.hud.numPool) n.life = 0;
+    const h0 = foe.health; g.input.fire = true; g.update(1 / 60); g.input.fire = false; g.update(1 / 60);
+    const live = g.hud.numPool.filter(n => n.life > 0), dealt = h0 - foe.health, sum = live.reduce((a, n) => a + n.total, 0);
+    out.pellets = live.length > 1 && Math.abs(sum - dealt) < 0.5; out.info = live.length + ' numbers, ' + Math.round(sum) + ' / ' + Math.round(dealt);
+    out.inPlace = live.every(n => !!n.el.style.translate);
+    g.toMenu();
+    return out;
+  });
   const v1301 = await page.evaluate(() => {
     const P = BR.Profile, d = P.data, out = {};
     d.friends = ['buddy']; d.friendsOut = ['pending']; d.grind = { t: 123 }; d.mastery = { ar: 77 }; d.keys = 2;
@@ -1677,6 +1700,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.31 guns: matte textured finish; knives higher on desktop only; one damage number per shotgun pellet, adding up to the damage', [v131.matte, v131.desk, v131.pellets, v131.inPlace].every(Boolean), v131],
     ['v1.30.1 saves: friends, requests, challenges, mastery and keys survive a profile reload', Object.values(v1301).every(Boolean), v1301],
     ['v1.30 key guard: menus untouched; in a match Ctrl+S / Ctrl+R / F5 / Backspace / Alt / Ctrl+W are cancelled, game keys still work, leaving asks first; pop-out + keyboard lock helpers', Object.values(v130).every(Boolean), v130],
     ['v1.29.2 map roll: the reel stops on the card of the map that actually loads (and the label + loaded map match)', Object.values(v1292).every(Boolean), v1292],
@@ -1857,7 +1881,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

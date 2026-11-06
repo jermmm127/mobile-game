@@ -486,13 +486,13 @@ BR.Models = (function () {
       for (let i = 0; i < 46; i++) { const x = R() * S, y = R() * S, r = 18 + R() * 60, g2 = c.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, R() < 0.5 ? css(0.05) : css(-0.09)); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = 0.38; c.fillStyle = g2; c.fillRect(x - r, y - r, r * 2, r * 2); }
       c.globalAlpha = 1;
       for (let i = 0; i < 22; i++) { c.fillStyle = `rgba(20,16,10,${0.05 + R() * 0.08})`; const x = R() * S; c.fillRect(x, R() * S, 2 + R() * 5, 20 + R() * 70); }          // grime streaks
-      const nS = kind === 'metal' ? 150 : kind === 'blade' ? 260 : 45;
+      const nS = kind === 'metal' ? 150 : kind === 'blade' ? 260 : kind === 'gun' ? 90 : 45, gun = kind === 'gun';
       c.lineCap = 'round';
       for (let i = 0; i < nS; i++) { const x = R() * S, y = R() * S, a = kind === 'blade' ? (R() - 0.5) * 0.3 : R() * Math.PI, l = 2 + R() * (kind === 'blade' ? 50 : 12);
-        c.strokeStyle = kind === 'blade' ? `rgba(255,255,255,${0.05 + R() * 0.09})` : css(0.3 + R() * 0.25); c.globalAlpha = kind === 'blade' ? 1 : 0.06 + R() * 0.14; c.lineWidth = R() < 0.85 ? 0.8 : 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
+        c.strokeStyle = kind === 'blade' ? `rgba(255,255,255,${0.05 + R() * 0.09})` : css(gun ? 0.16 + R() * 0.12 : 0.3 + R() * 0.25); c.globalAlpha = kind === 'blade' ? 1 : gun ? 0.05 + R() * 0.08 : 0.06 + R() * 0.14; c.lineWidth = R() < 0.85 ? 0.8 : 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
       c.globalAlpha = 1;
-      for (let i = 0; i < (kind === 'polymer' ? 40 : 90); i++) { c.fillStyle = css(0.4 + R() * 0.3); c.globalAlpha = 0.18 + R() * 0.3; c.fillRect(R() * S, R() * S, 1 + R() * 2.4, 1 + R() * 1.6); }      // chips
-      for (let i = 0; i < 500; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.14)'; c.globalAlpha = 1; c.fillRect(R() * S, R() * S, 1, 1); }        // dust
+      for (let i = 0; i < (kind === 'polymer' ? 40 : gun ? 30 : 90); i++) { c.fillStyle = css(gun ? 0.18 + R() * 0.1 : 0.4 + R() * 0.3); c.globalAlpha = gun ? 0.1 + R() * 0.12 : 0.18 + R() * 0.3; c.fillRect(R() * S, R() * S, 1 + R() * 2.4, 1 + R() * 1.6); }      // chips
+      for (let i = 0; i < (gun ? 2400 : 500); i++) { c.fillStyle = R() < 0.5 ? `rgba(255,255,255,${gun ? 0.05 : 0.10})` : `rgba(0,0,0,${gun ? 0.12 : 0.14})`; c.globalAlpha = 1; c.fillRect(R() * S, R() * S, 1, 1); }        // dust
     }, 256);
   }
   // fabric for gloves: the glove colour with a woven grain + soft wear
@@ -1667,6 +1667,28 @@ BR.Models = (function () {
     }
     return prims;
   }
+  // v1.31: the imported gun sculpts are decimated meshes with noisy normals, so flat faces shade lumpy and
+  // edges look chewed. Two passes: a crease-aware Taubin smooth of the positions (shrink-free, only across
+  // gentle angles so hard edges stay crisp), then crease-aware normal averaging (smooth panels, sharp corners).
+  function smoothSculpt(P) {
+    const nv = P.pos.length / 3, idx = P.idx, adj = Array.from({ length: nv }, () => []);
+    for (let t = 0; t < idx.length; t += 3) for (let k = 0; k < 3; k++) { const a = idx[t + k], b = idx[t + (k + 1) % 3]; adj[a].push(b); adj[b].push(a); }
+    const N = P.nor, dot = (a, b) => N[a * 3] * N[b * 3] + N[a * 3 + 1] * N[b * 3 + 1] + N[a * 3 + 2] * N[b * 3 + 2];
+    const step = (src, f, lim) => { const out = new Float32Array(src);
+      for (let v = 0; v < nv; v++) { let x = 0, y = 0, z = 0, c = 0;
+        for (const u of adj[v]) if (dot(u, v) > lim) { x += src[u * 3]; y += src[u * 3 + 1]; z += src[u * 3 + 2]; c++; }
+        if (c) { out[v * 3] += f * (x / c - src[v * 3]); out[v * 3 + 1] += f * (y / c - src[v * 3 + 1]); out[v * 3 + 2] += f * (z / c - src[v * 3 + 2]); } }
+      return out; };
+    let pos = P.pos; for (let i = 0; i < 2; i++) { pos = step(pos, 0.5, 0.82); pos = step(pos, -0.53, 0.82); }
+    P.pos = pos;
+    let nor = N; for (let i = 0; i < 3; i++) {
+      const out = new Float32Array(nv * 3);
+      for (let v = 0; v < nv; v++) { let x = nor[v * 3], y = nor[v * 3 + 1], z = nor[v * 3 + 2];
+        for (const u of adj[v]) { const d = nor[u * 3] * nor[v * 3] + nor[u * 3 + 1] * nor[v * 3 + 1] + nor[u * 3 + 2] * nor[v * 3 + 2]; if (d > 0.7) { x += nor[u * 3]; y += nor[u * 3 + 1]; z += nor[u * 3 + 2]; } }
+        const l = Math.hypot(x, y, z) || 1; out[v * 3] = x / l; out[v * 3 + 1] = y / l; out[v * 3 + 2] = z / l; }
+      nor = out; }
+    P.nor = nor;
+  }
   function importedParts(id) {
     if (IMPORT_CACHE[id] !== undefined) return IMPORT_CACHE[id];
     const C = BR.IMPORTED && BR.IMPORTED[id], data = BR.MODEL_DATA && BR.MODEL_DATA[id];
@@ -1680,6 +1702,7 @@ BR.Models = (function () {
       const tp = (x, y, z) => { const a = ax(x, y, z); tv.set(a[0] * s, a[1] * s, a[2] * s); if (R) tv.sub(new THREE.Vector3(...pv)).applyMatrix4(R).add(new THREE.Vector3(...pv)); return [tv.x + dx, tv.y + dy, tv.z + dz]; };
       const tn = (x, y, z) => { const a = ax(x, y, z); tv.set(a[0], a[1], a[2]); if (R) tv.applyMatrix4(R); return [tv.x, tv.y, tv.z]; };
       for (const P of parseGLB(data)) {
+        if (!P.map && P.idx && P.nor && !C.knife) smoothSculpt(P);     // v1.31: clean up the decimated sculpt (lumpy shading, rough edges)
         const mat = new THREE.MeshPhongMaterial({ map: P.map, normalMap: P.normalMap, color: P.map ? 0xffffff : (P.color || 0x888888), specular: 0x6a6a6a, shininess: C.shininess || 45, envMap: BR.weaponEnv(), reflectivity: C.reflect || 0.12, side: THREE.DoubleSide });
         if (P.normalMap) mat.normalScale.set(1, -1);
         const parts = { body: [], mag: [], pump: [], bolt: [], blade: [], cyl: [], hA: [], hB: [] }, n = P.idx ? P.idx.length : P.pos.length / 3;
@@ -1721,8 +1744,11 @@ BR.Models = (function () {
       // set to finish: 'factory') wear the game's own worn black factory finish (box-mapped in realPass).
       let mat = std ? p.mat : S;
       if (std && C.finish === 'factory') {                    // keep the model's sculpted detail (normal map), drop its paint
-        const key = 'factory:' + id; mat = cache.mat[key] || (cache.mat[key] = new THREE.MeshPhongMaterial({ color: C.factoryColor || 0x2b2e33, normalMap: p.mat.normalMap, normalScale: p.mat.normalScale, specular: 0x5a6068, shininess: 38, specularMap: DETAIL.finish(), envMap: BR.weaponEnv(), reflectivity: 0.08, side: THREE.DoubleSide }));
-        cache.mat[key].userData.real = true; textured = true;
+        // v1.31: matte worn finish with real surface texture. Models with their own normal map (the Rifle) keep it on
+        // their UVs; untextured sculpts get a box-mapped worn albedo + scratch / grain normal map (realPass maps it).
+        const own = !!p.mat.normalMap, key = 'factory:' + id;
+        mat = cache.mat[key] || (cache.mat[key] = new THREE.MeshPhongMaterial({ color: 0xffffff, map: wearTex(C.factoryColor || 0x33373d, 'gun'), normalMap: own ? p.mat.normalMap : NRM.scratch(), normalScale: own ? p.mat.normalScale : new THREE.Vector2(0.55, 0.55), specular: 0x3c4148, shininess: 20, specularMap: DETAIL.finish(), envMap: BR.weaponEnv(), reflectivity: 0.035, side: THREE.DoubleSide }));
+        cache.mat[key].userData.real = true; if (own) textured = true;
       } else if (std && !p.mat.map) mat = S;
       else if (std) textured = true;
       if (p.key === 'blade') mat = bladeMat;

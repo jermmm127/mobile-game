@@ -212,11 +212,11 @@
       grp.userData.limbs = { la, ra, ll, rl, head };
       return torso;
     }
-    damage(e, dmg, at, head, src) {
+    damage(e, dmg, at, head, src, hit) {
       if (e.dead) return;
       const g = this.g; let crit; [dmg, crit] = this.crit(dmg * this.dmgMult);
       e.hp -= dmg; e.flash = 0.06;
-      if (at) g.hud.damageNumber(at, dmg, head || crit, e, false);
+      if (at) g.hud.damageNumber(at, dmg, head || crit, e, false, hit);
       if (e.hp <= 0) this.killEnemy(e, src);
     }
     killEnemy(e, src) {
@@ -278,7 +278,7 @@
       const g = this.g, v = this._hv || (this._hv = new THREE.Vector3()); v.set(at.x, at.y, at.z);
       // weak spot: shots near the eye count as headshots
       const hs = e.E.humanoid ? !!head : Math.hypot(at.x - e.x, at.y - (e.y + e.r * 0.25), at.z - e.z) < e.r * 0.45;
-      this.damage(e, dmg * (hs ? 1.6 : 1), v, hs, 'gun');
+      this.damage(e, dmg * (hs ? 1.6 : 1), v, hs, 'gun', at);
       g.fx.burst(v, [e.E.col, 0xffffff], 5, 3.5, 0.05, 0.25, 0);
       g.hud.hitmarker(hs, !!e.dead); if (!e.dead) BR.Audio.hit(hs);
       // knockback from your gun

@@ -1162,7 +1162,7 @@ BR.Game = class Game {
     victim.flash();
     if (attacker && attacker === this.player) {
       this.hud.hitmarker(head, died);
-      this.hud.damageNumber(this._v3, dmg, head, victim, shieldHit);
+      this.hud.damageNumber(this._v3, dmg, head, victim, shieldHit, at);
       if (!died) BR.Audio.hit(head, shieldHit);
       // impact sparks: gold crit burst on the head, team-colour/shield-blue on the body
       this.fx.burst(this._v3, head ? [0xffd24a, 0xffffff, 0xff9a1f] : shieldHit ? [0x6fc8ff, 0xffffff] : [0xff4a5a, 0xffffff], head ? 14 : 7, head ? 7 : 4.5, head ? 0.07 : 0.05, head ? 0.45 : 0.3);
