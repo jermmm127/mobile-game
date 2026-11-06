@@ -194,7 +194,9 @@ BR.Profile = {
     let d = BR.AntiCheat ? BR.AntiCheat.loadSigned(this.KEY) : BR.util.load(this.KEY, null);
     if (!d && this.KEY.endsWith('.guest')) d = BR.util.load('velocity-royale.profile', null); // pre-accounts save
     d = d || {};
-    this.data = {
+    // v1.30.1: keep EVERY saved field (friends, friend requests, challenges, mastery, daily streak, keys, ...) and only
+    // normalise the known ones on top. It used to rebuild the profile from a fixed list, so anything else was wiped on load.
+    this.data = Object.assign({}, d, {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
       owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'], outfits: ['default'], masks: ['default'], hats: ['default'] }, d.owned || {}),
       equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', outfits: 'default', masks: 'default', hats: 'default', melee: 'tracker' }, d.equip || {}),
@@ -208,7 +210,8 @@ BR.Profile = {
       starter: !!d.starter,
       fresh: !d.owned,
       xp: typeof d.xp === 'number' ? d.xp : null,
-    };
+    });
+    for (const k of ['friends', 'friendsOut']) if (!Array.isArray(this.data[k])) delete this.data[k];      // (only well-formed lists)
     // v1.7.5: the M9 bayonet is the new default knife (one-time switch for older saves)
     if (this.data.meleeV < 2) { this.data.equip.melee = 'bayonet'; this.data.meleeV = 2; }
     this.data.equip.blueprints = Object.assign({}, (d.equip && d.equip.blueprints) || {});

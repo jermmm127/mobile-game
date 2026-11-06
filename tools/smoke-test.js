@@ -1416,6 +1416,17 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v1301 = await page.evaluate(() => {
+    const P = BR.Profile, d = P.data, out = {};
+    d.friends = ['buddy']; d.friendsOut = ['pending']; d.grind = { t: 123 }; d.mastery = { ar: 77 }; d.keys = 2;
+    P.save(); P.load();
+    const n = P.data;
+    out.friends = Array.isArray(n.friends) && n.friends[0] === 'buddy' && n.friendsOut[0] === 'pending';
+    out.extras = n.grind && n.grind.t === 123 && n.mastery && n.mastery.ar === 77 && n.keys === 2;
+    out.equip = !!n.equip && !!n.loadout;
+    delete n.friends; delete n.friendsOut; delete n.grind; delete n.mastery; delete n.keys; P.save();
+    return out;
+  });
   const v130 = await page.evaluate(() => {
     const g = BR.game, out = {}, k = (code, o) => { const e = new KeyboardEvent('keydown', Object.assign({ code, key: code, cancelable: true, bubbles: true }, o || {})); document.body.dispatchEvent(e); return e.defaultPrevented; };
     const leave = () => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; };
@@ -1666,6 +1677,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.30.1 saves: friends, requests, challenges, mastery and keys survive a profile reload', Object.values(v1301).every(Boolean), v1301],
     ['v1.30 key guard: menus untouched; in a match Ctrl+S / Ctrl+R / F5 / Backspace / Alt / Ctrl+W are cancelled, game keys still work, leaving asks first; pop-out + keyboard lock helpers', Object.values(v130).every(Boolean), v130],
     ['v1.29.2 map roll: the reel stops on the card of the map that actually loads (and the label + loaded map match)', Object.values(v1292).every(Boolean), v1292],
     ['v1.29.1 2v2 / 3v3 duels: killed = knocked while a teammate stands, teammates revive, the last one standing dying finishes the knocked and ends the round, new rounds clear knocks, 1v1 still kills', Object.values(v1291).every(Boolean), v1291],
@@ -1845,7 +1857,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

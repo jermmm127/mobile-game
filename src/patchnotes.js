@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.30.1', date: '2026-11-06', title: 'Your stuff saves between updates', notes: [
+    'Friends and friend requests now stay saved after updates. Before, an update could wipe your friends list.',
+    'Challenge progress, weapon mastery, your daily streak and keys also stay saved after updates now.',
+    'Your equipped skins, character look (outfit, mask, hat), loadout, settings and custom mobile HUD layout carry over too.',
+    'The game asks the browser to keep its save data, so the browser is less likely to clear it when storage runs low.',
+  ] },
   { v: '1.30.0', date: '2026-11-06', title: 'Pop-out window + key guard', notes: [
     'New POP OUT button on the menu (computers): the game opens in its own window with no tabs or address bar. If nothing opens, allow pop-ups for the site.',
     'Key guard: in a match, the keys you press stay in the game. Browser shortcuts like save, print, find, bookmark, history and reload (Ctrl+S / P / F / D / H / R, F5), Backspace, Alt (the Windows menu bar), F1 / F3 / F6 / F7 / F10, Space / Tab / arrow scrolling, Ctrl+scroll zoom and the mouse\'s back / forward buttons no longer do anything outside the game.',

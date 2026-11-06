@@ -1744,7 +1744,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.30.0',
+  version: '1.30.1',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2028,6 +2028,12 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.30.1', date: '2026-11-06', title: 'Your stuff saves between updates', notes: [
+    'Friends and friend requests now stay saved after updates. Before, an update could wipe your friends list.',
+    'Challenge progress, weapon mastery, your daily streak and keys also stay saved after updates now.',
+    'Your equipped skins, character look (outfit, mask, hat), loadout, settings and custom mobile HUD layout carry over too.',
+    'The game asks the browser to keep its save data, so the browser is less likely to clear it when storage runs low.',
+  ] },
   { v: '1.30.0', date: '2026-11-06', title: 'Pop-out window + key guard', notes: [
     'New POP OUT button on the menu (computers): the game opens in its own window with no tabs or address bar. If nothing opens, allow pop-ups for the site.',
     'Key guard: in a match, the keys you press stay in the game. Browser shortcuts like save, print, find, bookmark, history and reload (Ctrl+S / P / F / D / H / R, F5), Backspace, Alt (the Windows menu bar), F1 / F3 / F6 / F7 / F10, Space / Tab / arrow scrolling, Ctrl+scroll zoom and the mouse\'s back / forward buttons no longer do anything outside the game.',
@@ -17584,7 +17590,9 @@ BR.Profile = {
     let d = BR.AntiCheat ? BR.AntiCheat.loadSigned(this.KEY) : BR.util.load(this.KEY, null);
     if (!d && this.KEY.endsWith('.guest')) d = BR.util.load('velocity-royale.profile', null); // pre-accounts save
     d = d || {};
-    this.data = {
+    // v1.30.1: keep EVERY saved field (friends, friend requests, challenges, mastery, daily streak, keys, ...) and only
+    // normalise the known ones on top. It used to rebuild the profile from a fixed list, so anything else was wiped on load.
+    this.data = Object.assign({}, d, {
       coins: typeof d.coins === 'number' ? d.coins : C.start,
       owned: Object.assign({ skins: ['default'], tracers: ['default'], charms: ['none'], gloves: ['default'], blueprints: [], feeds: ['none'], finishers: ['none'], outfits: ['default'], masks: ['default'], hats: ['default'] }, d.owned || {}),
       equip: Object.assign({ skins: 'default', tracers: 'default', charms: 'none', gloves: 'default', feeds: 'none', finishers: 'none', outfits: 'default', masks: 'default', hats: 'default', melee: 'tracker' }, d.equip || {}),
@@ -17598,7 +17606,8 @@ BR.Profile = {
       starter: !!d.starter,
       fresh: !d.owned,
       xp: typeof d.xp === 'number' ? d.xp : null,
-    };
+    });
+    for (const k of ['friends', 'friendsOut']) if (!Array.isArray(this.data[k])) delete this.data[k];      // (only well-formed lists)
     // v1.7.5: the M9 bayonet is the new default knife (one-time switch for older saves)
     if (this.data.meleeV < 2) { this.data.equip.melee = 'bayonet'; this.data.meleeV = 2; }
     this.data.equip.blueprints = Object.assign({}, (d.equip && d.equip.blueprints) || {});
@@ -21216,6 +21225,8 @@ BR.Game = class Game {
   if (BR.AntiCheat) BR.AntiCheat.lock();          // v1.16: stat tables can't be edited from the console
   BR.Accounts.load();
   BR.Profile.load();
+  // v1.30.1: ask the browser to keep this site's saves (profile, friends, settings, HUD layout) instead of clearing them to free space
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => { if (!p) navigator.storage.persist().catch(() => {}); }).catch(() => {}); } catch (e) { /* not supported */ }
   setTimeout(() => { try { daily(); } catch (e) { /* (no game: 3D failed to start) */ } }, 0);
 
   // v1.28.3: what the browser said about 3D, shown on the help screen (send a photo of it to get help)

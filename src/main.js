@@ -15,6 +15,8 @@
   if (BR.AntiCheat) BR.AntiCheat.lock();          // v1.16: stat tables can't be edited from the console
   BR.Accounts.load();
   BR.Profile.load();
+  // v1.30.1: ask the browser to keep this site's saves (profile, friends, settings, HUD layout) instead of clearing them to free space
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => { if (!p) navigator.storage.persist().catch(() => {}); }).catch(() => {}); } catch (e) { /* not supported */ }
   setTimeout(() => { try { daily(); } catch (e) { /* (no game: 3D failed to start) */ } }, 0);
 
   // v1.28.3: what the browser said about 3D, shown on the help screen (send a photo of it to get help)
