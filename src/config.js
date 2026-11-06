@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.24.0',
+  version: '1.24.1',
 
   map: {
     size: 780,          // square map edge length (m): ~1.5x the area of the 640 m map
@@ -200,6 +200,7 @@ BR.CONFIG = {
   seedAccounts: [
     { name: 'jermmm', salt: 'b275785f07d6d05b4bf1e6a734075234', hash: '279c7e735ac93532a6f4af6fbddefe13336a6ebc1232f8687ab94329ad33d20a', dev: true },
     { name: 'jermdev', salt: 'b1856c19fee53b96456b60e0eee75144', hash: '3997a0cb437595b13d9062c6035befab837e373d2914115d644a6d3fa74f7a32', dev: true },
+    { name: 'laishadev', salt: '5f69672d0e8a724baef1ded82a05745d', hash: '932dfd1b54ef6192788454059135bae7d6aff4b6f78ba400aee0300b9c95fe7a', dev: true },
   ],
   devCodeHash: '89799be69c532868209a761cbdcfbb642286502c419d77f5583bb8fd46e5db2a',
   // v1.16 dev commands (kick / ban / coins) are signed with an ECDSA P-256 key. Only the public half is

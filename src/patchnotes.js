@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.24.1', date: '2026-11-06', title: 'New dev account', notes: [
+    'Added a third built-in developer account, laishadev, with the same dev tools as the other dev accounts.',
+  ] },
   { v: '1.24.0', date: '2026-11-06', title: 'Play together', notes: [
     'Parties can now play Battle Royale and Resurgence together. The leader taps PLAY and the whole party drops into the same match as one squad: duos for 2 players, trios for 3, squads for 4. You see each other, revive each other, share the same loot, storm and enemies, and kills, knockdowns and pickups show up for everyone.',
     'Party Duels, Shotgun Duels, Sniper Duels, TDM and Free For All start by themselves as soon as everyone in the party has joined. The leader no longer has to tap START in a lobby, and the party plays on the same team.',
