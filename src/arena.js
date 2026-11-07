@@ -20,7 +20,7 @@
     sniper: ['sniper', 'hunter'],
     loadout: null,                                 // TDM/FFA: your loadout (Loadout screen)
   };
-  const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg'], ['burst', 'mpistol'], ['riot', 'pistol']];
+  const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg'], ['burst', 'mpistol'], ['riot', 'pistol'], ['pump', 'smg']];
   BR.ARENA_PRESETS = {
     duel:    { kind: 'duel', title: 'DUELS', guns: 'duel', sizes: [1, 2], target: 5, roundTime: 90 },
     shotgun: { kind: 'duel', title: 'SHOTGUN DUELS', guns: 'shotgun', sizes: [1, 2], target: 5, roundTime: 60 },
@@ -85,7 +85,7 @@
     // v1.20: which saved loadout + which guns the picker offers (the Shockwave Launcher only in Sniper Duels)
     loKey() { return this.P.guns === 'sniper' ? 'sniperDuel' : 'duel'; }
     loDefault() { return this.P.guns === 'sniper' ? ['sniper', 'hunter'] : ['rifle', 'shotgun']; }
-    loLists() { return this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'burst', 'smg', 'lmg', 'dmr', 'shotgun', 'riot', 'hunter', 'sniper'], ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun']]; }
+    loLists() { return this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'burst', 'smg', 'lmg', 'dmr', 'shotgun', 'riot', 'pump', 'hunter', 'sniper'], ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun']]; }
     myLoadout() { const D = (this.g.settings[this.loKey()] || {}).loadout, def = this.loDefault(), [A, B] = this.loLists(); return [D && A.includes(D[0]) ? D[0] : def[0], D && B.includes(D[1]) ? D[1] : def[1]]; }
     get teams() { return this.P.kind !== 'ffa'; }
     gunsFor(a) {

@@ -1885,25 +1885,124 @@ BR.Models = (function () {
     BUILD[id] = (g, S, M, opts) => importedBuild(id, g, S, M, opts) || proc(g, S, M, opts);
   }
   // v1.32 new guns, built on the original procedural models (each with its own parts on top)
-  const variant = (id, base, extra) => (g, S, M, o) => { if (importedBuild(id, g, S, M, o)) extra(g, kit(g), M); else PROC[base](g, S, M, o); };
-  // Talon: an angled foregrip under the handguard and a flip-to-side magnifier behind the holo sight
-  BUILD.burst = variant('burst', 'holoar', (g, k, M) => {
-    const fg = k.box(0.026, 0.05, 0.05, 0, -0.036, -0.34, M.grip); fg.rotation.x = -0.55;
-    k.box(0.028, 0.008, 0.06, 0, -0.012, -0.34, M.dark);
-    const mag = k.cyl(0.017, 0.07, -0.042, 0.146, 0.0, M.dark, 'z', 16); k.cyl(0.0195, 0.008, -0.042, 0.146, 0.034, M.metal, 'z', 16); k.box(0.026, 0.012, 0.02, -0.022, 0.13, 0.0, M.dark); void mag;
+  const variant = (id, base, extra) => (g, S, M, o) => { if (importedBuild(id, g, S, M, o)) extra(g, kit(g), M, profiler(g, v => v, v => v)); else PROC[base](g, S, M, o); };
+  const disc = (g, r, t, mat, x, y, z, ax, seg) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, t, seg || 18), mat); m.position.set(x, y, z); if (ax === 'z') m.rotation.x = Math.PI / 2; else if (ax === 'x') m.rotation.z = Math.PI / 2; g.add(m); return m; };
+  const torus = (g, r, t, mat, x, y, z, ry, rx) => { const m = new THREE.Mesh(new THREE.TorusGeometry(r, t, 8, 20), mat); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, 0); g.add(m); return m; };
+  const shellAt = (g, M, x, y, z, ax, len) => { len = len || 0.05;                 // a 12-gauge shell: ribbed red hull, brass head with a rim, a primer
+    const hull = disc(g, 0.0092, len, M.shell, x, y, z, ax, 14), d = ax === 'z' ? [0, 0, 1] : ax === 'x' ? [1, 0, 0] : [0, 1, 0], h = len / 2;
+    disc(g, 0.0096, 0.012, M.brass, x + d[0] * (h + 0.004), y + d[1] * (h + 0.004), z + d[2] * (h + 0.004), ax, 14);
+    disc(g, 0.0104, 0.002, M.brass, x + d[0] * (h + 0.011), y + d[1] * (h + 0.011), z + d[2] * (h + 0.011), ax, 14);
+    disc(g, 0.0028, 0.0015, M.metal, x + d[0] * (h + 0.0125), y + d[1] * (h + 0.0125), z + d[2] * (h + 0.0125), ax, 8);
+    for (let i = 0; i < 3; i++) { const q = -h + 0.01 + i * 0.012; disc(g, 0.0094, 0.0016, M.grip, x + d[0] * q, y + d[1] * q, z + d[2] * q, ax, 14); }
+    return hull; };
+  // Talon: a ribbed angled foregrip on a rail clamp, a flip-to-side 3x magnifier (knurled rings, coated glass,
+  // mount + lever), a burst selector plate and a QD sling cup
+  BUILD.burst = variant('burst', 'holoar', (g, k, M, prof) => {
+    prof([[-0.372, -0.012], [-0.312, -0.012], [-0.322, -0.03], [-0.346, -0.072], [-0.36, -0.074], [-0.37, -0.062], [-0.364, -0.03]], 0.026, M.grip, 0.004);     // angled grip body
+    for (let i = 0; i < 4; i++) k.box(0.0275, 0.003, 0.004, 0, -0.038 - i * 0.009, -0.345 + i * 0.004, M.dark);        // finger ridges
+    k.box(0.03, 0.01, 0.07, 0, -0.008, -0.342, M.dark); for (const sx of [-1, 1]) k.box(0.003, 0.006, 0.02, sx * 0.016, -0.008, -0.33, M.metal);   // clamp + screws
+    const mg = new THREE.Group(); mg.position.set(-0.04, 0.125, 0.012); mg.rotation.z = 0.62; g.add(mg); const mk = kit(mg);
+    disc(mg, 0.0175, 0.075, M.scopeTube, 0, 0.024, 0, 'z', 22);
+    for (const z of [-0.03, 0.03]) disc(mg, 0.0192, 0.008, M.knurl, 0, 0.024, z, 'z', 22);
+    disc(mg, 0.0152, 0.002, M.lensDark, 0, 0.024, -0.0375, 'z', 22); disc(mg, 0.0152, 0.002, M.lensCoat, 0, 0.024, -0.0385, 'z', 22); disc(mg, 0.013, 0.002, M.lensDark, 0, 0.024, 0.0375, 'z', 22);
+    mk.box(0.026, 0.012, 0.04, 0, 0.002, 0, M.dark); mk.box(0.03, 0.006, 0.05, 0, -0.008, 0, M.dark); mk.box(0.004, 0.018, 0.008, 0.016, 0.004, 0.012, M.metal);   // flip mount + lever
+    k.box(0.003, 0.014, 0.02, 0.031, -0.015, 0.03, M.metal); disc(g, 0.004, 0.004, M.dark, 0.033, -0.015, 0.03, 'x', 10);                  // burst selector
+    disc(g, 0.007, 0.006, M.metal, -0.03, -0.01, 0.17, 'x', 14); disc(g, 0.004, 0.0065, M.grip, -0.03, -0.01, 0.17, 'x', 10);               // QD sling cup
   });
-  // Riot: a big drum magazine in front of the trigger (it's the part that comes off on reloads)
+  // Riot: a ribbed 8-shell drum (windowed so you see the brass), front plate with bolts, a winding key + latch,
+  // a neck block into the receiver, and a sling loop. The whole drum comes off on reloads.
   BUILD.riot = variant('riot', 'shotgun', (g, k, M) => {
-    const d = k.cyl(0.062, 0.07, 0, -0.1, -0.075, M.dark, 'x', 28), rim = k.cyl(0.064, 0.012, 0, -0.1, -0.075, M.metal, 'x', 28), hub = k.cyl(0.018, 0.074, 0, -0.1, -0.075, M.grip, 'x', 12);
-    const neck = k.box(0.03, 0.05, 0.05, 0, -0.045, -0.075, M.dark);
-    if (g.userData.mag) for (const m of [d, rim, hub, neck]) g.userData.mag.attach(m); else magGroup(g, [d, rim, hub, neck]);
+    const D = new THREE.Group(); D.position.set(0, -0.11, -0.075); D.scale.setScalar(1.12); g.add(D); const dk = kit(D);
+    disc(D, 0.062, 0.07, M.dark, 0, 0, 0, 'x', 32);
+    for (const x of [-0.03, -0.012, 0.012, 0.03]) disc(D, 0.0645, 0.005, M.metal, x, 0, 0, 'x', 32);                       // ribs
+    for (const sx of [-1, 1]) {
+      disc(D, 0.055, 0.004, M.grip, sx * 0.036, 0, 0, 'x', 32);                                                            // side plates
+      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; disc(D, 0.0035, 0.004, M.metal, sx * 0.039, Math.cos(a) * 0.046, Math.sin(a) * 0.046, 'x', 8); }   // bolts
+    }
+    for (const sx of [-1, 1]) for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + 0.2; disc(D, 0.0096, 0.004, M.brass, sx * 0.037, Math.cos(a) * 0.03, Math.sin(a) * 0.03, 'x', 12); disc(D, 0.0028, 0.0045, M.metal, sx * 0.0372, Math.cos(a) * 0.03, Math.sin(a) * 0.03, 'x', 8); }   // shell heads in the windows
+    disc(D, 0.012, 0.012, M.knurl, 0.044, 0, 0, 'x', 16); dk.box(0.004, 0.03, 0.006, 0.051, 0, 0, M.metal);                // winding key
+    dk.box(0.03, 0.05, 0.052, 0, 0.055, 0, M.dark); dk.box(0.034, 0.008, 0.056, 0, 0.034, 0, M.metal); dk.box(0.012, 0.012, 0.02, 0, 0.03, -0.035, M.metal);   // neck + latch
+    if (g.userData.mag) g.userData.mag.attach(D); else magGroup(g, [D]);
+    torus(g, 0.01, 0.0022, M.metal, 0.03, -0.02, 0.2, Math.PI / 2);                                                       // sling loop
   });
-  // Hornet: a folding wire stock behind the grip and a vertical foregrip under the suppressor
-  BUILD.mpistol = variant('mpistol', 'pistol', (g, k, M) => {
-    for (const x of [-0.014, 0.014]) k.cyl(0.0035, 0.15, x, -0.02, 0.105, M.metal, 'z', 8);
-    k.box(0.04, 0.085, 0.012, 0, -0.045, 0.18, M.grip); k.box(0.034, 0.012, 0.03, 0, 0.0, 0.17, M.dark);
-    k.box(0.026, 0.012, 0.042, 0, 0.012, -0.12, M.dark); k.box(0.022, 0.052, 0.022, 0, -0.018, -0.12, M.grip);
+  // Hornet: a folding wire stock (hinge block with a hex bolt, two rods, a ribbed rubber butt pad), a finger-grooved
+  // vertical foregrip on a rail clamp, and a laser module with a glowing emitter
+  BUILD.mpistol = variant('mpistol', 'pistol', (g, k, M, prof) => {
+    k.box(0.03, 0.026, 0.024, 0, -0.014, 0.048, M.dark); disc(g, 0.006, 0.032, M.metal, 0, -0.014, 0.048, 'x', 6);
+    for (const x of [-0.014, 0.014]) disc(g, 0.0034, 0.14, M.metal, x, -0.016, 0.125, 'z', 10);
+    prof([[0.19, 0.03], [0.205, 0.03], [0.208, -0.09], [0.19, -0.094], [0.186, -0.03]], 0.044, M.grip, 0.004);               // butt plate
+    for (let i = 0; i < 5; i++) k.box(0.046, 0.003, 0.004, 0, 0.018 - i * 0.024, 0.209, M.dark);                             // pad ribs
+    k.box(0.036, 0.012, 0.024, 0, -0.016, 0.188, M.dark);
+    k.box(0.026, 0.012, 0.042, 0, 0.012, -0.12, M.dark); for (const sx of [-1, 1]) k.box(0.003, 0.005, 0.01, sx * 0.0145, 0.012, -0.11, M.metal);
+    prof([[-0.132, 0.008], [-0.108, 0.008], [-0.108, -0.04], [-0.112, -0.046], [-0.13, -0.046], [-0.134, -0.04]], 0.024, M.grip, 0.004);
+    for (let i = 0; i < 3; i++) k.box(0.0255, 0.004, 0.006, 0, -0.006 - i * 0.013, -0.133, M.dark);                          // finger grooves
+    k.box(0.018, 0.014, 0.04, 0.02, 0.03, -0.12, M.dark); disc(g, 0.0035, 0.003, cache.mat.laser || (cache.mat.laser = new THREE.MeshBasicMaterial({ color: 0xff2236 })), 0.02, 0.03, -0.1415, 'z', 10);   // laser
   });
+  // v1.32.1 Pump Action: a fully procedural classic pump gun. Machined steel receiver with milled side panels, a
+  // shell in the ejection port, rail + ghost-ring sights, a perforated heat shield, breacher teeth, a knurled tube
+  // cap, a barrel clamp with a sling loop, a deep-grooved walnut pump on action bars, a 6-shell side-saddle, a
+  // checkered walnut pistol-grip stock with a ribbed recoil pad and a sling stud.
+  // deep oiled walnut: dark heartwood, flowing grain with darker streaks and a little figure, a satin sheen
+  const walnut = () => cache.mat.walnut || (cache.mat.walnut = new THREE.MeshPhongMaterial({ specular: 0x5a3a24, shininess: 55, envMap: envCube(), reflectivity: 0.07,
+    normalMap: NRM.scratch(), normalScale: new THREE.Vector2(0.25, 0.25),
+    map: canvasTex('walnut', (c, S) => { const R = BR.util.rng(4411); c.fillStyle = '#3e1f0f'; c.fillRect(0, 0, S, S);
+      for (let i = 0; i < 140; i++) { const y0 = R() * S, amp = 2 + R() * 6, f = 0.01 + R() * 0.02, ph = R() * 6, w = 0.6 + R() * 2.2;
+        c.strokeStyle = R() < 0.55 ? `rgba(${120 + R() * 40 | 0},${62 + R() * 22 | 0},${28 + R() * 12 | 0},${0.18 + R() * 0.3})` : `rgba(18,8,3,${0.2 + R() * 0.35})`; c.lineWidth = w;
+        c.beginPath(); for (let x = 0; x <= S; x += 6) { const y = y0 + Math.sin(x * f + ph) * amp + Math.sin(x * f * 3.1 + ph) * amp * 0.3; x ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
+      for (let i = 0; i < 9; i++) { const x = R() * S, y = R() * S, r = 10 + R() * 26, g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(20,9,3,0.45)'); g.addColorStop(1, 'rgba(20,9,3,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+      for (let i = 0; i < 900; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,220,180,0.05)' : 'rgba(0,0,0,0.12)'; c.fillRect(R() * S, R() * S, 1 + R() * 3, 1); } }, 512) }));
+  BUILD.pump = (g, S, M) => {
+    const k = kit(g), I = v => v, prof = profiler(g, I, I), BY = 0.05;
+    const std = S === cache.mat['default|' + BR.CONFIG.weapons.pump.color], wood = std ? walnut() : S;
+    prof([[-0.2, -0.008], [-0.2, 0.07], [-0.188, 0.082], [0.018, 0.082], [0.048, 0.07], [0.064, 0.042], [0.064, -0.008]], 0.052, S, 0.006);
+    for (const sx of [-1, 1]) prof([[-0.184, 0.006], [-0.184, 0.058], [-0.174, 0.066], [-0.03, 0.066], [-0.03, 0.006]], 0.0016, M.dark, 0.0004, sx * 0.0266);
+    k.box(0.003, 0.026, 0.07, 0.0272, 0.044, -0.085, M.grip); k.box(0.003, 0.018, 0.05, 0.0276, 0.044, -0.068, M.metal);
+    shellAt(g, M, 0.019, 0.045, -0.1, 'z', 0.04);
+    k.box(0.032, 0.003, 0.085, 0, -0.0095, -0.07, M.grip); k.box(0.024, 0.002, 0.06, 0, -0.0075, -0.07, M.metal);
+    for (const z of [-0.025, 0.035]) { disc(g, 0.0042, 0.056, M.metal, 0, 0.012, z, 'x', 10); for (const sx of [-1, 1]) disc(g, 0.0055, 0.0015, M.dark, sx * 0.028, 0.012, z, 'x', 10); }
+    k.box(0.005, 0.007, 0.018, -0.0275, 0.004, 0.047, M.metal); disc(g, 0.0045, 0.06, M.dark, 0, -0.0015, 0.052, 'x', 10);
+    k.box(0.022, 0.008, 0.17, 0, 0.0875, -0.075, M.dark); for (let i = 0; i < 9; i++) k.box(0.0245, 0.0045, 0.006, 0, 0.0925, -0.148 + i * 0.019, M.dark);
+    // barrel, crown with breacher teeth, heat shield with perforations, front post with a fibre bead
+    disc(g, 0.0145, 0.47, S, 0, BY, -0.435, 'z', 22); disc(g, 0.0162, 0.016, M.dark, 0, BY, -0.668, 'z', 22);
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4, t = k.box(0.006, 0.006, 0.014, Math.cos(a) * 0.0135, BY + Math.sin(a) * 0.0135, -0.682, M.dark); t.rotation.z = a; }
+    const hsm = cache.mat.hsDark || (cache.mat.hsDark = (() => { const m = M.dark.clone(); m.side = THREE.DoubleSide; return m; })());
+    const hs = new THREE.Mesh(new THREE.CylinderGeometry(0.0205, 0.0205, 0.3, 24, 1, true, Math.PI * 0.55, Math.PI * 0.9), hsm); hs.rotation.x = Math.PI / 2; hs.position.set(0, BY, -0.37); g.add(hs);
+    for (let i = 0; i < 9; i++) for (const a of [-0.55, 0, 0.55]) { const h = disc(g, 0.004, 0.003, M.grip, Math.sin(a) * 0.021, BY + Math.cos(a) * 0.021, -0.25 - i * 0.03, 'y', 10); h.rotation.z = -a; }
+    for (const z of [-0.226, -0.514]) disc(g, 0.0215, 0.008, M.dark, 0, BY, z, 'z', 22);
+    k.box(0.006, 0.022, 0.012, 0, 0.074, -0.648, M.dark);
+    const bead = new THREE.Mesh(new THREE.SphereGeometry(0.0042, 10, 8), cache.mat.sgBead || (cache.mat.sgBead = new THREE.MeshBasicMaterial({ color: 0x5dff6a }))); bead.position.set(0, 0.088, -0.648); g.add(bead);
+    // magazine tube + knurled cap, barrel clamp with a sling loop
+    disc(g, 0.0118, 0.42, M.dark, 0, 0.016, -0.41, 'z', 16); disc(g, 0.0134, 0.028, M.knurl, 0, 0.016, -0.634, 'z', 18); disc(g, 0.0095, 0.004, M.metal, 0, 0.016, -0.65, 'z', 16);
+    k.box(0.034, 0.056, 0.018, 0, 0.033, -0.59, M.dark); disc(g, 0.004, 0.038, M.metal, 0, 0.033, -0.59, 'x', 8); torus(g, 0.009, 0.0018, M.metal, 0, 0.004, -0.59, 0, Math.PI / 2);
+    // pump: walnut forend, deep grooves wrapping round, a finger stop at the front, on two action bars
+    const pump = new THREE.Group(); g.add(pump); const fe = profiler(pump, I, I);
+    fe([[-0.452, 0.006], [-0.458, -0.02, -0.44, -0.022], [-0.34, -0.014, -0.25, -0.018], [-0.232, -0.016, -0.23, -0.002], [-0.23, 0.03], [-0.232, 0.042, -0.246, 0.042], [-0.432, 0.042], [-0.452, 0.04, -0.452, 0.026]], 0.054, wood, 0.01);
+    for (let i = 0; i < 9; i++) { const z = -0.418 + i * 0.019; const r = new THREE.Mesh(new THREE.BoxGeometry(0.0545, 0.004, 0.005), M.grip); r.position.set(0, -0.0165, z); pump.add(r);
+      for (const sx of [-1, 1]) { const sr = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.034, 0.005), M.grip); sr.position.set(sx * 0.0275, 0.011, z); pump.add(sr); } }
+    for (const sx of [-1, 1]) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.008, 0.21), M.metal); bar.position.set(sx * 0.016, 0.004, -0.14); pump.add(bar); }
+    g.userData.pump = pump;
+    // trigger guard + curved trigger
+    prof([[-0.002, -0.008], [0.006, -0.008], [0.008, -0.03], [0.05, -0.032], [0.052, -0.008], [0.06, -0.008], [0.058, -0.042], [0.002, -0.04]], 0.012, M.dark, 0.0015);
+    prof([[0.022, -0.006], [0.028, -0.006], [0.031, -0.017], [0.027, -0.029], [0.022, -0.027], [0.025, -0.017]], 0.006, M.metal, 0.001);
+    // side-saddle: plate on the left of the receiver with 6 shells standing in it
+    k.box(0.004, 0.034, 0.12, -0.03, 0.034, -0.1, M.dark); k.box(0.006, 0.006, 0.12, -0.032, 0.054, -0.1, M.grip);
+    for (let i = 0; i < 6; i++) shellAt(g, M, -0.042, 0.03, -0.152 + i * 0.021, 'y', 0.046);
+    // walnut pistol-grip stock with checkering panels, a ribbed recoil pad, a sling stud
+    prof([[0.056, 0.062], [0.1, 0.054, 0.16, 0.038], [0.34, 0.028], [0.356, 0.028, 0.356, 0.012], [0.36, -0.118], [0.36, -0.132, 0.344, -0.132], [0.24, -0.1, 0.17, -0.058],
+      [0.15, -0.05, 0.142, -0.07], [0.136, -0.1, 0.112, -0.102], [0.094, -0.104, 0.088, -0.086], [0.082, -0.05, 0.07, -0.016], [0.062, -0.008, 0.056, -0.008]], 0.044, wood, 0.01);
+    for (const sx of [-1, 1]) { prof([[0.09, -0.022], [0.114, -0.03], [0.128, -0.084], [0.102, -0.088]], 0.0012, M.knurl, 0, sx * 0.0222); }
+    prof([[0.354, 0.03], [0.376, 0.03, 0.378, 0.016], [0.38, -0.126], [0.378, -0.136, 0.356, -0.136]], 0.048, M.grip, 0.004);
+    for (let i = 0; i < 6; i++) k.box(0.0495, 0.0025, 0.004, 0, 0.014 - i * 0.026, 0.3795, M.dark);
+    k.box(0.0485, 0.004, 0.003, 0, -0.05, 0.3555, M.metal);
+    for (const sx of [-1, 1]) { k.box(0.0006, 0.002, 0.15, sx * 0.0268, 0.072, -0.11, M.metal); k.box(0.0006, 0.002, 0.15, sx * 0.0268, 0.0, -0.11, M.metal); disc(g, 0.004, 0.0012, M.metal, sx * 0.0268, 0.036, 0.04, 'x', 10); }      // machined accent lines + takedown screw
+    torus(g, 0.009, 0.0018, M.metal, 0, -0.11, 0.29, 0, Math.PI / 2); disc(g, 0.004, 0.012, M.metal, 0, -0.1, 0.29, 'y', 8);
+    hands(g, [0, -0.06, 0.088], [0, -0.03, -0.33], null);
+    g.userData.port = new THREE.Vector3(0, -0.02, -0.07);
+    k.box(0.03, 0.018, 0.024, 0, 0.098, 0.008, M.dark);
+    irons(g, M, 0.116, 0.008, -0.648, true);
+    g.userData.sightDist = 0.26;
+    anchors(g, -0.69, BY, [-0.03, -0.02, 0.1]);
+  };
 
   // ------------------------------------------------------------------ charms
   function charm(id) {
@@ -2927,7 +3026,9 @@ BR.Models = (function () {
     ['riot', 'infernodrum', 'Inferno Drum', 'crown', 0x1a0806, 0x3a1208, 0xff7a00, 'Legendary', 1500, 'slam'],
     ['riot', 'toxicriot', 'Toxic Riot', 'toxic', 0x0a1a08, 0x2a3a20, 0x7dff3a, 'Mythic', 2300, 'orbit'],
     ['mpistol', 'venomsting', 'Venom Sting', 'toxic', 0x10200a, 0x7dff3a, 0x7dff3a, 'Legendary', 1300, 'orbit'],
-    ['mpistol', 'stardrive', 'Stardrive', 'nebula', 0x0c0a24, 0xffd36a, 0xb48cff, 'Mythic', 2200, 'warp']);
+    ['mpistol', 'stardrive', 'Stardrive', 'nebula', 0x0c0a24, 0xffd36a, 0xb48cff, 'Mythic', 2200, 'warp'],
+    ['pump', 'goldrush', 'Gold Rush', 'crown', 0x1a0e04, 0x3a2208, 0xffc83a, 'Legendary', 1500, 'slam'],
+    ['pump', 'frostbark', 'Frostbark', 'nebula', 0x0e1a26, 0xdff6ff, 0x6fd8ff, 'Mythic', 2300, 'orbit']);
   const S2BP = {};
   for (const [w, id, name, theme, body, accent, glow, rarity, price, reload] of S2) {
     const e = { name, rarity, body, bodyGloss: 2, accent, accentGloss: 2, glow, mod: S2THEME[theme], reload: { style: reload, fx: glow }, season: 2 };
@@ -3242,6 +3343,7 @@ BR.Models = (function () {
   BLUEPRINTS.butterfly = BLUEPRINTS.butterfly || {}; BLUEPRINTS.revolver = BLUEPRINTS.revolver || {};
   for (const [w, set] of Object.entries({ burst: [['midnight', 'Midnight', 'Rare', 0x14161c, 0x2f5aa8, 0x6fa8ff, 450], ['carbontalon', 'Carbon Talon', 'Epic', 0x1a1c20, 0xff7a00, 0xffb066, 750]],
     riot: [['bulldog', 'Bulldog', 'Rare', 0x3a2c22, 0x8a6a4a, 0xd8b88a, 450], ['hexdrum', 'Hex Drum', 'Epic', 0x101418, 0x39ff88, 0x9dffcf, 750]],
+    pump: [['ranchhand', 'Ranch Hand', 'Rare', 0x2a2c30, 0x6b3a1c, 0xd8a060, 450], ['blackout', 'Blackout', 'Epic', 0x0e0f12, 0xc8102e, 0xff4a5a, 750]],
     mpistol: [['wasp', 'Wasp', 'Rare', 0x1a1a10, 0xffd24a, 0xffe08a, 400], ['frostbyte', 'Frostbyte', 'Epic', 0x0e1a26, 0x6fd8ff, 0xdff6ff, 700]] }))
     for (const [id, name, rarity, body, accent, glow, price] of set) (BLUEPRINTS[w] = BLUEPRINTS[w] || {})[id] = { name, rarity, body, accent, glow, price };
   // v1.32 Common / Uncommon blueprints for every weapon: honest painted finishes (no glow, no add-ons), plus a Street Case pair

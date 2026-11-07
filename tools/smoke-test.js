@@ -934,7 +934,7 @@ const server = http.createServer((req, res) => {
       v.selected = g.settings.mode === 'aim' && /AIM TRAINER/.test(document.getElementById('mc-name').textContent);
       document.getElementById('btn-go').click(); v.goAim = g.mode instanceof BR.AimTrainer;
       g.toMenu(); BR.selectMode('br');
-      document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 10 && /* (v1.32: + Talon Burst, Riot Auto) */ !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
+      document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 11 && /* (v1.32: + Talon Burst, Riot Auto, Pump Action) */ !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
       out.v111 = v; }
     // v1.11.1: straight wrist, aim trainer infinite ammo, no frozen sparks in freefall, Ironreef for Resurgence
     { const v = {}, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
@@ -1416,6 +1416,16 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v1321 = await page.evaluate(() => {
+    const M = BR.Models, out = {}, count = m => { let n = 0; m.traverse(o => { if (o.isMesh) n++; }); return n; };
+    const pm = M.weapon('pump', 'default', 'none', null);
+    out.pump = !!pm.userData.pump && !!pm.userData.port && !!pm.userData.sight && !!pm.userData.muzzle && BR.CONFIG.weapons.pump.pump && BR.CONFIG.weapons.pump.shellReload;
+    out.detail = count(pm) > 120;
+    let wood = false; pm.traverse(o => { if (o.isMesh && o.material === (pm.userData.walnut || o.material) && o.material.map && o.material.map.image && o.material.map.image.width === 512) wood = true; }); out.wood = wood;
+    out.loot = BR.CONFIG.loot.tables.every(t => t.pump) && Object.values(M.BLUEPRINTS.pump).some(b => b.rarity === 'Mythic');
+    out.variants = count(M.weapon('riot', 'default', 'none', null)) > count(M.weapon('shotgun', 'default', 'none', null)) + 40 && count(M.weapon('burst', 'default', 'none', null)) > count(M.weapon('holoar', 'default', 'none', null)) + 12;
+    return out;
+  });
   const v132 = await page.evaluate(async () => {
     const g = BR.game, M = BR.Models, out = {};
     // Common + Uncommon in every cosmetic table, the Street Case, price-based tiers for older items
@@ -1725,6 +1735,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.32.1 Pump Action: detailed procedural pump gun (racking pump, shell port, walnut), in the loot + blueprints; richer Talon / Riot parts', Object.values(v1321).every(Boolean), v1321],
     ['v1.32 Common/Uncommon cosmetics + Street Case, camos map onto every gun, 3 new guns (burst fires 3 per tap), living Legendary+ blueprints, near-miss / shield-break / low-ammo audio, shader warm-up', Object.values(v132).every(Boolean), v132],
     ['v1.31 guns: matte textured finish; knives higher on desktop only; one damage number per shotgun pellet, adding up to the damage', [v131.matte, v131.desk, v131.pellets, v131.inPlace].every(Boolean), v131],
     ['v1.30.1 saves: friends, requests, challenges, mastery and keys survive a profile reload', Object.values(v1301).every(Boolean), v1301],
@@ -1907,7 +1918,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.32.1', date: '2026-11-07', title: 'Pump Action shotgun + detailed new guns', notes: [
+    'New gun: the PUMP ACTION. A classic tube-fed pump shotgun: a tight cone of 8 heavy pellets, rack the pump after every shot, and load shell by shell (fire to cancel). Hits harder than the Breacher up close but reaches less far. It drops in Battle Royale and is in the shop, loadouts, Duels, the Zombies Mystery Box (as the Undertaker when Pack-a-Punched) and the Aim Trainer.',
+    'The Pump Action is fully detailed: a machined steel receiver with milled side panels and a shell sitting in the ejection port, a top rail with ghost-ring sights, a perforated heat shield, breacher teeth on the muzzle, a knurled magazine cap, a barrel clamp with a sling loop, a grooved oiled-walnut pump on action bars, a 6-shell side-saddle, and a checkered walnut pistol-grip stock with a ribbed recoil pad.',
+    'Pump Action blueprints: Gold Rush (Legendary), Frostbark (Mythic), Ranch Hand (Rare) and Blackout (Epic), plus the Common and Uncommon finishes.',
+    'The other new guns got much more detail. Talon Burst: a ribbed angled foregrip on a rail clamp, a flip-to-side 3x magnifier with knurled rings and coated glass, a burst selector and a sling cup. Riot Auto: a bigger ribbed drum with bolted side plates, windows showing the shell heads, a winding key and a latch. Hornet: a hinged folding stock with a ribbed butt pad, a finger-grooved foregrip and a laser module.',
+  ] },
   { v: '1.32.0', date: '2026-11-07', title: 'New guns, Common + Uncommon cosmetics, living blueprints, better gunfights', notes: [
     'Three new guns. TALON BURST: a 3-round burst rifle with a holo sight, angled foregrip and magnifier; each tap fires a full burst. RIOT AUTO: a semi-auto shotgun with an 8-shell drum; smaller blasts than the Breacher, but as fast as you can tap. HORNET: a full-auto machine pistol for your secondary slot, with a folding stock and foregrip. All three drop in Battle Royale, can be picked in Duels and loadouts, sit in the Zombies Mystery Box and Aim Trainer, and get their own sounds.',
     'New blueprints for the new guns: Neon Talon, Inferno Drum, Toxic Riot, Venom Sting and Stardrive, plus Rare and Epic finishes.',

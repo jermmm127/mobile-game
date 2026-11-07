@@ -490,7 +490,7 @@
   });
 
   // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts
-  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'burst', 'smg', 'lmg', 'shotgun', 'riot', 'dmr', 'sniper', 'hunter', 'revolver', 'pistol', 'mpistol'];
+  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'burst', 'smg', 'lmg', 'shotgun', 'riot', 'pump', 'dmr', 'sniper', 'hunter', 'revolver', 'pistol', 'mpistol'];
   let dmMode = 'setup', dmTimer = null;
   const dmSeg = (id, key, num) => {
     const el = $(id), sync = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', String(DS[key]) === b.dataset.v));
@@ -702,7 +702,7 @@
   renderLobby();
 
   // ---- v1.11: loadout editor
-  const LO_P = ['rifle', 'holoar', 'burst', 'smg', 'lmg', 'shotgun', 'riot', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
+  const LO_P = ['rifle', 'holoar', 'burst', 'smg', 'lmg', 'shotgun', 'riot', 'pump', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
   const renderLoadout = () => {
     const L = BR.Profile.loadoutGuns();
     $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');

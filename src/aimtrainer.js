@@ -15,7 +15,7 @@
     tracking: { name: 'TRACKING', dur: 45, gun: 'smg',    desc: 'Stay on a runner that strafes, stops, jumps and slides like a real player.' },
     strafe:   { name: 'STRAFE',   dur: 60, gun: 'rifle',  desc: '4 strafing dummies, 150 HP. Headshots score double.' },
   };
-  const GUNS = ['pistol', 'mpistol', 'revolver', 'smg', 'rifle', 'holoar', 'burst', 'lmg', 'dmr', 'hunter', 'sniper', 'shotgun', 'riot'];
+  const GUNS = ['pistol', 'mpistol', 'revolver', 'smg', 'rifle', 'holoar', 'burst', 'lmg', 'dmr', 'hunter', 'sniper', 'shotgun', 'riot', 'pump'];
   const KEY = 'surge.aimtrainer';
   const store = () => Object.assign({ drill: 'gridshot', gun: null, best: {} }, BR.util.load(KEY, {}));
   const save = d => BR.util.save(KEY, d);

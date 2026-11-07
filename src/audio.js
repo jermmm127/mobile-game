@@ -109,6 +109,7 @@ BR.Audio = {
     hunter:   { vol: 0.92, crack: 5000, body: 75,  bodyDur: 0.2,  boom: 0.48, lp0: 5600, lp1: 420, tail: 0.65, mech: 0 },
     burst:    { vol: 0.64, crack: 5900, body: 125, bodyDur: 0.09, boom: 0.18, lp0: 7000, lp1: 760, tail: 0.36, mech: 3200 },
     riot:     { vol: 0.85, crack: 3900, body: 80,  bodyDur: 0.16, boom: 0.34, lp0: 5000, lp1: 420, tail: 0.5, mech: 2400 },
+    pump:     { vol: 1.0,  crack: 3400, body: 64,  bodyDur: 0.22, boom: 0.46, lp0: 4600, lp1: 340, tail: 0.66, mech: 0 },
     mpistol:  { vol: 0.48, crack: 6400, body: 180, bodyDur: 0.05, boom: 0.08, lp0: 7800, lp1: 1300, tail: 0.2, mech: 4000 },
   },
   shot(id, dist, pan, suppressed) {

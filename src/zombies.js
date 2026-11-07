@@ -15,7 +15,7 @@
   const ZC = {
     startPoints: 500, hitPts: 10, killPts: 60, headPts: 100, knifePts: 130,
     maxAlive: 18, regenDelay: 4, regenRate: 34, powerChance: 0.04, maxPowers: 3,
-    buys: { smg: 600, shotgun: 900, rifle: 1200, holoar: 1300, dmr: 1400, lmg: 1800, mpistol: 500, riot: 1100, burst: 1250 },
+    buys: { smg: 600, shotgun: 900, rifle: 1200, holoar: 1300, dmr: 1400, lmg: 1800, mpistol: 500, riot: 1100, burst: 1250, pump: 800 },
     bossEvery: 10,
   };
   BR.ZOMBIE_CFG = ZC;
@@ -1050,7 +1050,7 @@
       b.grp.position.set(s.x, this.g.world.groundAt(s.x, s.z, 3), s.z); b.grp.rotation.y = s.yaw || 0; b.grp.visible = true;
       this.g.fx.burst(b.grp.position.clone().setY(b.grp.position.y + 1), [0x7fd8ff, 0xffffff], 40, 8, 0.1, 1, 0);
     },
-    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr', 'burst', 'riot', 'mpistol', 'burst', 'riot']; },
+    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr', 'burst', 'riot', 'mpistol', 'burst', 'riot', 'pump', 'pump']; },
     updateBox(dt) {
       const b = this.box; if (!b) return; b.t += dt;
       b.beam.material.opacity = 0.16 + 0.06 * Math.sin(this.tAll * 2); b.beam.rotation.y += dt * 0.4;
@@ -1108,7 +1108,7 @@
         if (P.busy <= 0) { while (P.show.children.length) P.show.remove(P.show.children[0]); } }
     },
     papWeapon(w) {
-      const NAMES = { smg: 'Spectral Chopper', shotgun: 'Grave Digger', rifle: 'Reaper\'s Toll', holoar: 'Phantom Lance', dmr: 'Witch\'s Eye', lmg: 'Harvest Moon', sniper: 'Raven\'s Gaze', hunter: 'Bone Splitter', revolver: 'Hex Six', pistol: 'Lantern of Souls', burst: 'Triple Hex', riot: 'Coffin Drum', mpistol: 'Wasp Nest' };
+      const NAMES = { smg: 'Spectral Chopper', shotgun: 'Grave Digger', rifle: 'Reaper\'s Toll', holoar: 'Phantom Lance', dmr: 'Witch\'s Eye', lmg: 'Harvest Moon', sniper: 'Raven\'s Gaze', hunter: 'Bone Splitter', revolver: 'Hex Six', pistol: 'Lantern of Souls', burst: 'Triple Hex', riot: 'Coffin Drum', mpistol: 'Wasp Nest', pump: 'Undertaker' };
       const d = w.def;
       w.def = Object.assign({}, d, { name: NAMES[w.id] || d.name + ' Mk II', dmg: d.dmg * 2.2, mag: Math.round(d.mag * 1.5), reload: d.reload * 0.85, recoil: d.recoil * 0.8, pap: true, tier: 3 });
       w.mag = w.def.mag; this.g.player.ammo[d.ammo] = BR.CONFIG.ammoCap[d.ammo];
