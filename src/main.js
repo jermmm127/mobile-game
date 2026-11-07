@@ -490,7 +490,7 @@
   });
 
   // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts
-  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'sniper', 'hunter', 'revolver', 'pistol'];
+  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'burst', 'smg', 'lmg', 'shotgun', 'riot', 'dmr', 'sniper', 'hunter', 'revolver', 'pistol', 'mpistol'];
   let dmMode = 'setup', dmTimer = null;
   const dmSeg = (id, key, num) => {
     const el = $(id), sync = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', String(DS[key]) === b.dataset.v));
@@ -533,7 +533,7 @@
     game.hud.show('duelmenu', true);
   };
   // ---- Release Case: CS-style reel that decelerates onto the drop
-  const RCOL = { Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
+  const RCOL = BR.COS_RARITY;
   const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask', hats: 'Hat' };
   const caseCard = (e, extra) => {
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
@@ -547,10 +547,10 @@
   let caseBusy = false, lastDrop = null, curCase = 'release';
   const caseRefresh = () => {
     $('cs-coins').textContent = BR.Profile.coinsLabel();
-    const all = BR.CaseItems.all(curCase), C = BR.CASES[curCase], order = ['Exotic', 'Mythic', 'Legendary', 'Epic', 'Rare'];
+    const all = BR.CaseItems.all(curCase), C = BR.CASES[curCase], order = BR.COS_ORDER;
     $('cs-odds').innerHTML = order.filter(t => C.odds[t]).map(t => `<span style="--rc:${RCOL[t]}"><b>${t}</b> ${C.odds[t]}%</span>`).join('');
     $('cs-title').textContent = C.name.toUpperCase(); $('cs-label').textContent = C.label; $('cs-sub').textContent = C.sub; $('cs-price').textContent = BR.Profile.keys(curCase) > 0 ? 'FREE KEY ×' + BR.Profile.keys(curCase) : C.price;
-    $('cs-case').classList.toggle('nova', curCase === 'nova');
+    $('cs-case').classList.toggle('nova', curCase === 'nova'); $('cs-case').classList.toggle('street', curCase === 'street');
     document.querySelectorAll('#cs-pick button').forEach(b => b.classList.toggle('sel', b.dataset.c === curCase));
     $('cs-grid').innerHTML = order.flatMap(t => all.filter(e => e.item.rarity === t)).map(e => caseCard(e, BR.Profile.owns(e.cat, e.id) ? ' owned' : '')).join('');
   };
@@ -702,7 +702,7 @@
   renderLobby();
 
   // ---- v1.11: loadout editor
-  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
+  const LO_P = ['rifle', 'holoar', 'burst', 'smg', 'lmg', 'shotgun', 'riot', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
   const renderLoadout = () => {
     const L = BR.Profile.loadoutGuns();
     $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');

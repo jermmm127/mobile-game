@@ -703,7 +703,7 @@ BR.HUD = class HUD {
   <div class="panel metal wide cases-panel">
     <button id="cs-x" class="xbtn" aria-label="Close">✕</button>
     <div class="cs-head"><div class="ptitle" id="cs-title">RELEASE CASE</div><div class="coins-pill"><i class="coin"></i><span id="cs-coins" class="num">0</span></div></div>
-    <div class="seg cs-pick" id="cs-pick"><button data-c="release" class="sel">RELEASE · S1</button><button data-c="nova">NOVA · S2 <em>NEW</em></button></div>
+    <div class="seg cs-pick" id="cs-pick"><button data-c="release" class="sel">RELEASE · S1</button><button data-c="nova">NOVA · S2</button><button data-c="street">STREET <em>NEW</em></button></div>
     <div class="cs-stage">
       <div class="cs-case" id="cs-case"><div class="cs-lid"></div><div class="cs-body"><b id="cs-label">RELEASE</b><span id="cs-sub">CASE · SEASON 1</span></div><i class="cs-shine"></i></div>
       <div class="cs-reel hidden" id="cs-reel"><div class="cs-strip" id="cs-strip"></div><i class="cs-mark"></i></div>

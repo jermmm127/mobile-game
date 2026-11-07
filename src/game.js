@@ -1154,6 +1154,11 @@ BR.Game = class Game {
     const died = victim.takeDamage(dmg);
     if (this.zm && attacker && attacker.isPlayer && victim.zombie) this.zm.onHit(victim, dmg, head);
     const shieldHit = shieldBefore > 0;
+    if (shieldBefore > 0 && victim.shield <= 0 && (attacker === this.player || victim === this.player)) {        // v1.32: the shield shatters
+      BR.Audio.shieldBreak(victim === this.player);
+      if (victim !== this.player && this.fx.burst) this.fx.burst(new THREE.Vector3(at.x, at.y, at.z), [0x6fc8ff, 0xdff4ff, 0xffffff], 22, 6.5, 0.06, 0.55);
+      if (victim !== this.player && this.hud.tech) this.hud.tech('SHIELD BROKEN');
+    }
     if (attacker) attacker.damageDealt += dmg;
     victim.lastAttacker = attacker;
     victim.lastHurtT = this.time;
@@ -1248,7 +1253,17 @@ BR.Game = class Game {
     if (BR.Squads.on(this)) BR.Squads.onDeath(this, victim);
   }
 
+  // v1.32: an enemy round passing within ~2 m of your head (and not hitting you) snaps past with a whizz
+  nearMiss(from, to, shooter) {
+    const p = this.player; if (!p || !p.alive || shooter === p) return;
+    const e = this.camera.position, dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, L2 = dx * dx + dy * dy + dz * dz; if (L2 < 1) return;
+    const k = Math.max(0, Math.min(1, ((e.x - from.x) * dx + (e.y - from.y) * dy + (e.z - from.z) * dz) / L2));
+    if (k <= 0.02 || k >= 0.995) return;                                   // (behind the shooter, or the round stopped short of you)
+    const cx = from.x + dx * k - e.x, cy = from.y + dy * k - e.y, cz = from.z + dz * k - e.z, d = Math.hypot(cx, cy, cz);
+    if (d < 2.2 && d > 0.25) BR.Audio.whiz(Math.max(-1, Math.min(1, (cx * Math.cos(p.yaw) - cz * Math.sin(p.yaw)) / d)));
+  }
   onShot(actor, w) {
+    if (actor.isPlayer && !w.def.melee && w.def.mag >= 6 && w.mag <= Math.ceil(w.def.mag * 0.25)) BR.Audio.lowAmmo(w.mag / w.def.mag);
     // your shots light up the surroundings for a split second
     if (actor.isPlayer && this.muzzleLight && !w.def.melee && !w.def.suppressed) {
       this.muzzleLight.position.copy(this.camera.position).addScaledVector(this.camera.getWorldDirection(this._mlv || (this._mlv = new THREE.Vector3())), 1.2);
@@ -1399,7 +1414,7 @@ BR.Game = class Game {
     }
     const wid = p.weapon || 'holoar';
     const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
-    const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'bayonet' ? 3.3 : wid === 'tracker' ? 3.0 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'launcher' ? 1.8 : wid === 'revolver' ? 2.4 : 1.6;
+    const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'bayonet' ? 3.3 : wid === 'tracker' ? 3.0 : wid === 'pistol' || wid === 'mpistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'launcher' ? 1.8 : wid === 'revolver' ? 2.4 : 1.6;
     g.scale.setScalar(sc);
     g.rotation.y = Math.PI / 2;
     g.position.set(0, wid === 'knife' ? 0.05 : -0.05, -0.15);
@@ -1537,6 +1552,9 @@ BR.Game = class Game {
     if (this.state === 'menu' && !this.scene) return;            // v1.18 light menu: nothing 3D to draw
     BR.Models.tick(performance.now() / 1000);       // animated camo / glove textures
     const r = this.renderer;
+    // v1.32: compile every shader in a new match up front (muzzle flashes, impacts, effects, skins), so the first shot,
+    // explosion or kill no longer hitches while the GPU compiles mid-fight
+    if (this.scene && this._warmed !== this.scene) { this._warmed = this.scene; try { r.compile(this.scene, this.camera); if (this.vmr && this.vmr.scene) r.compile(this.vmr.scene, this.vmr.camera); } catch (e) { /* older browsers: compile on first use */ } }
     r.clear();
     if (this.state === 'shop') { r.render(this.shopScene, this.shopCam); return; }
     if (!this.scene) return;

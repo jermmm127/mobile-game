@@ -78,6 +78,15 @@ BR.FINISHERS = {
 //   mask:   base knit colour, pat (+ c2 / c3), eyes 'glow' (+ eyeCol), trim, glow, add = visor / goggles / horns / halo / crown / antenna
 BR.OUTFITS = {
   default:   { name: 'Operator', price: 0, desc: 'Team-colour jacket' },
+  // v1.32 Common / Uncommon
+  tracksuit: { name: 'Tracksuit', price: 150, rarity: 'Common', jacket: 0x2a2f3a, pants: 0x2a2f3a, boots: 0xe8e8e8, gloves: 0x1a1b1e },
+  fieldolive:{ name: 'Field Olive', price: 150, rarity: 'Common', jacket: 0x4a5530, pants: 0x3a3f2a, boots: 0x231c14, gloves: 0x2b3020 },
+  navyops:   { name: 'Navy Ops', price: 180, rarity: 'Common', jacket: 0x22304a, pants: 0x161c2a, boots: 0x0e1016, gloves: 0x161c2a },
+  sandcamo:  { name: 'Sand Camo', price: 320, rarity: 'Uncommon', jacket: 0xffffff, pants: 0x9a8566, boots: 0x5a4430, gloves: 0x6b5a44, pat: 'camo', cols: [0xd8c39a, 0xb49a6a, 0x8a7250, 0xeee0bc] },
+  urbandigi: { name: 'Urban Digital', price: 340, rarity: 'Uncommon', jacket: 0xffffff, pants: 0x3a3f46, boots: 0x1c1d20, gloves: 0x2a2d33, pat: 'digital', cols: [0x7a828b, 0x4b525a, 0xb3bac1, 0x2a2e33] },
+  denim:     { name: 'Denim', caseOnly: true, case: 'street', rarity: 'Common', jacket: 0x3a5a8a, pants: 0x24385a, boots: 0x3a2418, gloves: 0x1a1b1e },
+  hivis:     { name: 'Hi-Vis Crew', caseOnly: true, case: 'street', rarity: 'Uncommon', jacket: 0xd7ff2a, pants: 0x2a2d33, boots: 0x1a1a1a, gloves: 0x2a2d33, glowPat: 'seams', glow: 0xf2f2f2 },
+  graffiti:  { name: 'Graffiti', caseOnly: true, case: 'street', rarity: 'Epic', jacket: 0xffffff, pants: 0x16181c, boots: 0xff3d7f, gloves: 0x16181c, pat: 'splatter', cols: [0x16181c, 0xff3d7f, 0x1de9ff] },
   urban:     { name: 'Urban Grey', price: 500, rarity: 'Rare', jacket: 0x5d636b, pants: 0x2b2e33, boots: 0x1c1d20, gloves: 0x1a1b1e },
   crimson:   { name: 'Crimson', price: 700, rarity: 'Rare', jacket: 0xb3202c, pants: 0x1e1f24, boots: 0x141416, gloves: 0x141416 },
   desert:    { name: 'Desert Ops', price: 800, rarity: 'Epic', jacket: 0xffffff, pants: 0x9a8566, boots: 0x5a4430, gloves: 0x6b5a44, pat: 'camo', cols: [0xc9b48a, 0xa58a5e, 0x7c6444, 0xe0d2ac] },
@@ -104,6 +113,15 @@ BR.OUTFITS = {
 };
 BR.MASKS = {
   default:   { name: 'Black Knit', price: 0 },
+  // v1.32 Common / Uncommon
+  tanknit:   { name: 'Tan Knit', price: 120, rarity: 'Common', base: 0xa48a62 },
+  whiteknit: { name: 'White Knit', price: 120, rarity: 'Common', base: 0xdedfe0 },
+  navyknit:  { name: 'Navy Knit', price: 140, rarity: 'Common', base: 0x22304a },
+  camoknit:  { name: 'Digital Camo', price: 280, rarity: 'Uncommon', base: 0x4f5a34, pat: 'digital', c2: 0x2c3420, c3: 0x6e6a44 },
+  stripeknit:{ name: 'Racer', price: 300, rarity: 'Uncommon', base: 0x1c1e22, trim: 0xc8102e },
+  redknit:   { name: 'Red Knit', caseOnly: true, case: 'street', rarity: 'Common', base: 0x8a1a22 },
+  splatm:    { name: 'Splatter', caseOnly: true, case: 'street', rarity: 'Uncommon', base: 0x16181c, pat: 'splatter', c2: 0xff3d7f, c3: 0x1de9ff },
+  wildm:     { name: 'Wildcat', caseOnly: true, case: 'street', rarity: 'Rare', base: 0xff7a00, pat: 'tiger', c2: 0x111111 },
   charcoal:  { name: 'Charcoal', price: 300, rarity: 'Rare', base: 0x45484e },
   olive:     { name: 'Olive Drab', price: 300, rarity: 'Rare', base: 0x3f4a2c },
   tigerm:    { name: 'Tiger Stripe', price: 700, rarity: 'Epic', base: 0xe8801f, pat: 'tiger', c2: 0x141414 },
@@ -127,6 +145,15 @@ BR.MASKS = {
 // ---- v1.27 HATS: worn over the mask. kind = the model (actors.js buildHat), c1 / c2 / glow = its colours. Some animate.
 BR.HATS = {
   default:   { name: 'No Hat', price: 0 },
+  // v1.32 Common / Uncommon
+  greybeanie:{ name: 'Grey Beanie', price: 120, rarity: 'Common', kind: 'beanie', c1: 0x6a7078, c2: 0x6a7078 },
+  blackcap:  { name: 'Black Cap', price: 120, rarity: 'Common', kind: 'cap', c1: 0x17181b, c2: 0x17181b },
+  olivebucket:{ name: 'Olive Bucket', price: 150, rarity: 'Common', kind: 'bucket', c1: 0x4a5530, c2: 0x3a4226 },
+  bluebandana:{ name: 'Blue Bandana', price: 240, rarity: 'Uncommon', kind: 'bandana', c1: 0x2453c8 },
+  camobucket:{ name: 'Camo Bucket', price: 280, rarity: 'Uncommon', kind: 'bucket', c1: 0x6e6a44, c2: 0x2c3420 },
+  orangebeanie:{ name: 'Hunter Beanie', caseOnly: true, case: 'street', rarity: 'Common', kind: 'beanie', c1: 0xff6a00, c2: 0xff6a00 },
+  whitecap:  { name: 'Reverse Cap', caseOnly: true, case: 'street', rarity: 'Uncommon', kind: 'backcap', c1: 0xf2f2f2, c2: 0xc8102e, glow: 0xffffff },
+  st_cone:   { name: 'Street Cone', caseOnly: true, case: 'street', rarity: 'Rare', kind: 'cone', c1: 0x1de9ff },
   bandana:   { name: 'Red Bandana', price: 300, rarity: 'Rare', kind: 'bandana', c1: 0xc8102e },
   beanie:    { name: 'Pom Beanie', price: 400, rarity: 'Rare', kind: 'beanie', c1: 0xff7a00, c2: 0xfff2d6 },
   snapback:  { name: 'Snapback', price: 450, rarity: 'Rare', kind: 'cap', c1: 0x1d6bff, c2: 0xffd24a },
@@ -155,6 +182,8 @@ BR.CASES = {
   release: { name: 'Release Case', price: 600, odds: { Rare: 52, Epic: 28, Legendary: 13, Mythic: 6, Exotic: 1 }, dupRefund: 0.35, label: 'RELEASE', sub: 'CASE · SEASON 1' },
   // Season 2: only Legendary and up. Every drop is animated.
   nova: { name: 'Nova Case', price: 900, odds: { Legendary: 58, Mythic: 34, Exotic: 8 }, dupRefund: 0.4, label: 'NOVA', sub: 'CASE · SEASON 2' },
+  // v1.32: a cheap starter case, mostly Common + Uncommon with a shot at Rare, Epic and one Legendary
+  street: { name: 'Street Case', price: 250, odds: { Common: 44, Uncommon: 33, Rare: 15, Epic: 7, Legendary: 1 }, dupRefund: 0.3, label: 'STREET', sub: 'CASE · STARTER' },
 };
 BR.CaseItems = {
   // every caseOnly item across the cosmetic tables: [{cat, id, item}]
@@ -499,8 +528,11 @@ BR.CHAR_TABLES = { outfits: () => BR.OUTFITS, masks: () => BR.MASKS, hats: () =>
 // the look shown in the preview: what you wear, with the selected outfit / mask swapped in
 BR.lookPreview = (cat, id) => { const L = Object.assign({}, BR.Profile.charLook()); if (id) L[cat === 'outfits' ? 'o' : cat === 'hats' ? 'h' : 'm'] = id; L.focus = cat === 'outfits' ? 'body' : cat === 'hats' ? 'hat' : 'head'; const G = BR.Profile.loadoutGuns(); L.wid = G.primary; L.skin = BR.Profile.skinFor(G.primary); L.bp = (BR.Profile.data.equip.blueprints || {})[G.primary] || null; return L; };
 BR.MELEE = { bayonet: true, knife: true, butterfly: true, tracker: true };
-const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['launcher', 'Shockwave Launcher'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker']];
-const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
+const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['launcher', 'Shockwave Launcher'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker'], ['burst', 'Talon Burst'], ['riot', 'Riot Auto'], ['mpistol', 'Hornet']];
+const RARITY = BR.COS_RARITY = { Base: '#8d97a5', Common: '#b9c0c8', Uncommon: '#5fd35f', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
+BR.COS_ORDER = ['Exotic', 'Mythic', 'Legendary', 'Epic', 'Rare', 'Uncommon', 'Common'];
+// v1.32: older shop items had no tier; give them one from their price so every item shows where it sits
+BR.cosRarity = it => !it ? null : it.rarity || (it.price > 0 ? (it.price <= 200 ? 'Common' : it.price <= 450 ? 'Uncommon' : it.price <= 700 ? 'Rare' : 'Epic') : null);
 
 // ---- v1.26: a posed character (the in-game model) wearing a look and holding a gun: shop/inventory preview + item icons
 BR.charFigure = (look, wid, skin, bp) => {
@@ -689,7 +721,7 @@ BR.Shop = class Shop {
     const html = [];
     for (const id in items) {
       const it = items[id], own = P.owns(cat, id), eq = P.isEquipped(cat, id, this.weapon);
-      const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
+      const rr = BR.cosRarity(it), rar = rr ? `<span class="rar" style="--r:${RARITY[rr] || '#8d97a5'}">${rr}</span>` : '';
       html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : it.mastery ? 'Mastery · ' + it.mastery + ' kills' : it.grind ? '🔒 ' + P.grindProgress(it).map(n => n.toLocaleString()).join(' / ') : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : '<i class="coin"></i>' + it.price}</span></button>`);
     }
     this.el.grid.innerHTML = html.join('');
@@ -840,7 +872,7 @@ BR.Inventory = class Inventory {
     const html = [];
     for (const id in items) {
       const it = items[id], eq = P.isEquipped(cat, id, this.weapon);
-      const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
+      const rr = BR.cosRarity(it), rar = rr ? `<span class="rar" style="--r:${RARITY[rr] || '#8d97a5'}">${rr}</span>` : '';
       const cls = it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : '';
       this.shop.weapon = this.weapon;
       html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${cls}" data-id="${id}">${this.shop.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? '✓ Equipped' : it.caseOnly ? 'Case drop' : 'Owned'}</span></button>`);
@@ -849,7 +881,7 @@ BR.Inventory = class Inventory {
     const it = items[this.sel];
     this.el.name.textContent = it ? it.name : '';
     this.el.rar.textContent = it && it.rarity ? it.rarity.toUpperCase() : '';
-    this.el.rar.style.color = it && it.rarity ? RARITY[it.rarity] : '';
+    this.el.rar.style.color = it && BR.cosRarity(it) ? RARITY[BR.cosRarity(it)] : '';
     this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : cat === 'outfits' ? 'Character outfit' + (it.grind && P.owns(cat, this.sel) ? ' · mastery' : '') : cat === 'masks' ? 'Character mask' : cat === 'hats' ? 'Character hat' : cat === 'finishers' ? 'Kill finisher' : 'Kill feed banner';
     const eq = it && P.isEquipped(cat, this.sel, this.weapon);
     this.el.action.textContent = !it ? '' : eq ? 'Equipped' : 'Equip';

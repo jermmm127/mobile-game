@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.31.0',
+  version: '1.32.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -178,14 +178,21 @@ BR.CONFIG = {
     // fire at your feet to rocket-jump). Shares shells with the Breacher.
     launcher: { name: 'Shockwave Launcher', ammo: 'shells', dmg: 0, pellets: 1, rpm: 80, mag: 4, reload: 2.9, spread: 0.008, ads: 0.6, bloom: 0, bloomMax: 0, range: 60, head: 1, recoil: 0.045, kick: 1.6, zoom: 1.3, tier: 2, color: 0x2a2433, launcher: true, launchSpeed: 38, blastDamage: 42 },
     sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4, speedMult: 0.8, adsRate: 8, drawTime: 0.85 },     // v1.27.6: heavy: slow to move, scope in and swap to
+    // ---- v1.32 new guns (added at the END so online weapon ids stay the same)
+    // Talon: a 3-round-burst rifle with a holo sight. Each burst lands fast and tight; the pause between bursts is the trade.
+    burst:   { name: 'Talon Burst', ammo: 'heavy', dmg: 27, pellets: 1, rpm: 900, burst: 3, burstDelay: 0.3, mag: 30, reload: 2.2, spread: 0.015, ads: 0.28, bloom: 0.004, bloomMax: 0.022, range: 115, head: 1.75, recoil: 0.011, recoilH: 0.006, zoom: 1.6, tier: 2, color: 0x2c3036, holo: true },
+    // Riot: a semi-auto drum shotgun. Smaller blasts than the Breacher, but as fast as you can tap and an 8-shell drum.
+    riot:    { name: 'Riot Auto', ammo: 'shells', dmg: 7, pellets: 7, rpm: 150, mag: 8, reload: 2.6, spread: 0.075, ads: 0.6, pelletAssist: 0.3, bloom: 0.012, bloomMax: 0.03, range: 13, head: 1.2, recoil: 0.032, kick: 1.0, zoom: 1.15, tier: 2, color: 0x24272c, knockback: 6, speedMult: 0.98 },
+    // Hornet: a full-auto machine pistol for your secondary slot. Shreds up close, falls off fast.
+    mpistol: { name: 'Hornet', ammo: 'light', dmg: 15, pellets: 1, rpm: 1050, mag: 24, reload: 1.6, spread: 0.03, ads: 0.55, bloom: 0.004, bloomMax: 0.03, range: 14, head: 1.3, recoil: 0.007, recoilH: 0.007, zoom: 1.2, tier: 1, color: 0x26282c, speedMult: 1.06, adsRate: 20 },
   },
 
   // Loot rolls by spot tier. Weights are relative.
   loot: {
     tables: [
-      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, revolver: 4, dmr: 2, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
-      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, revolver: 8, lmg: 6, dmr: 6, launcher: 3, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
-      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, revolver: 9, lmg: 10, dmr: 9, launcher: 6, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
+      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, revolver: 4, dmr: 2, mpistol: 10, riot: 5, burst: 3, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
+      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, revolver: 8, lmg: 6, dmr: 6, launcher: 3, mpistol: 9, riot: 10, burst: 10, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
+      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, revolver: 9, lmg: 10, dmr: 9, launcher: 6, mpistol: 4, riot: 10, burst: 15, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
     ],
     healAmount: 50,
     shieldAmount: 50,

@@ -1023,6 +1023,9 @@ body.duel #topbar .dp { display: flex; }
 .cs-case.nova .cs-body { background: linear-gradient(135deg, #1a0638, #6a1bff 45%, #ff3df2 75%, #1de9ff); }
 .cs-case.nova .cs-lid { background: linear-gradient(135deg, #2a0a50, #b04bff); }
 .cs-case.nova { box-shadow: 0 0 34px rgba(176,75,255,0.55); }
+.cs-case.street .cs-body { background: linear-gradient(135deg, #1a1c20, #3a3f46 40%, #ff3d7f 70%, #ffe14d); }
+.cs-case.street .cs-lid { background: linear-gradient(135deg, #22252a, #5fd35f); }
+.cs-case.street { box-shadow: 0 0 30px rgba(95,211,95,0.45); }
 
 /* Spinning case previews: 12-frame turntable sprite */
 .cs-card .cc-spin { display: block; flex: none; width: 100px; height: 40px; background-size: 1200px 40px; background-repeat: no-repeat;

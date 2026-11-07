@@ -20,7 +20,7 @@
     sniper: ['sniper', 'hunter'],
     loadout: null,                                 // TDM/FFA: your loadout (Loadout screen)
   };
-  const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg']];
+  const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg'], ['burst', 'mpistol'], ['riot', 'pistol']];
   BR.ARENA_PRESETS = {
     duel:    { kind: 'duel', title: 'DUELS', guns: 'duel', sizes: [1, 2], target: 5, roundTime: 90 },
     shotgun: { kind: 'duel', title: 'SHOTGUN DUELS', guns: 'shotgun', sizes: [1, 2], target: 5, roundTime: 60 },
@@ -85,7 +85,7 @@
     // v1.20: which saved loadout + which guns the picker offers (the Shockwave Launcher only in Sniper Duels)
     loKey() { return this.P.guns === 'sniper' ? 'sniperDuel' : 'duel'; }
     loDefault() { return this.P.guns === 'sniper' ? ['sniper', 'hunter'] : ['rifle', 'shotgun']; }
-    loLists() { return this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'smg', 'lmg', 'dmr', 'shotgun', 'hunter', 'sniper'], ['pistol', 'revolver', 'smg', 'shotgun']]; }
+    loLists() { return this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'burst', 'smg', 'lmg', 'dmr', 'shotgun', 'riot', 'hunter', 'sniper'], ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun']]; }
     myLoadout() { const D = (this.g.settings[this.loKey()] || {}).loadout, def = this.loDefault(), [A, B] = this.loLists(); return [D && A.includes(D[0]) ? D[0] : def[0], D && B.includes(D[1]) ? D[1] : def[1]]; }
     get teams() { return this.P.kind !== 'ffa'; }
     gunsFor(a) {
@@ -301,7 +301,7 @@
     remoteShot(f) {
       const g = this.g, a = this.byId.get(f[0]);
       const from = new THREE.Vector3(f[1], f[2], f[3]), to = new THREE.Vector3(f[4], f[5], f[6]);
-      g.fx.tracer(from, to, false, 0xff9a6b, null);
+      g.fx.tracer(from, to, false, 0xff9a6b, null); if (g.nearMiss) g.nearMiss(from, to, a);
       if (f[8] && a) { const cp = g.camera.position, d = Math.hypot(from.x - cp.x, from.z - cp.z); BR.Audio.shot(BR.Net.WIDS[f[7]], d, 0, false); }
     }
     // a hit on someone this browser doesn't own: send it to their owner, show the feedback here

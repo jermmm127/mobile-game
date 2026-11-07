@@ -369,6 +369,15 @@ BR.Models = (function () {
     novaflare: { name: 'Nova Flare', caseOnly: true, case: 'nova', rarity: 'Legendary', color: 0xffffff, color2: 0xff3df2, style: 'comet' },
     acidhelix: { name: 'Acid Helix', caseOnly: true, case: 'nova', rarity: 'Legendary', color: 0xc8ff5a, color2: 0x1fdc3c, style: 'helix' },
     phoenix:   { name: 'Phoenix', caseOnly: true, rarity: 'Exotic', color: 0xffe14d, color2: 0xff3a00, style: 'phoenix' },
+    // v1.32 Common / Uncommon
+    white:     { name: 'Clean White', price: 80, rarity: 'Common', color: 0xf2f4f6 },
+    lime:      { name: 'Lime', price: 80, rarity: 'Common', color: 0xb6ff3a },
+    amber:     { name: 'Amber', price: 90, rarity: 'Common', color: 0xffb02e },
+    mint:      { name: 'Mint Duo', price: 180, rarity: 'Uncommon', color: 0x7dffcf, color2: 0xffffff, style: 'dual' },
+    sunset:    { name: 'Sunset Duo', price: 200, rarity: 'Uncommon', color: 0xff7a3a, color2: 0xff3df2, style: 'dual' },
+    smoke:     { name: 'Gunsmoke', caseOnly: true, case: 'street', rarity: 'Common', color: 0xb0b6be },
+    cherry:    { name: 'Cherry Cola', caseOnly: true, case: 'street', rarity: 'Uncommon', color: 0xff2f55, color2: 0x5a0a14, style: 'dual' },
+    graffiti:  { name: 'Graffiti Rings', caseOnly: true, case: 'street', rarity: 'Epic', color: 0xffe14d, color2: 0xff3d7f, style: 'rings' },
   };
   const CHARMS = {
     none:    { name: 'None', price: 0 },
@@ -389,11 +398,59 @@ BR.Models = (function () {
     bloodmoon: [0.12, 70], circuit: [0.12, 70], electric: [0.12, 70], molten: [0.1, 60], inferno: [0.1, 60], aurora: [0.15, 80], m_volt: [0.15, 80], m_singularity: [0.25, 120],
     carbon: [0.12, 70], arctic: [0.05, 30], tiger: [0.06, 34], crimson: [0.08, 40], pixel: [0.06, 34], jungle: [0.04, 26], neon: [0.1, 60],
   };
+  // ---- v1.32 COMMON / UNCOMMON paint camos: simple, honest finishes (solid paint, two-tone, stripes, woodland, digital,
+  // splatter, fade, tiger) drawn procedurally with light wear. [id, name, rarity, pattern, colours, price | 'street']
+  const hexc = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
+  function paintTex(id, pat, cols) {
+    return canvasTex('paint-' + id, (c, S) => {
+      const R = BR.util.rng(hsh2(id)), C = cols.map(hexc);
+      c.fillStyle = C[0]; c.fillRect(0, 0, S, S);
+      const blob = (x, y, r, fill) => { const n = 11, pts = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, rr = r * (0.55 + R() * 0.6); pts.push([Math.cos(a) * rr, Math.sin(a) * rr * (0.6 + R() * 0.5)]); }
+        for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { c.save(); c.translate(x + ox, y + oy); c.beginPath();
+          for (let i = 0; i <= n; i++) { const a = pts[i % n], b = pts[(i + 1) % n]; const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2; i ? c.quadraticCurveTo(a[0], a[1], mx, my) : c.moveTo(mx, my); }
+          c.closePath(); c.fillStyle = fill; c.fill(); c.restore(); } };
+      if (pat === 'woodland') { for (let k = 1; k < C.length; k++) for (let i = 0; i < 14; i++) blob(R() * S, R() * S, 22 + R() * 34 - k * 4, C[k]); }
+      else if (pat === 'splatter') { for (let k = 1; k < C.length; k++) for (let i = 0; i < 26; i++) { blob(R() * S, R() * S, 4 + R() * 16, C[k]); } }
+      else if (pat === 'digital') { const q = 8; for (let k = 1; k < C.length; k++) for (let i = 0; i < 70; i++) { const x = Math.floor(R() * S / q) * q, y = Math.floor(R() * S / q) * q, w = (1 + Math.floor(R() * 3)) * q, h = (1 + Math.floor(R() * 2)) * q; c.fillStyle = C[k]; c.fillRect(x, y, w, h); if (x + w > S) c.fillRect(x - S, y, w, h); if (y + h > S) c.fillRect(x, y - S, w, h); } }
+      else if (pat === 'stripe') { c.fillStyle = C[1]; c.fillRect(0, S * 0.42, S, S * 0.16); if (C[2]) { c.fillStyle = C[2]; c.fillRect(0, S * 0.46, S, S * 0.04); } }
+      else if (pat === 'twotone') { c.fillStyle = C[1]; c.fillRect(0, S / 2, S, S / 2); c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(0, S / 2 - 2, S, 3); }
+      else if (pat === 'fade') { const g = c.createLinearGradient(0, 0, S, S); g.addColorStop(0, C[0]); g.addColorStop(0.5, C[1]); g.addColorStop(1, C[0]); c.fillStyle = g; c.fillRect(0, 0, S, S); }
+      else if (pat === 'tiger') { c.fillStyle = C[1]; for (let i = 0; i < 9; i++) { const x = (i + R() * 0.4) / 9 * S; c.beginPath(); c.moveTo(x, 0); for (let y = 0; y <= S; y += 16) c.lineTo(x + Math.sin(y * 0.05 + i) * 10 + (R() - 0.5) * 6, y); for (let y = S; y >= 0; y -= 16) c.lineTo(x + 6 + Math.sin(y * 0.05 + i) * 10 + (R() - 0.5) * 6, y); c.closePath(); c.fill(); } }
+      else if (pat === 'rust') { for (let i = 0; i < 60; i++) { const x = R() * S, y = R() * S, r = 6 + R() * 26, g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, R() < 0.5 ? C[1] : C[2] || C[1]); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); } }
+      // wear: grain, a few scuffs and chipped edges (lighter than the base colour)
+      for (let i = 0; i < 1400; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)'; c.fillRect(R() * S, R() * S, 1, 1); }
+      c.lineCap = 'round'; for (let i = 0; i < 26; i++) { const x = R() * S, y = R() * S, a = R() * Math.PI, l = 3 + R() * 10; c.strokeStyle = 'rgba(255,255,255,' + (0.06 + R() * 0.08) + ')'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
+    }, 256);
+  }
+  const hsh2 = k => { let h = 2166136261; for (const ch of k) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
+  const PAINT_SWATCH = (pat, cols) => { const C = cols.map(hexc); return pat === 'solid' ? C[0] : pat === 'fade' ? `linear-gradient(135deg,${C[0]},${C[1]},${C[0]})` : pat === 'stripe' ? `linear-gradient(180deg,${C[0]} 0 42%,${C[1]} 42% 58%,${C[0]} 58%)`
+    : pat === 'twotone' ? `linear-gradient(180deg,${C[0]} 0 50%,${C[1]} 50%)` : pat === 'tiger' ? `repeating-linear-gradient(100deg,${C[0]} 0 8px,${C[1]} 8px 11px)` : pat === 'digital' ? `repeating-linear-gradient(90deg,${C.join(' 0 5px,')} 0 5px)`.replace(/ 0 5px\)$/, ')')
+    : `radial-gradient(circle at 30% 35%,${C[1]} 0 18%,transparent 19%),radial-gradient(circle at 70% 65%,${C[2] || C[1]} 0 16%,transparent 17%),${C[0]}`; };
+  const PAINTS = [
+    // Common: shop
+    ['c_olive', 'Olive Drab', 'Common', 'solid', [0x4a5530], 100], ['c_tan', 'Desert Tan', 'Common', 'solid', [0xb59a6a], 100], ['c_slate', 'Slate', 'Common', 'solid', [0x56606b], 100],
+    ['c_ghost', 'Ghost White', 'Common', 'solid', [0xd6dadd], 120], ['c_navy', 'Navy Blue', 'Common', 'solid', [0x24324d], 120], ['c_brick', 'Brick Red', 'Common', 'solid', [0x7a2e22], 120],
+    // Uncommon: shop
+    ['u_woodland', 'Woodland', 'Uncommon', 'woodland', [0x4f5a34, 0x2c3420, 0x6e6a44, 0x1e1a14], 260], ['u_urban', 'Urban Digital', 'Uncommon', 'digital', [0x7a828b, 0x4b525a, 0xb3bac1, 0x2a2e33], 280],
+    ['u_redline', 'Redline', 'Uncommon', 'stripe', [0x1c1e22, 0xc8102e, 0xff5a5a], 300], ['u_cobalt', 'Cobalt Fade', 'Uncommon', 'fade', [0x0f1f4a, 0x2f7bff], 300],
+    ['u_sandstorm', 'Sandstorm', 'Uncommon', 'woodland', [0xc9b083, 0xa48858, 0xe2d2a8, 0x7d6442], 280], ['u_twotone', 'Patrol Two-Tone', 'Uncommon', 'twotone', [0x3d4434, 0x1a1c1e], 260],
+    // Street Case (case only)
+    ['c_rust', 'Rust Bucket', 'Common', 'rust', [0x5a4a40, 0x9a4a1e, 0x3a2418], 'street'], ['c_concrete', 'Concrete', 'Common', 'splatter', [0x8a8d90, 0x6e7174, 0xa6a9ac], 'street'],
+    ['u_splash', 'Paint Splash', 'Uncommon', 'splatter', [0x16181c, 0xff3d7f, 0x1de9ff], 'street'], ['u_hazard', 'Hazard Stripe', 'Uncommon', 'tiger', [0xe6dc1e, 0x161616], 'street'],
+    ['r_wildcat', 'Wildcat', 'Rare', 'tiger', [0xff7a00, 0x111111], 'street'], ['r_glacier', 'Glacier Digital', 'Rare', 'digital', [0xdff3ff, 0x8fc8f0, 0x3a7ab0, 0xffffff], 'street'],
+  ];
+  for (const [id, name, rarity, pat, cols, price] of PAINTS) {
+    SKINS[id] = Object.assign({ name, rarity, paint: { pat, cols }, swatch: PAINT_SWATCH(pat, cols) }, price === 'street' ? { caseOnly: true, case: 'street' } : { price });
+    if (pat !== 'solid') TEX[id] = () => paintTex(id, pat, cols);
+  }
   function skinMaterial(skin, base) {
     const key = skin + '|' + base;
     if (cache.mat[key]) return cache.mat[key];
     let m;
     if (GRIND_GLOW[skin] !== undefined && TEX[skin]) m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: GRIND_GLOW[skin], specular: 0xffffff, shininess: skin === 'g_ascendant' ? 180 : 90 });
+    else if (SKINS[skin] && SKINS[skin].paint) {           // v1.32 paint camos: satin paint over the weapon's own grain
+      const P = SKINS[skin].paint; m = P.pat === 'solid' ? new THREE.MeshPhongMaterial({ map: wearTex(P.cols[0], 'gun'), specular: 0x2a2e33, shininess: 18 }) : new THREE.MeshPhongMaterial({ map: TEX[skin](), specular: 0x2a2e33, shininess: 18 });
+    }
     else switch (skin) {
       case 'carbon': case 'arctic': case 'tiger': case 'crimson': case 'pixel':
         m = new THREE.MeshLambertMaterial({ map: TEX[skin]() }); break;
@@ -432,7 +489,7 @@ BR.Models = (function () {
     // ---- finish pass (v1.8.3): every camo gets a real surface. Matte camos become satin Phong (soft
     // highlights), glossy ones a clear-coat sheen, metals a mirror-like reflection of the studio env.
     if (skin !== 'default') {
-      const F = SKIN_FINISH[skin] || [0.1, 50];
+      const F = SKIN_FINISH[skin] || (SKINS[skin] && SKINS[skin].paint ? [0.04, 20] : [0.1, 50]);
       if (m.isMeshLambertMaterial) m = new THREE.MeshPhongMaterial({ color: m.color, map: m.map, emissive: m.emissive, emissiveMap: m.emissiveMap, emissiveIntensity: m.emissiveIntensity, transparent: m.transparent, opacity: m.opacity, specular: 0x3a3f48, shininess: F[1] });
       m.envMap = envCube(); m.reflectivity = F[0]; m.shininess = Math.max(m.shininess || 0, F[1]);
       if (m.specular && F[0] >= 0.3) m.specular.setHex(0xffffff);
@@ -1691,7 +1748,7 @@ BR.Models = (function () {
   }
   function importedParts(id) {
     if (IMPORT_CACHE[id] !== undefined) return IMPORT_CACHE[id];
-    const C = BR.IMPORTED && BR.IMPORTED[id], data = BR.MODEL_DATA && BR.MODEL_DATA[id];
+    const C = BR.IMPORTED && BR.IMPORTED[id], data = BR.MODEL_DATA && C && BR.MODEL_DATA[C.model || id];      // (v1.32: variants reuse another gun's sculpt)
     if (!C || !data) return (IMPORT_CACHE[id] = null);
     try {
       const s = C.scale, [dx, dy, dz] = C.offset, out = [];
@@ -1727,6 +1784,12 @@ BR.Models = (function () {
           });
           const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
           if (P.nor) geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); else geo.computeVertexNormals();
+          // v1.32: untextured sculpts have no UVs, so every camo used to show as one flat colour. Box-map them here in real units
+          // (the same density as the procedural guns); parts animate as whole meshes, so the mapping stays put.
+          if (!P.uv) { const N = geo.attributes.normal.array, k = 6.5;
+            for (let i = 0; i < pos.length / 3; i++) { const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2], ax = Math.abs(N[i * 3]), ay = Math.abs(N[i * 3 + 1]), az = Math.abs(N[i * 3 + 2]);
+              if (ax >= ay && ax >= az) { uv[i * 2] = z * k; uv[i * 2 + 1] = y * k; } else if (ay >= az) { uv[i * 2] = z * k; uv[i * 2 + 1] = x * k + 0.31; } else { uv[i * 2] = x * k + 0.57; uv[i * 2 + 1] = y * k; } }
+            geo.attributes.uv.needsUpdate = true; geo.userData.boxed = true; }
           geo.computeBoundingSphere(); out.push({ key, geo, mat });
         }
       }
@@ -1821,6 +1884,26 @@ BR.Models = (function () {
     const proc = BUILD[id]; if (!proc) continue; PROC[id] = proc;
     BUILD[id] = (g, S, M, opts) => importedBuild(id, g, S, M, opts) || proc(g, S, M, opts);
   }
+  // v1.32 new guns, built on the original procedural models (each with its own parts on top)
+  const variant = (id, base, extra) => (g, S, M, o) => { if (importedBuild(id, g, S, M, o)) extra(g, kit(g), M); else PROC[base](g, S, M, o); };
+  // Talon: an angled foregrip under the handguard and a flip-to-side magnifier behind the holo sight
+  BUILD.burst = variant('burst', 'holoar', (g, k, M) => {
+    const fg = k.box(0.026, 0.05, 0.05, 0, -0.036, -0.34, M.grip); fg.rotation.x = -0.55;
+    k.box(0.028, 0.008, 0.06, 0, -0.012, -0.34, M.dark);
+    const mag = k.cyl(0.017, 0.07, -0.042, 0.146, 0.0, M.dark, 'z', 16); k.cyl(0.0195, 0.008, -0.042, 0.146, 0.034, M.metal, 'z', 16); k.box(0.026, 0.012, 0.02, -0.022, 0.13, 0.0, M.dark); void mag;
+  });
+  // Riot: a big drum magazine in front of the trigger (it's the part that comes off on reloads)
+  BUILD.riot = variant('riot', 'shotgun', (g, k, M) => {
+    const d = k.cyl(0.062, 0.07, 0, -0.1, -0.075, M.dark, 'x', 28), rim = k.cyl(0.064, 0.012, 0, -0.1, -0.075, M.metal, 'x', 28), hub = k.cyl(0.018, 0.074, 0, -0.1, -0.075, M.grip, 'x', 12);
+    const neck = k.box(0.03, 0.05, 0.05, 0, -0.045, -0.075, M.dark);
+    if (g.userData.mag) for (const m of [d, rim, hub, neck]) g.userData.mag.attach(m); else magGroup(g, [d, rim, hub, neck]);
+  });
+  // Hornet: a folding wire stock behind the grip and a vertical foregrip under the suppressor
+  BUILD.mpistol = variant('mpistol', 'pistol', (g, k, M) => {
+    for (const x of [-0.014, 0.014]) k.cyl(0.0035, 0.15, x, -0.02, 0.105, M.metal, 'z', 8);
+    k.box(0.04, 0.085, 0.012, 0, -0.045, 0.18, M.grip); k.box(0.034, 0.012, 0.03, 0, 0.0, 0.17, M.dark);
+    k.box(0.026, 0.012, 0.042, 0, 0.012, -0.12, M.dark); k.box(0.022, 0.052, 0.022, 0, -0.018, -0.12, M.grip);
+  });
 
   // ------------------------------------------------------------------ charms
   function charm(id) {
@@ -2163,7 +2246,7 @@ BR.Models = (function () {
     const sk = skin && skin !== 'default' ? SKINS[skin] : null;
     let tier = 0, col = null;
     if (sk && FX_TIER[sk.rarity]) { tier = FX_TIER[sk.rarity]; col = swatchColor(sk.swatch); }
-    else if (bp && (!bp.mod || bp.fx) && (bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) { tier = FX_TIER[bp.rarity]; col = bp.glow; }
+    else if (bp && FX_TIER[bp.rarity] && bp.glow != null && (!bp.mod || bp.fx || !g.userData.trailTip)) { tier = FX_TIER[bp.rarity]; col = bp.glow; }     // v1.32: every Legendary+ gun blueprint (knives with their own aura keep it)
     if (!tier || col === null || col === undefined || !(BR.Effects && BR.Effects.tex)) return;
     let src = null, n = 0;
     g.traverse(o => { if (o.isMesh && !o.userData.isFlash && o.geometry && o.geometry.attributes.position && o.geometry.attributes.position.count > n && !(o.material && o.material.transparent)) { n = o.geometry.attributes.position.count; src = o; } });
@@ -2181,7 +2264,29 @@ BR.Models = (function () {
       sp.userData.isFlash = true; P.add(sp); motes.push({ sp, o: Math.random(), a: Math.random() * 6.28, r: 0.4 + Math.random() * 0.6 });
     }
     const half = size.clone().multiplyScalar(0.5);
+    // v1.32: a band of light that sweeps down the weapon (two on Exotic, opposite ways), over the whole surface
+    const sweep = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide, fog: false,
+      uniforms: { t: { value: 0 }, col: { value: new THREE.Color(col) }, lo: { value: bb.min[axis] }, hi: { value: bb.max[axis] }, w: { value: 0.07 + 0.02 * tier }, k: { value: 0.55 + 0.2 * tier }, two: { value: tier >= 3 ? 1 : 0 } },
+      vertexShader: 'varying float a; uniform float lo, hi; void main(){ a = (position.' + axis + ' - lo) / max(1e-4, hi - lo); gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 1.004, 1.0); }',
+      fragmentShader: 'varying float a; uniform float t, w, k, two; uniform vec3 col; void main(){ float p = fract(t * 0.42); float b = smoothstep(w, 0.0, abs(a - (1.0 - p * 1.3 + 0.15)));'
+        + ' if (two > 0.5) b = max(b, smoothstep(w, 0.0, abs(a - (p * 1.3 - 0.15)))); gl_FragColor = vec4(col * b * k, b * k); }' });
+    const lite = !!(BR.game && BR.game.settings && BR.game.settings.gfx === 'low');          // (Low graphics: keep the glow + sparkles, skip the extra passes)
+    if (!lite) { const sm = new THREE.Mesh(src.geometry, sweep); sm.userData.isFlash = true; sm.userData.noUV = true; sm.renderOrder = 3; src.add(sm); }
+    // Mythic + Exotic: rings of energy that slide from the stock out past the muzzle and fade
+    const rings = [];
+    if (tier >= 2 && !lite) {
+      const rr = Math.max(axis === 'z' ? Math.max(half.x, half.y) : Math.max(half.x, half.z), len * 0.03) * 0.85;
+      for (let i = 0; i < (tier >= 3 ? 3 : 2); i++) {
+        const r = new THREE.Mesh(new THREE.TorusGeometry(rr, rr * 0.09, 6, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+        if (axis === 'z') r.rotation.y = 0.5; else if (axis === 'x') r.rotation.y = Math.PI / 2 + 0.5; else r.rotation.x = Math.PI / 2;     // (tilted: reads as a ring from the side too)
+        r.userData.isFlash = true; r.userData.noUV = true; P.add(r); rings.push(r);
+      }
+    }
     anim(g, t => {
+      sweep.uniforms.t.value = t; if (tier === 3) sweep.uniforms.col.value.setHSL((t * 0.18 + 0.5) % 1, 1, 0.6);
+      rings.forEach((r, i) => { const f = (t * 0.55 + i / rings.length) % 1; r.position.copy(ctr); r.position[axis] = bb.max[axis] - f * (bb.max[axis] - bb.min[axis]) * 1.15;
+        const sc = 0.7 + f * 0.6; r.scale.setScalar(sc); r.material.opacity = Math.sin(f * Math.PI) * (tier >= 3 ? 0.75 : 0.6);
+        if (tier === 3) r.material.color.setHSL((t * 0.18 + i / rings.length) % 1, 1, 0.6); });
       const pulse = 0.65 + 0.35 * Math.sin(t * 2.4);
       if (tier === 3) C.setHSL((t * 0.18) % 1, 1, 0.6);
       shells.forEach(({ m, op }, i) => { m.material.opacity = op * (pulse + (i ? 0.2 * Math.sin(t * 5 + 1) : 0)); m.material.color.copy(C); });
@@ -2816,10 +2921,17 @@ BR.Models = (function () {
     ['launcher', 'voidbloom', 'Void Bloom', 'hyperdrive', 0x0b0616, 0xb04bff, 0xff5cf0, 'Mythic', 2500, 'orbit'],          // v1.17.2
     ['launcher', 'solarburst', 'Solar Burst', 'crown', 0x1a0806, 0x3a1208, 0xff7a00, 'Legendary', 1400, 'slam'],
   ];
+  // v1.32 new guns
+  S2.push(['burst', 'neontalon', 'Neon Talon', 'hyperdrive', 0x0b0b1a, 0x1de9ff, 0x1de9ff, 'Mythic', 2400, 'warp'],
+    ['burst', 'streetking', 'Street King', 'prism', 0x16181c, 0xff3d7f, 0xffe14d, 'Legendary', 'street', 'orbit'],
+    ['riot', 'infernodrum', 'Inferno Drum', 'crown', 0x1a0806, 0x3a1208, 0xff7a00, 'Legendary', 1500, 'slam'],
+    ['riot', 'toxicriot', 'Toxic Riot', 'toxic', 0x0a1a08, 0x2a3a20, 0x7dff3a, 'Mythic', 2300, 'orbit'],
+    ['mpistol', 'venomsting', 'Venom Sting', 'toxic', 0x10200a, 0x7dff3a, 0x7dff3a, 'Legendary', 1300, 'orbit'],
+    ['mpistol', 'stardrive', 'Stardrive', 'nebula', 0x0c0a24, 0xffd36a, 0xb48cff, 'Mythic', 2200, 'warp']);
   const S2BP = {};
   for (const [w, id, name, theme, body, accent, glow, rarity, price, reload] of S2) {
     const e = { name, rarity, body, bodyGloss: 2, accent, accentGloss: 2, glow, mod: S2THEME[theme], reload: { style: reload, fx: glow }, season: 2 };
-    if (price === 'nova') { e.caseOnly = true; e.case = 'nova'; } else e.price = price;
+    if (price === 'nova' || price === 'street') { e.caseOnly = true; e.case = price; } else e.price = price;
     e.fit = 'native';                                    // (measured off the live model: only seated, never remapped)
     (S2BP[w] = S2BP[w] || {})[id] = e;
   }
@@ -3128,12 +3240,35 @@ BR.Models = (function () {
     bp.reload = bp.reload || { style: w === 'revolver' ? 'spin' : RL[b] || (bp.rarity === 'Legendary' ? 'twirl' : 'flip'), fx: bp.glow };
   }
   BLUEPRINTS.butterfly = BLUEPRINTS.butterfly || {}; BLUEPRINTS.revolver = BLUEPRINTS.revolver || {};
+  for (const [w, set] of Object.entries({ burst: [['midnight', 'Midnight', 'Rare', 0x14161c, 0x2f5aa8, 0x6fa8ff, 450], ['carbontalon', 'Carbon Talon', 'Epic', 0x1a1c20, 0xff7a00, 0xffb066, 750]],
+    riot: [['bulldog', 'Bulldog', 'Rare', 0x3a2c22, 0x8a6a4a, 0xd8b88a, 450], ['hexdrum', 'Hex Drum', 'Epic', 0x101418, 0x39ff88, 0x9dffcf, 750]],
+    mpistol: [['wasp', 'Wasp', 'Rare', 0x1a1a10, 0xffd24a, 0xffe08a, 400], ['frostbyte', 'Frostbyte', 'Epic', 0x0e1a26, 0x6fd8ff, 0xdff6ff, 700]] }))
+    for (const [id, name, rarity, body, accent, glow, price] of set) (BLUEPRINTS[w] = BLUEPRINTS[w] || {})[id] = { name, rarity, body, accent, glow, price };
+  // v1.32 Common / Uncommon blueprints for every weapon: honest painted finishes (no glow, no add-ons), plus a Street Case pair
+  {
+    const LOW = [
+      ['field', 'Field Issue', 'Common', 0x4a5530, 0x2a2e22, 0x8a9a5a, 150], ['desert', 'Dune Runner', 'Common', 0xb59a6a, 0x6b5536, 0xe8d2a0, 150],
+      ['patrol', 'Patrol', 'Uncommon', 0x2a2f37, 0x46525e, 0x7fd0ff, 300], ['redstripe', 'Red Stripe', 'Uncommon', 0x1c1e22, 0xc8102e, 0xff5a5a, 320],
+      ['st_tag', 'Street Tag', 'Uncommon', 0x16181c, 0xff3d7f, 0x1de9ff, 'street'], ['st_brick', 'Brickyard', 'Common', 0x7a2e22, 0x3a1a14, 0xd8a080, 'street'],
+    ];
+    for (const w of Object.keys(BR.CONFIG.weapons)) {
+      const T = BLUEPRINTS[w] = BLUEPRINTS[w] || {};
+      for (const [id, name, rarity, body, accent, glow, price] of LOW) if (!T[id]) T[id] = Object.assign({ name, rarity, body, accent, glow, low: true }, price === 'street' ? { caseOnly: true, case: 'street' } : { price });
+    }
+  }
   for (const w in BLUEPRINTS) BLUEPRINTS[w] = Object.assign({ default: { name: 'Standard Issue', rarity: 'Base', price: 0 } }, BLUEPRINTS[w]);
 
   // ------------------------------------------------------------------ gloves
   const GLOVES = {
     default: { name: 'Tactical', price: 0, color: 0x2a2d33, pad: 0x15171a },
     desert:  { name: 'Desert Ops', price: 150, color: 0xb39a72, pad: 0x6f5a3c },
+    // v1.32 Common / Uncommon
+    c_olive: { name: 'Field Olive', price: 100, rarity: 'Common', color: 0x4a5530, pad: 0x262b18 },
+    c_black: { name: 'Black Leather', price: 120, rarity: 'Common', color: 0x17181b, pad: 0x0b0b0d, gloss: true },
+    u_hivis: { name: 'Hi-Vis', price: 220, rarity: 'Uncommon', color: 0xd7ff2a, pad: 0x2a2d33 },
+    u_wood:  { name: 'Woodland', price: 260, rarity: 'Uncommon', tex: 'u_woodland', color: 0x4f5a34, pad: 0x1e1a14 },
+    u_street:{ name: 'Paint Splash', caseOnly: true, case: 'street', rarity: 'Uncommon', tex: 'u_splash', color: 0xff3d7f, pad: 0x16181c },
+    r_wild:  { name: 'Wildcat', caseOnly: true, case: 'street', rarity: 'Rare', tex: 'r_wildcat', color: 0xff7a00, pad: 0x111111 },
     arctic:  { name: 'Arctic Camo', price: 200, tex: 'arctic', pad: 0x8d9aa5 },
     carbon:  { name: 'Carbon Fiber', price: 250, tex: 'carbon', pad: 0x3a3f47 },
     crimson: { name: 'Crimson Leather', price: 300, color: 0x8f1424, pad: 0x2a0509, gloss: true },
@@ -3304,17 +3439,23 @@ BR.Models = (function () {
   // top, crisp accent edge lines trace the model's hard edges (glowing + pulsing from Legendary up), and
   // knife blades get a glowing edge line. Edge lines live with the part they trace (so slides, bolts,
   // mags and knife parts keep them while animating) and never go into the merged world model.
-  const TIER = { Rare: 1, Epic: 2, Legendary: 3, Mythic: 4, Exotic: 5 };
+  const TIER = { Common: 0.4, Uncommon: 0.7, Rare: 1, Epic: 2, Legendary: 3, Mythic: 4, Exotic: 5 };
   const hsh = k => { let h = 2166136261; for (const ch of k) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
   const css = c => '#' + new THREE.Color(c).getHexString();
   const tone = (c, k) => { const o = new THREE.Color(c); if (k > 0) o.lerp(new THREE.Color(0xffffff), k); else o.multiplyScalar(1 + k); return '#' + o.getHexString(); };
   function finishMat(key, bp) {
     const ck = 'fin:' + key; if (cache.mat[ck]) return cache.mat[ck];
-    const t = TIER[bp.rarity] || 1, body = bp.body != null ? bp.body : 0x444444, acc = bp.accent != null && bp.accent !== body ? bp.accent : (bp.glow != null ? bp.glow : 0xc8ccd2), glow = bp.glow != null ? bp.glow : acc;
+    const t0 = TIER[bp.rarity] || 1, t = Math.max(1, Math.floor(t0)), low = t0 < 1, body = bp.body != null ? bp.body : 0x444444, acc = bp.accent != null && bp.accent !== body ? bp.accent : (bp.glow != null ? bp.glow : 0xc8ccd2), glow = bp.glow != null ? bp.glow : acc;
     const dark = new THREE.Color(body).getHSL({}).l < 0.28, line = dark ? tone(body, 0.32) : tone(body, -0.5), hi = tone(body, dark ? 0.5 : 0.35), R = BR.util.rng(hsh(key));
-    const style = t >= 4 ? 'prism' : t === 3 ? 'engraved' : t === 2 ? (hsh(key) % 2 ? 'carbon' : 'hex') : 'machined';
+    const style = low ? (t0 < 0.5 ? 'painted' : 'striped') : t >= 4 ? 'prism' : t === 3 ? 'engraved' : t === 2 ? (hsh(key) % 2 ? 'carbon' : 'hex') : 'machined';
     const tex = canvasTex('fin-' + key, (c, S) => {
       c.fillStyle = css(body); c.fillRect(0, 0, S, S);
+      if (style === 'painted' || style === 'striped') {             // v1.32 Common / Uncommon: satin paint, a two-tone break, light wear
+        c.fillStyle = css(acc); c.fillRect(0, S * 0.62, S, S * 0.38); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, S * 0.62 - 2, S, 3);
+        if (style === 'striped') { c.fillStyle = css(glow); c.fillRect(0, S * 0.18, S, 6); c.fillRect(0, S * 0.18 + 10, S, 2); }
+        for (let i = 0; i < 1600; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)'; c.fillRect(R() * S, R() * S, 1, 1); }
+        for (let i = 0; i < 40; i++) { c.fillStyle = 'rgba(255,255,255,' + (0.08 + R() * 0.1) + ')'; c.fillRect(R() * S, R() * S, 1 + R() * 2, 1); }
+      }
       if (style === 'machined' || style === 'engraved') {           // brushed grain
         for (let i = 0; i < 700; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,' + (0.03 + R() * 0.05) + ')' : 'rgba(0,0,0,' + (0.04 + R() * 0.06) + ')'; c.fillRect(R() * S, R() * S, 10 + R() * 60, 1); }
       }
@@ -3363,7 +3504,8 @@ BR.Models = (function () {
       const v = c.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.28)'); c.fillStyle = v; c.fillRect(0, 0, S, S);
       c.fillStyle = hi; c.globalAlpha = 0.25; c.fillRect(0, 0, S, 2); c.globalAlpha = 1;
     }, 256);
-    const m = new THREE.MeshPhongMaterial({ map: tex, specular: t >= 3 ? 0xffffff : 0xa8b0bc, shininess: [0, 45, 70, 110, 140, 150][t], envMap: BR.weaponEnv(), reflectivity: [0, 0.08, 0.12, 0.2, 0.26, 0.3][t] });
+    const m = low ? new THREE.MeshPhongMaterial({ map: tex, specular: 0x30343a, shininess: 20, envMap: BR.weaponEnv(), reflectivity: 0.04 })
+      : new THREE.MeshPhongMaterial({ map: tex, specular: t >= 3 ? 0xffffff : 0xa8b0bc, shininess: [0, 45, 70, 110, 140, 150][t], envMap: BR.weaponEnv(), reflectivity: [0, 0.08, 0.12, 0.2, 0.26, 0.3][t] });
     if (t >= 4) m.emissive = new THREE.Color(glow).multiplyScalar(0.08);
     m.userData.finish = style;
     return (cache.mat[ck] = m);
@@ -3391,7 +3533,8 @@ BR.Models = (function () {
     const F = finishMat(id + ':' + bpId, bp), melee = !!(BR.CONFIG.weapons[id] || {}).melee;
     g.traverse(o => { if (o.isMesh && o.material === S) o.material = F; });
     const acc = bp.accent != null && bp.accent !== bp.body ? bp.accent : (bp.glow != null ? bp.glow : 0xc8ccd2), glow = bp.glow != null ? bp.glow : acc;
-    const em = edgeLines(g, o => o.material === F, t >= 3 ? glow : new THREE.Color(acc).lerp(new THREE.Color(0xffffff), 0.35), t >= 3 ? 0.85 : 0.55, t >= 3, 30);
+    if (t < 0.5) return;                                         // Common: just the paint
+    const em = edgeLines(g, o => o.material === F, t >= 3 ? glow : new THREE.Color(acc).lerp(new THREE.Color(0xffffff), 0.35), t >= 3 ? 0.85 : t < 1 ? 0.3 : 0.55, t >= 3, 30);
     const bm = melee && opts.blade ? edgeLines(g, o => o.material === opts.blade, glow, t >= 3 ? 0.8 : 0.4, true, 35) : null;
     if (t >= 3) anim(g, tt => {
       const k = 0.5 + 0.5 * Math.sin(tt * (t >= 4 ? 3.2 : 2));
@@ -3399,6 +3542,9 @@ BR.Models = (function () {
       if (t >= 5 && em) em.color.setHSL((tt * 0.12) % 1, 1, 0.62);
     });
     if (t >= 4 && F.map) anim(g, tt => { F.map.offset.set((tt * 0.035) % 1, (tt * 0.02) % 1); });
+    // v1.32: Legendary+ finishes breathe light through their own pattern (gilt engraving glints, prism flows glow)
+    if (t >= 3 && F.map) { if (!F.userData.glint) { F.userData.glint = true; F.emissiveMap = F.map; F.emissive = new THREE.Color(glow); F.needsUpdate = true; }
+      anim(g, tt => { F.emissiveIntensity = (t >= 4 ? 0.16 : 0.08) + (t >= 4 ? 0.12 : 0.1) * (0.5 + 0.5 * Math.sin(tt * (t >= 5 ? 3.4 : 2.2))); if (t >= 5) F.emissive.setHSL((tt * 0.12) % 1, 1, 0.55); }); }
   }
 
   // v1.17: every part with a detailed surface gets box-mapped UVs in real units (the same texel density
@@ -3420,7 +3566,7 @@ BR.Models = (function () {
     const imp = !!g.userData.imported;
     if (imp) edges = false;                                   // sculpted imports already carry their own edges
     g.updateMatrixWorld(true);
-    g.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.real && !o.userData.noUV && o.geometry.attributes.position.count < (imp ? 200000 : 20000)) boxUV(o, 6.5); });
+    g.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.real && !o.userData.noUV && !o.geometry.userData.boxed && o.geometry.attributes.position.count < (imp ? 200000 : 20000)) boxUV(o, 6.5); });
     if (edges) edgeLines(g, o => o.parent === g && o.material && o.material.userData && o.material.userData.real, 0xffffff, 0.1, false, 38);     // main body only: one extra draw call
   }
   return {

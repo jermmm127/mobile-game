@@ -14,6 +14,8 @@ BR.Weapons = {
 
   update(w, dt, actor) {
     w.cool -= dt;
+    // v1.32 burst guns: once a burst starts it finishes on its own, even if the trigger is let go
+    if (w.burstLeft > 0 && w.cool <= 0 && actor.weapon === w && actor.alive !== false && actor.game) { if (w.mag <= 0 || w.reloadT > 0) w.burstLeft = 0; else this.tryFire(actor.game, actor); }
     w.bloom = Math.max(0, w.bloom - dt * 0.12);
     if (w.reloadT > 0) {
       w.reloadT -= dt;
@@ -75,6 +77,7 @@ BR.Weapons = {
     }
     const d = w.def;
     w.cool = 60 / d.rpm;
+    if (d.burst) { if (!(w.burstLeft > 0)) w.burstLeft = d.burst; if (--w.burstLeft <= 0 || w.mag <= 1) { w.burstLeft = 0; w.cool = d.burstDelay || 0.3; } }
     w.mag--;
     const spread = this.spread(actor, w);
     const eye = actor.eye(this._eye || (this._eye = new THREE.Vector3()));
@@ -143,6 +146,7 @@ BR.Weapons = {
           if (p < 2 && Math.random() < 0.7) game.fx.burst(end, [0xffd27a, 0xffffff, 0xffa040], 3, 3.2, 0.035, 0.22, 9);
         }
       }
+      if (!actor.isPlayer && p === 0 && hit.actor !== game.player && game.nearMiss) game.nearMiss(eye, end, actor);
       if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
       if (game.mode && game.mode.netShot && p < 3) game.mode.netShot(actor, muzzle, end, w.id, p === 0);      // online: show this shot on the other screens
       else if (game.brnet && p < 3) game.brnet.netShot(actor, muzzle, end, w.id, p === 0);

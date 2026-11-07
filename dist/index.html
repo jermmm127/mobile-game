@@ -1039,6 +1039,9 @@ body.duel #topbar .dp { display: flex; }
 .cs-case.nova .cs-body { background: linear-gradient(135deg, #1a0638, #6a1bff 45%, #ff3df2 75%, #1de9ff); }
 .cs-case.nova .cs-lid { background: linear-gradient(135deg, #2a0a50, #b04bff); }
 .cs-case.nova { box-shadow: 0 0 34px rgba(176,75,255,0.55); }
+.cs-case.street .cs-body { background: linear-gradient(135deg, #1a1c20, #3a3f46 40%, #ff3d7f 70%, #ffe14d); }
+.cs-case.street .cs-lid { background: linear-gradient(135deg, #22252a, #5fd35f); }
+.cs-case.street { box-shadow: 0 0 30px rgba(95,211,95,0.45); }
 
 /* Spinning case previews: 12-frame turntable sprite */
 .cs-card .cc-spin { display: block; flex: none; width: 100px; height: 40px; background-size: 1200px 40px; background-repeat: no-repeat;
@@ -1746,7 +1749,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.31.0',
+  version: '1.32.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -1917,14 +1920,21 @@ BR.CONFIG = {
     // fire at your feet to rocket-jump). Shares shells with the Breacher.
     launcher: { name: 'Shockwave Launcher', ammo: 'shells', dmg: 0, pellets: 1, rpm: 80, mag: 4, reload: 2.9, spread: 0.008, ads: 0.6, bloom: 0, bloomMax: 0, range: 60, head: 1, recoil: 0.045, kick: 1.6, zoom: 1.3, tier: 2, color: 0x2a2433, launcher: true, launchSpeed: 38, blastDamage: 42 },
     sniper:  { name: 'Sniper',  ammo: 'heavy',  dmg: 95, pellets: 1, rpm: 42,  mag: 5,  reload: 2.6, spread: 0.035, ads: 0.03, bloom: 0, bloomMax: 0, range: 400, head: 2.2, recoil: 0.06, zoom: 4.0, tier: 3, color: 0x9a8a6c, scope: true, bolt: true, kick: 3.5, knockback: 4, speedMult: 0.8, adsRate: 8, drawTime: 0.85 },     // v1.27.6: heavy: slow to move, scope in and swap to
+    // ---- v1.32 new guns (added at the END so online weapon ids stay the same)
+    // Talon: a 3-round-burst rifle with a holo sight. Each burst lands fast and tight; the pause between bursts is the trade.
+    burst:   { name: 'Talon Burst', ammo: 'heavy', dmg: 27, pellets: 1, rpm: 900, burst: 3, burstDelay: 0.3, mag: 30, reload: 2.2, spread: 0.015, ads: 0.28, bloom: 0.004, bloomMax: 0.022, range: 115, head: 1.75, recoil: 0.011, recoilH: 0.006, zoom: 1.6, tier: 2, color: 0x2c3036, holo: true },
+    // Riot: a semi-auto drum shotgun. Smaller blasts than the Breacher, but as fast as you can tap and an 8-shell drum.
+    riot:    { name: 'Riot Auto', ammo: 'shells', dmg: 7, pellets: 7, rpm: 150, mag: 8, reload: 2.6, spread: 0.075, ads: 0.6, pelletAssist: 0.3, bloom: 0.012, bloomMax: 0.03, range: 13, head: 1.2, recoil: 0.032, kick: 1.0, zoom: 1.15, tier: 2, color: 0x24272c, knockback: 6, speedMult: 0.98 },
+    // Hornet: a full-auto machine pistol for your secondary slot. Shreds up close, falls off fast.
+    mpistol: { name: 'Hornet', ammo: 'light', dmg: 15, pellets: 1, rpm: 1050, mag: 24, reload: 1.6, spread: 0.03, ads: 0.55, bloom: 0.004, bloomMax: 0.03, range: 14, head: 1.3, recoil: 0.007, recoilH: 0.007, zoom: 1.2, tier: 1, color: 0x26282c, speedMult: 1.06, adsRate: 20 },
   },
 
   // Loot rolls by spot tier. Weights are relative.
   loot: {
     tables: [
-      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, revolver: 4, dmr: 2, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
-      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, revolver: 8, lmg: 6, dmr: 6, launcher: 3, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
-      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, revolver: 9, lmg: 10, dmr: 9, launcher: 6, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
+      { pistol: 22, smg: 16, shotgun: 14, rifle: 6, holoar: 4, hunter: 3, sniper: 1, revolver: 4, dmr: 2, mpistol: 10, riot: 5, burst: 3, ammo: 45, heal: 16, shield: 12, shock: 9 },     // tier 0: open ground
+      { pistol: 8, smg: 18, shotgun: 18, rifle: 14, holoar: 10, hunter: 7, sniper: 4, revolver: 8, lmg: 6, dmr: 6, launcher: 3, mpistol: 9, riot: 10, burst: 10, ammo: 40, heal: 18, shield: 16, shock: 10 },   // tier 1: inside buildings
+      { smg: 8, shotgun: 14, rifle: 18, holoar: 16, hunter: 12, sniper: 12, revolver: 9, lmg: 10, dmr: 9, launcher: 6, mpistol: 4, riot: 10, burst: 15, ammo: 30, heal: 16, shield: 22, shock: 14 },             // tier 2: roofs / towers
     ],
     healAmount: 50,
     shieldAmount: 50,
@@ -2030,6 +2040,17 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.32.0', date: '2026-11-07', title: 'New guns, Common + Uncommon cosmetics, living blueprints, better gunfights', notes: [
+    'Three new guns. TALON BURST: a 3-round burst rifle with a holo sight, angled foregrip and magnifier; each tap fires a full burst. RIOT AUTO: a semi-auto shotgun with an 8-shell drum; smaller blasts than the Breacher, but as fast as you can tap. HORNET: a full-auto machine pistol for your secondary slot, with a folding stock and foregrip. All three drop in Battle Royale, can be picked in Duels and loadouts, sit in the Zombies Mystery Box and Aim Trainer, and get their own sounds.',
+    'New blueprints for the new guns: Neon Talon, Inferno Drum, Toxic Riot, Venom Sting and Stardrive, plus Rare and Epic finishes.',
+    'New COMMON and UNCOMMON tiers. Camos: Olive Drab, Desert Tan, Slate, Ghost White, Navy Blue, Brick Red, Woodland, Urban Digital, Redline, Cobalt Fade, Sandstorm and Patrol Two-Tone. Also tracers, gloves, outfits, masks and hats, plus Field Issue, Dune Runner, Patrol and Red Stripe blueprints for every weapon. Every older shop item now shows a tier too.',
+    'New STREET CASE (250 coins): mostly Common and Uncommon drops, with a shot at Rare, Epic and the Legendary Street King Talon blueprint.',
+    'Legendary, Mythic and Exotic blueprints come alive: a band of light sweeps down the gun, the finish glints and breathes light, and Mythic and Exotic ones send rings of energy sliding off the muzzle (Exotic in full rainbow). Rare and Epic stay as they were.',
+    'Fixed: camos only showed their pattern on the Rifle. On every other gun they came out as one flat colour. Every camo now shows its full pattern on every gun.',
+    'Better gunfights: enemy rounds that fly past your head now snap and whizz on the side they passed. Breaking a shield shatters it with a glassy crack and blue shards ("SHIELD BROKEN"). A quiet ping warns you when your mag is down to its last quarter.',
+    'Better sound: your own shots now have a slapback echo off the surroundings, and heavy guns add a deep sub thump.',
+    'Runs smoother: every shader in a match is now prepared while it loads, so the first shot, explosion or kill no longer causes a hitch. On Low graphics the new blueprint effects skip their extra passes.',
+  ] },
   { v: '1.31.0', date: '2026-11-06', title: 'Gun finish, knife height, pellet numbers', notes: [
     'The default guns look better: the plastic shine is gone. They now have a matte, worn gunmetal finish with fine grain, scratches and wear.',
     'Smoother gun models: lumpy surfaces and rough, chewed-looking edges on the gun models are cleaned up. Flat panels look flat and hard corners stay crisp.',
@@ -2652,6 +2673,9 @@ BR.Audio = {
     shotgun:  { vol: 0.95, crack: 3600, body: 70,  bodyDur: 0.2,  boom: 0.42, lp0: 4800, lp1: 380, tail: 0.6, mech: 0 },
     sniper:   { vol: 1.0,  crack: 4800, body: 62,  bodyDur: 0.24, boom: 0.6,  lp0: 5200, lp1: 320, tail: 0.75, mech: 0 },
     hunter:   { vol: 0.92, crack: 5000, body: 75,  bodyDur: 0.2,  boom: 0.48, lp0: 5600, lp1: 420, tail: 0.65, mech: 0 },
+    burst:    { vol: 0.64, crack: 5900, body: 125, bodyDur: 0.09, boom: 0.18, lp0: 7000, lp1: 760, tail: 0.36, mech: 3200 },
+    riot:     { vol: 0.85, crack: 3900, body: 80,  bodyDur: 0.16, boom: 0.34, lp0: 5000, lp1: 420, tail: 0.5, mech: 2400 },
+    mpistol:  { vol: 0.48, crack: 6400, body: 180, bodyDur: 0.05, boom: 0.08, lp0: 7800, lp1: 1300, tail: 0.2, mech: 4000 },
   },
   shot(id, dist, pan, suppressed) {
     dist = dist || 0;
@@ -2685,6 +2709,12 @@ BR.Audio = {
     this.nz({ type: 'bandpass', f0: 1400 * j, f1: 600, dur: G.boom * 0.6, vol: v * 0.35, q: 1.1, at: delay, pan, rev: 0.1 });
     // 5) the action: bolt carrier / slide clack right behind the shot (close only)
     if (G.mech && dist < 10) this.metal(G.mech * j, 0.07 * near, 0.04, delay + 0.035, pan);
+    // 5b) v1.32 your own shots: a slapback off the surroundings (left then right) and, on heavy guns, a sub thump you feel
+    if (dist < 1) {
+      this.nz({ type: 'bandpass', f0: 1100 * j, f1: 420, dur: G.boom * 1.3, vol: v * 0.16, q: 0.9, at: delay + 0.045, pan: -0.6, rev: 0.2 });
+      this.nz({ type: 'bandpass', f0: 950 * j, f1: 380, dur: G.boom * 1.4, vol: v * 0.12, q: 0.9, at: delay + 0.075, pan: 0.6, rev: 0.25 });
+      if (G.body < 110) this.osc({ f0: 72 * j, f1: 34, dur: 0.2, vol: v * 0.45, lp: 180, at: delay });
+    }
     // 6) far away: a delayed echo off the terrain
     if (dist > 25) this.nz({ f0: 1200 * air, f1: 300, dur: G.boom * 2.2, vol: v * 0.25, at: delay + 0.18 + Math.random() * 0.1, pan: -pan * 0.5, rev: 0.6 });
   },
@@ -2729,6 +2759,24 @@ BR.Audio = {
     if (shield) this.nz({ type: 'highpass', f0: 4500, dur: 0.06, vol: 0.1, at: 0.005 });
     if (head) this.metal(3100, 0.2, 0.18, 0.004);
   },
+  // v1.32 a round snapping past your head: a supersonic crack and a fast falling whizz, panned to the side it passed
+  whiz(pan) {
+    const t = performance.now(); if (t - (this._whizT || 0) < 70) return; this._whizT = t;
+    this._force = true; try {
+      this.nz({ type: 'highpass', f0: 3800, dur: 0.02, vol: 0.16, pan, attack: 0.0005 });
+      this.nz({ type: 'bandpass', f0: 5200 + Math.random() * 1500, f1: 1400, sweep: 0.8, dur: 0.16, vol: 0.13, q: 2.2, pan, attack: 0.004 });
+    } finally { this._force = false; }
+  },
+  // v1.32 a shield shattering: bright glassy pings over a crunchy burst (deeper + louder when it's yours)
+  shieldBreak(mine) {
+    const k = mine ? 1.2 : 1; this._force = true; try {
+      this.nz({ type: 'highpass', f0: 2600, dur: 0.22, vol: 0.2 * k, rev: 0.25 });
+      this.osc({ f0: mine ? 220 : 320, f1: 90, dur: 0.18, vol: 0.18 * k, drive: 2 });
+      for (let i = 0; i < 5; i++) this.metal(3600 + Math.random() * 2600, 0.07 * k, 0.12, 0.01 + i * 0.022 + Math.random() * 0.01, (Math.random() - 0.5) * 0.6, 0.2);
+    } finally { this._force = false; }
+  },
+  // v1.32 low ammo: a quiet hollow ping on each shot of the last quarter of the mag (higher as it runs out)
+  lowAmmo(frac) { this.osc({ f0: 1300 + (1 - frac) * 500, f1: 1250, dur: 0.06, vol: 0.05, type: 'triangle', at: 0.02 }); },
   // Kills: a deep body drop + a single bright confirm ping (higher on a streak, a doubled ping on a headshot)
   kill(head, streak) {
     const st = Math.pow(1.06, Math.min((streak || 1) - 1, 6));
@@ -5697,6 +5745,8 @@ BR.Weapons = {
 
   update(w, dt, actor) {
     w.cool -= dt;
+    // v1.32 burst guns: once a burst starts it finishes on its own, even if the trigger is let go
+    if (w.burstLeft > 0 && w.cool <= 0 && actor.weapon === w && actor.alive !== false && actor.game) { if (w.mag <= 0 || w.reloadT > 0) w.burstLeft = 0; else this.tryFire(actor.game, actor); }
     w.bloom = Math.max(0, w.bloom - dt * 0.12);
     if (w.reloadT > 0) {
       w.reloadT -= dt;
@@ -5758,6 +5808,7 @@ BR.Weapons = {
     }
     const d = w.def;
     w.cool = 60 / d.rpm;
+    if (d.burst) { if (!(w.burstLeft > 0)) w.burstLeft = d.burst; if (--w.burstLeft <= 0 || w.mag <= 1) { w.burstLeft = 0; w.cool = d.burstDelay || 0.3; } }
     w.mag--;
     const spread = this.spread(actor, w);
     const eye = actor.eye(this._eye || (this._eye = new THREE.Vector3()));
@@ -5826,6 +5877,7 @@ BR.Weapons = {
           if (p < 2 && Math.random() < 0.7) game.fx.burst(end, [0xffd27a, 0xffffff, 0xffa040], 3, 3.2, 0.035, 0.22, 9);
         }
       }
+      if (!actor.isPlayer && p === 0 && hit.actor !== game.player && game.nearMiss) game.nearMiss(eye, end, actor);
       if (p < 3 || actor.isPlayer || d.pattern === 'line') game.fx.tracer(muzzle, end, actor.isPlayer, game.tracerColor(actor), game.tracerOpts(actor));
       if (game.mode && game.mode.netShot && p < 3) game.mode.netShot(actor, muzzle, end, w.id, p === 0);      // online: show this shot on the other screens
       else if (game.brnet && p < 3) game.brnet.netShot(actor, muzzle, end, w.id, p === 0);
@@ -6098,6 +6150,11 @@ Object.assign(BR.IMPORTED, {
 // v1.23: every gun wears the black factory finish by default (sculpted detail kept, paint and mismatched colours dropped);
 // knives keep their own steel and grips
 for (const id of Object.keys(BR.IMPORTED)) if (!['knife', 'bayonet', 'tracker', 'butterfly'].includes(id)) BR.IMPORTED[id].finish = 'factory';
+
+// v1.32 new guns: variants of the sculpts above, each with its own finish colour and procedural parts (models.js BUILD.burst / riot / mpistol)
+BR.IMPORTED.burst = Object.assign({}, BR.IMPORTED.holoar, { model: 'holoar', finish: 'factory', factoryColor: 0x6b5d45, fore: [0, -0.07, -0.34] });                       // Talon: FDE tan, angled foregrip, flip magnifier
+BR.IMPORTED.riot = Object.assign({}, BR.IMPORTED.shotgun, { model: 'shotgun', finish: 'factory', factoryColor: 0x3d4632, pumpBox: null, port: null });                  // Riot: OD green, drum magazine, no pump
+BR.IMPORTED.mpistol = Object.assign({}, BR.IMPORTED.pistol, { model: 'pistol', finish: 'factory', factoryColor: 0x2b2e34, fore: [0, -0.035, -0.12] });                   // Hornet: folding stock + vertical foregrip
 
 </script>
 <script>
@@ -6562,6 +6619,15 @@ BR.Models = (function () {
     novaflare: { name: 'Nova Flare', caseOnly: true, case: 'nova', rarity: 'Legendary', color: 0xffffff, color2: 0xff3df2, style: 'comet' },
     acidhelix: { name: 'Acid Helix', caseOnly: true, case: 'nova', rarity: 'Legendary', color: 0xc8ff5a, color2: 0x1fdc3c, style: 'helix' },
     phoenix:   { name: 'Phoenix', caseOnly: true, rarity: 'Exotic', color: 0xffe14d, color2: 0xff3a00, style: 'phoenix' },
+    // v1.32 Common / Uncommon
+    white:     { name: 'Clean White', price: 80, rarity: 'Common', color: 0xf2f4f6 },
+    lime:      { name: 'Lime', price: 80, rarity: 'Common', color: 0xb6ff3a },
+    amber:     { name: 'Amber', price: 90, rarity: 'Common', color: 0xffb02e },
+    mint:      { name: 'Mint Duo', price: 180, rarity: 'Uncommon', color: 0x7dffcf, color2: 0xffffff, style: 'dual' },
+    sunset:    { name: 'Sunset Duo', price: 200, rarity: 'Uncommon', color: 0xff7a3a, color2: 0xff3df2, style: 'dual' },
+    smoke:     { name: 'Gunsmoke', caseOnly: true, case: 'street', rarity: 'Common', color: 0xb0b6be },
+    cherry:    { name: 'Cherry Cola', caseOnly: true, case: 'street', rarity: 'Uncommon', color: 0xff2f55, color2: 0x5a0a14, style: 'dual' },
+    graffiti:  { name: 'Graffiti Rings', caseOnly: true, case: 'street', rarity: 'Epic', color: 0xffe14d, color2: 0xff3d7f, style: 'rings' },
   };
   const CHARMS = {
     none:    { name: 'None', price: 0 },
@@ -6582,11 +6648,59 @@ BR.Models = (function () {
     bloodmoon: [0.12, 70], circuit: [0.12, 70], electric: [0.12, 70], molten: [0.1, 60], inferno: [0.1, 60], aurora: [0.15, 80], m_volt: [0.15, 80], m_singularity: [0.25, 120],
     carbon: [0.12, 70], arctic: [0.05, 30], tiger: [0.06, 34], crimson: [0.08, 40], pixel: [0.06, 34], jungle: [0.04, 26], neon: [0.1, 60],
   };
+  // ---- v1.32 COMMON / UNCOMMON paint camos: simple, honest finishes (solid paint, two-tone, stripes, woodland, digital,
+  // splatter, fade, tiger) drawn procedurally with light wear. [id, name, rarity, pattern, colours, price | 'street']
+  const hexc = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
+  function paintTex(id, pat, cols) {
+    return canvasTex('paint-' + id, (c, S) => {
+      const R = BR.util.rng(hsh2(id)), C = cols.map(hexc);
+      c.fillStyle = C[0]; c.fillRect(0, 0, S, S);
+      const blob = (x, y, r, fill) => { const n = 11, pts = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, rr = r * (0.55 + R() * 0.6); pts.push([Math.cos(a) * rr, Math.sin(a) * rr * (0.6 + R() * 0.5)]); }
+        for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { c.save(); c.translate(x + ox, y + oy); c.beginPath();
+          for (let i = 0; i <= n; i++) { const a = pts[i % n], b = pts[(i + 1) % n]; const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2; i ? c.quadraticCurveTo(a[0], a[1], mx, my) : c.moveTo(mx, my); }
+          c.closePath(); c.fillStyle = fill; c.fill(); c.restore(); } };
+      if (pat === 'woodland') { for (let k = 1; k < C.length; k++) for (let i = 0; i < 14; i++) blob(R() * S, R() * S, 22 + R() * 34 - k * 4, C[k]); }
+      else if (pat === 'splatter') { for (let k = 1; k < C.length; k++) for (let i = 0; i < 26; i++) { blob(R() * S, R() * S, 4 + R() * 16, C[k]); } }
+      else if (pat === 'digital') { const q = 8; for (let k = 1; k < C.length; k++) for (let i = 0; i < 70; i++) { const x = Math.floor(R() * S / q) * q, y = Math.floor(R() * S / q) * q, w = (1 + Math.floor(R() * 3)) * q, h = (1 + Math.floor(R() * 2)) * q; c.fillStyle = C[k]; c.fillRect(x, y, w, h); if (x + w > S) c.fillRect(x - S, y, w, h); if (y + h > S) c.fillRect(x, y - S, w, h); } }
+      else if (pat === 'stripe') { c.fillStyle = C[1]; c.fillRect(0, S * 0.42, S, S * 0.16); if (C[2]) { c.fillStyle = C[2]; c.fillRect(0, S * 0.46, S, S * 0.04); } }
+      else if (pat === 'twotone') { c.fillStyle = C[1]; c.fillRect(0, S / 2, S, S / 2); c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(0, S / 2 - 2, S, 3); }
+      else if (pat === 'fade') { const g = c.createLinearGradient(0, 0, S, S); g.addColorStop(0, C[0]); g.addColorStop(0.5, C[1]); g.addColorStop(1, C[0]); c.fillStyle = g; c.fillRect(0, 0, S, S); }
+      else if (pat === 'tiger') { c.fillStyle = C[1]; for (let i = 0; i < 9; i++) { const x = (i + R() * 0.4) / 9 * S; c.beginPath(); c.moveTo(x, 0); for (let y = 0; y <= S; y += 16) c.lineTo(x + Math.sin(y * 0.05 + i) * 10 + (R() - 0.5) * 6, y); for (let y = S; y >= 0; y -= 16) c.lineTo(x + 6 + Math.sin(y * 0.05 + i) * 10 + (R() - 0.5) * 6, y); c.closePath(); c.fill(); } }
+      else if (pat === 'rust') { for (let i = 0; i < 60; i++) { const x = R() * S, y = R() * S, r = 6 + R() * 26, g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, R() < 0.5 ? C[1] : C[2] || C[1]); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); } }
+      // wear: grain, a few scuffs and chipped edges (lighter than the base colour)
+      for (let i = 0; i < 1400; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)'; c.fillRect(R() * S, R() * S, 1, 1); }
+      c.lineCap = 'round'; for (let i = 0; i < 26; i++) { const x = R() * S, y = R() * S, a = R() * Math.PI, l = 3 + R() * 10; c.strokeStyle = 'rgba(255,255,255,' + (0.06 + R() * 0.08) + ')'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
+    }, 256);
+  }
+  const hsh2 = k => { let h = 2166136261; for (const ch of k) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
+  const PAINT_SWATCH = (pat, cols) => { const C = cols.map(hexc); return pat === 'solid' ? C[0] : pat === 'fade' ? `linear-gradient(135deg,${C[0]},${C[1]},${C[0]})` : pat === 'stripe' ? `linear-gradient(180deg,${C[0]} 0 42%,${C[1]} 42% 58%,${C[0]} 58%)`
+    : pat === 'twotone' ? `linear-gradient(180deg,${C[0]} 0 50%,${C[1]} 50%)` : pat === 'tiger' ? `repeating-linear-gradient(100deg,${C[0]} 0 8px,${C[1]} 8px 11px)` : pat === 'digital' ? `repeating-linear-gradient(90deg,${C.join(' 0 5px,')} 0 5px)`.replace(/ 0 5px\)$/, ')')
+    : `radial-gradient(circle at 30% 35%,${C[1]} 0 18%,transparent 19%),radial-gradient(circle at 70% 65%,${C[2] || C[1]} 0 16%,transparent 17%),${C[0]}`; };
+  const PAINTS = [
+    // Common: shop
+    ['c_olive', 'Olive Drab', 'Common', 'solid', [0x4a5530], 100], ['c_tan', 'Desert Tan', 'Common', 'solid', [0xb59a6a], 100], ['c_slate', 'Slate', 'Common', 'solid', [0x56606b], 100],
+    ['c_ghost', 'Ghost White', 'Common', 'solid', [0xd6dadd], 120], ['c_navy', 'Navy Blue', 'Common', 'solid', [0x24324d], 120], ['c_brick', 'Brick Red', 'Common', 'solid', [0x7a2e22], 120],
+    // Uncommon: shop
+    ['u_woodland', 'Woodland', 'Uncommon', 'woodland', [0x4f5a34, 0x2c3420, 0x6e6a44, 0x1e1a14], 260], ['u_urban', 'Urban Digital', 'Uncommon', 'digital', [0x7a828b, 0x4b525a, 0xb3bac1, 0x2a2e33], 280],
+    ['u_redline', 'Redline', 'Uncommon', 'stripe', [0x1c1e22, 0xc8102e, 0xff5a5a], 300], ['u_cobalt', 'Cobalt Fade', 'Uncommon', 'fade', [0x0f1f4a, 0x2f7bff], 300],
+    ['u_sandstorm', 'Sandstorm', 'Uncommon', 'woodland', [0xc9b083, 0xa48858, 0xe2d2a8, 0x7d6442], 280], ['u_twotone', 'Patrol Two-Tone', 'Uncommon', 'twotone', [0x3d4434, 0x1a1c1e], 260],
+    // Street Case (case only)
+    ['c_rust', 'Rust Bucket', 'Common', 'rust', [0x5a4a40, 0x9a4a1e, 0x3a2418], 'street'], ['c_concrete', 'Concrete', 'Common', 'splatter', [0x8a8d90, 0x6e7174, 0xa6a9ac], 'street'],
+    ['u_splash', 'Paint Splash', 'Uncommon', 'splatter', [0x16181c, 0xff3d7f, 0x1de9ff], 'street'], ['u_hazard', 'Hazard Stripe', 'Uncommon', 'tiger', [0xe6dc1e, 0x161616], 'street'],
+    ['r_wildcat', 'Wildcat', 'Rare', 'tiger', [0xff7a00, 0x111111], 'street'], ['r_glacier', 'Glacier Digital', 'Rare', 'digital', [0xdff3ff, 0x8fc8f0, 0x3a7ab0, 0xffffff], 'street'],
+  ];
+  for (const [id, name, rarity, pat, cols, price] of PAINTS) {
+    SKINS[id] = Object.assign({ name, rarity, paint: { pat, cols }, swatch: PAINT_SWATCH(pat, cols) }, price === 'street' ? { caseOnly: true, case: 'street' } : { price });
+    if (pat !== 'solid') TEX[id] = () => paintTex(id, pat, cols);
+  }
   function skinMaterial(skin, base) {
     const key = skin + '|' + base;
     if (cache.mat[key]) return cache.mat[key];
     let m;
     if (GRIND_GLOW[skin] !== undefined && TEX[skin]) m = new THREE.MeshPhongMaterial({ map: TEX[skin](), emissive: 0xffffff, emissiveMap: TEX[skin](), emissiveIntensity: GRIND_GLOW[skin], specular: 0xffffff, shininess: skin === 'g_ascendant' ? 180 : 90 });
+    else if (SKINS[skin] && SKINS[skin].paint) {           // v1.32 paint camos: satin paint over the weapon's own grain
+      const P = SKINS[skin].paint; m = P.pat === 'solid' ? new THREE.MeshPhongMaterial({ map: wearTex(P.cols[0], 'gun'), specular: 0x2a2e33, shininess: 18 }) : new THREE.MeshPhongMaterial({ map: TEX[skin](), specular: 0x2a2e33, shininess: 18 });
+    }
     else switch (skin) {
       case 'carbon': case 'arctic': case 'tiger': case 'crimson': case 'pixel':
         m = new THREE.MeshLambertMaterial({ map: TEX[skin]() }); break;
@@ -6625,7 +6739,7 @@ BR.Models = (function () {
     // ---- finish pass (v1.8.3): every camo gets a real surface. Matte camos become satin Phong (soft
     // highlights), glossy ones a clear-coat sheen, metals a mirror-like reflection of the studio env.
     if (skin !== 'default') {
-      const F = SKIN_FINISH[skin] || [0.1, 50];
+      const F = SKIN_FINISH[skin] || (SKINS[skin] && SKINS[skin].paint ? [0.04, 20] : [0.1, 50]);
       if (m.isMeshLambertMaterial) m = new THREE.MeshPhongMaterial({ color: m.color, map: m.map, emissive: m.emissive, emissiveMap: m.emissiveMap, emissiveIntensity: m.emissiveIntensity, transparent: m.transparent, opacity: m.opacity, specular: 0x3a3f48, shininess: F[1] });
       m.envMap = envCube(); m.reflectivity = F[0]; m.shininess = Math.max(m.shininess || 0, F[1]);
       if (m.specular && F[0] >= 0.3) m.specular.setHex(0xffffff);
@@ -7884,7 +7998,7 @@ BR.Models = (function () {
   }
   function importedParts(id) {
     if (IMPORT_CACHE[id] !== undefined) return IMPORT_CACHE[id];
-    const C = BR.IMPORTED && BR.IMPORTED[id], data = BR.MODEL_DATA && BR.MODEL_DATA[id];
+    const C = BR.IMPORTED && BR.IMPORTED[id], data = BR.MODEL_DATA && C && BR.MODEL_DATA[C.model || id];      // (v1.32: variants reuse another gun's sculpt)
     if (!C || !data) return (IMPORT_CACHE[id] = null);
     try {
       const s = C.scale, [dx, dy, dz] = C.offset, out = [];
@@ -7920,6 +8034,12 @@ BR.Models = (function () {
           });
           const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
           if (P.nor) geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); else geo.computeVertexNormals();
+          // v1.32: untextured sculpts have no UVs, so every camo used to show as one flat colour. Box-map them here in real units
+          // (the same density as the procedural guns); parts animate as whole meshes, so the mapping stays put.
+          if (!P.uv) { const N = geo.attributes.normal.array, k = 6.5;
+            for (let i = 0; i < pos.length / 3; i++) { const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2], ax = Math.abs(N[i * 3]), ay = Math.abs(N[i * 3 + 1]), az = Math.abs(N[i * 3 + 2]);
+              if (ax >= ay && ax >= az) { uv[i * 2] = z * k; uv[i * 2 + 1] = y * k; } else if (ay >= az) { uv[i * 2] = z * k; uv[i * 2 + 1] = x * k + 0.31; } else { uv[i * 2] = x * k + 0.57; uv[i * 2 + 1] = y * k; } }
+            geo.attributes.uv.needsUpdate = true; geo.userData.boxed = true; }
           geo.computeBoundingSphere(); out.push({ key, geo, mat });
         }
       }
@@ -8014,6 +8134,26 @@ BR.Models = (function () {
     const proc = BUILD[id]; if (!proc) continue; PROC[id] = proc;
     BUILD[id] = (g, S, M, opts) => importedBuild(id, g, S, M, opts) || proc(g, S, M, opts);
   }
+  // v1.32 new guns, built on the original procedural models (each with its own parts on top)
+  const variant = (id, base, extra) => (g, S, M, o) => { if (importedBuild(id, g, S, M, o)) extra(g, kit(g), M); else PROC[base](g, S, M, o); };
+  // Talon: an angled foregrip under the handguard and a flip-to-side magnifier behind the holo sight
+  BUILD.burst = variant('burst', 'holoar', (g, k, M) => {
+    const fg = k.box(0.026, 0.05, 0.05, 0, -0.036, -0.34, M.grip); fg.rotation.x = -0.55;
+    k.box(0.028, 0.008, 0.06, 0, -0.012, -0.34, M.dark);
+    const mag = k.cyl(0.017, 0.07, -0.042, 0.146, 0.0, M.dark, 'z', 16); k.cyl(0.0195, 0.008, -0.042, 0.146, 0.034, M.metal, 'z', 16); k.box(0.026, 0.012, 0.02, -0.022, 0.13, 0.0, M.dark); void mag;
+  });
+  // Riot: a big drum magazine in front of the trigger (it's the part that comes off on reloads)
+  BUILD.riot = variant('riot', 'shotgun', (g, k, M) => {
+    const d = k.cyl(0.062, 0.07, 0, -0.1, -0.075, M.dark, 'x', 28), rim = k.cyl(0.064, 0.012, 0, -0.1, -0.075, M.metal, 'x', 28), hub = k.cyl(0.018, 0.074, 0, -0.1, -0.075, M.grip, 'x', 12);
+    const neck = k.box(0.03, 0.05, 0.05, 0, -0.045, -0.075, M.dark);
+    if (g.userData.mag) for (const m of [d, rim, hub, neck]) g.userData.mag.attach(m); else magGroup(g, [d, rim, hub, neck]);
+  });
+  // Hornet: a folding wire stock behind the grip and a vertical foregrip under the suppressor
+  BUILD.mpistol = variant('mpistol', 'pistol', (g, k, M) => {
+    for (const x of [-0.014, 0.014]) k.cyl(0.0035, 0.15, x, -0.02, 0.105, M.metal, 'z', 8);
+    k.box(0.04, 0.085, 0.012, 0, -0.045, 0.18, M.grip); k.box(0.034, 0.012, 0.03, 0, 0.0, 0.17, M.dark);
+    k.box(0.026, 0.012, 0.042, 0, 0.012, -0.12, M.dark); k.box(0.022, 0.052, 0.022, 0, -0.018, -0.12, M.grip);
+  });
 
   // ------------------------------------------------------------------ charms
   function charm(id) {
@@ -8356,7 +8496,7 @@ BR.Models = (function () {
     const sk = skin && skin !== 'default' ? SKINS[skin] : null;
     let tier = 0, col = null;
     if (sk && FX_TIER[sk.rarity]) { tier = FX_TIER[sk.rarity]; col = swatchColor(sk.swatch); }
-    else if (bp && (!bp.mod || bp.fx) && (bp.rarity === 'Mythic' || bp.rarity === 'Exotic')) { tier = FX_TIER[bp.rarity]; col = bp.glow; }
+    else if (bp && FX_TIER[bp.rarity] && bp.glow != null && (!bp.mod || bp.fx || !g.userData.trailTip)) { tier = FX_TIER[bp.rarity]; col = bp.glow; }     // v1.32: every Legendary+ gun blueprint (knives with their own aura keep it)
     if (!tier || col === null || col === undefined || !(BR.Effects && BR.Effects.tex)) return;
     let src = null, n = 0;
     g.traverse(o => { if (o.isMesh && !o.userData.isFlash && o.geometry && o.geometry.attributes.position && o.geometry.attributes.position.count > n && !(o.material && o.material.transparent)) { n = o.geometry.attributes.position.count; src = o; } });
@@ -8374,7 +8514,29 @@ BR.Models = (function () {
       sp.userData.isFlash = true; P.add(sp); motes.push({ sp, o: Math.random(), a: Math.random() * 6.28, r: 0.4 + Math.random() * 0.6 });
     }
     const half = size.clone().multiplyScalar(0.5);
+    // v1.32: a band of light that sweeps down the weapon (two on Exotic, opposite ways), over the whole surface
+    const sweep = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide, fog: false,
+      uniforms: { t: { value: 0 }, col: { value: new THREE.Color(col) }, lo: { value: bb.min[axis] }, hi: { value: bb.max[axis] }, w: { value: 0.07 + 0.02 * tier }, k: { value: 0.55 + 0.2 * tier }, two: { value: tier >= 3 ? 1 : 0 } },
+      vertexShader: 'varying float a; uniform float lo, hi; void main(){ a = (position.' + axis + ' - lo) / max(1e-4, hi - lo); gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 1.004, 1.0); }',
+      fragmentShader: 'varying float a; uniform float t, w, k, two; uniform vec3 col; void main(){ float p = fract(t * 0.42); float b = smoothstep(w, 0.0, abs(a - (1.0 - p * 1.3 + 0.15)));'
+        + ' if (two > 0.5) b = max(b, smoothstep(w, 0.0, abs(a - (p * 1.3 - 0.15)))); gl_FragColor = vec4(col * b * k, b * k); }' });
+    const lite = !!(BR.game && BR.game.settings && BR.game.settings.gfx === 'low');          // (Low graphics: keep the glow + sparkles, skip the extra passes)
+    if (!lite) { const sm = new THREE.Mesh(src.geometry, sweep); sm.userData.isFlash = true; sm.userData.noUV = true; sm.renderOrder = 3; src.add(sm); }
+    // Mythic + Exotic: rings of energy that slide from the stock out past the muzzle and fade
+    const rings = [];
+    if (tier >= 2 && !lite) {
+      const rr = Math.max(axis === 'z' ? Math.max(half.x, half.y) : Math.max(half.x, half.z), len * 0.03) * 0.85;
+      for (let i = 0; i < (tier >= 3 ? 3 : 2); i++) {
+        const r = new THREE.Mesh(new THREE.TorusGeometry(rr, rr * 0.09, 6, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+        if (axis === 'z') r.rotation.y = 0.5; else if (axis === 'x') r.rotation.y = Math.PI / 2 + 0.5; else r.rotation.x = Math.PI / 2;     // (tilted: reads as a ring from the side too)
+        r.userData.isFlash = true; r.userData.noUV = true; P.add(r); rings.push(r);
+      }
+    }
     anim(g, t => {
+      sweep.uniforms.t.value = t; if (tier === 3) sweep.uniforms.col.value.setHSL((t * 0.18 + 0.5) % 1, 1, 0.6);
+      rings.forEach((r, i) => { const f = (t * 0.55 + i / rings.length) % 1; r.position.copy(ctr); r.position[axis] = bb.max[axis] - f * (bb.max[axis] - bb.min[axis]) * 1.15;
+        const sc = 0.7 + f * 0.6; r.scale.setScalar(sc); r.material.opacity = Math.sin(f * Math.PI) * (tier >= 3 ? 0.75 : 0.6);
+        if (tier === 3) r.material.color.setHSL((t * 0.18 + i / rings.length) % 1, 1, 0.6); });
       const pulse = 0.65 + 0.35 * Math.sin(t * 2.4);
       if (tier === 3) C.setHSL((t * 0.18) % 1, 1, 0.6);
       shells.forEach(({ m, op }, i) => { m.material.opacity = op * (pulse + (i ? 0.2 * Math.sin(t * 5 + 1) : 0)); m.material.color.copy(C); });
@@ -9009,10 +9171,17 @@ BR.Models = (function () {
     ['launcher', 'voidbloom', 'Void Bloom', 'hyperdrive', 0x0b0616, 0xb04bff, 0xff5cf0, 'Mythic', 2500, 'orbit'],          // v1.17.2
     ['launcher', 'solarburst', 'Solar Burst', 'crown', 0x1a0806, 0x3a1208, 0xff7a00, 'Legendary', 1400, 'slam'],
   ];
+  // v1.32 new guns
+  S2.push(['burst', 'neontalon', 'Neon Talon', 'hyperdrive', 0x0b0b1a, 0x1de9ff, 0x1de9ff, 'Mythic', 2400, 'warp'],
+    ['burst', 'streetking', 'Street King', 'prism', 0x16181c, 0xff3d7f, 0xffe14d, 'Legendary', 'street', 'orbit'],
+    ['riot', 'infernodrum', 'Inferno Drum', 'crown', 0x1a0806, 0x3a1208, 0xff7a00, 'Legendary', 1500, 'slam'],
+    ['riot', 'toxicriot', 'Toxic Riot', 'toxic', 0x0a1a08, 0x2a3a20, 0x7dff3a, 'Mythic', 2300, 'orbit'],
+    ['mpistol', 'venomsting', 'Venom Sting', 'toxic', 0x10200a, 0x7dff3a, 0x7dff3a, 'Legendary', 1300, 'orbit'],
+    ['mpistol', 'stardrive', 'Stardrive', 'nebula', 0x0c0a24, 0xffd36a, 0xb48cff, 'Mythic', 2200, 'warp']);
   const S2BP = {};
   for (const [w, id, name, theme, body, accent, glow, rarity, price, reload] of S2) {
     const e = { name, rarity, body, bodyGloss: 2, accent, accentGloss: 2, glow, mod: S2THEME[theme], reload: { style: reload, fx: glow }, season: 2 };
-    if (price === 'nova') { e.caseOnly = true; e.case = 'nova'; } else e.price = price;
+    if (price === 'nova' || price === 'street') { e.caseOnly = true; e.case = price; } else e.price = price;
     e.fit = 'native';                                    // (measured off the live model: only seated, never remapped)
     (S2BP[w] = S2BP[w] || {})[id] = e;
   }
@@ -9321,12 +9490,35 @@ BR.Models = (function () {
     bp.reload = bp.reload || { style: w === 'revolver' ? 'spin' : RL[b] || (bp.rarity === 'Legendary' ? 'twirl' : 'flip'), fx: bp.glow };
   }
   BLUEPRINTS.butterfly = BLUEPRINTS.butterfly || {}; BLUEPRINTS.revolver = BLUEPRINTS.revolver || {};
+  for (const [w, set] of Object.entries({ burst: [['midnight', 'Midnight', 'Rare', 0x14161c, 0x2f5aa8, 0x6fa8ff, 450], ['carbontalon', 'Carbon Talon', 'Epic', 0x1a1c20, 0xff7a00, 0xffb066, 750]],
+    riot: [['bulldog', 'Bulldog', 'Rare', 0x3a2c22, 0x8a6a4a, 0xd8b88a, 450], ['hexdrum', 'Hex Drum', 'Epic', 0x101418, 0x39ff88, 0x9dffcf, 750]],
+    mpistol: [['wasp', 'Wasp', 'Rare', 0x1a1a10, 0xffd24a, 0xffe08a, 400], ['frostbyte', 'Frostbyte', 'Epic', 0x0e1a26, 0x6fd8ff, 0xdff6ff, 700]] }))
+    for (const [id, name, rarity, body, accent, glow, price] of set) (BLUEPRINTS[w] = BLUEPRINTS[w] || {})[id] = { name, rarity, body, accent, glow, price };
+  // v1.32 Common / Uncommon blueprints for every weapon: honest painted finishes (no glow, no add-ons), plus a Street Case pair
+  {
+    const LOW = [
+      ['field', 'Field Issue', 'Common', 0x4a5530, 0x2a2e22, 0x8a9a5a, 150], ['desert', 'Dune Runner', 'Common', 0xb59a6a, 0x6b5536, 0xe8d2a0, 150],
+      ['patrol', 'Patrol', 'Uncommon', 0x2a2f37, 0x46525e, 0x7fd0ff, 300], ['redstripe', 'Red Stripe', 'Uncommon', 0x1c1e22, 0xc8102e, 0xff5a5a, 320],
+      ['st_tag', 'Street Tag', 'Uncommon', 0x16181c, 0xff3d7f, 0x1de9ff, 'street'], ['st_brick', 'Brickyard', 'Common', 0x7a2e22, 0x3a1a14, 0xd8a080, 'street'],
+    ];
+    for (const w of Object.keys(BR.CONFIG.weapons)) {
+      const T = BLUEPRINTS[w] = BLUEPRINTS[w] || {};
+      for (const [id, name, rarity, body, accent, glow, price] of LOW) if (!T[id]) T[id] = Object.assign({ name, rarity, body, accent, glow, low: true }, price === 'street' ? { caseOnly: true, case: 'street' } : { price });
+    }
+  }
   for (const w in BLUEPRINTS) BLUEPRINTS[w] = Object.assign({ default: { name: 'Standard Issue', rarity: 'Base', price: 0 } }, BLUEPRINTS[w]);
 
   // ------------------------------------------------------------------ gloves
   const GLOVES = {
     default: { name: 'Tactical', price: 0, color: 0x2a2d33, pad: 0x15171a },
     desert:  { name: 'Desert Ops', price: 150, color: 0xb39a72, pad: 0x6f5a3c },
+    // v1.32 Common / Uncommon
+    c_olive: { name: 'Field Olive', price: 100, rarity: 'Common', color: 0x4a5530, pad: 0x262b18 },
+    c_black: { name: 'Black Leather', price: 120, rarity: 'Common', color: 0x17181b, pad: 0x0b0b0d, gloss: true },
+    u_hivis: { name: 'Hi-Vis', price: 220, rarity: 'Uncommon', color: 0xd7ff2a, pad: 0x2a2d33 },
+    u_wood:  { name: 'Woodland', price: 260, rarity: 'Uncommon', tex: 'u_woodland', color: 0x4f5a34, pad: 0x1e1a14 },
+    u_street:{ name: 'Paint Splash', caseOnly: true, case: 'street', rarity: 'Uncommon', tex: 'u_splash', color: 0xff3d7f, pad: 0x16181c },
+    r_wild:  { name: 'Wildcat', caseOnly: true, case: 'street', rarity: 'Rare', tex: 'r_wildcat', color: 0xff7a00, pad: 0x111111 },
     arctic:  { name: 'Arctic Camo', price: 200, tex: 'arctic', pad: 0x8d9aa5 },
     carbon:  { name: 'Carbon Fiber', price: 250, tex: 'carbon', pad: 0x3a3f47 },
     crimson: { name: 'Crimson Leather', price: 300, color: 0x8f1424, pad: 0x2a0509, gloss: true },
@@ -9497,17 +9689,23 @@ BR.Models = (function () {
   // top, crisp accent edge lines trace the model's hard edges (glowing + pulsing from Legendary up), and
   // knife blades get a glowing edge line. Edge lines live with the part they trace (so slides, bolts,
   // mags and knife parts keep them while animating) and never go into the merged world model.
-  const TIER = { Rare: 1, Epic: 2, Legendary: 3, Mythic: 4, Exotic: 5 };
+  const TIER = { Common: 0.4, Uncommon: 0.7, Rare: 1, Epic: 2, Legendary: 3, Mythic: 4, Exotic: 5 };
   const hsh = k => { let h = 2166136261; for (const ch of k) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
   const css = c => '#' + new THREE.Color(c).getHexString();
   const tone = (c, k) => { const o = new THREE.Color(c); if (k > 0) o.lerp(new THREE.Color(0xffffff), k); else o.multiplyScalar(1 + k); return '#' + o.getHexString(); };
   function finishMat(key, bp) {
     const ck = 'fin:' + key; if (cache.mat[ck]) return cache.mat[ck];
-    const t = TIER[bp.rarity] || 1, body = bp.body != null ? bp.body : 0x444444, acc = bp.accent != null && bp.accent !== body ? bp.accent : (bp.glow != null ? bp.glow : 0xc8ccd2), glow = bp.glow != null ? bp.glow : acc;
+    const t0 = TIER[bp.rarity] || 1, t = Math.max(1, Math.floor(t0)), low = t0 < 1, body = bp.body != null ? bp.body : 0x444444, acc = bp.accent != null && bp.accent !== body ? bp.accent : (bp.glow != null ? bp.glow : 0xc8ccd2), glow = bp.glow != null ? bp.glow : acc;
     const dark = new THREE.Color(body).getHSL({}).l < 0.28, line = dark ? tone(body, 0.32) : tone(body, -0.5), hi = tone(body, dark ? 0.5 : 0.35), R = BR.util.rng(hsh(key));
-    const style = t >= 4 ? 'prism' : t === 3 ? 'engraved' : t === 2 ? (hsh(key) % 2 ? 'carbon' : 'hex') : 'machined';
+    const style = low ? (t0 < 0.5 ? 'painted' : 'striped') : t >= 4 ? 'prism' : t === 3 ? 'engraved' : t === 2 ? (hsh(key) % 2 ? 'carbon' : 'hex') : 'machined';
     const tex = canvasTex('fin-' + key, (c, S) => {
       c.fillStyle = css(body); c.fillRect(0, 0, S, S);
+      if (style === 'painted' || style === 'striped') {             // v1.32 Common / Uncommon: satin paint, a two-tone break, light wear
+        c.fillStyle = css(acc); c.fillRect(0, S * 0.62, S, S * 0.38); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, S * 0.62 - 2, S, 3);
+        if (style === 'striped') { c.fillStyle = css(glow); c.fillRect(0, S * 0.18, S, 6); c.fillRect(0, S * 0.18 + 10, S, 2); }
+        for (let i = 0; i < 1600; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)'; c.fillRect(R() * S, R() * S, 1, 1); }
+        for (let i = 0; i < 40; i++) { c.fillStyle = 'rgba(255,255,255,' + (0.08 + R() * 0.1) + ')'; c.fillRect(R() * S, R() * S, 1 + R() * 2, 1); }
+      }
       if (style === 'machined' || style === 'engraved') {           // brushed grain
         for (let i = 0; i < 700; i++) { c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,' + (0.03 + R() * 0.05) + ')' : 'rgba(0,0,0,' + (0.04 + R() * 0.06) + ')'; c.fillRect(R() * S, R() * S, 10 + R() * 60, 1); }
       }
@@ -9556,7 +9754,8 @@ BR.Models = (function () {
       const v = c.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.28)'); c.fillStyle = v; c.fillRect(0, 0, S, S);
       c.fillStyle = hi; c.globalAlpha = 0.25; c.fillRect(0, 0, S, 2); c.globalAlpha = 1;
     }, 256);
-    const m = new THREE.MeshPhongMaterial({ map: tex, specular: t >= 3 ? 0xffffff : 0xa8b0bc, shininess: [0, 45, 70, 110, 140, 150][t], envMap: BR.weaponEnv(), reflectivity: [0, 0.08, 0.12, 0.2, 0.26, 0.3][t] });
+    const m = low ? new THREE.MeshPhongMaterial({ map: tex, specular: 0x30343a, shininess: 20, envMap: BR.weaponEnv(), reflectivity: 0.04 })
+      : new THREE.MeshPhongMaterial({ map: tex, specular: t >= 3 ? 0xffffff : 0xa8b0bc, shininess: [0, 45, 70, 110, 140, 150][t], envMap: BR.weaponEnv(), reflectivity: [0, 0.08, 0.12, 0.2, 0.26, 0.3][t] });
     if (t >= 4) m.emissive = new THREE.Color(glow).multiplyScalar(0.08);
     m.userData.finish = style;
     return (cache.mat[ck] = m);
@@ -9584,7 +9783,8 @@ BR.Models = (function () {
     const F = finishMat(id + ':' + bpId, bp), melee = !!(BR.CONFIG.weapons[id] || {}).melee;
     g.traverse(o => { if (o.isMesh && o.material === S) o.material = F; });
     const acc = bp.accent != null && bp.accent !== bp.body ? bp.accent : (bp.glow != null ? bp.glow : 0xc8ccd2), glow = bp.glow != null ? bp.glow : acc;
-    const em = edgeLines(g, o => o.material === F, t >= 3 ? glow : new THREE.Color(acc).lerp(new THREE.Color(0xffffff), 0.35), t >= 3 ? 0.85 : 0.55, t >= 3, 30);
+    if (t < 0.5) return;                                         // Common: just the paint
+    const em = edgeLines(g, o => o.material === F, t >= 3 ? glow : new THREE.Color(acc).lerp(new THREE.Color(0xffffff), 0.35), t >= 3 ? 0.85 : t < 1 ? 0.3 : 0.55, t >= 3, 30);
     const bm = melee && opts.blade ? edgeLines(g, o => o.material === opts.blade, glow, t >= 3 ? 0.8 : 0.4, true, 35) : null;
     if (t >= 3) anim(g, tt => {
       const k = 0.5 + 0.5 * Math.sin(tt * (t >= 4 ? 3.2 : 2));
@@ -9592,6 +9792,9 @@ BR.Models = (function () {
       if (t >= 5 && em) em.color.setHSL((tt * 0.12) % 1, 1, 0.62);
     });
     if (t >= 4 && F.map) anim(g, tt => { F.map.offset.set((tt * 0.035) % 1, (tt * 0.02) % 1); });
+    // v1.32: Legendary+ finishes breathe light through their own pattern (gilt engraving glints, prism flows glow)
+    if (t >= 3 && F.map) { if (!F.userData.glint) { F.userData.glint = true; F.emissiveMap = F.map; F.emissive = new THREE.Color(glow); F.needsUpdate = true; }
+      anim(g, tt => { F.emissiveIntensity = (t >= 4 ? 0.16 : 0.08) + (t >= 4 ? 0.12 : 0.1) * (0.5 + 0.5 * Math.sin(tt * (t >= 5 ? 3.4 : 2.2))); if (t >= 5) F.emissive.setHSL((tt * 0.12) % 1, 1, 0.55); }); }
   }
 
   // v1.17: every part with a detailed surface gets box-mapped UVs in real units (the same texel density
@@ -9613,7 +9816,7 @@ BR.Models = (function () {
     const imp = !!g.userData.imported;
     if (imp) edges = false;                                   // sculpted imports already carry their own edges
     g.updateMatrixWorld(true);
-    g.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.real && !o.userData.noUV && o.geometry.attributes.position.count < (imp ? 200000 : 20000)) boxUV(o, 6.5); });
+    g.traverse(o => { if (o.isMesh && o.material && o.material.userData && o.material.userData.real && !o.userData.noUV && !o.geometry.userData.boxed && o.geometry.attributes.position.count < (imp ? 200000 : 20000)) boxUV(o, 6.5); });
     if (edges) edgeLines(g, o => o.parent === g && o.material && o.material.userData && o.material.userData.real, 0xffffff, 0.1, false, 38);     // main body only: one extra draw call
   }
   return {
@@ -11621,7 +11824,7 @@ BR.dampAngle = dampAngle;
 //
 // States: drop -> loot / roam / zone -> fight
 // =============================================================================
-const PREF_DIST = { knife: 1.5, butterfly: 1.5, bayonet: 1.5, tracker: 1.5, revolver: 18, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holoar: 30, hunter: 38, sniper: 55, lmg: 22, dmr: 45 };
+const PREF_DIST = { knife: 1.5, butterfly: 1.5, bayonet: 1.5, tracker: 1.5, revolver: 18, pistol: 14, smg: 10, shotgun: 6, rifle: 24, holoar: 30, hunter: 38, sniper: 55, lmg: 22, dmr: 45, burst: 30, riot: 7, mpistol: 10 };
 
 BR.BotBrain = class BotBrain {
   constructor(actor, game, diff) {
@@ -12147,7 +12350,7 @@ BR.Squads = {
   const ZC = {
     startPoints: 500, hitPts: 10, killPts: 60, headPts: 100, knifePts: 130,
     maxAlive: 18, regenDelay: 4, regenRate: 34, powerChance: 0.04, maxPowers: 3,
-    buys: { smg: 600, shotgun: 900, rifle: 1200, holoar: 1300, dmr: 1400, lmg: 1800 },
+    buys: { smg: 600, shotgun: 900, rifle: 1200, holoar: 1300, dmr: 1400, lmg: 1800, mpistol: 500, riot: 1100, burst: 1250 },
     bossEvery: 10,
   };
   BR.ZOMBIE_CFG = ZC;
@@ -13182,7 +13385,7 @@ BR.Squads = {
       b.grp.position.set(s.x, this.g.world.groundAt(s.x, s.z, 3), s.z); b.grp.rotation.y = s.yaw || 0; b.grp.visible = true;
       this.g.fx.burst(b.grp.position.clone().setY(b.grp.position.y + 1), [0x7fd8ff, 0xffffff], 40, 8, 0.1, 1, 0);
     },
-    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr']; },
+    boxPool() { return ['smg', 'shotgun', 'rifle', 'holoar', 'dmr', 'lmg', 'sniper', 'hunter', 'revolver', 'pistol', 'lmg', 'shotgun', 'dmr', 'burst', 'riot', 'mpistol', 'burst', 'riot']; },
     updateBox(dt) {
       const b = this.box; if (!b) return; b.t += dt;
       b.beam.material.opacity = 0.16 + 0.06 * Math.sin(this.tAll * 2); b.beam.rotation.y += dt * 0.4;
@@ -13240,7 +13443,7 @@ BR.Squads = {
         if (P.busy <= 0) { while (P.show.children.length) P.show.remove(P.show.children[0]); } }
     },
     papWeapon(w) {
-      const NAMES = { smg: 'Spectral Chopper', shotgun: 'Grave Digger', rifle: 'Reaper\'s Toll', holoar: 'Phantom Lance', dmr: 'Witch\'s Eye', lmg: 'Harvest Moon', sniper: 'Raven\'s Gaze', hunter: 'Bone Splitter', revolver: 'Hex Six', pistol: 'Lantern of Souls' };
+      const NAMES = { smg: 'Spectral Chopper', shotgun: 'Grave Digger', rifle: 'Reaper\'s Toll', holoar: 'Phantom Lance', dmr: 'Witch\'s Eye', lmg: 'Harvest Moon', sniper: 'Raven\'s Gaze', hunter: 'Bone Splitter', revolver: 'Hex Six', pistol: 'Lantern of Souls', burst: 'Triple Hex', riot: 'Coffin Drum', mpistol: 'Wasp Nest' };
       const d = w.def;
       w.def = Object.assign({}, d, { name: NAMES[w.id] || d.name + ' Mk II', dmg: d.dmg * 2.2, mag: Math.round(d.mag * 1.5), reload: d.reload * 0.85, recoil: d.recoil * 0.8, pap: true, tier: 3 });
       w.mag = w.def.mag; this.g.player.ammo[d.ammo] = BR.CONFIG.ammoCap[d.ammo];
@@ -13598,7 +13801,7 @@ BR.Squads = {
     tracking: { name: 'TRACKING', dur: 45, gun: 'smg',    desc: 'Stay on a runner that strafes, stops, jumps and slides like a real player.' },
     strafe:   { name: 'STRAFE',   dur: 60, gun: 'rifle',  desc: '4 strafing dummies, 150 HP. Headshots score double.' },
   };
-  const GUNS = ['pistol', 'revolver', 'smg', 'rifle', 'holoar', 'lmg', 'dmr', 'hunter', 'sniper', 'shotgun'];
+  const GUNS = ['pistol', 'mpistol', 'revolver', 'smg', 'rifle', 'holoar', 'burst', 'lmg', 'dmr', 'hunter', 'sniper', 'shotgun', 'riot'];
   const KEY = 'surge.aimtrainer';
   const store = () => Object.assign({ drill: 'gridshot', gun: null, best: {} }, BR.util.load(KEY, {}));
   const save = d => BR.util.save(KEY, d);
@@ -14560,7 +14763,7 @@ BR.Squads = {
     sniper: ['sniper', 'hunter'],
     loadout: null,                                 // TDM/FFA: your loadout (Loadout screen)
   };
-  const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg']];
+  const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg'], ['burst', 'mpistol'], ['riot', 'pistol']];
   BR.ARENA_PRESETS = {
     duel:    { kind: 'duel', title: 'DUELS', guns: 'duel', sizes: [1, 2], target: 5, roundTime: 90 },
     shotgun: { kind: 'duel', title: 'SHOTGUN DUELS', guns: 'shotgun', sizes: [1, 2], target: 5, roundTime: 60 },
@@ -14625,7 +14828,7 @@ BR.Squads = {
     // v1.20: which saved loadout + which guns the picker offers (the Shockwave Launcher only in Sniper Duels)
     loKey() { return this.P.guns === 'sniper' ? 'sniperDuel' : 'duel'; }
     loDefault() { return this.P.guns === 'sniper' ? ['sniper', 'hunter'] : ['rifle', 'shotgun']; }
-    loLists() { return this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'smg', 'lmg', 'dmr', 'shotgun', 'hunter', 'sniper'], ['pistol', 'revolver', 'smg', 'shotgun']]; }
+    loLists() { return this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'burst', 'smg', 'lmg', 'dmr', 'shotgun', 'riot', 'hunter', 'sniper'], ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun']]; }
     myLoadout() { const D = (this.g.settings[this.loKey()] || {}).loadout, def = this.loDefault(), [A, B] = this.loLists(); return [D && A.includes(D[0]) ? D[0] : def[0], D && B.includes(D[1]) ? D[1] : def[1]]; }
     get teams() { return this.P.kind !== 'ffa'; }
     gunsFor(a) {
@@ -14841,7 +15044,7 @@ BR.Squads = {
     remoteShot(f) {
       const g = this.g, a = this.byId.get(f[0]);
       const from = new THREE.Vector3(f[1], f[2], f[3]), to = new THREE.Vector3(f[4], f[5], f[6]);
-      g.fx.tracer(from, to, false, 0xff9a6b, null);
+      g.fx.tracer(from, to, false, 0xff9a6b, null); if (g.nearMiss) g.nearMiss(from, to, a);
       if (f[8] && a) { const cp = g.camera.position, d = Math.hypot(from.x - cp.x, from.z - cp.z); BR.Audio.shot(BR.Net.WIDS[f[7]], d, 0, false); }
     }
     // a hit on someone this browser doesn't own: send it to their owner, show the feedback here
@@ -17518,6 +17721,15 @@ BR.FINISHERS = {
 //   mask:   base knit colour, pat (+ c2 / c3), eyes 'glow' (+ eyeCol), trim, glow, add = visor / goggles / horns / halo / crown / antenna
 BR.OUTFITS = {
   default:   { name: 'Operator', price: 0, desc: 'Team-colour jacket' },
+  // v1.32 Common / Uncommon
+  tracksuit: { name: 'Tracksuit', price: 150, rarity: 'Common', jacket: 0x2a2f3a, pants: 0x2a2f3a, boots: 0xe8e8e8, gloves: 0x1a1b1e },
+  fieldolive:{ name: 'Field Olive', price: 150, rarity: 'Common', jacket: 0x4a5530, pants: 0x3a3f2a, boots: 0x231c14, gloves: 0x2b3020 },
+  navyops:   { name: 'Navy Ops', price: 180, rarity: 'Common', jacket: 0x22304a, pants: 0x161c2a, boots: 0x0e1016, gloves: 0x161c2a },
+  sandcamo:  { name: 'Sand Camo', price: 320, rarity: 'Uncommon', jacket: 0xffffff, pants: 0x9a8566, boots: 0x5a4430, gloves: 0x6b5a44, pat: 'camo', cols: [0xd8c39a, 0xb49a6a, 0x8a7250, 0xeee0bc] },
+  urbandigi: { name: 'Urban Digital', price: 340, rarity: 'Uncommon', jacket: 0xffffff, pants: 0x3a3f46, boots: 0x1c1d20, gloves: 0x2a2d33, pat: 'digital', cols: [0x7a828b, 0x4b525a, 0xb3bac1, 0x2a2e33] },
+  denim:     { name: 'Denim', caseOnly: true, case: 'street', rarity: 'Common', jacket: 0x3a5a8a, pants: 0x24385a, boots: 0x3a2418, gloves: 0x1a1b1e },
+  hivis:     { name: 'Hi-Vis Crew', caseOnly: true, case: 'street', rarity: 'Uncommon', jacket: 0xd7ff2a, pants: 0x2a2d33, boots: 0x1a1a1a, gloves: 0x2a2d33, glowPat: 'seams', glow: 0xf2f2f2 },
+  graffiti:  { name: 'Graffiti', caseOnly: true, case: 'street', rarity: 'Epic', jacket: 0xffffff, pants: 0x16181c, boots: 0xff3d7f, gloves: 0x16181c, pat: 'splatter', cols: [0x16181c, 0xff3d7f, 0x1de9ff] },
   urban:     { name: 'Urban Grey', price: 500, rarity: 'Rare', jacket: 0x5d636b, pants: 0x2b2e33, boots: 0x1c1d20, gloves: 0x1a1b1e },
   crimson:   { name: 'Crimson', price: 700, rarity: 'Rare', jacket: 0xb3202c, pants: 0x1e1f24, boots: 0x141416, gloves: 0x141416 },
   desert:    { name: 'Desert Ops', price: 800, rarity: 'Epic', jacket: 0xffffff, pants: 0x9a8566, boots: 0x5a4430, gloves: 0x6b5a44, pat: 'camo', cols: [0xc9b48a, 0xa58a5e, 0x7c6444, 0xe0d2ac] },
@@ -17544,6 +17756,15 @@ BR.OUTFITS = {
 };
 BR.MASKS = {
   default:   { name: 'Black Knit', price: 0 },
+  // v1.32 Common / Uncommon
+  tanknit:   { name: 'Tan Knit', price: 120, rarity: 'Common', base: 0xa48a62 },
+  whiteknit: { name: 'White Knit', price: 120, rarity: 'Common', base: 0xdedfe0 },
+  navyknit:  { name: 'Navy Knit', price: 140, rarity: 'Common', base: 0x22304a },
+  camoknit:  { name: 'Digital Camo', price: 280, rarity: 'Uncommon', base: 0x4f5a34, pat: 'digital', c2: 0x2c3420, c3: 0x6e6a44 },
+  stripeknit:{ name: 'Racer', price: 300, rarity: 'Uncommon', base: 0x1c1e22, trim: 0xc8102e },
+  redknit:   { name: 'Red Knit', caseOnly: true, case: 'street', rarity: 'Common', base: 0x8a1a22 },
+  splatm:    { name: 'Splatter', caseOnly: true, case: 'street', rarity: 'Uncommon', base: 0x16181c, pat: 'splatter', c2: 0xff3d7f, c3: 0x1de9ff },
+  wildm:     { name: 'Wildcat', caseOnly: true, case: 'street', rarity: 'Rare', base: 0xff7a00, pat: 'tiger', c2: 0x111111 },
   charcoal:  { name: 'Charcoal', price: 300, rarity: 'Rare', base: 0x45484e },
   olive:     { name: 'Olive Drab', price: 300, rarity: 'Rare', base: 0x3f4a2c },
   tigerm:    { name: 'Tiger Stripe', price: 700, rarity: 'Epic', base: 0xe8801f, pat: 'tiger', c2: 0x141414 },
@@ -17567,6 +17788,15 @@ BR.MASKS = {
 // ---- v1.27 HATS: worn over the mask. kind = the model (actors.js buildHat), c1 / c2 / glow = its colours. Some animate.
 BR.HATS = {
   default:   { name: 'No Hat', price: 0 },
+  // v1.32 Common / Uncommon
+  greybeanie:{ name: 'Grey Beanie', price: 120, rarity: 'Common', kind: 'beanie', c1: 0x6a7078, c2: 0x6a7078 },
+  blackcap:  { name: 'Black Cap', price: 120, rarity: 'Common', kind: 'cap', c1: 0x17181b, c2: 0x17181b },
+  olivebucket:{ name: 'Olive Bucket', price: 150, rarity: 'Common', kind: 'bucket', c1: 0x4a5530, c2: 0x3a4226 },
+  bluebandana:{ name: 'Blue Bandana', price: 240, rarity: 'Uncommon', kind: 'bandana', c1: 0x2453c8 },
+  camobucket:{ name: 'Camo Bucket', price: 280, rarity: 'Uncommon', kind: 'bucket', c1: 0x6e6a44, c2: 0x2c3420 },
+  orangebeanie:{ name: 'Hunter Beanie', caseOnly: true, case: 'street', rarity: 'Common', kind: 'beanie', c1: 0xff6a00, c2: 0xff6a00 },
+  whitecap:  { name: 'Reverse Cap', caseOnly: true, case: 'street', rarity: 'Uncommon', kind: 'backcap', c1: 0xf2f2f2, c2: 0xc8102e, glow: 0xffffff },
+  st_cone:   { name: 'Street Cone', caseOnly: true, case: 'street', rarity: 'Rare', kind: 'cone', c1: 0x1de9ff },
   bandana:   { name: 'Red Bandana', price: 300, rarity: 'Rare', kind: 'bandana', c1: 0xc8102e },
   beanie:    { name: 'Pom Beanie', price: 400, rarity: 'Rare', kind: 'beanie', c1: 0xff7a00, c2: 0xfff2d6 },
   snapback:  { name: 'Snapback', price: 450, rarity: 'Rare', kind: 'cap', c1: 0x1d6bff, c2: 0xffd24a },
@@ -17595,6 +17825,8 @@ BR.CASES = {
   release: { name: 'Release Case', price: 600, odds: { Rare: 52, Epic: 28, Legendary: 13, Mythic: 6, Exotic: 1 }, dupRefund: 0.35, label: 'RELEASE', sub: 'CASE · SEASON 1' },
   // Season 2: only Legendary and up. Every drop is animated.
   nova: { name: 'Nova Case', price: 900, odds: { Legendary: 58, Mythic: 34, Exotic: 8 }, dupRefund: 0.4, label: 'NOVA', sub: 'CASE · SEASON 2' },
+  // v1.32: a cheap starter case, mostly Common + Uncommon with a shot at Rare, Epic and one Legendary
+  street: { name: 'Street Case', price: 250, odds: { Common: 44, Uncommon: 33, Rare: 15, Epic: 7, Legendary: 1 }, dupRefund: 0.3, label: 'STREET', sub: 'CASE · STARTER' },
 };
 BR.CaseItems = {
   // every caseOnly item across the cosmetic tables: [{cat, id, item}]
@@ -17939,8 +18171,11 @@ BR.CHAR_TABLES = { outfits: () => BR.OUTFITS, masks: () => BR.MASKS, hats: () =>
 // the look shown in the preview: what you wear, with the selected outfit / mask swapped in
 BR.lookPreview = (cat, id) => { const L = Object.assign({}, BR.Profile.charLook()); if (id) L[cat === 'outfits' ? 'o' : cat === 'hats' ? 'h' : 'm'] = id; L.focus = cat === 'outfits' ? 'body' : cat === 'hats' ? 'hat' : 'head'; const G = BR.Profile.loadoutGuns(); L.wid = G.primary; L.skin = BR.Profile.skinFor(G.primary); L.bp = (BR.Profile.data.equip.blueprints || {})[G.primary] || null; return L; };
 BR.MELEE = { bayonet: true, knife: true, butterfly: true, tracker: true };
-const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['launcher', 'Shockwave Launcher'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker']];
-const RARITY = { Base: '#8d97a5', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
+const SHOP_WEAPONS = [['rifle', 'Rifle'], ['holoar', 'Holo AR'], ['smg', 'SMG'], ['shotgun', 'Breacher'], ['sniper', 'Sniper'], ['hunter', 'Hunting Rifle'], ['revolver', 'Revolver'], ['lmg', 'LMG'], ['dmr', 'DMR'], ['launcher', 'Shockwave Launcher'], ['pistol', 'Pistol'], ['bayonet', 'M9 Bayonet'], ['knife', 'Karambit'], ['butterfly', 'Butterfly'], ['tracker', 'Tracker'], ['burst', 'Talon Burst'], ['riot', 'Riot Auto'], ['mpistol', 'Hornet']];
+const RARITY = BR.COS_RARITY = { Base: '#8d97a5', Common: '#b9c0c8', Uncommon: '#5fd35f', Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
+BR.COS_ORDER = ['Exotic', 'Mythic', 'Legendary', 'Epic', 'Rare', 'Uncommon', 'Common'];
+// v1.32: older shop items had no tier; give them one from their price so every item shows where it sits
+BR.cosRarity = it => !it ? null : it.rarity || (it.price > 0 ? (it.price <= 200 ? 'Common' : it.price <= 450 ? 'Uncommon' : it.price <= 700 ? 'Rare' : 'Epic') : null);
 
 // ---- v1.26: a posed character (the in-game model) wearing a look and holding a gun: shop/inventory preview + item icons
 BR.charFigure = (look, wid, skin, bp) => {
@@ -18129,7 +18364,7 @@ BR.Shop = class Shop {
     const html = [];
     for (const id in items) {
       const it = items[id], own = P.owns(cat, id), eq = P.isEquipped(cat, id, this.weapon);
-      const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
+      const rr = BR.cosRarity(it), rar = rr ? `<span class="rar" style="--r:${RARITY[rr] || '#8d97a5'}">${rr}</span>` : '';
       html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : ''}" data-id="${id}">${this.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? 'Equipped' : own ? 'Owned' : it.mastery ? 'Mastery · ' + it.mastery + ' kills' : it.grind ? '🔒 ' + P.grindProgress(it).map(n => n.toLocaleString()).join(' / ') : it.rank !== undefined ? 'Reach ' + BR.Ranks.tiers[it.rank].name : it.caseOnly ? 'Case only' : '<i class="coin"></i>' + it.price}</span></button>`);
     }
     this.el.grid.innerHTML = html.join('');
@@ -18280,7 +18515,7 @@ BR.Inventory = class Inventory {
     const html = [];
     for (const id in items) {
       const it = items[id], eq = P.isEquipped(cat, id, this.weapon);
-      const rar = it.rarity ? `<span class="rar" style="--r:${RARITY[it.rarity] || '#8d97a5'}">${it.rarity}</span>` : '';
+      const rr = BR.cosRarity(it), rar = rr ? `<span class="rar" style="--r:${RARITY[rr] || '#8d97a5'}">${rr}</span>` : '';
       const cls = it.rarity === 'Legendary' ? ' legend' : it.rarity === 'Mythic' ? ' mythic' : it.rarity === 'Exotic' ? ' exotic' : '';
       this.shop.weapon = this.weapon;
       html.push(`<button class="card${this.sel === id ? ' sel' : ''}${eq ? ' eq' : ''}${cls}" data-id="${id}">${this.shop.swatch(cat, id, it)}${rar}<span class="cn">${it.name}</span><span class="cp">${eq ? '✓ Equipped' : it.caseOnly ? 'Case drop' : 'Owned'}</span></button>`);
@@ -18289,7 +18524,7 @@ BR.Inventory = class Inventory {
     const it = items[this.sel];
     this.el.name.textContent = it ? it.name : '';
     this.el.rar.textContent = it && it.rarity ? it.rarity.toUpperCase() : '';
-    this.el.rar.style.color = it && it.rarity ? RARITY[it.rarity] : '';
+    this.el.rar.style.color = it && BR.cosRarity(it) ? RARITY[BR.cosRarity(it)] : '';
     this.el.sub.textContent = !it ? '' : cat === 'blueprints' ? BR.CONFIG.weapons[this.weapon].name + ' blueprint' : cat === 'skins' ? 'Camo · on ' + (this.weapon === 'all' ? 'every gun' : BR.CONFIG.weapons[this.weapon].name) : cat === 'tracers' ? 'Tracer · ' + BR.CONFIG.weapons[this.weapon].name : cat === 'gloves' ? 'Gloves' : cat === 'charms' ? 'Charm' : cat === 'outfits' ? 'Character outfit' + (it.grind && P.owns(cat, this.sel) ? ' · mastery' : '') : cat === 'masks' ? 'Character mask' : cat === 'hats' ? 'Character hat' : cat === 'finishers' ? 'Kill finisher' : 'Kill feed banner';
     const eq = it && P.isEquipped(cat, this.sel, this.weapon);
     this.el.action.textContent = !it ? '' : eq ? 'Equipped' : 'Equip';
@@ -19018,7 +19253,7 @@ BR.HUD = class HUD {
   <div class="panel metal wide cases-panel">
     <button id="cs-x" class="xbtn" aria-label="Close">✕</button>
     <div class="cs-head"><div class="ptitle" id="cs-title">RELEASE CASE</div><div class="coins-pill"><i class="coin"></i><span id="cs-coins" class="num">0</span></div></div>
-    <div class="seg cs-pick" id="cs-pick"><button data-c="release" class="sel">RELEASE · S1</button><button data-c="nova">NOVA · S2 <em>NEW</em></button></div>
+    <div class="seg cs-pick" id="cs-pick"><button data-c="release" class="sel">RELEASE · S1</button><button data-c="nova">NOVA · S2</button><button data-c="street">STREET <em>NEW</em></button></div>
     <div class="cs-stage">
       <div class="cs-case" id="cs-case"><div class="cs-lid"></div><div class="cs-body"><b id="cs-label">RELEASE</b><span id="cs-sub">CASE · SEASON 1</span></div><i class="cs-shine"></i></div>
       <div class="cs-reel hidden" id="cs-reel"><div class="cs-strip" id="cs-strip"></div><i class="cs-mark"></i></div>
@@ -20867,6 +21102,11 @@ BR.Game = class Game {
     const died = victim.takeDamage(dmg);
     if (this.zm && attacker && attacker.isPlayer && victim.zombie) this.zm.onHit(victim, dmg, head);
     const shieldHit = shieldBefore > 0;
+    if (shieldBefore > 0 && victim.shield <= 0 && (attacker === this.player || victim === this.player)) {        // v1.32: the shield shatters
+      BR.Audio.shieldBreak(victim === this.player);
+      if (victim !== this.player && this.fx.burst) this.fx.burst(new THREE.Vector3(at.x, at.y, at.z), [0x6fc8ff, 0xdff4ff, 0xffffff], 22, 6.5, 0.06, 0.55);
+      if (victim !== this.player && this.hud.tech) this.hud.tech('SHIELD BROKEN');
+    }
     if (attacker) attacker.damageDealt += dmg;
     victim.lastAttacker = attacker;
     victim.lastHurtT = this.time;
@@ -20961,7 +21201,17 @@ BR.Game = class Game {
     if (BR.Squads.on(this)) BR.Squads.onDeath(this, victim);
   }
 
+  // v1.32: an enemy round passing within ~2 m of your head (and not hitting you) snaps past with a whizz
+  nearMiss(from, to, shooter) {
+    const p = this.player; if (!p || !p.alive || shooter === p) return;
+    const e = this.camera.position, dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, L2 = dx * dx + dy * dy + dz * dz; if (L2 < 1) return;
+    const k = Math.max(0, Math.min(1, ((e.x - from.x) * dx + (e.y - from.y) * dy + (e.z - from.z) * dz) / L2));
+    if (k <= 0.02 || k >= 0.995) return;                                   // (behind the shooter, or the round stopped short of you)
+    const cx = from.x + dx * k - e.x, cy = from.y + dy * k - e.y, cz = from.z + dz * k - e.z, d = Math.hypot(cx, cy, cz);
+    if (d < 2.2 && d > 0.25) BR.Audio.whiz(Math.max(-1, Math.min(1, (cx * Math.cos(p.yaw) - cz * Math.sin(p.yaw)) / d)));
+  }
   onShot(actor, w) {
+    if (actor.isPlayer && !w.def.melee && w.def.mag >= 6 && w.mag <= Math.ceil(w.def.mag * 0.25)) BR.Audio.lowAmmo(w.mag / w.def.mag);
     // your shots light up the surroundings for a split second
     if (actor.isPlayer && this.muzzleLight && !w.def.melee && !w.def.suppressed) {
       this.muzzleLight.position.copy(this.camera.position).addScaledVector(this.camera.getWorldDirection(this._mlv || (this._mlv = new THREE.Vector3())), 1.2);
@@ -21112,7 +21362,7 @@ BR.Game = class Game {
     }
     const wid = p.weapon || 'holoar';
     const g = BR.Models.weapon(wid, p.skin, wid === 'knife' ? 'none' : p.charm, p.bp);
-    const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'bayonet' ? 3.3 : wid === 'tracker' ? 3.0 : wid === 'pistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'launcher' ? 1.8 : wid === 'revolver' ? 2.4 : 1.6;
+    const sc = wid === 'knife' ? 5 : wid === 'butterfly' ? 3.6 : wid === 'bayonet' ? 3.3 : wid === 'tracker' ? 3.0 : wid === 'pistol' || wid === 'mpistol' ? (p.showHands ? 3.4 : 2.6) : wid === 'sniper' || wid === 'hunter' ? 1.3 : wid === 'launcher' ? 1.8 : wid === 'revolver' ? 2.4 : 1.6;
     g.scale.setScalar(sc);
     g.rotation.y = Math.PI / 2;
     g.position.set(0, wid === 'knife' ? 0.05 : -0.05, -0.15);
@@ -21250,6 +21500,9 @@ BR.Game = class Game {
     if (this.state === 'menu' && !this.scene) return;            // v1.18 light menu: nothing 3D to draw
     BR.Models.tick(performance.now() / 1000);       // animated camo / glove textures
     const r = this.renderer;
+    // v1.32: compile every shader in a new match up front (muzzle flashes, impacts, effects, skins), so the first shot,
+    // explosion or kill no longer hitches while the GPU compiles mid-fight
+    if (this.scene && this._warmed !== this.scene) { this._warmed = this.scene; try { r.compile(this.scene, this.camera); if (this.vmr && this.vmr.scene) r.compile(this.vmr.scene, this.vmr.camera); } catch (e) { /* older browsers: compile on first use */ } }
     r.clear();
     if (this.state === 'shop') { r.render(this.shopScene, this.shopCam); return; }
     if (!this.scene) return;
@@ -21759,7 +22012,7 @@ BR.Game = class Game {
   });
 
   // ---- 1v1 duel menu: setup (difficulty, rounds, time + loadout) and between-round loadouts
-  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'sniper', 'hunter', 'revolver', 'pistol'];
+  const DS = settings.duel, GUNS = ['rifle', 'holoar', 'burst', 'smg', 'lmg', 'shotgun', 'riot', 'dmr', 'sniper', 'hunter', 'revolver', 'pistol', 'mpistol'];
   let dmMode = 'setup', dmTimer = null;
   const dmSeg = (id, key, num) => {
     const el = $(id), sync = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', String(DS[key]) === b.dataset.v));
@@ -21802,7 +22055,7 @@ BR.Game = class Game {
     game.hud.show('duelmenu', true);
   };
   // ---- Release Case: CS-style reel that decelerates onto the drop
-  const RCOL = { Rare: '#4b8bff', Epic: '#b26bff', Legendary: '#ffb224', Mythic: '#ff3df2', Exotic: '#ff3b30' };
+  const RCOL = BR.COS_RARITY;
   const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask', hats: 'Hat' };
   const caseCard = (e, extra) => {
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
@@ -21816,10 +22069,10 @@ BR.Game = class Game {
   let caseBusy = false, lastDrop = null, curCase = 'release';
   const caseRefresh = () => {
     $('cs-coins').textContent = BR.Profile.coinsLabel();
-    const all = BR.CaseItems.all(curCase), C = BR.CASES[curCase], order = ['Exotic', 'Mythic', 'Legendary', 'Epic', 'Rare'];
+    const all = BR.CaseItems.all(curCase), C = BR.CASES[curCase], order = BR.COS_ORDER;
     $('cs-odds').innerHTML = order.filter(t => C.odds[t]).map(t => `<span style="--rc:${RCOL[t]}"><b>${t}</b> ${C.odds[t]}%</span>`).join('');
     $('cs-title').textContent = C.name.toUpperCase(); $('cs-label').textContent = C.label; $('cs-sub').textContent = C.sub; $('cs-price').textContent = BR.Profile.keys(curCase) > 0 ? 'FREE KEY ×' + BR.Profile.keys(curCase) : C.price;
-    $('cs-case').classList.toggle('nova', curCase === 'nova');
+    $('cs-case').classList.toggle('nova', curCase === 'nova'); $('cs-case').classList.toggle('street', curCase === 'street');
     document.querySelectorAll('#cs-pick button').forEach(b => b.classList.toggle('sel', b.dataset.c === curCase));
     $('cs-grid').innerHTML = order.flatMap(t => all.filter(e => e.item.rarity === t)).map(e => caseCard(e, BR.Profile.owns(e.cat, e.id) ? ' owned' : '')).join('');
   };
@@ -21971,7 +22224,7 @@ BR.Game = class Game {
   renderLobby();
 
   // ---- v1.11: loadout editor
-  const LO_P = ['rifle', 'holoar', 'smg', 'lmg', 'shotgun', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
+  const LO_P = ['rifle', 'holoar', 'burst', 'smg', 'lmg', 'shotgun', 'riot', 'dmr', 'hunter', 'sniper'], LO_S = ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun'], LO_M = [['tracker', 'TRACKER'], ['bayonet', 'M9 BAYONET'], ['knife', 'KARAMBIT'], ['butterfly', 'BUTTERFLY']];
   const renderLoadout = () => {
     const L = BR.Profile.loadoutGuns();
     $('lo-primary').innerHTML = LO_P.map(id => gcard(id, `data-lo="primary" data-g="${id}"`, L.primary === id)).join('');
@@ -22710,7 +22963,7 @@ BR.BRNet = class BRNet {
   }
   remoteShot(f) {
     const g = this.g, from = new THREE.Vector3(f[1], f[2], f[3]), to = new THREE.Vector3(f[4], f[5], f[6]);
-    g.fx.tracer(from, to, false, 0xff9a6b, null);
+    g.fx.tracer(from, to, false, 0xff9a6b, null); if (g.nearMiss) g.nearMiss(from, to, this.actor(f[0]));
     if (f[8]) { const cp = g.camera.position, d = Math.hypot(from.x - cp.x, from.z - cp.z), pan = BR.util.clamp((from.x - cp.x) / Math.max(1, d), -0.8, 0.8); if (d < 150) BR.Audio.shot(BR.Net.WIDS[f[7]], d, pan, false); }
   }
 

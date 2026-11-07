@@ -934,7 +934,7 @@ const server = http.createServer((req, res) => {
       v.selected = g.settings.mode === 'aim' && /AIM TRAINER/.test(document.getElementById('mc-name').textContent);
       document.getElementById('btn-go').click(); v.goAim = g.mode instanceof BR.AimTrainer;
       g.toMenu(); BR.selectMode('br');
-      document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 8 && !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
+      document.getElementById('btn-loadout').click(); v.loUi = document.querySelectorAll('#lo-primary .gcard').length === 10 && /* (v1.32: + Talon Burst, Riot Auto) */ !!document.querySelector('#lo-primary .gcard.sel'); document.getElementById('lo-x').click();
       out.v111 = v; }
     // v1.11.1: straight wrist, aim trainer infinite ammo, no frozen sparks in freefall, Ironreef for Resurgence
     { const v = {}, run = (n) => { for (let i = 0; i < n; i++) g.update(1 / 30); };
@@ -1416,6 +1416,31 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v132 = await page.evaluate(async () => {
+    const g = BR.game, M = BR.Models, out = {};
+    // Common + Uncommon in every cosmetic table, the Street Case, price-based tiers for older items
+    const has = (T, r) => Object.values(T).some(i => i.rarity === r);
+    out.tiers = [M.SKINS, M.TRACERS, M.GLOVES, BR.OUTFITS, BR.MASKS, BR.HATS, M.BLUEPRINTS.rifle, M.BLUEPRINTS.burst].every(T => has(T, 'Common') && has(T, 'Uncommon'));
+    const street = BR.CaseItems.all('street'); out.street = !!BR.CASES.street && ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'].every(r => street.some(e => e.item.rarity === r));
+    out.fallback = BR.cosRarity({ price: 150 }) === 'Common' && BR.cosRarity({ price: 300 }) === 'Uncommon' && BR.cosRarity({ rarity: 'Mythic', price: 50 }) === 'Mythic';
+    // camos now map onto the untextured sculpts (the UVs vary instead of all zero)
+    const cm = M.weapon('smg', 'u_woodland', 'none', null); let uvSpread = 0; cm.traverse(o => { if (o.isMesh && o.geometry.attributes.uv && o.geometry.attributes.position.count > 500) { const a = o.geometry.attributes.uv.array; let lo = 1e9, hi = -1e9; for (let i = 0; i < a.length; i += 2) { lo = Math.min(lo, a[i]); hi = Math.max(hi, a[i]); } uvSpread = Math.max(uvSpread, hi - lo); } });
+    out.camoUV = uvSpread > 1;
+    // new guns: real models (sculpt variants with their own parts), in the loot, shop, duels; the burst fires 3 on one tap
+    out.models = ['burst', 'riot', 'mpistol'].every(id => { const m = M.weapon(id, 'default', 'none', null); return m.userData.imported === id && !!m.userData.muzzle && !!m.userData.grip; }) && !!M.weapon('riot', 'default', 'none', null).userData.mag;
+    out.loot = BR.CONFIG.loot.tables.every(t => t.burst && t.riot && t.mpistol);
+    BR.AntiCheat._testing = true; g.startMatch({ practice: true }); const p = g.player;
+    p.slots[0] = BR.Weapons.create('burst'); p.cur = 0; p.ammo.heavy = 300; for (let i = 0; i < 40; i++) g.update(1 / 60);
+    const w = p.weapon, m0 = w.mag; g.input.fire = true; g.update(1 / 60); g.input.fire = false; for (let i = 0; i < 30; i++) g.update(1 / 60); out.burst = m0 - w.mag === 3;
+    // living blueprints: Legendary+ gun blueprints carry the skin FX with the light sweep
+    const bp = M.weapon('rifle', 'default', 'none', 'vandal'); let sweep = false; bp.traverse(o => { if (o.material && o.material.isShaderMaterial) sweep = true; }); out.livingBp = bp.userData.skinFx >= 1 && sweep;
+    const ep = M.weapon('rifle', 'default', 'none', 'field'); out.lowBp = !ep.userData.skinFx;
+    // gunfight feedback hooks
+    out.audio = ['whiz', 'shieldBreak', 'lowAmmo'].every(k => typeof BR.Audio[k] === 'function') && typeof g.nearMiss === 'function';
+    out.warm = g._warmed === g.scene || (g.render(), g._warmed === g.scene);
+    g.toMenu();
+    return out;
+  });
   const v131 = await page.evaluate(async () => {
     const g = BR.game, L = BR.Lobby, out = {};
     // gun finish: the default guns are matte + textured
@@ -1700,6 +1725,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.32 Common/Uncommon cosmetics + Street Case, camos map onto every gun, 3 new guns (burst fires 3 per tap), living Legendary+ blueprints, near-miss / shield-break / low-ammo audio, shader warm-up', Object.values(v132).every(Boolean), v132],
     ['v1.31 guns: matte textured finish; knives higher on desktop only; one damage number per shotgun pellet, adding up to the damage', [v131.matte, v131.desk, v131.pellets, v131.inPlace].every(Boolean), v131],
     ['v1.30.1 saves: friends, requests, challenges, mastery and keys survive a profile reload', Object.values(v1301).every(Boolean), v1301],
     ['v1.30 key guard: menus untouched; in a match Ctrl+S / Ctrl+R / F5 / Backspace / Alt / Ctrl+W are cancelled, game keys still work, leaving asks first; pop-out + keyboard lock helpers', Object.values(v130).every(Boolean), v130],
@@ -1881,7 +1907,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

@@ -145,3 +145,8 @@ Object.assign(BR.IMPORTED, {
 // v1.23: every gun wears the black factory finish by default (sculpted detail kept, paint and mismatched colours dropped);
 // knives keep their own steel and grips
 for (const id of Object.keys(BR.IMPORTED)) if (!['knife', 'bayonet', 'tracker', 'butterfly'].includes(id)) BR.IMPORTED[id].finish = 'factory';
+
+// v1.32 new guns: variants of the sculpts above, each with its own finish colour and procedural parts (models.js BUILD.burst / riot / mpistol)
+BR.IMPORTED.burst = Object.assign({}, BR.IMPORTED.holoar, { model: 'holoar', finish: 'factory', factoryColor: 0x6b5d45, fore: [0, -0.07, -0.34] });                       // Talon: FDE tan, angled foregrip, flip magnifier
+BR.IMPORTED.riot = Object.assign({}, BR.IMPORTED.shotgun, { model: 'shotgun', finish: 'factory', factoryColor: 0x3d4632, pumpBox: null, port: null });                  // Riot: OD green, drum magazine, no pump
+BR.IMPORTED.mpistol = Object.assign({}, BR.IMPORTED.pistol, { model: 'pistol', finish: 'factory', factoryColor: 0x2b2e34, fore: [0, -0.035, -0.12] });                   // Hornet: folding stock + vertical foregrip

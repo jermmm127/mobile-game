@@ -5,6 +5,17 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.32.0', date: '2026-11-07', title: 'New guns, Common + Uncommon cosmetics, living blueprints, better gunfights', notes: [
+    'Three new guns. TALON BURST: a 3-round burst rifle with a holo sight, angled foregrip and magnifier; each tap fires a full burst. RIOT AUTO: a semi-auto shotgun with an 8-shell drum; smaller blasts than the Breacher, but as fast as you can tap. HORNET: a full-auto machine pistol for your secondary slot, with a folding stock and foregrip. All three drop in Battle Royale, can be picked in Duels and loadouts, sit in the Zombies Mystery Box and Aim Trainer, and get their own sounds.',
+    'New blueprints for the new guns: Neon Talon, Inferno Drum, Toxic Riot, Venom Sting and Stardrive, plus Rare and Epic finishes.',
+    'New COMMON and UNCOMMON tiers. Camos: Olive Drab, Desert Tan, Slate, Ghost White, Navy Blue, Brick Red, Woodland, Urban Digital, Redline, Cobalt Fade, Sandstorm and Patrol Two-Tone. Also tracers, gloves, outfits, masks and hats, plus Field Issue, Dune Runner, Patrol and Red Stripe blueprints for every weapon. Every older shop item now shows a tier too.',
+    'New STREET CASE (250 coins): mostly Common and Uncommon drops, with a shot at Rare, Epic and the Legendary Street King Talon blueprint.',
+    'Legendary, Mythic and Exotic blueprints come alive: a band of light sweeps down the gun, the finish glints and breathes light, and Mythic and Exotic ones send rings of energy sliding off the muzzle (Exotic in full rainbow). Rare and Epic stay as they were.',
+    'Fixed: camos only showed their pattern on the Rifle. On every other gun they came out as one flat colour. Every camo now shows its full pattern on every gun.',
+    'Better gunfights: enemy rounds that fly past your head now snap and whizz on the side they passed. Breaking a shield shatters it with a glassy crack and blue shards ("SHIELD BROKEN"). A quiet ping warns you when your mag is down to its last quarter.',
+    'Better sound: your own shots now have a slapback echo off the surroundings, and heavy guns add a deep sub thump.',
+    'Runs smoother: every shader in a match is now prepared while it loads, so the first shot, explosion or kill no longer causes a hitch. On Low graphics the new blueprint effects skip their extra passes.',
+  ] },
   { v: '1.31.0', date: '2026-11-06', title: 'Gun finish, knife height, pellet numbers', notes: [
     'The default guns look better: the plastic shine is gone. They now have a matte, worn gunmetal finish with fine grain, scratches and wear.',
     'Smoother gun models: lumpy surfaces and rough, chewed-looking edges on the gun models are cleaned up. Flat panels look flat and hard corners stay crisp.',

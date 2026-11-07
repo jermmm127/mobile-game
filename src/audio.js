@@ -107,6 +107,9 @@ BR.Audio = {
     shotgun:  { vol: 0.95, crack: 3600, body: 70,  bodyDur: 0.2,  boom: 0.42, lp0: 4800, lp1: 380, tail: 0.6, mech: 0 },
     sniper:   { vol: 1.0,  crack: 4800, body: 62,  bodyDur: 0.24, boom: 0.6,  lp0: 5200, lp1: 320, tail: 0.75, mech: 0 },
     hunter:   { vol: 0.92, crack: 5000, body: 75,  bodyDur: 0.2,  boom: 0.48, lp0: 5600, lp1: 420, tail: 0.65, mech: 0 },
+    burst:    { vol: 0.64, crack: 5900, body: 125, bodyDur: 0.09, boom: 0.18, lp0: 7000, lp1: 760, tail: 0.36, mech: 3200 },
+    riot:     { vol: 0.85, crack: 3900, body: 80,  bodyDur: 0.16, boom: 0.34, lp0: 5000, lp1: 420, tail: 0.5, mech: 2400 },
+    mpistol:  { vol: 0.48, crack: 6400, body: 180, bodyDur: 0.05, boom: 0.08, lp0: 7800, lp1: 1300, tail: 0.2, mech: 4000 },
   },
   shot(id, dist, pan, suppressed) {
     dist = dist || 0;
@@ -140,6 +143,12 @@ BR.Audio = {
     this.nz({ type: 'bandpass', f0: 1400 * j, f1: 600, dur: G.boom * 0.6, vol: v * 0.35, q: 1.1, at: delay, pan, rev: 0.1 });
     // 5) the action: bolt carrier / slide clack right behind the shot (close only)
     if (G.mech && dist < 10) this.metal(G.mech * j, 0.07 * near, 0.04, delay + 0.035, pan);
+    // 5b) v1.32 your own shots: a slapback off the surroundings (left then right) and, on heavy guns, a sub thump you feel
+    if (dist < 1) {
+      this.nz({ type: 'bandpass', f0: 1100 * j, f1: 420, dur: G.boom * 1.3, vol: v * 0.16, q: 0.9, at: delay + 0.045, pan: -0.6, rev: 0.2 });
+      this.nz({ type: 'bandpass', f0: 950 * j, f1: 380, dur: G.boom * 1.4, vol: v * 0.12, q: 0.9, at: delay + 0.075, pan: 0.6, rev: 0.25 });
+      if (G.body < 110) this.osc({ f0: 72 * j, f1: 34, dur: 0.2, vol: v * 0.45, lp: 180, at: delay });
+    }
     // 6) far away: a delayed echo off the terrain
     if (dist > 25) this.nz({ f0: 1200 * air, f1: 300, dur: G.boom * 2.2, vol: v * 0.25, at: delay + 0.18 + Math.random() * 0.1, pan: -pan * 0.5, rev: 0.6 });
   },
@@ -184,6 +193,24 @@ BR.Audio = {
     if (shield) this.nz({ type: 'highpass', f0: 4500, dur: 0.06, vol: 0.1, at: 0.005 });
     if (head) this.metal(3100, 0.2, 0.18, 0.004);
   },
+  // v1.32 a round snapping past your head: a supersonic crack and a fast falling whizz, panned to the side it passed
+  whiz(pan) {
+    const t = performance.now(); if (t - (this._whizT || 0) < 70) return; this._whizT = t;
+    this._force = true; try {
+      this.nz({ type: 'highpass', f0: 3800, dur: 0.02, vol: 0.16, pan, attack: 0.0005 });
+      this.nz({ type: 'bandpass', f0: 5200 + Math.random() * 1500, f1: 1400, sweep: 0.8, dur: 0.16, vol: 0.13, q: 2.2, pan, attack: 0.004 });
+    } finally { this._force = false; }
+  },
+  // v1.32 a shield shattering: bright glassy pings over a crunchy burst (deeper + louder when it's yours)
+  shieldBreak(mine) {
+    const k = mine ? 1.2 : 1; this._force = true; try {
+      this.nz({ type: 'highpass', f0: 2600, dur: 0.22, vol: 0.2 * k, rev: 0.25 });
+      this.osc({ f0: mine ? 220 : 320, f1: 90, dur: 0.18, vol: 0.18 * k, drive: 2 });
+      for (let i = 0; i < 5; i++) this.metal(3600 + Math.random() * 2600, 0.07 * k, 0.12, 0.01 + i * 0.022 + Math.random() * 0.01, (Math.random() - 0.5) * 0.6, 0.2);
+    } finally { this._force = false; }
+  },
+  // v1.32 low ammo: a quiet hollow ping on each shot of the last quarter of the mag (higher as it runs out)
+  lowAmmo(frac) { this.osc({ f0: 1300 + (1 - frac) * 500, f1: 1250, dur: 0.06, vol: 0.05, type: 'triangle', at: 0.02 }); },
   // Kills: a deep body drop + a single bright confirm ping (higher on a streak, a doubled ping on a headshot)
   kill(head, streak) {
     const st = Math.pow(1.06, Math.min((streak || 1) - 1, 6));
