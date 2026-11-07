@@ -20,6 +20,7 @@
     sniper: ['sniper', 'hunter'],
     loadout: null,                                 // TDM/FFA: your loadout (Loadout screen)
   };
+  const SHOTGUNS = ['shotgun', 'riot', 'pump'];              // v1.32.2: the Shotgun Duels picker (Breacher, Riot Auto, Pump Action)
   const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg'], ['burst', 'mpistol'], ['riot', 'pistol'], ['pump', 'smg']];
   BR.ARENA_PRESETS = {
     duel:    { kind: 'duel', title: 'DUELS', guns: 'duel', sizes: [1, 2], target: 5, roundTime: 90 },
@@ -81,17 +82,18 @@
       if (this.host) this.beginRound(); else this.waitT = 0;
     }
     get duel() { return this.P.kind === 'duel'; }
-    get picksLoadout() { return this.P.guns === 'duel' || this.P.guns === 'sniper'; }        // Duels + Sniper Duels: pick your guns before every round
+    get picksLoadout() { return this.P.guns === 'duel' || this.P.guns === 'sniper' || this.P.guns === 'shotgun'; }        // Duels, Sniper + Shotgun Duels: pick your guns before every round        // Duels + Sniper Duels: pick your guns before every round
     // v1.20: which saved loadout + which guns the picker offers (the Shockwave Launcher only in Sniper Duels)
-    loKey() { return this.P.guns === 'sniper' ? 'sniperDuel' : 'duel'; }
-    loDefault() { return this.P.guns === 'sniper' ? ['sniper', 'hunter'] : ['rifle', 'shotgun']; }
-    loLists() { return this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'burst', 'smg', 'lmg', 'dmr', 'shotgun', 'riot', 'pump', 'hunter', 'sniper'], ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun']]; }
+    loKey() { return this.P.guns === 'sniper' ? 'sniperDuel' : this.P.guns === 'shotgun' ? 'shotgunDuel' : 'duel'; }
+    loDefault() { return this.P.guns === 'sniper' ? ['sniper', 'hunter'] : this.P.guns === 'shotgun' ? ['shotgun', null] : ['rifle', 'shotgun']; }
+    loLists() { return this.P.guns === 'shotgun' ? [SHOTGUNS, []] : this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'burst', 'smg', 'lmg', 'dmr', 'shotgun', 'riot', 'pump', 'hunter', 'sniper'], ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun']]; }
     myLoadout() { const D = (this.g.settings[this.loKey()] || {}).loadout, def = this.loDefault(), [A, B] = this.loLists(); return [D && A.includes(D[0]) ? D[0] : def[0], D && B.includes(D[1]) ? D[1] : def[1]]; }
     get teams() { return this.P.kind !== 'ffa'; }
     gunsFor(a) {
       const set = this.P.guns;
-      if (a.isPlayer && (set === 'duel' || set === 'sniper')) return this.myLoadout();
-      if (set === 'shotgun' || set === 'sniper') return GUNSETS[set];
+      if (a.isPlayer && (set === 'duel' || set === 'sniper' || set === 'shotgun')) return this.myLoadout();
+      if (set === 'shotgun') return [SHOTGUNS[(a.rosterId + this.round) % SHOTGUNS.length], null];       // v1.32.2: bots rotate through every shotgun
+      if (set === 'sniper') return GUNSETS[set];
       if (a.isPlayer) { const L = BR.Profile.loadoutGuns(); return [L.primary === 'launcher' ? 'rifle' : L.primary, L.secondary]; }     // (no launcher outside BR / Sniper Duels)
       return BOT_POOL[(a.rosterId * 3 + this.round) % BOT_POOL.length];
     }
@@ -376,7 +378,7 @@
       const L = this.myLoadout(), [P1, P2] = this.loLists();
       const W = BR.CONFIG.weapons, pic = BR.WeaponIcons && BR.WeaponIcons.pic || {};
       const row = (ids, slot) => ids.map(id => `<button class="${L[slot] === id ? 'sel' : ''}" data-slot="${slot}" data-g="${id}">${pic[id] ? `<img src="${pic[id]}" alt="">` : ''}<span>${W[id].name}</span></button>`).join('');
-      const html = `<div class="ar-lo-h"><b>CHOOSE YOUR LOADOUT</b><span>${this.phase === 'roundEnd' ? 'Next round in ' + Math.ceil(Math.max(0, this.t)) + 's' : 'Round starts in ' + Math.ceil(Math.max(0, this.t)) + 's'}</span></div><div class="ar-lo-l">PRIMARY</div><div class="ar-lo-r">${row(P1, 0)}</div><div class="ar-lo-l">SECONDARY</div><div class="ar-lo-r">${row(P2, 1)}</div>`;
+      const html = `<div class="ar-lo-h"><b>CHOOSE YOUR LOADOUT</b><span>${this.phase === 'roundEnd' ? 'Next round in ' + Math.ceil(Math.max(0, this.t)) + 's' : 'Round starts in ' + Math.ceil(Math.max(0, this.t)) + 's'}</span></div><div class="ar-lo-l">${P2.length ? 'PRIMARY' : 'SHOTGUN'}</div><div class="ar-lo-r">${row(P1, 0)}</div>${P2.length ? `<div class="ar-lo-l">SECONDARY</div><div class="ar-lo-r">${row(P2, 1)}</div>` : ''}`;
       if (html !== this._loHtml) { this._loHtml = html; el.innerHTML = html; }
     }
     // teammate markers (names over allies, through walls)

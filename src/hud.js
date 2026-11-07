@@ -1095,7 +1095,7 @@ BR.HUD = class HUD {
       const row = a => { const st = !a.alive ? 'out' : a.downed ? 'down' : '', rt = !a.alive ? rq(a) : null;
         const hp = a.alive ? (a.downed ? a.health / BR.Squads.DOWN_HP : a.health / A.maxHealth) : 0, sh = a.alive && !a.downed ? a.shield / A.maxShield : 0;
         return `<div class="sq-row ${st}${a.isPlayer ? ' me' : ''}"><b>${esc(a.isPlayer ? 'YOU' : a.name)}</b><i><u style="transform:scaleX(${hp.toFixed(2)})"></u><s style="transform:scaleX(${sh.toFixed(2)})"></s></i><em>${rt !== null ? '↻' + Math.ceil(rt) + 's' : st === 'out' ? '✕' : st === 'down' ? '✚' : ''}</em></div>`; };
-      const html = `<div class="sq-h">${BR.Squads.NAMES[game.squad]} · ${BR.Squads.teamsAlive(game)} TEAMS LEFT</div>` + [p].concat(mates).map(row).join('');
+      const html = `<div class="sq-h">${game.mode && game.mode.arena && game.mode.size ? game.mode.size + 'V' + game.mode.size : BR.Squads.NAMES[game.squad] || 'SQUAD'} · ${BR.Squads.teamsAlive(game)} TEAMS LEFT</div>` + [p].concat(mates).map(row).join('');
       if (html !== this._sqHtml) { this._sqHtml = html; $('squad').innerHTML = html; }
     }
     // markers over teammates (through walls), red + REVIVE when they're down

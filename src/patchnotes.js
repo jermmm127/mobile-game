@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.32.2', date: '2026-11-07', title: 'Shotgun Duels loadout picker', notes: [
+    'Shotgun Duels now has a loadout picker before every round: choose the Breacher, the Riot Auto or the Pump Action. Your pick is saved for next time, and bots rotate through all three.',
+    'Fixed the team panel in 2v2 duels reading "undefined · TEAMS LEFT". It now shows 2V2.',
+  ] },
   { v: '1.32.1', date: '2026-11-07', title: 'Pump Action shotgun + detailed new guns', notes: [
     'New gun: the PUMP ACTION. A classic tube-fed pump shotgun: a tight cone of 8 heavy pellets, rack the pump after every shot, and load shell by shell (fire to cancel). Hits harder than the Breacher up close but reaches less far. It drops in Battle Royale and is in the shop, loadouts, Duels, the Zombies Mystery Box (as the Undertaker when Pack-a-Punched) and the Aim Trainer.',
     'The Pump Action is fully detailed: a machined steel receiver with milled side panels and a shell sitting in the ejection port, a top rail with ghost-ring sights, a perforated heat shield, breacher teeth on the muzzle, a knurled magazine cap, a barrel clamp with a sling loop, a grooved oiled-walnut pump on action bars, a 6-shell side-saddle, and a checkered walnut pistol-grip stock with a ribbed recoil pad.',

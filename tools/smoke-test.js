@@ -1416,6 +1416,17 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v1322 = await page.evaluate(async () => {
+    const g = BR.game, L = BR.Lobby, out = {}; BR.AntiCheat._testing = true;
+    g.toMenu(); L.skipRoll = true; L.preset = 'shotgun'; L.size = 2; L.play({}); await new Promise(r => setTimeout(r, 300)); for (let i = 0; i < 3; i++) g.update(1 / 60);
+    const el = document.getElementById('ar-lo'), ids = el ? [...el.querySelectorAll('[data-slot]')].map(b => b.dataset.g) : [];
+    out.picker = !!el && !el.classList.contains('hidden') && ['shotgun', 'riot', 'pump'].every(id => ids.includes(id)) && ids.length === 3;
+    const b = el && el.querySelector('[data-g="riot"]'); if (b) b.click(); g.update(1 / 60);
+    out.armed = g.player.slots[0] && g.player.slots[0].id === 'riot' && (g.settings.shotgunDuel || {}).loadout[0] === 'riot';
+    out.bots = new Set(g.actors.filter(a => !a.isPlayer).map(a => a.slots[0] && a.slots[0].id)).size >= 2;
+    out.header = !/undefined/.test((document.querySelector('.sq-h') || { textContent: '' }).textContent);
+    g.toMenu(); return out;
+  });
   const v1321 = await page.evaluate(() => {
     const M = BR.Models, out = {}, count = m => { let n = 0; m.traverse(o => { if (o.isMesh) n++; }); return n; };
     const pm = M.weapon('pump', 'default', 'none', null);
@@ -1735,6 +1746,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.32.2 Shotgun Duels picker: Breacher / Riot Auto / Pump Action, the pick arms you + saves, bots vary, no undefined team header', Object.values(v1322).every(Boolean), v1322],
     ['v1.32.1 Pump Action: detailed procedural pump gun (racking pump, shell port, walnut), in the loot + blueprints; richer Talon / Riot parts', Object.values(v1321).every(Boolean), v1321],
     ['v1.32 Common/Uncommon cosmetics + Street Case, camos map onto every gun, 3 new guns (burst fires 3 per tap), living Legendary+ blueprints, near-miss / shield-break / low-ammo audio, shader warm-up', Object.values(v132).every(Boolean), v132],
     ['v1.31 guns: matte textured finish; knives higher on desktop only; one damage number per shotgun pellet, adding up to the damage', [v131.matte, v131.desk, v131.pellets, v131.inPlace].every(Boolean), v131],
@@ -1918,7 +1930,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

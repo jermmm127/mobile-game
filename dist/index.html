@@ -1749,7 +1749,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.32.1',
+  version: '1.32.2',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2043,6 +2043,10 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.32.2', date: '2026-11-07', title: 'Shotgun Duels loadout picker', notes: [
+    'Shotgun Duels now has a loadout picker before every round: choose the Breacher, the Riot Auto or the Pump Action. Your pick is saved for next time, and bots rotate through all three.',
+    'Fixed the team panel in 2v2 duels reading "undefined · TEAMS LEFT". It now shows 2V2.',
+  ] },
   { v: '1.32.1', date: '2026-11-07', title: 'Pump Action shotgun + detailed new guns', notes: [
     'New gun: the PUMP ACTION. A classic tube-fed pump shotgun: a tight cone of 8 heavy pellets, rack the pump after every shot, and load shell by shell (fire to cancel). Hits harder than the Breacher up close but reaches less far. It drops in Battle Royale and is in the shop, loadouts, Duels, the Zombies Mystery Box (as the Undertaker when Pack-a-Punched) and the Aim Trainer.',
     'The Pump Action is fully detailed: a machined steel receiver with milled side panels and a shell sitting in the ejection port, a top rail with ghost-ring sights, a perforated heat shield, breacher teeth on the muzzle, a knurled magazine cap, a barrel clamp with a sling loop, a grooved oiled-walnut pump on action bars, a 6-shell side-saddle, and a checkered walnut pistol-grip stock with a ribbed recoil pad.',
@@ -14875,6 +14879,7 @@ BR.Squads = {
     sniper: ['sniper', 'hunter'],
     loadout: null,                                 // TDM/FFA: your loadout (Loadout screen)
   };
+  const SHOTGUNS = ['shotgun', 'riot', 'pump'];              // v1.32.2: the Shotgun Duels picker (Breacher, Riot Auto, Pump Action)
   const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg'], ['burst', 'mpistol'], ['riot', 'pistol'], ['pump', 'smg']];
   BR.ARENA_PRESETS = {
     duel:    { kind: 'duel', title: 'DUELS', guns: 'duel', sizes: [1, 2], target: 5, roundTime: 90 },
@@ -14936,17 +14941,18 @@ BR.Squads = {
       if (this.host) this.beginRound(); else this.waitT = 0;
     }
     get duel() { return this.P.kind === 'duel'; }
-    get picksLoadout() { return this.P.guns === 'duel' || this.P.guns === 'sniper'; }        // Duels + Sniper Duels: pick your guns before every round
+    get picksLoadout() { return this.P.guns === 'duel' || this.P.guns === 'sniper' || this.P.guns === 'shotgun'; }        // Duels, Sniper + Shotgun Duels: pick your guns before every round        // Duels + Sniper Duels: pick your guns before every round
     // v1.20: which saved loadout + which guns the picker offers (the Shockwave Launcher only in Sniper Duels)
-    loKey() { return this.P.guns === 'sniper' ? 'sniperDuel' : 'duel'; }
-    loDefault() { return this.P.guns === 'sniper' ? ['sniper', 'hunter'] : ['rifle', 'shotgun']; }
-    loLists() { return this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'burst', 'smg', 'lmg', 'dmr', 'shotgun', 'riot', 'pump', 'hunter', 'sniper'], ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun']]; }
+    loKey() { return this.P.guns === 'sniper' ? 'sniperDuel' : this.P.guns === 'shotgun' ? 'shotgunDuel' : 'duel'; }
+    loDefault() { return this.P.guns === 'sniper' ? ['sniper', 'hunter'] : this.P.guns === 'shotgun' ? ['shotgun', null] : ['rifle', 'shotgun']; }
+    loLists() { return this.P.guns === 'shotgun' ? [SHOTGUNS, []] : this.P.guns === 'sniper' ? [['sniper', 'hunter', 'launcher'], ['hunter', 'sniper', 'launcher']] : [['rifle', 'holoar', 'burst', 'smg', 'lmg', 'dmr', 'shotgun', 'riot', 'pump', 'hunter', 'sniper'], ['pistol', 'mpistol', 'revolver', 'smg', 'shotgun']]; }
     myLoadout() { const D = (this.g.settings[this.loKey()] || {}).loadout, def = this.loDefault(), [A, B] = this.loLists(); return [D && A.includes(D[0]) ? D[0] : def[0], D && B.includes(D[1]) ? D[1] : def[1]]; }
     get teams() { return this.P.kind !== 'ffa'; }
     gunsFor(a) {
       const set = this.P.guns;
-      if (a.isPlayer && (set === 'duel' || set === 'sniper')) return this.myLoadout();
-      if (set === 'shotgun' || set === 'sniper') return GUNSETS[set];
+      if (a.isPlayer && (set === 'duel' || set === 'sniper' || set === 'shotgun')) return this.myLoadout();
+      if (set === 'shotgun') return [SHOTGUNS[(a.rosterId + this.round) % SHOTGUNS.length], null];       // v1.32.2: bots rotate through every shotgun
+      if (set === 'sniper') return GUNSETS[set];
       if (a.isPlayer) { const L = BR.Profile.loadoutGuns(); return [L.primary === 'launcher' ? 'rifle' : L.primary, L.secondary]; }     // (no launcher outside BR / Sniper Duels)
       return BOT_POOL[(a.rosterId * 3 + this.round) % BOT_POOL.length];
     }
@@ -15231,7 +15237,7 @@ BR.Squads = {
       const L = this.myLoadout(), [P1, P2] = this.loLists();
       const W = BR.CONFIG.weapons, pic = BR.WeaponIcons && BR.WeaponIcons.pic || {};
       const row = (ids, slot) => ids.map(id => `<button class="${L[slot] === id ? 'sel' : ''}" data-slot="${slot}" data-g="${id}">${pic[id] ? `<img src="${pic[id]}" alt="">` : ''}<span>${W[id].name}</span></button>`).join('');
-      const html = `<div class="ar-lo-h"><b>CHOOSE YOUR LOADOUT</b><span>${this.phase === 'roundEnd' ? 'Next round in ' + Math.ceil(Math.max(0, this.t)) + 's' : 'Round starts in ' + Math.ceil(Math.max(0, this.t)) + 's'}</span></div><div class="ar-lo-l">PRIMARY</div><div class="ar-lo-r">${row(P1, 0)}</div><div class="ar-lo-l">SECONDARY</div><div class="ar-lo-r">${row(P2, 1)}</div>`;
+      const html = `<div class="ar-lo-h"><b>CHOOSE YOUR LOADOUT</b><span>${this.phase === 'roundEnd' ? 'Next round in ' + Math.ceil(Math.max(0, this.t)) + 's' : 'Round starts in ' + Math.ceil(Math.max(0, this.t)) + 's'}</span></div><div class="ar-lo-l">${P2.length ? 'PRIMARY' : 'SHOTGUN'}</div><div class="ar-lo-r">${row(P1, 0)}</div>${P2.length ? `<div class="ar-lo-l">SECONDARY</div><div class="ar-lo-r">${row(P2, 1)}</div>` : ''}`;
       if (html !== this._loHtml) { this._loHtml = html; el.innerHTML = html; }
     }
     // teammate markers (names over allies, through walls)
@@ -19757,7 +19763,7 @@ BR.HUD = class HUD {
       const row = a => { const st = !a.alive ? 'out' : a.downed ? 'down' : '', rt = !a.alive ? rq(a) : null;
         const hp = a.alive ? (a.downed ? a.health / BR.Squads.DOWN_HP : a.health / A.maxHealth) : 0, sh = a.alive && !a.downed ? a.shield / A.maxShield : 0;
         return `<div class="sq-row ${st}${a.isPlayer ? ' me' : ''}"><b>${esc(a.isPlayer ? 'YOU' : a.name)}</b><i><u style="transform:scaleX(${hp.toFixed(2)})"></u><s style="transform:scaleX(${sh.toFixed(2)})"></s></i><em>${rt !== null ? '↻' + Math.ceil(rt) + 's' : st === 'out' ? '✕' : st === 'down' ? '✚' : ''}</em></div>`; };
-      const html = `<div class="sq-h">${BR.Squads.NAMES[game.squad]} · ${BR.Squads.teamsAlive(game)} TEAMS LEFT</div>` + [p].concat(mates).map(row).join('');
+      const html = `<div class="sq-h">${game.mode && game.mode.arena && game.mode.size ? game.mode.size + 'V' + game.mode.size : BR.Squads.NAMES[game.squad] || 'SQUAD'} · ${BR.Squads.teamsAlive(game)} TEAMS LEFT</div>` + [p].concat(mates).map(row).join('');
       if (html !== this._sqHtml) { this._sqHtml = html; $('squad').innerHTML = html; }
     }
     // markers over teammates (through walls), red + REVIVE when they're down
