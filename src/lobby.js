@@ -8,7 +8,10 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const DESC = {
     duel: 'Round-based duels: pick your guns before every round. No respawns: last team standing takes the round. First to 5. The map is rolled at the start.',
-    shotgun: 'Breacher shotguns only. Close, fast, brutal. First to 5 rounds.',
+    shotgun: 'Shotguns only: pick the Breacher, Riot Auto or Pump Action before every round. Close, fast, brutal. First to 5 rounds.',
+    gungame: 'Free For All with a twist: every kill moves you up to the next gun, through 14 guns. The final step is the knife: land a knife kill to win. Get knifed and you drop a level.',
+    oitc: 'Everyone gets a revolver with ONE bullet and a knife. Every hit kills. Each kill gives you another bullet. 3 lives: the last player standing wins.',
+    knives: 'Knives only, round-based. Lunge, backstab, outplay. 1v1 or 2v2, first to 5 rounds.',
     sniper: 'Sniper, Hunting Rifle and Shockwave Launcher only: pick two before every round. Hold angles, land the headshot. First to 5 rounds.',
     tdm: 'Team Deathmatch, 4v4. Respawn after 3 seconds with your loadout. First team to 30 kills.',
     ffa: 'Free For All, 6 players. Everyone for themselves, respawns on. First to 20 kills.',
@@ -36,7 +39,7 @@
     { id: 'skyline', name: 'SKYLINE', sub: 'Rooftop duel · AC units + water tank', art: 'linear-gradient(150deg,#ffb36b,#5b5e65 50%,#1a1c22)' },
   ];
   // v1.21: Free For All plays on the big maps (District, Killhouse); TDM adds District to its pool; duels keep the small ones
-  L.pool = preset => preset === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse' || m.id === 'suburb') : preset === 'tdm' ? L.MAPS.filter(m => m.id !== 'skyline') : L.MAPS.filter(m => !m.big && !m.mid);     // v1.23: Cul-de-Sac in TDM/FFA, Skyline in duels
+  L.pool = preset => (BR.ARENA_PRESETS[preset] || {}).kind === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse' || m.id === 'suburb') : preset === 'tdm' ? L.MAPS.filter(m => m.id !== 'skyline') : L.MAPS.filter(m => !m.big && !m.mid);     // v1.23: Cul-de-Sac in TDM/FFA, Skyline in duels
   L.rollMap = () => { const P = L.pool(L.preset); return P[Math.floor(Math.random() * P.length)].id; };
   L.play = (opts) => {
     const g = BR.game; BR.Audio.init();

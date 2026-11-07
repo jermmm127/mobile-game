@@ -1749,7 +1749,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.32.3',
+  version: '1.33.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2043,6 +2043,16 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.33.0', date: '2026-11-07', title: 'New modes, forged blueprints, real muzzle flash', notes: [
+    'New mode: GUN GAME. Free For All, 6 players: every kill moves you to the next gun through 14 of them, from SMG to pistol. The last step is the knife, and a knife kill on it wins. Get knifed and you drop a level.',
+    'New mode: ONE IN THE CHAMBER. Everyone gets a revolver with ONE bullet and a knife. Every hit kills. Each kill gives you another bullet. You have 3 lives, and the last player standing wins.',
+    'New mode: KNIFE FIGHT. Knives only, round-based, 1v1 or 2v2, first to 5 rounds. All three new modes are in the CASUAL row and can be played online with your party.',
+    'Every blueprint got real new parts (not just a new finish), fitted to each gun\'s actual surface. Rare: a ported compensator and bolted side plates. Epic: adds chamfered armour panels and a vented barrel collar. Legendary: adds swept side fins, gilt barrel rings and a glowing medallion. Mythic: adds energy blades hovering beside the barrel and a pulsing core crystal. Exotic: adds a rainbow halo round the muzzle.',
+    'Knife blueprints got real parts too: handle wraps, a guard with glowing studs, a pommel cap with a crystal, shards orbiting the blade and a halo (more parts at higher rarity). They follow the knife through every flip.',
+    'Floating blueprint effects (energy rings, hovering blades, halos) now step aside while you aim, so they never block your sights.',
+    'New muzzle flash: a hot core, a wide glow, a 6-ray star crossed with a sharp 4-ray star, and three flame petals along the barrel. Each shot spins and reshapes it, then it blooms and fades. Shotguns get a petalled blossom, snipers, DMRs and revolvers a big long flash, automatics a tighter one, suppressed guns a small glow. Your gun puffs smoke, and heavy guns throw sparks.',
+    'The muzzle flash now also shows (smaller) while you aim, instead of disappearing.',
+  ] },
   { v: '1.32.3', date: '2026-11-07', title: 'Lower aim view', notes: [
     'Aiming down sights with iron-sight guns now holds the gun a little below the crosshair, so you can see more of what you are shooting at. The view still zooms in, and the crosshair stays up as your aim point.',
     'Guns with an optic still line up through the glass: the holo sights (Holo AR, Talon Burst), the LMG ACOG, the DMR prism scope and the Sniper scope.',
@@ -6956,13 +6966,21 @@ BR.Models = (function () {
     // (additive; the viewmodel spins + scales it every shot so no two flashes look the same)
     let flash;
     if (BR.Effects && BR.Effects.tex) {
-      const T = BR.Effects.tex(), mm = (map, c) => new THREE.MeshBasicMaterial({ map, color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
-      const FM = cache.mat.fx || (cache.mat.fx = { star: mm(T.star, 0xffc46a), flame: mm(T.flame, 0xff9a3a), core: new THREE.SpriteMaterial({ map: T.dot, color: 0xfff1cc, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }) });
+      // v1.33 layered flash: a hot core, a wide soft glow, two stars (6-ray + sharp 4-ray cross), three flame petals along
+      // the barrel and a petalled blossom for shotguns. Each part has its own material, so the viewmodel can shape and fade
+      // every layer per shot (BR.Viewmodel animFlash), styled per weapon (userData.style, set in weapon()).
+      const T = BR.Effects.tex(), mm = (map, c, op) => new THREE.MeshBasicMaterial({ map, color: c, transparent: true, opacity: op === undefined ? 1 : op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+      const sp = (c, op) => new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: c, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
       flash = new THREE.Group(); flash.position.copy(muzzle.position); flash.position.z -= 0.01;
-      const star = new THREE.Mesh(cache.geo.fxStar || (cache.geo.fxStar = new THREE.PlaneGeometry(0.17, 0.17)), FM.star); flash.add(star);
-      const fg = cache.geo.fxFlame || (cache.geo.fxFlame = new THREE.PlaneGeometry(0.075, 0.24).rotateX(-Math.PI / 2).translate(0, 0, -0.11));
-      const f1 = new THREE.Mesh(fg, FM.flame), f2 = new THREE.Mesh(fg, FM.flame); f2.rotation.z = Math.PI / 2; flash.add(f1, f2);
-      const core = new THREE.Sprite(FM.core); core.scale.setScalar(0.1); core.position.z = -0.02; flash.add(core);
+      const pl = cache.geo.fxPlane || (cache.geo.fxPlane = new THREE.PlaneGeometry(1, 1));
+      const fg = cache.geo.fxFlame2 || (cache.geo.fxFlame2 = new THREE.PlaneGeometry(0.075, 0.24).rotateX(-Math.PI / 2).translate(0, 0, -0.11));
+      const glow = sp(0xff8a2a, 0.55); glow.scale.setScalar(0.26); glow.position.z = -0.03;
+      const core = sp(0xfff4d8, 1); core.scale.setScalar(0.09); core.position.z = -0.015;
+      const starA = new THREE.Mesh(pl, mm(T.star, 0xffc46a)), starB = new THREE.Mesh(pl, mm(T.star4, 0xfff0c0, 0.85)), bloom = new THREE.Mesh(pl, mm(T.blossom, 0xffb050, 0.9));
+      starA.scale.setScalar(0.17); starB.scale.setScalar(0.12); starB.position.z = -0.004; bloom.scale.setScalar(0.22); bloom.position.z = -0.02;
+      const petals = [0, 1, 2].map(i => { const m = new THREE.Mesh(fg, mm(T.flame, 0xff9a3a)); m.rotation.z = i * Math.PI / 3; flash.add(m); return m; });
+      flash.add(glow, bloom, starA, starB, core);
+      flash.userData.fx = { glow, core, starA, starB, bloom, petals };
       flash.traverse(o => { o.userData.isFlash = true; o.userData.noUV = true; });
     } else { flash = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), MAT().flash); flash.position.copy(muzzle.position); flash.position.z -= 0.04; flash.scale.set(1, 1, 1.8); }
     flash.visible = false;
@@ -8646,7 +8664,7 @@ BR.Models = (function () {
       for (let i = 0; i < (tier >= 3 ? 3 : 2); i++) {
         const r = new THREE.Mesh(new THREE.TorusGeometry(rr, rr * 0.09, 6, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
         if (axis === 'z') r.rotation.y = 0.5; else if (axis === 'x') r.rotation.y = Math.PI / 2 + 0.5; else r.rotation.x = Math.PI / 2;     // (tilted: reads as a ring from the side too)
-        r.userData.isFlash = true; r.userData.noUV = true; P.add(r); rings.push(r);
+        r.userData.isFlash = true; r.userData.noUV = true; r.userData.adsHide = true; P.add(r); rings.push(r);
       }
     }
     anim(g, t => {
@@ -9898,6 +9916,110 @@ BR.Models = (function () {
     }
     return buckets.size ? mat : null;
   }
+  // ------------------------------------------------------------------ v1.33 BLUEPRINT FORGE
+  // Every blueprint gets real extra geometry, not just a new finish, scaled by rarity and fitted to the actual model:
+  // rays find the gun's real surface (so nothing floats or sinks), parts hang off the moving pieces they belong to.
+  //   Rare:      ported compensator (unsuppressed guns) + bolted side plates
+  //   Epic:      + chamfered armour panels + a vented barrel collar
+  //   Legendary: + swept side fins + gilt barrel rings + a glowing medallion
+  //   Mythic:    + hovering energy blades beside the barrel + a pulsing core crystal
+  //   Exotic:    + a rainbow halo round the muzzle, everything hue-cycling
+  // Knives: guard plates, handle wraps, a pommel gem, orbiting shards, a halo (by rarity), riding the blade through flips.
+  const FORGE_T = { Uncommon: 0.5, Rare: 1, Epic: 2, Legendary: 3, Mythic: 4, Exotic: 5 };
+  const _rc = new THREE.Raycaster();
+  function forgeHits(g) { const list = []; g.traverse(o => { if (o.isMesh && !o.userData.isFlash && !o.userData.forge && o.visible) list.push(o); }); return list; }
+  // first surface hit from `from` along `dir` (group space), or null
+  function forgeRay(g, list, from, dir) {
+    _rc.set(g.localToWorld(from.clone()), dir.clone().transformDirection(g.matrixWorld).normalize()); _rc.far = 2;
+    const h = _rc.intersectObjects(list, false)[0]; return h ? g.worldToLocal(h.point.clone()) : null;
+  }
+  function forgePart(par, mesh) { mesh.userData.forge = true; mesh.userData.noUV = true; par.add(mesh); return mesh; }
+  function chamferPanel(w, h, d, c) {          // a plate with cut corners, extruded (d = thickness, along x)
+    const sh = new THREE.Shape(), a = w / 2, b = h / 2;
+    sh.moveTo(-a + c, -b); sh.lineTo(a - c, -b); sh.lineTo(a, -b + c); sh.lineTo(a, b - c); sh.lineTo(a - c, b); sh.lineTo(-a + c, b); sh.lineTo(-a, b - c); sh.lineTo(-a, -b + c); sh.closePath();
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: true, bevelThickness: d * 0.35, bevelSize: d * 0.35, bevelSegments: 2 }); geo.translate(0, 0, -d / 2); geo.rotateY(Math.PI / 2); return geo;
+  }
+  function finGeo(len, h, d) {                 // a swept crest: rises from the front, sweeps back to a point
+    const sh = new THREE.Shape(); sh.moveTo(len * 0.5, 0); sh.quadraticCurveTo(len * 0.1, h * 0.3, -len * 0.25, h); sh.lineTo(-len * 0.5, h * 0.82); sh.quadraticCurveTo(-len * 0.2, h * 0.2, -len * 0.4, 0); sh.closePath();
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: true, bevelThickness: d * 0.4, bevelSize: d * 0.3, bevelSegments: 2 }); geo.translate(0, 0, -d / 2); geo.rotateY(Math.PI / 2); return geo;
+  }
+  function bpForge(g, id, bp) {
+    const t = FORGE_T[bp.rarity]; if (!t) return;
+    const def = BR.CONFIG.weapons[id] || {}, acc = bp.accent != null ? bp.accent : (bp.body != null ? bp.body : 0x888888), glow = bp.glow != null ? bp.glow : acc;
+    const A = bpMat(acc, bp.accentGloss || 1), Gm = glowMat(glow), Ch = cache.mat['forgeCh' + acc] || (cache.mat['forgeCh' + acc] = chrome(new THREE.Color(acc).lerp(new THREE.Color(0xffffff), 0.35).getHex()));
+    const dark = MAT().dark, metal = MAT().metal;
+    g.updateMatrixWorld(true);
+    if (def.melee) return forgeKnife(g, t, A, Gm, Ch, metal, glow);
+    const list = forgeHits(g), I = bodyInfo(g), ud = g.userData, V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const gz = ud.grip ? ud.grip.z : I.z1 - 0.15, fz = ud.fore ? ud.fore.z : gz - 0.25, zA = Math.max(gz, fz) - 0.02, zB = Math.min(gz, fz) + 0.02, zm = (zA + zB) / 2, span = Math.abs(zA - zB);
+    const y0 = I.by - 0.012;
+    // side surfaces at the receiver (outermost of a few samples, so long plates never sink in)
+    const sideX = sx => { let best = null; for (const z of [zA - span * 0.15, zm, zB + span * 0.15]) { const h = forgeRay(g, list, V(sx * 0.4, y0, z), V(-sx, 0, 0)); if (h && (best === null || Math.abs(h.x) > Math.abs(best))) best = h.x; } return best; };
+    const parts = [];
+    // Rare: compensator + bolted side plates
+    if (t >= 1 && !def.suppressed && !bp.mod && !def.launcher && ud.muzzle) {
+      const m = ud.muzzle.position, r = (() => { const h = forgeRay(g, list, V(0.3, m.y, m.z + 0.01), V(-1, 0, 0)); return h ? Math.max(0.008, Math.min(0.022, Math.abs(h.x))) : 0.012; })();
+      const cg = new THREE.Group(); cg.position.set(0, m.y, m.z); g.add(cg);
+      forgePart(cg, new THREE.Mesh(new THREE.CylinderGeometry(r * 1.35, r * 1.25, 0.05, 18), dark)).rotation.x = Math.PI / 2; cg.children[0].position.z = -0.02;
+      for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) { const sl = forgePart(cg, new THREE.Mesh(new THREE.BoxGeometry(0.003, r * 1.1, 0.008), MAT().grip)); sl.position.set(sx * r * 1.3, 0, -0.008 - i * 0.013); }
+      forgePart(cg, new THREE.Mesh(new THREE.TorusGeometry(r * 1.3, 0.0018, 6, 18), A)).position.z = -0.044;
+      ud.muzzle.position.z -= 0.045; if (ud.flash) ud.flash.position.z -= 0.045;
+    }
+    const plates = [];
+    for (const sx of [-1, 1]) {
+      const x = sideX(sx); if (x === null) continue;
+      const px = x + sx * 0.0022;
+      if (t >= 1) { const pl = forgePart(g, new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.016, span * 0.62), A)); pl.position.set(px, y0, zm); plates.push(pl);
+        for (const dz of [-0.4, 0, 0.4]) forgePart(g, new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0022, 0.003, 8), metal)).position.set(px + sx * 0.002, y0, zm + dz * span * 0.6), g.children[g.children.length - 1].rotation.z = Math.PI / 2;
+        forgePart(g, new THREE.Mesh(new THREE.BoxGeometry(0.0034, 0.0025, span * 0.5), Gm)).position.set(px + sx * 0.0006, y0 + 0.0095, zm); }
+      if (t >= 2) { const ap = forgePart(g, new THREE.Mesh(chamferPanel(span * 0.34, 0.03, 0.003, 0.006), A)); ap.position.set(px + sx * 0.003, y0 - 0.02, zA - span * 0.22); plates.push(ap);
+        for (let i = 0; i < 3; i++) forgePart(g, new THREE.Mesh(new THREE.BoxGeometry(0.0036, 0.004, 0.012), dark)).position.set(px + sx * 0.0048, y0 - 0.02 + (i - 1) * 0.008, zA - span * 0.22); }
+      if (t >= 3) { const fin = forgePart(g, new THREE.Mesh(finGeo(span * 0.42, 0.032, 0.0025), Ch)); fin.position.set(px + sx * 0.004, y0 - 0.006, zB + span * 0.18); fin.rotation.z = sx * 0.55;
+        const md = forgePart(g, new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.003, 20), Ch)); md.rotation.z = Math.PI / 2; md.position.set(px + sx * 0.004, y0 + 0.002, zA - span * 0.08);
+        const mg = forgePart(g, new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.0034, 14), Gm)); mg.rotation.z = Math.PI / 2; mg.position.set(px + sx * 0.0052, y0 + 0.002, zA - span * 0.08); }
+    }
+    // Epic: a vented collar on the barrel ahead of the handguard; Legendary: gilt rings
+    const barrelR = z => { const h = forgeRay(g, list, V(0.3, I.by, z), V(-1, 0, 0)); return h ? Math.abs(h.x) : null; };
+    if (t >= 2 && ud.muzzle) for (const [k, kind] of (t >= 3 ? [[0.16, 'ring'], [0.26, 'ring'], [0.38, 'collar']] : [[0.32, 'collar']])) {
+      const z = I.z0 + (fz - I.z0) * k, r = barrelR(z); if (!r || r > 0.026) continue;
+      if (kind === 'ring') forgePart(g, new THREE.Mesh(new THREE.TorusGeometry(r + 0.0016, 0.0022, 8, 22), Ch)).position.set(0, I.by, z);
+      else { const c = forgePart(g, new THREE.Mesh(new THREE.CylinderGeometry(r + 0.004, r + 0.004, 0.03, 20), dark)); c.rotation.x = Math.PI / 2; c.position.set(0, I.by, z);
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const v = forgePart(g, new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.004, 0.02), Gm)); v.position.set(Math.cos(a) * (r + 0.0045), I.by + Math.sin(a) * (r + 0.0045), z); v.rotation.z = a; } }
+    }
+    // Mythic: energy blades hovering beside the barrel + a core crystal on the side plate; Exotic: halo
+    if (t >= 4) {
+      const L = Math.min(0.24, Math.abs(fz - I.z0) * 0.7), bz = I.z0 + (fz - I.z0) * 0.45, Lg = liveGlow(glow);
+      const blades = [-1, 1].map(sx => { const b = forgePart(g, new THREE.Mesh(finGeo(L, 0.022, 0.0015), Lg)); b.position.set(sx * (I.hw + 0.018), I.by + 0.004, bz); b.rotation.z = sx * 1.2; b.userData.adsHide = true; return b; });
+      const cr = forgePart(g, new THREE.Mesh(new THREE.OctahedronGeometry(0.009, 0), crystal(glow))); const x0 = sideX(1); cr.position.set((x0 === null ? I.hw : x0) + 0.012, y0 - 0.004, zm);
+      anim(g, tt => { blades.forEach((b, i) => { b.position.y = I.by + 0.004 + Math.sin(tt * 2.2 + i * 3.1) * 0.0035; }); cr.rotation.y = tt * 1.6; cr.scale.setScalar(1 + 0.12 * Math.sin(tt * 4)); Lg.color.setHex(glow).multiplyScalar(0.75 + 0.25 * Math.sin(tt * 3)); if (t >= 5) Lg.color.setHSL((tt * 0.15) % 1, 1, 0.6); });
+    }
+    if (t >= 5 && ud.muzzle) { const Hm = liveGlow(glow), h = forgePart(g, new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.002, 6, 36), Hm)); h.position.set(0, ud.muzzle.position.y, ud.muzzle.position.z + 0.04); h.userData.adsHide = true;
+      anim(g, tt => { h.rotation.z = tt * 1.2; h.rotation.x = Math.sin(tt * 0.9) * 0.35; Hm.color.setHSL((tt * 0.18 + 0.3) % 1, 1, 0.62); }); }
+    void parts;
+  }
+  function forgeKnife(g, t, A, Gm, Ch, metal, glow) {
+    const ud = g.userData, bm = ud.bladeMesh, tipL = ud.trailTip; if (!tipL || !ud.grip) return;
+    // work in the space the blade moves in (the inner group on bayonets / karambits, the blade itself on butterflies)
+    const host = ud.handleA ? (bm || g) : (ud.trailSpace || g);
+    g.updateMatrixWorld(true);
+    const toHost = v => host.worldToLocal((ud.trailSpace && ud.trailSpace !== host ? ud.trailSpace : g).localToWorld(v.clone()));
+    const tip = toHost(tipL), gripW = host.worldToLocal(g.localToWorld(ud.grip.clone()));
+    let root = gripW.clone().lerp(tip, 0.32);
+    if (bm && bm.geometry.attributes.position) { const P = bm.geometry.attributes.position, v = new THREE.Vector3(); let bd = 1e9;
+      for (let i = 0; i < P.count; i += 9) { v.fromBufferAttribute(P, i); bm.localToWorld(v); host.worldToLocal(v); const d = v.distanceTo(gripW); if (d < bd) { bd = d; root.copy(v); } } }
+    const ax = tip.clone().sub(gripW).normalize(); root = gripW.clone().addScaledVector(ax, Math.max(0.01, root.clone().sub(gripW).dot(ax)));      // (on the grip-tip axis)
+    const dir = tip.clone().sub(root); const bl = dir.length(); if (bl < 0.02) return; dir.normalize();
+    const handleLen = Math.min(0.12, Math.max(0.06, root.distanceTo(gripW) * 2)), curved = !!ud.handleA || (g.userData.trailSpace && !ud.bayonet);     // butterfly / karambit: blade-riding parts only
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir), at = (k, m) => { m.position.copy(root).addScaledVector(dir, k); m.quaternion.copy(q); return forgePart(host, m); };
+    if (t >= 1 && !curved) for (const k of [-0.3, -0.55]) at(k * handleLen, new THREE.Mesh(new THREE.TorusGeometry(0.0125, 0.0022, 6, 18), A)).rotateX(Math.PI / 2);
+    if (t >= 2) { if (!curved) at(0.004, new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.006, 0.016), Ch)); for (const sx of [-1, 1]) { const s = at(0.006, new THREE.Mesh(new THREE.SphereGeometry(0.0035, 8, 6), Gm)); s.translateX(sx * (curved ? 0.008 : 0.022)); } }
+    if (t >= 3) { if (!curved) { at(-handleLen - 0.004, new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.012, 0.014, 12), Ch)); at(-handleLen - 0.016, new THREE.Mesh(new THREE.OctahedronGeometry(0.0075, 0), crystal(glow))); }
+      else at(0.012, new THREE.Mesh(new THREE.OctahedronGeometry(0.006, 0), crystal(glow))); }
+    if (t >= 4) { const piv = new THREE.Group(); piv.position.copy(root).addScaledVector(dir, bl * 0.55); piv.quaternion.copy(q); forgePart(host, piv); const cg = crystal(glow);
+      for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, sh = forgePart(piv, new THREE.Mesh(new THREE.OctahedronGeometry(0.0055, 0), cg)); sh.position.set(Math.cos(a) * 0.03, 0, Math.sin(a) * 0.03); }
+      anim(g, tt => { piv.rotation.y = tt * 1.8; piv.children.forEach((c, i) => { c.rotation.set(tt * 3 + i, tt * 2, 0); c.position.y = Math.sin(tt * 2.5 + i * 2) * 0.008; }); }); }
+    if (t >= 5) { const Hm = liveGlow(glow), h = at(0.012, new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.0018, 6, 30), Hm)); h.rotateX(Math.PI / 2); anim(g, tt => { h.rotation.z = tt * 1.4; Hm.color.setHSL((tt * 0.18) % 1, 1, 0.62); }); }
+  }
   function bpUpgrade(g, id, bpId, bp, S, opts) {
     const t = TIER[bp.rarity]; if (!t) return;
     const F = finishMat(id + ':' + bpId, bp), melee = !!(BR.CONFIG.weapons[id] || {}).melee;
@@ -9981,8 +10103,10 @@ BR.Models = (function () {
           if (keep && bp.fit !== 'own') fitMods(g, id, keep, bp.fit === 'native');                                     // v1.23: seat the add-ons on the imported model
         }
         if (bp && !opts.camo) bpUpgrade(g, id, bpId, bp, S, opts);          // v1.16 finishes + edge lines
+        if (bp) { try { bpForge(g, id, bp); } catch (e) { console.warn('blueprint forge', id, bpId, e); } }      // v1.33 real extra geometry by rarity
         realPass(g, !bp && !opts.camo);                                        // v1.17 surface detail
         skinFx(g, skin, bp);                                                   // v1.22 rarity glow + sparkles
+        if (g.userData.flash) g.userData.flash.userData.style = def.melee ? 'none' : def.suppressed ? 'sup' : def.launcher ? 'launch' : def.pellets > 1 ? 'blast' : (def.bolt || def.dmg >= 40 || def.revolver) ? 'heavy' : def.rpm >= 700 ? 'auto' : 'std';     // v1.33 flash style
       } finally { ROUND = false; }
       if (charmId && charmId !== 'none') {
         const c = charm(charmId);
@@ -10145,6 +10269,21 @@ BR.Models = (function () {
       this.rebuild();
     }
 
+    // v1.33 muzzle flash: every layer is shaped per weapon style and per shot (random spin, star sizes, petal lengths), then
+    // blooms outward and fades over the flash's life. Smaller (not hidden) while aiming, so you still see your shots.
+    animFlash(F, A) {
+      const fx = F.userData.fx, S = (this.flashS || 1) * (A > 0.5 ? 0.62 : 1), dur = this.flashDur || 0.05, f = Math.min(1, 1 - this.flashT / dur), r = this.flashRnd || [0.5, 0.5, 0.5, 0.5];
+      if (!fx) { F.rotation.z = r[0] * 3; F.scale.setScalar(S * (1 - f * 0.25)); return; }
+      const st = F.userData.style || 'std', P = { std: [1.15, 1.1, 1.15, 0, 1.1], auto: [0.85, 0.8, 1.2, 0, 0.9], heavy: [1.4, 1.3, 1.55, 0, 1.3], blast: [1.25, 0.6, 0.55, 1, 1.45], sup: [0, 0, 0, 0, 0.45], launch: [1.1, 0.4, 0.4, 1, 1.2], none: [0, 0, 0, 0, 0] }[st] || [1, 1, 1, 0, 1];
+      const out = 1 - f, hot = Math.pow(out, 0.7);
+      F.rotation.z = r[0] * 6.283; F.scale.setScalar(S);
+      fx.starA.visible = P[0] > 0; if (P[0]) { fx.starA.scale.setScalar(0.17 * P[0] * (0.85 + 0.3 * r[1]) * (1 + f * 0.55)); fx.starA.material.opacity = hot; }
+      fx.starB.visible = P[1] > 0; if (P[1]) { fx.starB.scale.setScalar(0.13 * P[1] * (0.8 + 0.4 * r[2]) * (1 + f * 0.9)); fx.starB.rotation.z = r[3] * 3 + 0.4; fx.starB.material.opacity = hot * 0.9; }
+      fx.petals.forEach((m, i) => { m.visible = P[2] > 0; if (!P[2]) return; const L = P[2] * (0.65 + 0.7 * ((r[i] * 1.7 + i * 0.31) % 1)); m.scale.set(0.85 + 0.5 * r[(i + 1) % 4], 1, L * (0.55 + f * 1.0)); m.material.opacity = Math.pow(out, 0.5); });
+      fx.bloom.visible = P[3] > 0; if (P[3]) { fx.bloom.scale.setScalar(0.24 * P[0] * (1 + f * 1.1)); fx.bloom.rotation.z = r[2] * 6; fx.bloom.material.opacity = hot * 0.95; }
+      fx.core.scale.setScalar((st === 'sup' ? 0.045 : 0.09 * (0.9 + 0.3 * r[3])) * (1 + f * 0.4)); fx.core.material.opacity = (st === 'sup' ? 0.55 : 1) * hot;
+      fx.glow.scale.setScalar(0.26 * P[4] * (1 + f * 0.6)); fx.glow.material.opacity = (st === 'sup' ? 0.25 : 0.55) * out;
+    }
     resize(w, h) {
       this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
       this.scale = w < h ? 0.6 : 1;
@@ -10311,7 +10450,8 @@ BR.Models = (function () {
       this.kickR.z.vel += side * (auto ? 0.55 : 0.4) * a;             // smooth roll pattern
       this.kickR.y.vel += side * (auto ? 0.3 : 0.12) * a;
       if (auto) this.heatT = Math.min(1, this.heatT + 0.07 + d.recoil * 2);
-      this.flashT = d.suppressed ? 0.025 : 0.05;
+      this.flashT = this.flashDur = d.suppressed ? 0.03 : d.pellets > 1 || d.bolt || d.dmg >= 40 ? 0.075 : 0.055;
+      this.flashRnd = [Math.random(), Math.random(), Math.random(), Math.random()];
       this.flashS = (d.suppressed ? 0.42 : d.pellets > 1 || (d.kick || 0) > 1 ? 1.35 : 1) * (0.8 + Math.random() * 0.45);
       // v1.22: brass ejects to the right (shotguns: a red shell when the pump racks; bolt actions: when the bolt cycles)
       if (!d.melee && !d.launcher && !d.revolver) (this.ejects || (this.ejects = [])).push({ t: d.pump ? 0.22 : d.bolt ? 0.42 : 0, kind: d.pellets > 1 ? 'shell' : d.bolt || d.dmg >= 40 ? 'big' : 'brass', w });
@@ -10409,6 +10549,8 @@ BR.Models = (function () {
       // (holo sights, the ACOG, the DMR prism and the sniper scope) still line up on it so you can aim through the glass
       if (ud.sight && !def.holo && !def.optic && !def.scope) { const dz = (ud.sightDist || 0.3) * 0.78; ay -= 0.1 * dz; az -= 0.012; }     // (same drop on screen for every gun)
       const A = this.adsW, nA = 1 - A * 0.85;
+      // v1.33: floating blueprint effects (energy rings, hovering blades, halos) step aside while you aim so the sight picture stays clear
+      { const hl = ud._adsHide || (ud._adsHide = (() => { const L = []; model.traverse(o => { if (o.userData.adsHide) L.push(o); }); return L; })()); for (let i = 0; i < hl.length; i++) hl[i].visible = A < 0.45; }
       // Bob: figure-eight while moving on the ground
       const grounded = m.onGround && !m.sliding;
       this.bobAmt = U.damp(this.bobAmt, grounded ? Math.min(sp / run, 1.3) : 0, 8, dt);
@@ -10825,8 +10967,8 @@ BR.Models = (function () {
       }
       // Mag + muzzle flash
       if (ud.mag) { ud.mag.position.copy(magOff || this._v.set(0, 0, 0)); ud.mag.visible = magVis; }
-      ud.flash.visible = this.flashT > 0 && A < 0.5;
-      if (ud.flash.visible) { ud.flash.rotation.z = Math.random() * 3; ud.flash.scale.setScalar((this.flashS || 1) * (0.75 + 0.25 * this.flashT / 0.05)); }
+      ud.flash.visible = this.flashT > 0 && !def.melee;
+      if (ud.flash.visible) this.animFlash(ud.flash, A);
       if (this.ejects && this.ejects.length) this.stepEjects(dt, model, ud);
 
       // Charm swings from look + movement + recoil
@@ -14886,7 +15028,10 @@ BR.Squads = {
     sniper: ['sniper', 'hunter'],
     loadout: null,                                 // TDM/FFA: your loadout (Loadout screen)
   };
-  const SHOTGUNS = ['shotgun', 'riot', 'pump'];              // v1.32.2: the Shotgun Duels picker (Breacher, Riot Auto, Pump Action)
+  const SHOTGUNS = ['shotgun', 'riot', 'pump'];
+  // v1.33 Gun Game ladder: one kill moves you up a gun; the last step is the knife, and a knife kill on it wins
+  const LADDER = ['smg', 'mpistol', 'burst', 'rifle', 'holoar', 'lmg', 'riot', 'pump', 'shotgun', 'dmr', 'hunter', 'sniper', 'revolver', 'pistol', 'knife'];
+  BR.GUNGAME_LADDER = LADDER;              // v1.32.2: the Shotgun Duels picker (Breacher, Riot Auto, Pump Action)
   const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg'], ['burst', 'mpistol'], ['riot', 'pistol'], ['pump', 'smg']];
   BR.ARENA_PRESETS = {
     duel:    { kind: 'duel', title: 'DUELS', guns: 'duel', sizes: [1, 2], target: 5, roundTime: 90 },
@@ -14894,6 +15039,10 @@ BR.Squads = {
     sniper:  { kind: 'duel', title: 'SNIPER DUELS', guns: 'sniper', sizes: [1, 2], target: 5, roundTime: 90 },
     tdm:     { kind: 'tdm', title: 'TEAM DEATHMATCH', guns: 'loadout', sizes: [4], target: 30, time: 360 },
     ffa:     { kind: 'ffa', title: 'FREE FOR ALL', guns: 'loadout', sizes: [6], target: 20, time: 360 },
+    // v1.33 party modes
+    gungame: { kind: 'ffa', title: 'GUN GAME', guns: 'gungame', sizes: [6], target: 15, time: 480 },
+    oitc:    { kind: 'ffa', title: 'ONE IN THE CHAMBER', guns: 'oitc', sizes: [6], target: 99, time: 360, lives: 3 },
+    knives:  { kind: 'duel', title: 'KNIFE FIGHT', guns: 'knives', sizes: [1, 2], target: 5, roundTime: 60 },
   };
   const SPOTS = [[-22, 0], [22, 0], [-15, -10], [15, 10], [-15, 10], [15, -10], [-4, -11], [4, 11], [-8, 4], [8, -4], [-20, -12], [20, 12]];
 
@@ -14958,7 +15107,10 @@ BR.Squads = {
     gunsFor(a) {
       const set = this.P.guns;
       if (a.isPlayer && (set === 'duel' || set === 'sniper' || set === 'shotgun')) return this.myLoadout();
-      if (set === 'shotgun') return [SHOTGUNS[(a.rosterId + this.round) % SHOTGUNS.length], null];       // v1.32.2: bots rotate through every shotgun
+      if (set === 'shotgun') return [SHOTGUNS[(a.rosterId + this.round) % SHOTGUNS.length], null];
+      if (set === 'gungame') { const g = LADDER[Math.min(LADDER.length - 1, this.lvl(a))]; return g === 'knife' ? [null, null] : [g, null]; }
+      if (set === 'oitc') return ['revolver', null];
+      if (set === 'knives') return [null, null];       // v1.32.2: bots rotate through every shotgun
       if (set === 'sniper') return GUNSETS[set];
       if (a.isPlayer) { const L = BR.Profile.loadoutGuns(); return [L.primary === 'launcher' ? 'rifle' : L.primary, L.secondary]; }     // (no launcher outside BR / Sniper Duels)
       return BOT_POOL[(a.rosterId * 3 + this.round) % BOT_POOL.length];
@@ -14969,6 +15121,22 @@ BR.Squads = {
       a.cur = a.slots[0] ? 0 : 2;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = this.duel ? 50 : 0; a.nades = this.P.guns === 'duel' || this.P.guns === 'loadout' ? 1 : 0;
+      if (this.P.guns === 'oitc') { for (const t in a.ammo) a.ammo[t] = 0; a.slots[0].mag = 1; a._given = (this.stats[a.rosterId] || {}).kills || 0; }   // one bullet, no spare ammo
+      if (this.P.guns === 'gungame') { a._lvl = this.lvl(a); for (const t in a.ammo) a.ammo[t] = C.ammoCap[t]; }
+    }
+    lvl(a) { const s = this.stats[a.rosterId]; return s ? s.lvl | 0 : 0; }
+    // v1.33 One in the Chamber: every revolver round and every knife hit kills. Applied by the victim's owner, so the shot
+    // sent over the network stays a normal hit (and passes the anti-cheat damage check)
+    modDamage(victim, attacker, dmg, wid) { return this.P.guns === 'oitc' && attacker && attacker !== victim ? 999 : this.P.guns === 'knives' ? dmg * 1.15 : dmg; }
+    // v1.33: keep local actors armed for their Gun Game level / paid for their One in the Chamber kills (stats come from the host)
+    syncModes() {
+      const G = this.P.guns; if (G !== 'gungame' && G !== 'oitc') return;
+      for (const a of this.g.actors) {
+        if (a.local === false || !a.alive || (!a.isPlayer && !a.brain)) continue;
+        if (G === 'gungame' && a._lvl !== undefined && a._lvl !== this.lvl(a)) { const hp = a.health; this.arm(a); a.health = hp; a.shield = 0;
+          if (a.isPlayer) { const n = LADDER[Math.min(LADDER.length - 1, this.lvl(a))]; this.g.hud.tech((n === 'knife' ? 'KNIFE · FINAL LEVEL' : 'LEVEL ' + (this.lvl(a) + 1) + ' · ' + BR.CONFIG.weapons[n].name.toUpperCase())); BR.Audio.coin(); } }
+        if (G === 'oitc' && a.slots[0]) { const k = (this.stats[a.rosterId] || {}).kills || 0; if (a._given === undefined) a._given = k; if (k > a._given) { a.slots[0].mag += k - a._given; a._given = k; if (a.isPlayer) this.g.hud.tech('+1 BULLET'); } }
+      }
     }
     safe(x, z) {
       const W = this.g.world, tmp = this._tmp || (this._tmp = []);
@@ -15052,7 +15220,12 @@ BR.Squads = {
       const sv = this.stats[victim.rosterId]; if (sv) sv.deaths++;
       const sk = killer && killer !== victim ? this.stats[killer.rosterId] : null; if (sk) sk.kills++;
       if (this.P.kind === 'tdm' && killer && killer !== victim) this.score[killer.team]++;
-      if (this.P.kind !== 'duel') this.respawnQ.push({ id: victim.rosterId, t: 3 });
+      if (this.P.guns === 'gungame') {
+        if (sk) sk.lvl = Math.min(LADDER.length, (sk.lvl | 0) + 1);
+        if (sv && killer && killer !== victim && (BR.CONFIG.weapons[wid] || {}).melee && (sk && sk.lvl < LADDER.length)) sv.lvl = Math.max(0, (sv.lvl | 0) - 1);     // knifed: you drop a level
+      }
+      if (this.P.guns === 'oitc' && sv) sv.lives = Math.max(0, (sv.lives ?? this.P.lives) - 1);
+      if (this.P.kind !== 'duel' && !(this.P.guns === 'oitc' && sv && sv.lives <= 0)) this.respawnQ.push({ id: victim.rosterId, t: 3 });
       this.pushMatch();
     }
     checkEnd() {
@@ -15065,19 +15238,21 @@ BR.Squads = {
         else if (this.t <= 0) { const hp = [0, 1].map(t => this.g.actors.filter(a => a.alive && !a.downed && a.team === t).reduce((s, a) => s + a.health + a.shield, 0)); w = hp[0] > hp[1] + 0.5 ? 0 : hp[1] > hp[0] + 0.5 ? 1 : -1; }     // (knocked players count for nothing)
         if (w !== null) { if (w >= 0) this.score[w]++; this.phase = 'roundEnd'; this.t = this.picksLoadout && Math.max(...this.score) < P.target ? 7 : 2.6; this.lastWinner = w; this.pushMatch(true); }
       } else if (this.phase === 'fight') {
-        const best = P.kind === 'tdm' ? Math.max(...this.score) : Math.max(...Object.values(this.stats).map(s => s.kills));
+        if (P.guns === 'oitc') { const left = Object.values(this.stats).filter(s => (s.lives ?? P.lives) > 0).length; if (left <= 1 || this.t <= 0) this.finish(); return; }
+        const best = P.kind === 'tdm' ? Math.max(...this.score) : P.guns === 'gungame' ? Math.max(...Object.values(this.stats).map(s => s.lvl | 0)) : Math.max(...Object.values(this.stats).map(s => s.kills));
         if (best >= P.target || this.t <= 0) this.finish();
       }
     }
     finish() {
       if (this.ended) return;
       let winTeam;
-      if (this.P.kind === 'ffa') { const top = Object.entries(this.stats).sort((a, b) => b[1].kills - a[1].kills)[0]; winTeam = this.byId.get(+top[0]).team; }
+      if (this.P.kind === 'ffa') { const top = Object.entries(this.stats).sort((a, b) => this.rankOf(b[1]) - this.rankOf(a[1]))[0]; winTeam = this.byId.get(+top[0]).team; }
       else winTeam = this.score[0] === this.score[1] ? -1 : this.score[0] > this.score[1] ? 0 : 1;
       const m = { winTeam, score: this.score.slice(), stats: this.stats };
       if (this.net) this.net.send('end', m);
       this.applyEnd(m);
     }
+    rankOf(s) { return this.P.guns === 'gungame' ? (s.lvl | 0) * 1000 + s.kills : this.P.guns === 'oitc' ? (s.lives ?? this.P.lives) * 1000 + s.kills : s.kills; }
     pushMatch(roundEnd) {
       const m = { phase: this.phase, tm: +this.t.toFixed(1), round: this.round, score: this.score, stats: this.stats, lw: roundEnd ? this.lastWinner : undefined };
       if (this.net) this.net.send('match', m);
@@ -15119,10 +15294,11 @@ BR.Squads = {
         if (m.grapple) m.releaseGrapple();
         if (a.spawnLock) { m.pos.x = a.spawnLock.x; m.pos.z = a.spawnLock.z; if (m.pos.y > a.spawnLock.y) m.pos.y = a.spawnLock.y; }
       }
-      this.loadoutPicker();
+      this.loadoutPicker(); this.syncModes();
       // your own respawn countdown (TDM / FFA)
       const p = g.player;
-      if (!p.alive && !this.duel) { this.deadT = (this.deadT || 0) + dt; g.hud.resurgence && g.hud.resurgence(false, Math.max(0, 3 - this.deadT)); } else if (this.deadT) { this.deadT = 0; g.hud.resurgence && g.hud.resurgence(false, null); }
+      if (!p.alive && !this.duel && this.P.guns === 'oitc' && ((this.stats[p.rosterId] || {}).lives ?? 1) <= 0) { if (!this._outShown) { this._outShown = true; g.hud.duelBanner('ELIMINATED', 'Out of lives · spectating', 'lose'); } }
+      else if (!p.alive && !this.duel) { this.deadT = (this.deadT || 0) + dt; g.hud.resurgence && g.hud.resurgence(false, Math.max(0, 3 - this.deadT)); } else if (this.deadT) { this.deadT = 0; g.hud.resurgence && g.hud.resurgence(false, null); }
       if (this.net) this.netTick(dt);
       this.renderHud(); this.markers();
     }
@@ -15212,8 +15388,11 @@ BR.Squads = {
       const P = this.P, tm = BR.fmtTime(Math.max(0, this.t)), me = this.stats[this.g.player.rosterId] || { kills: 0 };
       let html;
       if (P.kind === 'ffa') {
-        const top = Object.values(this.stats).sort((a, b) => b.kills - a.kills)[0];
-        html = `<span class="ar-t">${P.title}</span><span class="ar-me"><b>${me.kills}</b> YOU</span><i>${tm}</i><span class="ar-top"><b>${top ? top.kills : 0}</b> ${top ? top.name.toUpperCase() : ''}</span><span class="ar-tg">FIRST TO ${P.target}</span>`;
+        const top = Object.values(this.stats).sort((a, b) => this.rankOf(b) - this.rankOf(a))[0];
+        const val = s => !s ? 0 : P.guns === 'gungame' ? Math.min(LADDER.length, (s.lvl | 0) + 1) : P.guns === 'oitc' ? (s.lives ?? P.lives) : s.kills;
+        const tg = P.guns === 'gungame' ? `LEVEL ${val(me)}/${LADDER.length} · ${(() => { const n = LADDER[Math.min(LADDER.length - 1, me.lvl | 0)]; return n === 'knife' ? 'KNIFE' : BR.CONFIG.weapons[n].name.toUpperCase(); })()}`
+          : P.guns === 'oitc' ? `LIVES ${val(me)} · ${me.kills} KILLS` : `FIRST TO ${P.target}`;
+        html = `<span class="ar-t">${P.title}</span><span class="ar-me"><b>${val(me)}</b> YOU</span><i>${tm}</i><span class="ar-top"><b>${val(top)}</b> ${top ? top.name.toUpperCase() : ''}</span><span class="ar-tg">${tg}</span>`;
       } else {
         const lbl = P.kind === 'tdm' ? `FIRST TO ${P.target}` : `ROUND ${this.round} · FIRST TO ${P.target}`;
         html = `<span class="ar-t">${P.title}${this.duel ? ` · ${this.size}V${this.size}` : ''}${this.net ? ' · ONLINE' : ''}</span><span class="ar-b" style="--c:${TEAM_CSS[0]}"><b>${this.score[0]}</b>${TEAM_NAME[0]}</span><i>${tm}</i><span class="ar-b" style="--c:${TEAM_CSS[1]}">${TEAM_NAME[1]}<b>${this.score[1]}</b></span><span class="ar-tg">${lbl}</span>`;
@@ -16066,6 +16245,13 @@ BR.Effects = class Effects {
     }
   }
 
+  // v1.33 a puff of gun smoke drifting off the muzzle
+  smoke(p, k) {
+    const f = this.puffs[this.pi++ % this.puffs.length];
+    f.mesh.position.copy(p); f.mesh.position.y += 0.02;
+    f.mesh.material.color.setHex(0xb8bcc2); f.mesh.material.opacity = 0.28 * (k || 1); f.mesh.material.blending = THREE.NormalBlending; f.mesh.material.rotation = Math.random() * 6;
+    f.mesh.visible = true; f.s0 = 0.12 + 0.08 * (k || 1); f.grow = 0.9; f.mesh.scale.setScalar(f.s0); f.life = f.max = 0.55 + 0.25 * (k || 1);
+  }
   flash(p) {
     const f = this.puffs[this.pi++ % this.puffs.length];
     f.mesh.position.copy(p);
@@ -16335,6 +16521,9 @@ BR.Effects.tex = () => {
     // v1.22 muzzle flash parts: a 6-ray star with a hot centre, and a flame tongue (v = 0 at the muzzle -> 1 at the tip)
     star: mk(96, 96, (u, v) => { const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y) * 2, a = Math.atan2(y, x); const rays = Math.pow(Math.abs(Math.cos(a * 3)), 14) * Math.max(0, 1 - r) * 1.1 + Math.pow(Math.abs(Math.cos(a * 3 + 0.52)), 30) * Math.max(0, 1 - r * 1.4) * 0.6; return rays + Math.pow(Math.max(0, 1 - r * 2.2), 1.6); }),
     flame: mk(32, 96, (u, v) => { const w = 0.5 * (1 - v) * (0.55 + 0.45 * Math.sin(v * 3.1)); const d = Math.abs(u - 0.5); return Math.max(0, 1 - d / Math.max(0.02, w)) * Math.pow(1 - v, 0.6) * Math.min(1, v * 12 + 0.3); }),
+    // v1.33 muzzle flash: a sharp 4-ray cross, a petalled blossom (shotguns) and a soft wide glow
+    star4: mk(96, 96, (u, v) => { const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y) * 2, a = Math.atan2(y, x); return Math.pow(Math.abs(Math.cos(a * 2)), 26) * Math.pow(Math.max(0, 1 - r), 1.4) * 1.3 + Math.pow(Math.max(0, 1 - r * 2.6), 2) * 0.9; }),
+    blossom: mk(96, 96, (u, v) => { const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y) * 2, a = Math.atan2(y, x), edge = 0.62 + 0.26 * Math.cos(a * 7) + 0.08 * Math.cos(a * 13); return Math.max(0, Math.min(1, (edge - r) * 6)) * (0.35 + 0.65 * (1 - r)) + Math.pow(Math.max(0, 1 - r * 2.2), 2) * 0.8; }),
   };
   return BR.Effects._tex;
 };
@@ -21219,6 +21408,7 @@ BR.Game = class Game {
     if (attacker && victim !== attacker && victim.team !== undefined && victim.team === attacker.team) return;     // no friendly fire
     if (this.mode && this.mode.netDamage && this.mode.netDamage(victim, attacker, dmg, head, at, weaponId)) return; // online: the victim's owner applies it
     if (this.brnet && this.brnet.netDamage(victim, attacker, dmg, head, at, weaponId)) return;                      // v1.24 party BR: same
+    if (this.mode && this.mode.modDamage) dmg = this.mode.modDamage(victim, attacker, dmg, weaponId);               // v1.33 mode rules (One in the Chamber: every hit kills)
     const remoteHuman = attacker && attacker.netProxy;          // v1.16: another player online does full damage (the bot multipliers are for bots)
     if (victim.isPlayer && attacker && !attacker.isPlayer && !remoteHuman) dmg *= this.diff.playerDamageMult;
     else if (!victim.isPlayer && attacker && !attacker.isPlayer && !remoteHuman) dmg *= BR.CONFIG.match.botVsBotDamage;
@@ -21336,6 +21526,12 @@ BR.Game = class Game {
     if (d < 2.2 && d > 0.25) BR.Audio.whiz(Math.max(-1, Math.min(1, (cx * Math.cos(p.yaw) - cz * Math.sin(p.yaw)) / d)));
   }
   onShot(actor, w) {
+    // v1.33 muzzle smoke + sparks off your own gun (every shot on slow guns, every 4th on automatics; heavy guns throw sparks)
+    if (actor.isPlayer && !w.def.melee && !w.def.suppressed && this.fx.smoke) {
+      const d = w.def, mp = this.muzzlePoint(actor, this._smv || (this._smv = new THREE.Vector3())); this._smN = (this._smN || 0) + 1;
+      if (d.rpm < 500 || this._smN % 4 === 0) this.fx.smoke(mp, d.pellets > 1 || d.bolt || d.dmg >= 40 ? 1.4 : 0.8);
+      if (d.pellets > 1 || d.bolt || d.dmg >= 40) this.fx.burst(mp, [0xffd27a, 0xffa040, 0xffffff], d.pellets > 1 ? 6 : 4, 5, 0.022, 0.16, 3);
+    }
     if (actor.isPlayer && !w.def.melee && w.def.mag >= 6 && w.mag <= Math.ceil(w.def.mag * 0.25)) BR.Audio.lowAmmo(w.mag / w.def.mag);
     // your shots light up the surroundings for a split second
     if (actor.isPlayer && this.muzzleLight && !w.def.melee && !w.def.suppressed) {
@@ -22287,16 +22483,22 @@ BR.Game = class Game {
     sniper: '<circle cx="12" cy="12" r="9" fill="none" stroke-width="1.8"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6" stroke-width="1.8"/><circle cx="12" cy="12" r="1.4"/>',
     tdm: '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20c0-4 3-6 6-6s6 2 6 6zM10 20c0-4 3-6 6-6s6 2 6 6z"/>',
     ffa: '<path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/>',
+    gungame: '<path d="M3 18h4v-4h4v-4h4V6h4V2" fill="none" stroke-width="2.2"/><path d="M15 2h4v4"/><circle cx="5" cy="21" r="1.4"/>',
+    oitc: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="1.8"/><rect x="10.5" y="5" width="3" height="10" rx="1.5"/><path d="M10.5 15h3l-.5 3h-2z"/>',
+    knives: '<path d="M4 20L15 9l2 2L6 22zM15 9l4-6 2 2-4 6z"/><path d="M20 20L9 9l-2 2 11 11z" opacity=".55"/>',
     aim: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke-width="2"/>',
   };
   const MODES = {
     br:         { name: 'BATTLE ROYALE', sub: 'Solos · Duos · Trios · Squads', cat: 'BATTLE ROYALE', rk: true, tags: ['30 PLAYERS', 'SQUADS'], art: 'linear-gradient(160deg,#c084fc,#7b2cff 45%,#2a0b5a)', glow: '#c084fc', go: () => play({ squad: squadFor('br') }) },
     resurgence: { name: 'RESURGENCE', sub: 'Solos · Duos · Trios · redeploys', rk: true, cat: 'BATTLE ROYALE', tags: ['24 PLAYERS', 'TRIOS'], art: 'linear-gradient(160deg,#39ff88,#0f7a5a 45%,#06202a)', glow: '#39ff88', go: () => play({ resurgence: true, squad: squadFor('resurgence') }) },
     duels:      { name: 'DUELS 1V1 · 2V2', sub: 'AI teammate or friends online', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE', '2V2'], art: 'linear-gradient(120deg,#1f4fb8 0 46%,#ffd24a 48% 52%,#b8302a 54% 100%)', glow: '#ffd24a', go: () => BR.Lobby.open('duel') },
-    shotgun:    { name: 'SHOTGUN DUELS', sub: 'Breachers only · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff9a1f,#6a2a10 55%,#1a0a06)', glow: '#ff9a1f', go: () => BR.Lobby.open('shotgun') },
+    shotgun:    { name: 'SHOTGUN DUELS', sub: 'Breacher · Riot · Pump · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff9a1f,#6a2a10 55%,#1a0a06)', glow: '#ff9a1f', go: () => BR.Lobby.open('shotgun') },
     sniper:     { name: 'SNIPER DUELS', sub: 'Snipers, hunting rifles + launchers · 1v1 / 2v2', rk: true, cat: 'COMPETITIVE', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#9fe8ff,#1a4a6a 55%,#06121c)', glow: '#9fe8ff', go: () => BR.Lobby.open('sniper') },
     tdm:        { name: 'TEAM DEATHMATCH', sub: '4v4 · first to 30 kills', rk: true, cat: 'CASUAL', tags: ['NEW', 'ONLINE', '4V4'], art: 'linear-gradient(160deg,#4f8fff,#1a2f6a 50%,#6a1a1a 51%,#ff5a4a)', glow: '#c8a8ff', go: () => BR.Lobby.open('tdm') },
     ffa:        { name: 'FREE FOR ALL', sub: '6 players · first to 20 kills', rk: true, cat: 'CASUAL', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ffe14d,#8a3aff 55%,#12061c)', glow: '#ffe14d', go: () => BR.Lobby.open('ffa') },
+    gungame:    { name: 'GUN GAME', sub: 'A new gun every kill · knife to win', cat: 'CASUAL', tags: ['NEW', 'ONLINE', '6 PLAYERS'], art: 'linear-gradient(135deg,#39ff88,#0f6a5a 40%,#ffd24a 41% 46%,#3a1a6a 47%)', glow: '#39ff88', go: () => BR.Lobby.open('gungame') },
+    oitc:       { name: 'ONE IN THE CHAMBER', sub: '1 bullet · every hit kills · 3 lives', cat: 'CASUAL', tags: ['NEW', 'ONLINE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff3b5a,#5a0a1a 55%,#140308)', glow: '#ff5a6a', go: () => BR.Lobby.open('oitc') },
+    knives:     { name: 'KNIFE FIGHT', sub: 'Knives only · 1v1 / 2v2', cat: 'CASUAL', tags: ['NEW', 'ONLINE'], art: 'linear-gradient(150deg,#e8eef6,#6a7a8a 45%,#1a1f28)', glow: '#dfe8f4', go: () => BR.Lobby.open('knives') },
     zombies:    { name: 'ZOMBIES', sub: 'Hollow Graves · endless rounds', cat: 'SURVIVAL', tags: ['STORY', 'BOSSES'], art: 'radial-gradient(120% 120% at 80% 0%,#ff7a1a,#5a141e 55%,#140818)', glow: '#ff8a2a', go: () => { BR.Audio.init(); game.startZombies(); } },
     overdrive:  { name: 'OVERDRIVE', sub: 'Roguelike swarm survival', cat: 'SURVIVAL', tags: ['NEW', 'ROGUELIKE'], art: 'radial-gradient(120% 120% at 80% 0%,#ff5ec4,#46145a 55%,#12061c)', glow: '#ff5ec4', go: () => overdrive() },
     practice:   { name: 'PRACTICE', sub: 'Spawn anything · no bots', cat: 'TRAINING', tags: ['SOLO'], art: 'linear-gradient(160deg,#4fdc8a,#14583a 55%,#071a12)', glow: '#4fdc8a', go: () => practice() },
@@ -22395,7 +22597,10 @@ BR.Game = class Game {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const DESC = {
     duel: 'Round-based duels: pick your guns before every round. No respawns: last team standing takes the round. First to 5. The map is rolled at the start.',
-    shotgun: 'Breacher shotguns only. Close, fast, brutal. First to 5 rounds.',
+    shotgun: 'Shotguns only: pick the Breacher, Riot Auto or Pump Action before every round. Close, fast, brutal. First to 5 rounds.',
+    gungame: 'Free For All with a twist: every kill moves you up to the next gun, through 14 guns. The final step is the knife: land a knife kill to win. Get knifed and you drop a level.',
+    oitc: 'Everyone gets a revolver with ONE bullet and a knife. Every hit kills. Each kill gives you another bullet. 3 lives: the last player standing wins.',
+    knives: 'Knives only, round-based. Lunge, backstab, outplay. 1v1 or 2v2, first to 5 rounds.',
     sniper: 'Sniper, Hunting Rifle and Shockwave Launcher only: pick two before every round. Hold angles, land the headshot. First to 5 rounds.',
     tdm: 'Team Deathmatch, 4v4. Respawn after 3 seconds with your loadout. First team to 30 kills.',
     ffa: 'Free For All, 6 players. Everyone for themselves, respawns on. First to 20 kills.',
@@ -22423,7 +22628,7 @@ BR.Game = class Game {
     { id: 'skyline', name: 'SKYLINE', sub: 'Rooftop duel · AC units + water tank', art: 'linear-gradient(150deg,#ffb36b,#5b5e65 50%,#1a1c22)' },
   ];
   // v1.21: Free For All plays on the big maps (District, Killhouse); TDM adds District to its pool; duels keep the small ones
-  L.pool = preset => preset === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse' || m.id === 'suburb') : preset === 'tdm' ? L.MAPS.filter(m => m.id !== 'skyline') : L.MAPS.filter(m => !m.big && !m.mid);     // v1.23: Cul-de-Sac in TDM/FFA, Skyline in duels
+  L.pool = preset => (BR.ARENA_PRESETS[preset] || {}).kind === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse' || m.id === 'suburb') : preset === 'tdm' ? L.MAPS.filter(m => m.id !== 'skyline') : L.MAPS.filter(m => !m.big && !m.mid);     // v1.23: Cul-de-Sac in TDM/FFA, Skyline in duels
   L.rollMap = () => { const P = L.pool(L.preset); return P[Math.floor(Math.random() * P.length)].id; };
   L.play = (opts) => {
     const g = BR.game; BR.Audio.init();
@@ -22559,7 +22764,7 @@ BR.Game = class Game {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const norm = s => String(s || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 40);
   const PRE_ID = 'surge-u-', PRE_NAME = 'surge-n-';
-  const ONLINE_MODES = { duels: 'duel', duel: 'duel', shotgun: 'shotgun', sniper: 'sniper', tdm: 'tdm', ffa: 'ffa' };
+  const ONLINE_MODES = { duels: 'duel', duel: 'duel', shotgun: 'shotgun', sniper: 'sniper', tdm: 'tdm', ffa: 'ffa', gungame: 'gungame', oitc: 'oitc', knives: 'knives' };
   const rid = () => Math.random().toString(36).slice(2, 10);
 
   const P = BR.Party = {

@@ -119,6 +119,21 @@
       this.rebuild();
     }
 
+    // v1.33 muzzle flash: every layer is shaped per weapon style and per shot (random spin, star sizes, petal lengths), then
+    // blooms outward and fades over the flash's life. Smaller (not hidden) while aiming, so you still see your shots.
+    animFlash(F, A) {
+      const fx = F.userData.fx, S = (this.flashS || 1) * (A > 0.5 ? 0.62 : 1), dur = this.flashDur || 0.05, f = Math.min(1, 1 - this.flashT / dur), r = this.flashRnd || [0.5, 0.5, 0.5, 0.5];
+      if (!fx) { F.rotation.z = r[0] * 3; F.scale.setScalar(S * (1 - f * 0.25)); return; }
+      const st = F.userData.style || 'std', P = { std: [1.15, 1.1, 1.15, 0, 1.1], auto: [0.85, 0.8, 1.2, 0, 0.9], heavy: [1.4, 1.3, 1.55, 0, 1.3], blast: [1.25, 0.6, 0.55, 1, 1.45], sup: [0, 0, 0, 0, 0.45], launch: [1.1, 0.4, 0.4, 1, 1.2], none: [0, 0, 0, 0, 0] }[st] || [1, 1, 1, 0, 1];
+      const out = 1 - f, hot = Math.pow(out, 0.7);
+      F.rotation.z = r[0] * 6.283; F.scale.setScalar(S);
+      fx.starA.visible = P[0] > 0; if (P[0]) { fx.starA.scale.setScalar(0.17 * P[0] * (0.85 + 0.3 * r[1]) * (1 + f * 0.55)); fx.starA.material.opacity = hot; }
+      fx.starB.visible = P[1] > 0; if (P[1]) { fx.starB.scale.setScalar(0.13 * P[1] * (0.8 + 0.4 * r[2]) * (1 + f * 0.9)); fx.starB.rotation.z = r[3] * 3 + 0.4; fx.starB.material.opacity = hot * 0.9; }
+      fx.petals.forEach((m, i) => { m.visible = P[2] > 0; if (!P[2]) return; const L = P[2] * (0.65 + 0.7 * ((r[i] * 1.7 + i * 0.31) % 1)); m.scale.set(0.85 + 0.5 * r[(i + 1) % 4], 1, L * (0.55 + f * 1.0)); m.material.opacity = Math.pow(out, 0.5); });
+      fx.bloom.visible = P[3] > 0; if (P[3]) { fx.bloom.scale.setScalar(0.24 * P[0] * (1 + f * 1.1)); fx.bloom.rotation.z = r[2] * 6; fx.bloom.material.opacity = hot * 0.95; }
+      fx.core.scale.setScalar((st === 'sup' ? 0.045 : 0.09 * (0.9 + 0.3 * r[3])) * (1 + f * 0.4)); fx.core.material.opacity = (st === 'sup' ? 0.55 : 1) * hot;
+      fx.glow.scale.setScalar(0.26 * P[4] * (1 + f * 0.6)); fx.glow.material.opacity = (st === 'sup' ? 0.25 : 0.55) * out;
+    }
     resize(w, h) {
       this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
       this.scale = w < h ? 0.6 : 1;
@@ -285,7 +300,8 @@
       this.kickR.z.vel += side * (auto ? 0.55 : 0.4) * a;             // smooth roll pattern
       this.kickR.y.vel += side * (auto ? 0.3 : 0.12) * a;
       if (auto) this.heatT = Math.min(1, this.heatT + 0.07 + d.recoil * 2);
-      this.flashT = d.suppressed ? 0.025 : 0.05;
+      this.flashT = this.flashDur = d.suppressed ? 0.03 : d.pellets > 1 || d.bolt || d.dmg >= 40 ? 0.075 : 0.055;
+      this.flashRnd = [Math.random(), Math.random(), Math.random(), Math.random()];
       this.flashS = (d.suppressed ? 0.42 : d.pellets > 1 || (d.kick || 0) > 1 ? 1.35 : 1) * (0.8 + Math.random() * 0.45);
       // v1.22: brass ejects to the right (shotguns: a red shell when the pump racks; bolt actions: when the bolt cycles)
       if (!d.melee && !d.launcher && !d.revolver) (this.ejects || (this.ejects = [])).push({ t: d.pump ? 0.22 : d.bolt ? 0.42 : 0, kind: d.pellets > 1 ? 'shell' : d.bolt || d.dmg >= 40 ? 'big' : 'brass', w });
@@ -383,6 +399,8 @@
       // (holo sights, the ACOG, the DMR prism and the sniper scope) still line up on it so you can aim through the glass
       if (ud.sight && !def.holo && !def.optic && !def.scope) { const dz = (ud.sightDist || 0.3) * 0.78; ay -= 0.1 * dz; az -= 0.012; }     // (same drop on screen for every gun)
       const A = this.adsW, nA = 1 - A * 0.85;
+      // v1.33: floating blueprint effects (energy rings, hovering blades, halos) step aside while you aim so the sight picture stays clear
+      { const hl = ud._adsHide || (ud._adsHide = (() => { const L = []; model.traverse(o => { if (o.userData.adsHide) L.push(o); }); return L; })()); for (let i = 0; i < hl.length; i++) hl[i].visible = A < 0.45; }
       // Bob: figure-eight while moving on the ground
       const grounded = m.onGround && !m.sliding;
       this.bobAmt = U.damp(this.bobAmt, grounded ? Math.min(sp / run, 1.3) : 0, 8, dt);
@@ -799,8 +817,8 @@
       }
       // Mag + muzzle flash
       if (ud.mag) { ud.mag.position.copy(magOff || this._v.set(0, 0, 0)); ud.mag.visible = magVis; }
-      ud.flash.visible = this.flashT > 0 && A < 0.5;
-      if (ud.flash.visible) { ud.flash.rotation.z = Math.random() * 3; ud.flash.scale.setScalar((this.flashS || 1) * (0.75 + 0.25 * this.flashT / 0.05)); }
+      ud.flash.visible = this.flashT > 0 && !def.melee;
+      if (ud.flash.visible) this.animFlash(ud.flash, A);
       if (this.ejects && this.ejects.length) this.stepEjects(dt, model, ud);
 
       // Charm swings from look + movement + recoil

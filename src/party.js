@@ -18,7 +18,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const norm = s => String(s || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 40);
   const PRE_ID = 'surge-u-', PRE_NAME = 'surge-n-';
-  const ONLINE_MODES = { duels: 'duel', duel: 'duel', shotgun: 'shotgun', sniper: 'sniper', tdm: 'tdm', ffa: 'ffa' };
+  const ONLINE_MODES = { duels: 'duel', duel: 'duel', shotgun: 'shotgun', sniper: 'sniper', tdm: 'tdm', ffa: 'ffa', gungame: 'gungame', oitc: 'oitc', knives: 'knives' };
   const rid = () => Math.random().toString(36).slice(2, 10);
 
   const P = BR.Party = {

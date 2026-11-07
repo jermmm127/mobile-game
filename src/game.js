@@ -1146,6 +1146,7 @@ BR.Game = class Game {
     if (attacker && victim !== attacker && victim.team !== undefined && victim.team === attacker.team) return;     // no friendly fire
     if (this.mode && this.mode.netDamage && this.mode.netDamage(victim, attacker, dmg, head, at, weaponId)) return; // online: the victim's owner applies it
     if (this.brnet && this.brnet.netDamage(victim, attacker, dmg, head, at, weaponId)) return;                      // v1.24 party BR: same
+    if (this.mode && this.mode.modDamage) dmg = this.mode.modDamage(victim, attacker, dmg, weaponId);               // v1.33 mode rules (One in the Chamber: every hit kills)
     const remoteHuman = attacker && attacker.netProxy;          // v1.16: another player online does full damage (the bot multipliers are for bots)
     if (victim.isPlayer && attacker && !attacker.isPlayer && !remoteHuman) dmg *= this.diff.playerDamageMult;
     else if (!victim.isPlayer && attacker && !attacker.isPlayer && !remoteHuman) dmg *= BR.CONFIG.match.botVsBotDamage;
@@ -1263,6 +1264,12 @@ BR.Game = class Game {
     if (d < 2.2 && d > 0.25) BR.Audio.whiz(Math.max(-1, Math.min(1, (cx * Math.cos(p.yaw) - cz * Math.sin(p.yaw)) / d)));
   }
   onShot(actor, w) {
+    // v1.33 muzzle smoke + sparks off your own gun (every shot on slow guns, every 4th on automatics; heavy guns throw sparks)
+    if (actor.isPlayer && !w.def.melee && !w.def.suppressed && this.fx.smoke) {
+      const d = w.def, mp = this.muzzlePoint(actor, this._smv || (this._smv = new THREE.Vector3())); this._smN = (this._smN || 0) + 1;
+      if (d.rpm < 500 || this._smN % 4 === 0) this.fx.smoke(mp, d.pellets > 1 || d.bolt || d.dmg >= 40 ? 1.4 : 0.8);
+      if (d.pellets > 1 || d.bolt || d.dmg >= 40) this.fx.burst(mp, [0xffd27a, 0xffa040, 0xffffff], d.pellets > 1 ? 6 : 4, 5, 0.022, 0.16, 3);
+    }
     if (actor.isPlayer && !w.def.melee && w.def.mag >= 6 && w.mag <= Math.ceil(w.def.mag * 0.25)) BR.Audio.lowAmmo(w.mag / w.def.mag);
     // your shots light up the surroundings for a split second
     if (actor.isPlayer && this.muzzleLight && !w.def.melee && !w.def.suppressed) {

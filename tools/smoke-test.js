@@ -1416,6 +1416,26 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v133 = await page.evaluate(async () => {
+    const g = BR.game, L = BR.Lobby, M0 = BR.Models, out = {}; BR.AntiCheat._testing = true;
+    out.presets = ['gungame', 'oitc', 'knives'].every(k => BR.ARENA_PRESETS[k]);
+    const go = async (preset, size) => { g.toMenu(); L.skipRoll = true; L.preset = preset; L.size = size; L.play({}); await new Promise(r => setTimeout(r, 300)); const M = g.mode; M.phase = 'fight'; M.frozen = false; M.t = 300; for (const a of g.actors) if (a !== g.player) a.brain = null; for (let i = 0; i < 3; i++) g.update(1 / 60); return M; };
+    let M = await go('gungame', 6); const p = g.player, f = g.actors.filter(a => a !== p);
+    const start = p.slots[0] && p.slots[0].id === BR.GUNGAME_LADDER[0]; f[0].health = 1; f[0].shield = 0; g.applyDamage(f[0], p, 50, false, f[0].pos, p.weapon.id); for (let i = 0; i < 4; i++) g.update(1 / 60);
+    out.gungame = start && p.slots[0] && p.slots[0].id === BR.GUNGAME_LADDER[1];
+    M = await go('oitc', 6); const q = g.player, f2 = g.actors.filter(a => a !== q);
+    const one = q.slots[0].id === 'revolver' && q.slots[0].mag === 1; f2[0].health = 100; f2[0].shield = 50; g.applyDamage(f2[0], q, 10, false, f2[0].pos, 'revolver'); for (let i = 0; i < 4; i++) g.update(1 / 60);
+    out.oitc = one && !f2[0].alive && q.slots[0].mag === 2;
+    M = await go('knives', 1); out.knives = g.actors.every(a => !a.slots[0] && !a.slots[1]);
+    g.toMenu();
+    const forged = m => { let n = 0; m.traverse(o => { if (o.userData.forge) n++; }); return n; };
+    const r = forged(M0.weapon('rifle', 'default', 'none', 'nightops') ), le = forged(M0.weapon('rifle', 'default', 'none', 'vandal')), my = M0.weapon('rifle', 'default', 'none', 'neonviper'), d0 = forged(M0.weapon('rifle', 'default', 'none', null));
+    let hide = 0; my.traverse(o => { if (o.userData.adsHide) hide++; });
+    out.forge = d0 === 0 && le > 10 && forged(my) > le && hide > 0 && forged(M0.weapon('bayonet', 'default', 'none', 'singularity')) > 4;
+    const fl = M0.weapon('shotgun', 'default', 'none', null).userData.flash, fr = M0.weapon('holoar', 'default', 'none', null).userData.flash;
+    out.flash = !!(fl.userData.fx && fl.userData.fx.petals.length === 3) && fl.userData.style === 'blast' && fr.userData.style === 'sup' && typeof g.vmr.animFlash === 'function' && typeof g.fx.smoke === 'function';
+    return out;
+  });
   const v1323 = await page.evaluate(() => {
     const g = BR.game, out = {}; BR.AntiCheat._testing = true; g.startMatch({ practice: true }); const p = g.player;
     const sightY = id => { p.slots[0] = BR.Weapons.create(id); p.cur = 0; g.vmr.lastWeapon = null; p.ads = false; for (let i = 0; i < 30; i++) g.update(1 / 30);
@@ -1756,6 +1776,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.33 Gun Game / One in the Chamber / Knife Fight, forged blueprint parts (by rarity, ADS-hidden floaters), layered per-weapon muzzle flash', Object.values(v133).every(Boolean), v133],
     ['v1.32.3 ADS: iron-sight guns aim below the crosshair (still zoomed), optics line up on it', Object.values(v1323).every(Boolean), v1323],
     ['v1.32.2 Shotgun Duels picker: Breacher / Riot Auto / Pump Action, the pick arms you + saves, bots vary, no undefined team header', Object.values(v1322).every(Boolean), v1322],
     ['v1.32.1 Pump Action: detailed procedural pump gun (racking pump, shell port, walnut), in the loot + blueprints; richer Talon / Riot parts', Object.values(v1321).every(Boolean), v1321],
@@ -1941,7 +1962,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

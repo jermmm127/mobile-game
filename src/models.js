@@ -688,13 +688,21 @@ BR.Models = (function () {
     // (additive; the viewmodel spins + scales it every shot so no two flashes look the same)
     let flash;
     if (BR.Effects && BR.Effects.tex) {
-      const T = BR.Effects.tex(), mm = (map, c) => new THREE.MeshBasicMaterial({ map, color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
-      const FM = cache.mat.fx || (cache.mat.fx = { star: mm(T.star, 0xffc46a), flame: mm(T.flame, 0xff9a3a), core: new THREE.SpriteMaterial({ map: T.dot, color: 0xfff1cc, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }) });
+      // v1.33 layered flash: a hot core, a wide soft glow, two stars (6-ray + sharp 4-ray cross), three flame petals along
+      // the barrel and a petalled blossom for shotguns. Each part has its own material, so the viewmodel can shape and fade
+      // every layer per shot (BR.Viewmodel animFlash), styled per weapon (userData.style, set in weapon()).
+      const T = BR.Effects.tex(), mm = (map, c, op) => new THREE.MeshBasicMaterial({ map, color: c, transparent: true, opacity: op === undefined ? 1 : op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+      const sp = (c, op) => new THREE.Sprite(new THREE.SpriteMaterial({ map: T.dot, color: c, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
       flash = new THREE.Group(); flash.position.copy(muzzle.position); flash.position.z -= 0.01;
-      const star = new THREE.Mesh(cache.geo.fxStar || (cache.geo.fxStar = new THREE.PlaneGeometry(0.17, 0.17)), FM.star); flash.add(star);
-      const fg = cache.geo.fxFlame || (cache.geo.fxFlame = new THREE.PlaneGeometry(0.075, 0.24).rotateX(-Math.PI / 2).translate(0, 0, -0.11));
-      const f1 = new THREE.Mesh(fg, FM.flame), f2 = new THREE.Mesh(fg, FM.flame); f2.rotation.z = Math.PI / 2; flash.add(f1, f2);
-      const core = new THREE.Sprite(FM.core); core.scale.setScalar(0.1); core.position.z = -0.02; flash.add(core);
+      const pl = cache.geo.fxPlane || (cache.geo.fxPlane = new THREE.PlaneGeometry(1, 1));
+      const fg = cache.geo.fxFlame2 || (cache.geo.fxFlame2 = new THREE.PlaneGeometry(0.075, 0.24).rotateX(-Math.PI / 2).translate(0, 0, -0.11));
+      const glow = sp(0xff8a2a, 0.55); glow.scale.setScalar(0.26); glow.position.z = -0.03;
+      const core = sp(0xfff4d8, 1); core.scale.setScalar(0.09); core.position.z = -0.015;
+      const starA = new THREE.Mesh(pl, mm(T.star, 0xffc46a)), starB = new THREE.Mesh(pl, mm(T.star4, 0xfff0c0, 0.85)), bloom = new THREE.Mesh(pl, mm(T.blossom, 0xffb050, 0.9));
+      starA.scale.setScalar(0.17); starB.scale.setScalar(0.12); starB.position.z = -0.004; bloom.scale.setScalar(0.22); bloom.position.z = -0.02;
+      const petals = [0, 1, 2].map(i => { const m = new THREE.Mesh(fg, mm(T.flame, 0xff9a3a)); m.rotation.z = i * Math.PI / 3; flash.add(m); return m; });
+      flash.add(glow, bloom, starA, starB, core);
+      flash.userData.fx = { glow, core, starA, starB, bloom, petals };
       flash.traverse(o => { o.userData.isFlash = true; o.userData.noUV = true; });
     } else { flash = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), MAT().flash); flash.position.copy(muzzle.position); flash.position.z -= 0.04; flash.scale.set(1, 1, 1.8); }
     flash.visible = false;
@@ -2378,7 +2386,7 @@ BR.Models = (function () {
       for (let i = 0; i < (tier >= 3 ? 3 : 2); i++) {
         const r = new THREE.Mesh(new THREE.TorusGeometry(rr, rr * 0.09, 6, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
         if (axis === 'z') r.rotation.y = 0.5; else if (axis === 'x') r.rotation.y = Math.PI / 2 + 0.5; else r.rotation.x = Math.PI / 2;     // (tilted: reads as a ring from the side too)
-        r.userData.isFlash = true; r.userData.noUV = true; P.add(r); rings.push(r);
+        r.userData.isFlash = true; r.userData.noUV = true; r.userData.adsHide = true; P.add(r); rings.push(r);
       }
     }
     anim(g, t => {
@@ -3630,6 +3638,110 @@ BR.Models = (function () {
     }
     return buckets.size ? mat : null;
   }
+  // ------------------------------------------------------------------ v1.33 BLUEPRINT FORGE
+  // Every blueprint gets real extra geometry, not just a new finish, scaled by rarity and fitted to the actual model:
+  // rays find the gun's real surface (so nothing floats or sinks), parts hang off the moving pieces they belong to.
+  //   Rare:      ported compensator (unsuppressed guns) + bolted side plates
+  //   Epic:      + chamfered armour panels + a vented barrel collar
+  //   Legendary: + swept side fins + gilt barrel rings + a glowing medallion
+  //   Mythic:    + hovering energy blades beside the barrel + a pulsing core crystal
+  //   Exotic:    + a rainbow halo round the muzzle, everything hue-cycling
+  // Knives: guard plates, handle wraps, a pommel gem, orbiting shards, a halo (by rarity), riding the blade through flips.
+  const FORGE_T = { Uncommon: 0.5, Rare: 1, Epic: 2, Legendary: 3, Mythic: 4, Exotic: 5 };
+  const _rc = new THREE.Raycaster();
+  function forgeHits(g) { const list = []; g.traverse(o => { if (o.isMesh && !o.userData.isFlash && !o.userData.forge && o.visible) list.push(o); }); return list; }
+  // first surface hit from `from` along `dir` (group space), or null
+  function forgeRay(g, list, from, dir) {
+    _rc.set(g.localToWorld(from.clone()), dir.clone().transformDirection(g.matrixWorld).normalize()); _rc.far = 2;
+    const h = _rc.intersectObjects(list, false)[0]; return h ? g.worldToLocal(h.point.clone()) : null;
+  }
+  function forgePart(par, mesh) { mesh.userData.forge = true; mesh.userData.noUV = true; par.add(mesh); return mesh; }
+  function chamferPanel(w, h, d, c) {          // a plate with cut corners, extruded (d = thickness, along x)
+    const sh = new THREE.Shape(), a = w / 2, b = h / 2;
+    sh.moveTo(-a + c, -b); sh.lineTo(a - c, -b); sh.lineTo(a, -b + c); sh.lineTo(a, b - c); sh.lineTo(a - c, b); sh.lineTo(-a + c, b); sh.lineTo(-a, b - c); sh.lineTo(-a, -b + c); sh.closePath();
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: true, bevelThickness: d * 0.35, bevelSize: d * 0.35, bevelSegments: 2 }); geo.translate(0, 0, -d / 2); geo.rotateY(Math.PI / 2); return geo;
+  }
+  function finGeo(len, h, d) {                 // a swept crest: rises from the front, sweeps back to a point
+    const sh = new THREE.Shape(); sh.moveTo(len * 0.5, 0); sh.quadraticCurveTo(len * 0.1, h * 0.3, -len * 0.25, h); sh.lineTo(-len * 0.5, h * 0.82); sh.quadraticCurveTo(-len * 0.2, h * 0.2, -len * 0.4, 0); sh.closePath();
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: true, bevelThickness: d * 0.4, bevelSize: d * 0.3, bevelSegments: 2 }); geo.translate(0, 0, -d / 2); geo.rotateY(Math.PI / 2); return geo;
+  }
+  function bpForge(g, id, bp) {
+    const t = FORGE_T[bp.rarity]; if (!t) return;
+    const def = BR.CONFIG.weapons[id] || {}, acc = bp.accent != null ? bp.accent : (bp.body != null ? bp.body : 0x888888), glow = bp.glow != null ? bp.glow : acc;
+    const A = bpMat(acc, bp.accentGloss || 1), Gm = glowMat(glow), Ch = cache.mat['forgeCh' + acc] || (cache.mat['forgeCh' + acc] = chrome(new THREE.Color(acc).lerp(new THREE.Color(0xffffff), 0.35).getHex()));
+    const dark = MAT().dark, metal = MAT().metal;
+    g.updateMatrixWorld(true);
+    if (def.melee) return forgeKnife(g, t, A, Gm, Ch, metal, glow);
+    const list = forgeHits(g), I = bodyInfo(g), ud = g.userData, V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const gz = ud.grip ? ud.grip.z : I.z1 - 0.15, fz = ud.fore ? ud.fore.z : gz - 0.25, zA = Math.max(gz, fz) - 0.02, zB = Math.min(gz, fz) + 0.02, zm = (zA + zB) / 2, span = Math.abs(zA - zB);
+    const y0 = I.by - 0.012;
+    // side surfaces at the receiver (outermost of a few samples, so long plates never sink in)
+    const sideX = sx => { let best = null; for (const z of [zA - span * 0.15, zm, zB + span * 0.15]) { const h = forgeRay(g, list, V(sx * 0.4, y0, z), V(-sx, 0, 0)); if (h && (best === null || Math.abs(h.x) > Math.abs(best))) best = h.x; } return best; };
+    const parts = [];
+    // Rare: compensator + bolted side plates
+    if (t >= 1 && !def.suppressed && !bp.mod && !def.launcher && ud.muzzle) {
+      const m = ud.muzzle.position, r = (() => { const h = forgeRay(g, list, V(0.3, m.y, m.z + 0.01), V(-1, 0, 0)); return h ? Math.max(0.008, Math.min(0.022, Math.abs(h.x))) : 0.012; })();
+      const cg = new THREE.Group(); cg.position.set(0, m.y, m.z); g.add(cg);
+      forgePart(cg, new THREE.Mesh(new THREE.CylinderGeometry(r * 1.35, r * 1.25, 0.05, 18), dark)).rotation.x = Math.PI / 2; cg.children[0].position.z = -0.02;
+      for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) { const sl = forgePart(cg, new THREE.Mesh(new THREE.BoxGeometry(0.003, r * 1.1, 0.008), MAT().grip)); sl.position.set(sx * r * 1.3, 0, -0.008 - i * 0.013); }
+      forgePart(cg, new THREE.Mesh(new THREE.TorusGeometry(r * 1.3, 0.0018, 6, 18), A)).position.z = -0.044;
+      ud.muzzle.position.z -= 0.045; if (ud.flash) ud.flash.position.z -= 0.045;
+    }
+    const plates = [];
+    for (const sx of [-1, 1]) {
+      const x = sideX(sx); if (x === null) continue;
+      const px = x + sx * 0.0022;
+      if (t >= 1) { const pl = forgePart(g, new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.016, span * 0.62), A)); pl.position.set(px, y0, zm); plates.push(pl);
+        for (const dz of [-0.4, 0, 0.4]) forgePart(g, new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0022, 0.003, 8), metal)).position.set(px + sx * 0.002, y0, zm + dz * span * 0.6), g.children[g.children.length - 1].rotation.z = Math.PI / 2;
+        forgePart(g, new THREE.Mesh(new THREE.BoxGeometry(0.0034, 0.0025, span * 0.5), Gm)).position.set(px + sx * 0.0006, y0 + 0.0095, zm); }
+      if (t >= 2) { const ap = forgePart(g, new THREE.Mesh(chamferPanel(span * 0.34, 0.03, 0.003, 0.006), A)); ap.position.set(px + sx * 0.003, y0 - 0.02, zA - span * 0.22); plates.push(ap);
+        for (let i = 0; i < 3; i++) forgePart(g, new THREE.Mesh(new THREE.BoxGeometry(0.0036, 0.004, 0.012), dark)).position.set(px + sx * 0.0048, y0 - 0.02 + (i - 1) * 0.008, zA - span * 0.22); }
+      if (t >= 3) { const fin = forgePart(g, new THREE.Mesh(finGeo(span * 0.42, 0.032, 0.0025), Ch)); fin.position.set(px + sx * 0.004, y0 - 0.006, zB + span * 0.18); fin.rotation.z = sx * 0.55;
+        const md = forgePart(g, new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.003, 20), Ch)); md.rotation.z = Math.PI / 2; md.position.set(px + sx * 0.004, y0 + 0.002, zA - span * 0.08);
+        const mg = forgePart(g, new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.0034, 14), Gm)); mg.rotation.z = Math.PI / 2; mg.position.set(px + sx * 0.0052, y0 + 0.002, zA - span * 0.08); }
+    }
+    // Epic: a vented collar on the barrel ahead of the handguard; Legendary: gilt rings
+    const barrelR = z => { const h = forgeRay(g, list, V(0.3, I.by, z), V(-1, 0, 0)); return h ? Math.abs(h.x) : null; };
+    if (t >= 2 && ud.muzzle) for (const [k, kind] of (t >= 3 ? [[0.16, 'ring'], [0.26, 'ring'], [0.38, 'collar']] : [[0.32, 'collar']])) {
+      const z = I.z0 + (fz - I.z0) * k, r = barrelR(z); if (!r || r > 0.026) continue;
+      if (kind === 'ring') forgePart(g, new THREE.Mesh(new THREE.TorusGeometry(r + 0.0016, 0.0022, 8, 22), Ch)).position.set(0, I.by, z);
+      else { const c = forgePart(g, new THREE.Mesh(new THREE.CylinderGeometry(r + 0.004, r + 0.004, 0.03, 20), dark)); c.rotation.x = Math.PI / 2; c.position.set(0, I.by, z);
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const v = forgePart(g, new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.004, 0.02), Gm)); v.position.set(Math.cos(a) * (r + 0.0045), I.by + Math.sin(a) * (r + 0.0045), z); v.rotation.z = a; } }
+    }
+    // Mythic: energy blades hovering beside the barrel + a core crystal on the side plate; Exotic: halo
+    if (t >= 4) {
+      const L = Math.min(0.24, Math.abs(fz - I.z0) * 0.7), bz = I.z0 + (fz - I.z0) * 0.45, Lg = liveGlow(glow);
+      const blades = [-1, 1].map(sx => { const b = forgePart(g, new THREE.Mesh(finGeo(L, 0.022, 0.0015), Lg)); b.position.set(sx * (I.hw + 0.018), I.by + 0.004, bz); b.rotation.z = sx * 1.2; b.userData.adsHide = true; return b; });
+      const cr = forgePart(g, new THREE.Mesh(new THREE.OctahedronGeometry(0.009, 0), crystal(glow))); const x0 = sideX(1); cr.position.set((x0 === null ? I.hw : x0) + 0.012, y0 - 0.004, zm);
+      anim(g, tt => { blades.forEach((b, i) => { b.position.y = I.by + 0.004 + Math.sin(tt * 2.2 + i * 3.1) * 0.0035; }); cr.rotation.y = tt * 1.6; cr.scale.setScalar(1 + 0.12 * Math.sin(tt * 4)); Lg.color.setHex(glow).multiplyScalar(0.75 + 0.25 * Math.sin(tt * 3)); if (t >= 5) Lg.color.setHSL((tt * 0.15) % 1, 1, 0.6); });
+    }
+    if (t >= 5 && ud.muzzle) { const Hm = liveGlow(glow), h = forgePart(g, new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.002, 6, 36), Hm)); h.position.set(0, ud.muzzle.position.y, ud.muzzle.position.z + 0.04); h.userData.adsHide = true;
+      anim(g, tt => { h.rotation.z = tt * 1.2; h.rotation.x = Math.sin(tt * 0.9) * 0.35; Hm.color.setHSL((tt * 0.18 + 0.3) % 1, 1, 0.62); }); }
+    void parts;
+  }
+  function forgeKnife(g, t, A, Gm, Ch, metal, glow) {
+    const ud = g.userData, bm = ud.bladeMesh, tipL = ud.trailTip; if (!tipL || !ud.grip) return;
+    // work in the space the blade moves in (the inner group on bayonets / karambits, the blade itself on butterflies)
+    const host = ud.handleA ? (bm || g) : (ud.trailSpace || g);
+    g.updateMatrixWorld(true);
+    const toHost = v => host.worldToLocal((ud.trailSpace && ud.trailSpace !== host ? ud.trailSpace : g).localToWorld(v.clone()));
+    const tip = toHost(tipL), gripW = host.worldToLocal(g.localToWorld(ud.grip.clone()));
+    let root = gripW.clone().lerp(tip, 0.32);
+    if (bm && bm.geometry.attributes.position) { const P = bm.geometry.attributes.position, v = new THREE.Vector3(); let bd = 1e9;
+      for (let i = 0; i < P.count; i += 9) { v.fromBufferAttribute(P, i); bm.localToWorld(v); host.worldToLocal(v); const d = v.distanceTo(gripW); if (d < bd) { bd = d; root.copy(v); } } }
+    const ax = tip.clone().sub(gripW).normalize(); root = gripW.clone().addScaledVector(ax, Math.max(0.01, root.clone().sub(gripW).dot(ax)));      // (on the grip-tip axis)
+    const dir = tip.clone().sub(root); const bl = dir.length(); if (bl < 0.02) return; dir.normalize();
+    const handleLen = Math.min(0.12, Math.max(0.06, root.distanceTo(gripW) * 2)), curved = !!ud.handleA || (g.userData.trailSpace && !ud.bayonet);     // butterfly / karambit: blade-riding parts only
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir), at = (k, m) => { m.position.copy(root).addScaledVector(dir, k); m.quaternion.copy(q); return forgePart(host, m); };
+    if (t >= 1 && !curved) for (const k of [-0.3, -0.55]) at(k * handleLen, new THREE.Mesh(new THREE.TorusGeometry(0.0125, 0.0022, 6, 18), A)).rotateX(Math.PI / 2);
+    if (t >= 2) { if (!curved) at(0.004, new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.006, 0.016), Ch)); for (const sx of [-1, 1]) { const s = at(0.006, new THREE.Mesh(new THREE.SphereGeometry(0.0035, 8, 6), Gm)); s.translateX(sx * (curved ? 0.008 : 0.022)); } }
+    if (t >= 3) { if (!curved) { at(-handleLen - 0.004, new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.012, 0.014, 12), Ch)); at(-handleLen - 0.016, new THREE.Mesh(new THREE.OctahedronGeometry(0.0075, 0), crystal(glow))); }
+      else at(0.012, new THREE.Mesh(new THREE.OctahedronGeometry(0.006, 0), crystal(glow))); }
+    if (t >= 4) { const piv = new THREE.Group(); piv.position.copy(root).addScaledVector(dir, bl * 0.55); piv.quaternion.copy(q); forgePart(host, piv); const cg = crystal(glow);
+      for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, sh = forgePart(piv, new THREE.Mesh(new THREE.OctahedronGeometry(0.0055, 0), cg)); sh.position.set(Math.cos(a) * 0.03, 0, Math.sin(a) * 0.03); }
+      anim(g, tt => { piv.rotation.y = tt * 1.8; piv.children.forEach((c, i) => { c.rotation.set(tt * 3 + i, tt * 2, 0); c.position.y = Math.sin(tt * 2.5 + i * 2) * 0.008; }); }); }
+    if (t >= 5) { const Hm = liveGlow(glow), h = at(0.012, new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.0018, 6, 30), Hm)); h.rotateX(Math.PI / 2); anim(g, tt => { h.rotation.z = tt * 1.4; Hm.color.setHSL((tt * 0.18) % 1, 1, 0.62); }); }
+  }
   function bpUpgrade(g, id, bpId, bp, S, opts) {
     const t = TIER[bp.rarity]; if (!t) return;
     const F = finishMat(id + ':' + bpId, bp), melee = !!(BR.CONFIG.weapons[id] || {}).melee;
@@ -3713,8 +3825,10 @@ BR.Models = (function () {
           if (keep && bp.fit !== 'own') fitMods(g, id, keep, bp.fit === 'native');                                     // v1.23: seat the add-ons on the imported model
         }
         if (bp && !opts.camo) bpUpgrade(g, id, bpId, bp, S, opts);          // v1.16 finishes + edge lines
+        if (bp) { try { bpForge(g, id, bp); } catch (e) { console.warn('blueprint forge', id, bpId, e); } }      // v1.33 real extra geometry by rarity
         realPass(g, !bp && !opts.camo);                                        // v1.17 surface detail
         skinFx(g, skin, bp);                                                   // v1.22 rarity glow + sparkles
+        if (g.userData.flash) g.userData.flash.userData.style = def.melee ? 'none' : def.suppressed ? 'sup' : def.launcher ? 'launch' : def.pellets > 1 ? 'blast' : (def.bolt || def.dmg >= 40 || def.revolver) ? 'heavy' : def.rpm >= 700 ? 'auto' : 'std';     // v1.33 flash style
       } finally { ROUND = false; }
       if (charmId && charmId !== 'none') {
         const c = charm(charmId);

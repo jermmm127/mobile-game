@@ -280,6 +280,13 @@ BR.Effects = class Effects {
     }
   }
 
+  // v1.33 a puff of gun smoke drifting off the muzzle
+  smoke(p, k) {
+    const f = this.puffs[this.pi++ % this.puffs.length];
+    f.mesh.position.copy(p); f.mesh.position.y += 0.02;
+    f.mesh.material.color.setHex(0xb8bcc2); f.mesh.material.opacity = 0.28 * (k || 1); f.mesh.material.blending = THREE.NormalBlending; f.mesh.material.rotation = Math.random() * 6;
+    f.mesh.visible = true; f.s0 = 0.12 + 0.08 * (k || 1); f.grow = 0.9; f.mesh.scale.setScalar(f.s0); f.life = f.max = 0.55 + 0.25 * (k || 1);
+  }
   flash(p) {
     const f = this.puffs[this.pi++ % this.puffs.length];
     f.mesh.position.copy(p);
@@ -549,6 +556,9 @@ BR.Effects.tex = () => {
     // v1.22 muzzle flash parts: a 6-ray star with a hot centre, and a flame tongue (v = 0 at the muzzle -> 1 at the tip)
     star: mk(96, 96, (u, v) => { const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y) * 2, a = Math.atan2(y, x); const rays = Math.pow(Math.abs(Math.cos(a * 3)), 14) * Math.max(0, 1 - r) * 1.1 + Math.pow(Math.abs(Math.cos(a * 3 + 0.52)), 30) * Math.max(0, 1 - r * 1.4) * 0.6; return rays + Math.pow(Math.max(0, 1 - r * 2.2), 1.6); }),
     flame: mk(32, 96, (u, v) => { const w = 0.5 * (1 - v) * (0.55 + 0.45 * Math.sin(v * 3.1)); const d = Math.abs(u - 0.5); return Math.max(0, 1 - d / Math.max(0.02, w)) * Math.pow(1 - v, 0.6) * Math.min(1, v * 12 + 0.3); }),
+    // v1.33 muzzle flash: a sharp 4-ray cross, a petalled blossom (shotguns) and a soft wide glow
+    star4: mk(96, 96, (u, v) => { const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y) * 2, a = Math.atan2(y, x); return Math.pow(Math.abs(Math.cos(a * 2)), 26) * Math.pow(Math.max(0, 1 - r), 1.4) * 1.3 + Math.pow(Math.max(0, 1 - r * 2.6), 2) * 0.9; }),
+    blossom: mk(96, 96, (u, v) => { const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y) * 2, a = Math.atan2(y, x), edge = 0.62 + 0.26 * Math.cos(a * 7) + 0.08 * Math.cos(a * 13); return Math.max(0, Math.min(1, (edge - r) * 6)) * (0.35 + 0.65 * (1 - r)) + Math.pow(Math.max(0, 1 - r * 2.2), 2) * 0.8; }),
   };
   return BR.Effects._tex;
 };

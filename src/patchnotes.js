@@ -5,6 +5,16 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.33.0', date: '2026-11-07', title: 'New modes, forged blueprints, real muzzle flash', notes: [
+    'New mode: GUN GAME. Free For All, 6 players: every kill moves you to the next gun through 14 of them, from SMG to pistol. The last step is the knife, and a knife kill on it wins. Get knifed and you drop a level.',
+    'New mode: ONE IN THE CHAMBER. Everyone gets a revolver with ONE bullet and a knife. Every hit kills. Each kill gives you another bullet. You have 3 lives, and the last player standing wins.',
+    'New mode: KNIFE FIGHT. Knives only, round-based, 1v1 or 2v2, first to 5 rounds. All three new modes are in the CASUAL row and can be played online with your party.',
+    'Every blueprint got real new parts (not just a new finish), fitted to each gun\'s actual surface. Rare: a ported compensator and bolted side plates. Epic: adds chamfered armour panels and a vented barrel collar. Legendary: adds swept side fins, gilt barrel rings and a glowing medallion. Mythic: adds energy blades hovering beside the barrel and a pulsing core crystal. Exotic: adds a rainbow halo round the muzzle.',
+    'Knife blueprints got real parts too: handle wraps, a guard with glowing studs, a pommel cap with a crystal, shards orbiting the blade and a halo (more parts at higher rarity). They follow the knife through every flip.',
+    'Floating blueprint effects (energy rings, hovering blades, halos) now step aside while you aim, so they never block your sights.',
+    'New muzzle flash: a hot core, a wide glow, a 6-ray star crossed with a sharp 4-ray star, and three flame petals along the barrel. Each shot spins and reshapes it, then it blooms and fades. Shotguns get a petalled blossom, snipers, DMRs and revolvers a big long flash, automatics a tighter one, suppressed guns a small glow. Your gun puffs smoke, and heavy guns throw sparks.',
+    'The muzzle flash now also shows (smaller) while you aim, instead of disappearing.',
+  ] },
   { v: '1.32.3', date: '2026-11-07', title: 'Lower aim view', notes: [
     'Aiming down sights with iron-sight guns now holds the gun a little below the crosshair, so you can see more of what you are shooting at. The view still zooms in, and the crosshair stays up as your aim point.',
     'Guns with an optic still line up through the glass: the holo sights (Holo AR, Talon Burst), the LMG ACOG, the DMR prism scope and the Sniper scope.',

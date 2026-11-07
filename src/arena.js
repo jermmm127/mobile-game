@@ -20,7 +20,10 @@
     sniper: ['sniper', 'hunter'],
     loadout: null,                                 // TDM/FFA: your loadout (Loadout screen)
   };
-  const SHOTGUNS = ['shotgun', 'riot', 'pump'];              // v1.32.2: the Shotgun Duels picker (Breacher, Riot Auto, Pump Action)
+  const SHOTGUNS = ['shotgun', 'riot', 'pump'];
+  // v1.33 Gun Game ladder: one kill moves you up a gun; the last step is the knife, and a knife kill on it wins
+  const LADDER = ['smg', 'mpistol', 'burst', 'rifle', 'holoar', 'lmg', 'riot', 'pump', 'shotgun', 'dmr', 'hunter', 'sniper', 'revolver', 'pistol', 'knife'];
+  BR.GUNGAME_LADDER = LADDER;              // v1.32.2: the Shotgun Duels picker (Breacher, Riot Auto, Pump Action)
   const BOT_POOL = [['rifle', 'shotgun'], ['holoar', 'smg'], ['sniper', 'smg'], ['hunter', 'shotgun'], ['smg', 'shotgun'], ['rifle', 'pistol'], ['lmg', 'pistol'], ['dmr', 'smg'], ['burst', 'mpistol'], ['riot', 'pistol'], ['pump', 'smg']];
   BR.ARENA_PRESETS = {
     duel:    { kind: 'duel', title: 'DUELS', guns: 'duel', sizes: [1, 2], target: 5, roundTime: 90 },
@@ -28,6 +31,10 @@
     sniper:  { kind: 'duel', title: 'SNIPER DUELS', guns: 'sniper', sizes: [1, 2], target: 5, roundTime: 90 },
     tdm:     { kind: 'tdm', title: 'TEAM DEATHMATCH', guns: 'loadout', sizes: [4], target: 30, time: 360 },
     ffa:     { kind: 'ffa', title: 'FREE FOR ALL', guns: 'loadout', sizes: [6], target: 20, time: 360 },
+    // v1.33 party modes
+    gungame: { kind: 'ffa', title: 'GUN GAME', guns: 'gungame', sizes: [6], target: 15, time: 480 },
+    oitc:    { kind: 'ffa', title: 'ONE IN THE CHAMBER', guns: 'oitc', sizes: [6], target: 99, time: 360, lives: 3 },
+    knives:  { kind: 'duel', title: 'KNIFE FIGHT', guns: 'knives', sizes: [1, 2], target: 5, roundTime: 60 },
   };
   const SPOTS = [[-22, 0], [22, 0], [-15, -10], [15, 10], [-15, 10], [15, -10], [-4, -11], [4, 11], [-8, 4], [8, -4], [-20, -12], [20, 12]];
 
@@ -92,7 +99,10 @@
     gunsFor(a) {
       const set = this.P.guns;
       if (a.isPlayer && (set === 'duel' || set === 'sniper' || set === 'shotgun')) return this.myLoadout();
-      if (set === 'shotgun') return [SHOTGUNS[(a.rosterId + this.round) % SHOTGUNS.length], null];       // v1.32.2: bots rotate through every shotgun
+      if (set === 'shotgun') return [SHOTGUNS[(a.rosterId + this.round) % SHOTGUNS.length], null];
+      if (set === 'gungame') { const g = LADDER[Math.min(LADDER.length - 1, this.lvl(a))]; return g === 'knife' ? [null, null] : [g, null]; }
+      if (set === 'oitc') return ['revolver', null];
+      if (set === 'knives') return [null, null];       // v1.32.2: bots rotate through every shotgun
       if (set === 'sniper') return GUNSETS[set];
       if (a.isPlayer) { const L = BR.Profile.loadoutGuns(); return [L.primary === 'launcher' ? 'rifle' : L.primary, L.secondary]; }     // (no launcher outside BR / Sniper Duels)
       return BOT_POOL[(a.rosterId * 3 + this.round) % BOT_POOL.length];
@@ -103,6 +113,22 @@
       a.cur = a.slots[0] ? 0 : 2;
       for (const t in a.ammo) a.ammo[t] = C.ammoCap[t];
       a.health = C.actor.maxHealth; a.shield = this.duel ? 50 : 0; a.nades = this.P.guns === 'duel' || this.P.guns === 'loadout' ? 1 : 0;
+      if (this.P.guns === 'oitc') { for (const t in a.ammo) a.ammo[t] = 0; a.slots[0].mag = 1; a._given = (this.stats[a.rosterId] || {}).kills || 0; }   // one bullet, no spare ammo
+      if (this.P.guns === 'gungame') { a._lvl = this.lvl(a); for (const t in a.ammo) a.ammo[t] = C.ammoCap[t]; }
+    }
+    lvl(a) { const s = this.stats[a.rosterId]; return s ? s.lvl | 0 : 0; }
+    // v1.33 One in the Chamber: every revolver round and every knife hit kills. Applied by the victim's owner, so the shot
+    // sent over the network stays a normal hit (and passes the anti-cheat damage check)
+    modDamage(victim, attacker, dmg, wid) { return this.P.guns === 'oitc' && attacker && attacker !== victim ? 999 : this.P.guns === 'knives' ? dmg * 1.15 : dmg; }
+    // v1.33: keep local actors armed for their Gun Game level / paid for their One in the Chamber kills (stats come from the host)
+    syncModes() {
+      const G = this.P.guns; if (G !== 'gungame' && G !== 'oitc') return;
+      for (const a of this.g.actors) {
+        if (a.local === false || !a.alive || (!a.isPlayer && !a.brain)) continue;
+        if (G === 'gungame' && a._lvl !== undefined && a._lvl !== this.lvl(a)) { const hp = a.health; this.arm(a); a.health = hp; a.shield = 0;
+          if (a.isPlayer) { const n = LADDER[Math.min(LADDER.length - 1, this.lvl(a))]; this.g.hud.tech((n === 'knife' ? 'KNIFE · FINAL LEVEL' : 'LEVEL ' + (this.lvl(a) + 1) + ' · ' + BR.CONFIG.weapons[n].name.toUpperCase())); BR.Audio.coin(); } }
+        if (G === 'oitc' && a.slots[0]) { const k = (this.stats[a.rosterId] || {}).kills || 0; if (a._given === undefined) a._given = k; if (k > a._given) { a.slots[0].mag += k - a._given; a._given = k; if (a.isPlayer) this.g.hud.tech('+1 BULLET'); } }
+      }
     }
     safe(x, z) {
       const W = this.g.world, tmp = this._tmp || (this._tmp = []);
@@ -186,7 +212,12 @@
       const sv = this.stats[victim.rosterId]; if (sv) sv.deaths++;
       const sk = killer && killer !== victim ? this.stats[killer.rosterId] : null; if (sk) sk.kills++;
       if (this.P.kind === 'tdm' && killer && killer !== victim) this.score[killer.team]++;
-      if (this.P.kind !== 'duel') this.respawnQ.push({ id: victim.rosterId, t: 3 });
+      if (this.P.guns === 'gungame') {
+        if (sk) sk.lvl = Math.min(LADDER.length, (sk.lvl | 0) + 1);
+        if (sv && killer && killer !== victim && (BR.CONFIG.weapons[wid] || {}).melee && (sk && sk.lvl < LADDER.length)) sv.lvl = Math.max(0, (sv.lvl | 0) - 1);     // knifed: you drop a level
+      }
+      if (this.P.guns === 'oitc' && sv) sv.lives = Math.max(0, (sv.lives ?? this.P.lives) - 1);
+      if (this.P.kind !== 'duel' && !(this.P.guns === 'oitc' && sv && sv.lives <= 0)) this.respawnQ.push({ id: victim.rosterId, t: 3 });
       this.pushMatch();
     }
     checkEnd() {
@@ -199,19 +230,21 @@
         else if (this.t <= 0) { const hp = [0, 1].map(t => this.g.actors.filter(a => a.alive && !a.downed && a.team === t).reduce((s, a) => s + a.health + a.shield, 0)); w = hp[0] > hp[1] + 0.5 ? 0 : hp[1] > hp[0] + 0.5 ? 1 : -1; }     // (knocked players count for nothing)
         if (w !== null) { if (w >= 0) this.score[w]++; this.phase = 'roundEnd'; this.t = this.picksLoadout && Math.max(...this.score) < P.target ? 7 : 2.6; this.lastWinner = w; this.pushMatch(true); }
       } else if (this.phase === 'fight') {
-        const best = P.kind === 'tdm' ? Math.max(...this.score) : Math.max(...Object.values(this.stats).map(s => s.kills));
+        if (P.guns === 'oitc') { const left = Object.values(this.stats).filter(s => (s.lives ?? P.lives) > 0).length; if (left <= 1 || this.t <= 0) this.finish(); return; }
+        const best = P.kind === 'tdm' ? Math.max(...this.score) : P.guns === 'gungame' ? Math.max(...Object.values(this.stats).map(s => s.lvl | 0)) : Math.max(...Object.values(this.stats).map(s => s.kills));
         if (best >= P.target || this.t <= 0) this.finish();
       }
     }
     finish() {
       if (this.ended) return;
       let winTeam;
-      if (this.P.kind === 'ffa') { const top = Object.entries(this.stats).sort((a, b) => b[1].kills - a[1].kills)[0]; winTeam = this.byId.get(+top[0]).team; }
+      if (this.P.kind === 'ffa') { const top = Object.entries(this.stats).sort((a, b) => this.rankOf(b[1]) - this.rankOf(a[1]))[0]; winTeam = this.byId.get(+top[0]).team; }
       else winTeam = this.score[0] === this.score[1] ? -1 : this.score[0] > this.score[1] ? 0 : 1;
       const m = { winTeam, score: this.score.slice(), stats: this.stats };
       if (this.net) this.net.send('end', m);
       this.applyEnd(m);
     }
+    rankOf(s) { return this.P.guns === 'gungame' ? (s.lvl | 0) * 1000 + s.kills : this.P.guns === 'oitc' ? (s.lives ?? this.P.lives) * 1000 + s.kills : s.kills; }
     pushMatch(roundEnd) {
       const m = { phase: this.phase, tm: +this.t.toFixed(1), round: this.round, score: this.score, stats: this.stats, lw: roundEnd ? this.lastWinner : undefined };
       if (this.net) this.net.send('match', m);
@@ -253,10 +286,11 @@
         if (m.grapple) m.releaseGrapple();
         if (a.spawnLock) { m.pos.x = a.spawnLock.x; m.pos.z = a.spawnLock.z; if (m.pos.y > a.spawnLock.y) m.pos.y = a.spawnLock.y; }
       }
-      this.loadoutPicker();
+      this.loadoutPicker(); this.syncModes();
       // your own respawn countdown (TDM / FFA)
       const p = g.player;
-      if (!p.alive && !this.duel) { this.deadT = (this.deadT || 0) + dt; g.hud.resurgence && g.hud.resurgence(false, Math.max(0, 3 - this.deadT)); } else if (this.deadT) { this.deadT = 0; g.hud.resurgence && g.hud.resurgence(false, null); }
+      if (!p.alive && !this.duel && this.P.guns === 'oitc' && ((this.stats[p.rosterId] || {}).lives ?? 1) <= 0) { if (!this._outShown) { this._outShown = true; g.hud.duelBanner('ELIMINATED', 'Out of lives · spectating', 'lose'); } }
+      else if (!p.alive && !this.duel) { this.deadT = (this.deadT || 0) + dt; g.hud.resurgence && g.hud.resurgence(false, Math.max(0, 3 - this.deadT)); } else if (this.deadT) { this.deadT = 0; g.hud.resurgence && g.hud.resurgence(false, null); }
       if (this.net) this.netTick(dt);
       this.renderHud(); this.markers();
     }
@@ -346,8 +380,11 @@
       const P = this.P, tm = BR.fmtTime(Math.max(0, this.t)), me = this.stats[this.g.player.rosterId] || { kills: 0 };
       let html;
       if (P.kind === 'ffa') {
-        const top = Object.values(this.stats).sort((a, b) => b.kills - a.kills)[0];
-        html = `<span class="ar-t">${P.title}</span><span class="ar-me"><b>${me.kills}</b> YOU</span><i>${tm}</i><span class="ar-top"><b>${top ? top.kills : 0}</b> ${top ? top.name.toUpperCase() : ''}</span><span class="ar-tg">FIRST TO ${P.target}</span>`;
+        const top = Object.values(this.stats).sort((a, b) => this.rankOf(b) - this.rankOf(a))[0];
+        const val = s => !s ? 0 : P.guns === 'gungame' ? Math.min(LADDER.length, (s.lvl | 0) + 1) : P.guns === 'oitc' ? (s.lives ?? P.lives) : s.kills;
+        const tg = P.guns === 'gungame' ? `LEVEL ${val(me)}/${LADDER.length} · ${(() => { const n = LADDER[Math.min(LADDER.length - 1, me.lvl | 0)]; return n === 'knife' ? 'KNIFE' : BR.CONFIG.weapons[n].name.toUpperCase(); })()}`
+          : P.guns === 'oitc' ? `LIVES ${val(me)} · ${me.kills} KILLS` : `FIRST TO ${P.target}`;
+        html = `<span class="ar-t">${P.title}</span><span class="ar-me"><b>${val(me)}</b> YOU</span><i>${tm}</i><span class="ar-top"><b>${val(top)}</b> ${top ? top.name.toUpperCase() : ''}</span><span class="ar-tg">${tg}</span>`;
       } else {
         const lbl = P.kind === 'tdm' ? `FIRST TO ${P.target}` : `ROUND ${this.round} · FIRST TO ${P.target}`;
         html = `<span class="ar-t">${P.title}${this.duel ? ` · ${this.size}V${this.size}` : ''}${this.net ? ' · ONLINE' : ''}</span><span class="ar-b" style="--c:${TEAM_CSS[0]}"><b>${this.score[0]}</b>${TEAM_NAME[0]}</span><i>${tm}</i><span class="ar-b" style="--c:${TEAM_CSS[1]}">${TEAM_NAME[1]}<b>${this.score[1]}</b></span><span class="ar-tg">${lbl}</span>`;
