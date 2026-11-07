@@ -1416,6 +1416,16 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v1323 = await page.evaluate(() => {
+    const g = BR.game, out = {}; BR.AntiCheat._testing = true; g.startMatch({ practice: true }); const p = g.player;
+    const sightY = id => { p.slots[0] = BR.Weapons.create(id); p.cur = 0; g.vmr.lastWeapon = null; p.ads = false; for (let i = 0; i < 30; i++) g.update(1 / 30);
+      for (let i = 0; i < 40; i++) { g.input.ads = true; g.update(1 / 30); } const V = g.vmr, m = V.models[id].userData.model; V.root.updateMatrixWorld(true);
+      const v = m.localToWorld(m.userData.sight.position.clone()).project(V.camera); g.input.ads = false; return v.y; };
+    out.ry = [sightY('rifle'), sightY('pistol'), sightY('holoar')]; out.irons = out.ry[0] < -0.1 && out.ry[1] < -0.1;          // iron sights sit below the crosshair
+    out.optics = Math.abs(sightY('holoar')) < 0.06;                          // the holo still lines up on it
+    out.zoom = (() => { for (let i = 0; i < 30; i++) { g.input.ads = true; g.update(1 / 30); } const f = g.camera.fov; g.input.ads = false; for (let i = 0; i < 30; i++) g.update(1 / 30); return f < g.camera.fov - 3; })();
+    g.toMenu(); return out;
+  });
   const v1322 = await page.evaluate(async () => {
     const g = BR.game, L = BR.Lobby, out = {}; BR.AntiCheat._testing = true;
     g.toMenu(); L.skipRoll = true; L.preset = 'shotgun'; L.size = 2; L.play({}); await new Promise(r => setTimeout(r, 300)); for (let i = 0; i < 3; i++) g.update(1 / 60);
@@ -1746,6 +1756,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.32.3 ADS: iron-sight guns aim below the crosshair (still zoomed), optics line up on it', Object.values(v1323).every(Boolean), v1323],
     ['v1.32.2 Shotgun Duels picker: Breacher / Riot Auto / Pump Action, the pick arms you + saves, bots vary, no undefined team header', Object.values(v1322).every(Boolean), v1322],
     ['v1.32.1 Pump Action: detailed procedural pump gun (racking pump, shell port, walnut), in the loot + blueprints; richer Talon / Riot parts', Object.values(v1321).every(Boolean), v1321],
     ['v1.32 Common/Uncommon cosmetics + Street Case, camos map onto every gun, 3 new guns (burst fires 3 per tap), living Legendary+ blueprints, near-miss / shield-break / low-ammo audio, shader warm-up', Object.values(v132).every(Boolean), v132],
@@ -1930,7 +1941,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

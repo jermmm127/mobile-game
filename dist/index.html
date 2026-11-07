@@ -1749,7 +1749,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.32.2',
+  version: '1.32.3',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2043,6 +2043,10 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.32.3', date: '2026-11-07', title: 'Lower aim view', notes: [
+    'Aiming down sights with iron-sight guns now holds the gun a little below the crosshair, so you can see more of what you are shooting at. The view still zooms in, and the crosshair stays up as your aim point.',
+    'Guns with an optic still line up through the glass: the holo sights (Holo AR, Talon Burst), the LMG ACOG, the DMR prism scope and the Sniper scope.',
+  ] },
   { v: '1.32.2', date: '2026-11-07', title: 'Shotgun Duels loadout picker', notes: [
     'Shotgun Duels now has a loadout picker before every round: choose the Breacher, the Riot Auto or the Pump Action. Your pick is saved for next time, and bots rotate through all three.',
     'Fixed the team panel in 2v2 duels reading "undefined · TEAMS LEFT". It now shows 2V2.',
@@ -10401,6 +10405,9 @@ BR.Models = (function () {
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
       if (ud.sight && (!def.scope || ud.imported)) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) * 0.78 - sg.z; }
+      // v1.32.3: iron-sight guns aim with the gun a little LOWER than the crosshair (the zoom still kicks in); optics
+      // (holo sights, the ACOG, the DMR prism and the sniper scope) still line up on it so you can aim through the glass
+      if (ud.sight && !def.holo && !def.optic && !def.scope) { const dz = (ud.sightDist || 0.3) * 0.78; ay -= 0.1 * dz; az -= 0.012; }     // (same drop on screen for every gun)
       const A = this.adsW, nA = 1 - A * 0.85;
       // Bob: figure-eight while moving on the ground
       const grounded = m.onGround && !m.sliding;

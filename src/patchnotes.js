@@ -5,6 +5,10 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.32.3', date: '2026-11-07', title: 'Lower aim view', notes: [
+    'Aiming down sights with iron-sight guns now holds the gun a little below the crosshair, so you can see more of what you are shooting at. The view still zooms in, and the crosshair stays up as your aim point.',
+    'Guns with an optic still line up through the glass: the holo sights (Holo AR, Talon Burst), the LMG ACOG, the DMR prism scope and the Sniper scope.',
+  ] },
   { v: '1.32.2', date: '2026-11-07', title: 'Shotgun Duels loadout picker', notes: [
     'Shotgun Duels now has a loadout picker before every round: choose the Breacher, the Riot Auto or the Pump Action. Your pick is saved for next time, and bots rotate through all three.',
     'Fixed the team panel in 2v2 duels reading "undefined · TEAMS LEFT". It now shows 2V2.',

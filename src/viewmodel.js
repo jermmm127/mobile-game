@@ -379,6 +379,9 @@
       let bay = null;            // bayonet: { lift, flip, roll } applied to the knife inside the fist
       // aiming: the sight sits closer to your eye (bigger in view) than it used to
       if (ud.sight && (!def.scope || ud.imported)) { const sg = ud.sight.position; ax = -sg.x; ay = -sg.y; az = -(ud.sightDist || 0.3) * 0.78 - sg.z; }
+      // v1.32.3: iron-sight guns aim with the gun a little LOWER than the crosshair (the zoom still kicks in); optics
+      // (holo sights, the ACOG, the DMR prism and the sniper scope) still line up on it so you can aim through the glass
+      if (ud.sight && !def.holo && !def.optic && !def.scope) { const dz = (ud.sightDist || 0.3) * 0.78; ay -= 0.1 * dz; az -= 0.012; }     // (same drop on screen for every gun)
       const A = this.adsW, nA = 1 - A * 0.85;
       // Bob: figure-eight while moving on the ground
       const grounded = m.onGround && !m.sliding;
