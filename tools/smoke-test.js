@@ -964,7 +964,7 @@ const server = http.createServer((req, res) => {
       const hp0 = mate.health; g.applyDamage(mate, g.player, 50, false, mate.pos, 'rifle'); v.noFF = mate.health === hp0;
       g.applyDamage(foe, g.player, 999, true, foe.pos, 'rifle'); const knocked = foe.alive && foe.downed;      // (v1.29.1: 2v2 knocks first while a teammate stands)
       g.applyDamage(foe, g.player, 999, true, foe.pos, 'rifle'); v.duelKill = knocked && !foe.alive && M.stats[g.player.rosterId].kills === 1;
-      M = play('shotgun', 1); v.shotgun = g.player.slots[0].id === 'shotgun' && !g.player.slots[1] && g.actors.every(a => !a.slots[1] && a.slots[0].id === 'shotgun');
+      M = play('shotgun', 1); v.shotgun = g.actors.every(a => !a.slots[1] && ['shotgun', 'riot', 'pump'].includes(a.slots[0].id));     /* (v1.32.2: any of the three shotguns: your pick, bots rotate) */
       M = play('sniper', 2); v.sniper = g.actors.every(a => a.slots[0].id === 'sniper' && a.slots[1].id === 'hunter');
       M = play('tdm', 4); v.tdm = g.actors.length === 8; run(120);
       const f2 = g.actors.find(a => a.team !== g.player.team && a.alive); g.applyDamage(f2, g.player, 999, true, f2.pos, 'rifle'); v.tdmScore = M.score[g.player.team] === 1;
