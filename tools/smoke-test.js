@@ -1427,7 +1427,11 @@ const server = http.createServer((req, res) => {
     for (let i = 0; i < 600 && (p.mover.dropping || p.mover.chute); i++) g.update(1 / 30);
     for (const a of g.actors) if (a !== p) a.brain = null;
     out.landed = Math.abs(p.pos.y - Wg.groundAt(p.pos.x, p.pos.z, p.pos.y + 1)) < 0.05;
-    const s0 = p.pos.clone(); let off = 0; p.yaw = 0.8;
+    { const tmp = []; for (let k = 0; k < 400; k++) { const x = -250 + (k * 37) % 500, z = -250 + (k * 53) % 500, yw = (k % 8) * 0.785, dx = -Math.sin(yw), dz = -Math.cos(yw);           // a clear 20 m stretch of hillside
+        const xs = [x, x + dx * 20], zs = [z, z + dz * 20]; if (Wg.query(Math.min(...xs) - 1, Wg.heightAt(x, z) - 30, Math.min(...zs) - 1, Math.max(...xs) + 1, Wg.heightAt(x, z) + 30, Math.max(...zs) + 1, tmp).some(b => !b.ground)) continue;
+        if (Math.abs(Wg.heightAt(x, z) - Wg.heightAt(x + dx * 20, z + dz * 20)) < 1.5) continue;
+        p.mover.pos.set(x, Wg.heightAt(x, z), z); p.mover.vel.set(0, 0, 0); p.yaw = yw; for (let i = 0; i < 3; i++) g.update(1 / 60); break; } }
+    const s0 = p.pos.clone(); let off = 0;
     for (let i = 0; i < 180; i++) { g.input.moveY = 1; g.input.moveX = 0; g.update(1 / 60); if (p.mover.onGround) off = Math.max(off, Math.abs(p.pos.y - Wg.groundAt(p.pos.x, p.pos.z, p.pos.y + 1))); }
     g.input.moveY = 0; out.walk = Math.hypot(p.pos.x - s0.x, p.pos.z - s0.z) > 10 && off < 0.05 && Math.abs(p.pos.x) < 500;
     g.toMenu();
