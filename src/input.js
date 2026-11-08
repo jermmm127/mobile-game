@@ -208,7 +208,9 @@ BR.Input = class Input {
       if (this.usingTouch || this.editing || e.target.closest('[data-act]') || BR.Keybinds.capturing) return;
       this.kbm(); BR.Audio.init();
       if (!this.locked && this.root.requestPointerLock) {
-        try { const p = this.root.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed here */ }
+        // v1.39: raw mouse input (no OS acceleration, and it avoids Chrome's pointer-lock jumps) where supported
+        const plain = () => { try { const q = this.root.requestPointerLock(); if (q && q.catch) q.catch(() => {}); } catch (err) { /* not allowed here */ } };
+        try { const p = this.root.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => plain()); } catch (err) { plain(); }
       }
       if (this.bindDown('Mouse' + e.button, e) && e.button === 1) e.preventDefault();
       this.dragging = true;
@@ -220,7 +222,14 @@ BR.Input = class Input {
     window.addEventListener('mousemove', e => {
       if (this.usingTouch) return;
       // With pointer lock: free look. Without (some embeds block it): drag to look.
-      if (this.locked || this.dragging) { this.lookDX += e.movementX * 0.4; this.lookDY += e.movementY * 0.4; }
+      if (this.locked || this.dragging) {
+        // v1.39: some browsers send the odd bogus mouse event with a huge jump (pointer lock re-centring); drop a lone
+        // spike that's far bigger than the recent movement, so the view never skips
+        const mx = e.movementX || 0, my = e.movementY || 0, mag = Math.abs(mx) + Math.abs(my), avg = this._mAvg || 0;
+        if (mag > 700 && mag > avg * 10 + 200) { this._mAvg = avg * 0.9; return; }
+        this._mAvg = avg * 0.8 + mag * 0.2;
+        this.lookDX += mx * 0.4; this.lookDY += my * 0.4;
+      }
     });
     this.root.addEventListener('contextmenu', e => e.preventDefault());
     // Mouse clicks on on-screen buttons (pause, slots, spawn, pickup...) work on desktop too

@@ -130,7 +130,8 @@ BR.BRNet = class BRNet {
   }
   remoteShot(f) {
     const g = this.g, from = new THREE.Vector3(f[1], f[2], f[3]), to = new THREE.Vector3(f[4], f[5], f[6]);
-    g.fx.tracer(from, to, false, 0xff9a6b, null); if (g.nearMiss) g.nearMiss(from, to, this.actor(f[0]));
+    const sa = this.actor(f[0]); if (sa) sa._shotT = g.time;      // v1.39: their model raises the gun as they fire
+    g.fx.tracer(from, to, false, 0xff9a6b, null); if (g.nearMiss) g.nearMiss(from, to, sa);
     if (f[8]) { const cp = g.camera.position, d = Math.hypot(from.x - cp.x, from.z - cp.z), pan = BR.util.clamp((from.x - cp.x) / Math.max(1, d), -0.8, 0.8); if (d < 150) BR.Audio.shot(BR.Net.WIDS[f[7]], d, pan, false); }
   }
 

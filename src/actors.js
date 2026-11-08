@@ -697,8 +697,12 @@ BR.Actor = class Actor {
     u.head.rotation.x = this.downed ? CRAWL.head : aimP * 0.6 - u.upper.rotation.x * 0.35;           // downed: chin up, looking ahead (v1.38: the head stays level through the lean)
     // v1.38 running carry: not shooting at anything while running -> the gun drops and cants across the chest and
     // bobs with the stride, so the arms swing with the run instead of staying locked in the aim pose
-    const busy = this.fireHeld || this.ads || (this.brain && this.brain.target) || this.downed;
-    u.carry = U.damp(u.carry || 0, !busy && m.onGround && !m.sliding && !m.crouched ? (u.run || 0) : 0, 8, dt);
+    // (v1.39: a shot in the last second also counts, so online players, whose trigger state isn't synced, raise the gun
+    // the moment they fire; and the gun comes up almost instantly but eases back down into the carry)
+    const g0 = this.game, shotRecent = g0 && this._shotT !== undefined && g0.time - this._shotT < 1.1;
+    const busy = this.fireHeld || this.ads || shotRecent || (this.brain && this.brain.target) || this.downed;
+    const carryT = !busy && m.onGround && !m.sliding && !m.crouched ? (u.run || 0) : 0;
+    u.carry = U.damp(u.carry || 0, carryT, carryT < (u.carry || 0) ? 30 : 5, dt);
     if (!u.gunBase) u.gunBase = u.gun.position.clone();
     const ca = u.carry, pump = u.pump || 0;
     u.gun.position.set(u.gunBase.x - 0.04 * ca + pump * 0.025 * ca, u.gunBase.y - 0.07 * ca + Math.abs(pump) * 0.02 * ca, u.gunBase.z + 0.05 * ca);

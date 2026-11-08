@@ -1755,7 +1755,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.38.0',
+  version: '1.39.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2050,6 +2050,12 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.39.0', date: '2026-11-08', title: 'Smooth mouse, instant shooting poses', notes: [
+    'Fixed the mouse skipping on PC. The game now asks the browser for raw mouse input (no OS acceleration, which also avoids the browser\'s pointer-lock jumps) and ignores the rare bogus jump event, while real fast flicks still go through.',
+    'Fixed stutter on 75, 100, 144 and 165 Hz monitors: the 60 / 120 FPS cap now only applies when your screen is an exact multiple of it (120 Hz for 60, 240 Hz for 120). Otherwise the game runs at your screen\'s full rate.',
+    'Shooting while running now shows straight away. Your gun comes out of the sprint pose the moment you fire, aim or reload (it used to take about half a second, so the first shots came from a lowered gun).',
+    'Other players and bots raise their gun out of the running carry the moment they fire, including online players.',
+  ] },
   { v: '1.38.0', date: '2026-11-08', title: '120 FPS, knock freeze frame, full-body running', notes: [
     'New FRAME RATE setting (Settings): 60 FPS or 120 FPS, on phones and computers. 120 FPS needs a 120 Hz (or faster) screen; the game measures your screen and tells you what it can show, and lowers its resolution a little if your device needs it to hold the frame rate. 60 FPS is now a steady cap that uses less battery.',
     'Team modes: the freeze frame (the split second of slow motion, the banner, the flash and the burst) now hits when you KNOCK an enemy down, since the knock is the kill. It no longer waits until they bleed out or get finished, and it doesn\'t play twice. The banner reads KNOCKED (or HEADSHOT KNOCK).',
@@ -11069,7 +11075,9 @@ BR.Models = (function () {
       this.adsW = U.damp(this.adsW, p.ads ? 1 : 0, w.def.adsRate || 13, dt);
       const reloading = w.reloadT > 0;
       const sprinting = m.onGround && !m.sliding && sp > run * 0.92 && !p.ads && !p.fireHeld && !reloading && this.drawT <= 0 && this.inspectT <= 0;
-      this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
+      // v1.39: shooting / aiming / reloading snaps out of the sprint pose at once (it used to ease out over ~0.5 s, so the
+      // first shots came from a lowered, canted gun); easing back into the sprint stays smooth
+      this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, sprinting ? 7 : (p.fireHeld || p.ads || reloading ? 40 : 12), dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = (KP.hx !== undefined ? KP.hx : 0.113) * s; hy = KP.hy !== undefined ? KP.hy : -0.107; hz = KP.hz !== undefined ? KP.hz : -0.43; }      // karambit low in the right of the view, like CS (v1.27.5: a little farther out, same spot on screen)
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }
@@ -12588,8 +12596,12 @@ BR.Actor = class Actor {
     u.head.rotation.x = this.downed ? CRAWL.head : aimP * 0.6 - u.upper.rotation.x * 0.35;           // downed: chin up, looking ahead (v1.38: the head stays level through the lean)
     // v1.38 running carry: not shooting at anything while running -> the gun drops and cants across the chest and
     // bobs with the stride, so the arms swing with the run instead of staying locked in the aim pose
-    const busy = this.fireHeld || this.ads || (this.brain && this.brain.target) || this.downed;
-    u.carry = U.damp(u.carry || 0, !busy && m.onGround && !m.sliding && !m.crouched ? (u.run || 0) : 0, 8, dt);
+    // (v1.39: a shot in the last second also counts, so online players, whose trigger state isn't synced, raise the gun
+    // the moment they fire; and the gun comes up almost instantly but eases back down into the carry)
+    const g0 = this.game, shotRecent = g0 && this._shotT !== undefined && g0.time - this._shotT < 1.1;
+    const busy = this.fireHeld || this.ads || shotRecent || (this.brain && this.brain.target) || this.downed;
+    const carryT = !busy && m.onGround && !m.sliding && !m.crouched ? (u.run || 0) : 0;
+    u.carry = U.damp(u.carry || 0, carryT, carryT < (u.carry || 0) ? 30 : 5, dt);
     if (!u.gunBase) u.gunBase = u.gun.position.clone();
     const ca = u.carry, pump = u.pump || 0;
     u.gun.position.set(u.gunBase.x - 0.04 * ca + pump * 0.025 * ca, u.gunBase.y - 0.07 * ca + Math.abs(pump) * 0.02 * ca, u.gunBase.z + 0.05 * ca);
@@ -15919,6 +15931,7 @@ BR.Squads = {
     remoteShot(f) {
       const g = this.g, a = this.byId.get(f[0]);
       const from = new THREE.Vector3(f[1], f[2], f[3]), to = new THREE.Vector3(f[4], f[5], f[6]);
+      if (a) a._shotT = g.time;      // v1.39: their model raises the gun as they fire
       g.fx.tracer(from, to, false, 0xff9a6b, null); if (g.nearMiss) g.nearMiss(from, to, a);
       if (f[8] && a) { const cp = g.camera.position, d = Math.hypot(from.x - cp.x, from.z - cp.z); BR.Audio.shot(BR.Net.WIDS[f[7]], d, 0, false); }
     }
@@ -17490,7 +17503,9 @@ BR.Input = class Input {
       if (this.usingTouch || this.editing || e.target.closest('[data-act]') || BR.Keybinds.capturing) return;
       this.kbm(); BR.Audio.init();
       if (!this.locked && this.root.requestPointerLock) {
-        try { const p = this.root.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed here */ }
+        // v1.39: raw mouse input (no OS acceleration, and it avoids Chrome's pointer-lock jumps) where supported
+        const plain = () => { try { const q = this.root.requestPointerLock(); if (q && q.catch) q.catch(() => {}); } catch (err) { /* not allowed here */ } };
+        try { const p = this.root.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => plain()); } catch (err) { plain(); }
       }
       if (this.bindDown('Mouse' + e.button, e) && e.button === 1) e.preventDefault();
       this.dragging = true;
@@ -17502,7 +17517,14 @@ BR.Input = class Input {
     window.addEventListener('mousemove', e => {
       if (this.usingTouch) return;
       // With pointer lock: free look. Without (some embeds block it): drag to look.
-      if (this.locked || this.dragging) { this.lookDX += e.movementX * 0.4; this.lookDY += e.movementY * 0.4; }
+      if (this.locked || this.dragging) {
+        // v1.39: some browsers send the odd bogus mouse event with a huge jump (pointer lock re-centring); drop a lone
+        // spike that's far bigger than the recent movement, so the view never skips
+        const mx = e.movementX || 0, my = e.movementY || 0, mag = Math.abs(mx) + Math.abs(my), avg = this._mAvg || 0;
+        if (mag > 700 && mag > avg * 10 + 200) { this._mAvg = avg * 0.9; return; }
+        this._mAvg = avg * 0.8 + mag * 0.2;
+        this.lookDX += mx * 0.4; this.lookDY += my * 0.4;
+      }
     });
     this.root.addEventListener('contextmenu', e => e.preventDefault());
     // Mouse clicks on on-screen buttons (pause, slots, spawn, pickup...) work on desktop too
@@ -21565,8 +21587,11 @@ BR.Game = class Game {
     // up to 120 FPS. The 60 cap skips vsyncs on fast screens (steadier pacing, less heat + battery).
     const raw = now - (this._rafLast || now); this._rafLast = now;
     if (this.state === 'menu' && raw > 3 && raw < 40) { const H = this._hzS || (this._hzS = []); H.push(raw); if (H.length > 90) H.shift(); this._hzN = (this._hzN || 0) + 1; if (H.length >= 30 && this._hzN % 60 === 0) { const s = H.slice().sort((a, b) => a - b); this.screenMs = s[Math.floor(s.length * 0.3)]; this.applyFps(); } }
-    const capMs = this.settings && this.settings.fps === '120' ? 1000 / 120 : 1000 / 60;
-    if (now - this.last < capMs * 0.83) return;
+    // v1.39: only skip vsyncs when the screen is a clean multiple of the cap (120/144 Hz -> 60, 240 Hz -> 120). On any
+    // other refresh (75, 100, 165 Hz...) skipping made frames uneven and the mouse look stutter, so it runs uncapped.
+    const capMs = this.settings && this.settings.fps === '120' ? 1000 / 120 : 1000 / 60, sm = this.screenMs || 0;
+    const ratio = sm > 0 ? capMs / sm : 0, clean = ratio > 1.8 && Math.abs(ratio - Math.round(ratio)) < 0.12;
+    if (clean && now - this.last < capMs - sm * 0.5) return;
     let dt = (now - this.last) / 1000;
     this.last = now;
     if (!(dt > 0)) dt = 0.016;
@@ -22161,6 +22186,7 @@ BR.Game = class Game {
     if (d < 2.2 && d > 0.25) BR.Audio.whiz(Math.max(-1, Math.min(1, (cx * Math.cos(p.yaw) - cz * Math.sin(p.yaw)) / d)));
   }
   onShot(actor, w) {
+    actor._shotT = this.time;            // v1.39: third-person models drop the running carry pose the moment someone fires
     // v1.33 muzzle smoke + sparks off your own gun (every shot on slow guns, every 4th on automatics; heavy guns throw sparks)
     if (actor.isPlayer && !w.def.melee && !w.def.suppressed && this.fx.smoke) {
       const d = w.def, mp = this.muzzlePoint(actor, this._smv || (this._smv = new THREE.Vector3())); this._smN = (this._smN || 0) + 1;
@@ -23934,7 +23960,8 @@ BR.BRNet = class BRNet {
   }
   remoteShot(f) {
     const g = this.g, from = new THREE.Vector3(f[1], f[2], f[3]), to = new THREE.Vector3(f[4], f[5], f[6]);
-    g.fx.tracer(from, to, false, 0xff9a6b, null); if (g.nearMiss) g.nearMiss(from, to, this.actor(f[0]));
+    const sa = this.actor(f[0]); if (sa) sa._shotT = g.time;      // v1.39: their model raises the gun as they fire
+    g.fx.tracer(from, to, false, 0xff9a6b, null); if (g.nearMiss) g.nearMiss(from, to, sa);
     if (f[8]) { const cp = g.camera.position, d = Math.hypot(from.x - cp.x, from.z - cp.z), pan = BR.util.clamp((from.x - cp.x) / Math.max(1, d), -0.8, 0.8); if (d < 150) BR.Audio.shot(BR.Net.WIDS[f[7]], d, pan, false); }
   }
 

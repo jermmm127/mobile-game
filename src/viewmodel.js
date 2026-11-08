@@ -379,7 +379,9 @@
       this.adsW = U.damp(this.adsW, p.ads ? 1 : 0, w.def.adsRate || 13, dt);
       const reloading = w.reloadT > 0;
       const sprinting = m.onGround && !m.sliding && sp > run * 0.92 && !p.ads && !p.fireHeld && !reloading && this.drawT <= 0 && this.inspectT <= 0;
-      this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, 7, dt);
+      // v1.39: shooting / aiming / reloading snaps out of the sprint pose at once (it used to ease out over ~0.5 s, so the
+      // first shots came from a lowered, canted gun); easing back into the sprint stays smooth
+      this.sprintW = U.damp(this.sprintW, sprinting ? 1 : 0, sprinting ? 7 : (p.fireHeld || p.ads || reloading ? 40 : 12), dt);
       let hx = 0.2 * s, hy = -0.205, hz = -0.6, ax = 0, ay = -0.13, az = -0.42;
       if (def.melee) { hx = (KP.hx !== undefined ? KP.hx : 0.113) * s; hy = KP.hy !== undefined ? KP.hy : -0.107; hz = KP.hz !== undefined ? KP.hz : -0.43; }      // karambit low in the right of the view, like CS (v1.27.5: a little farther out, same spot on screen)
       if (w.id === 'butterfly') { hx = 0.19 * s; hy = -0.19; hz = -0.43; }

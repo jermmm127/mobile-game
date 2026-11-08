@@ -707,8 +707,11 @@ BR.Game = class Game {
     // up to 120 FPS. The 60 cap skips vsyncs on fast screens (steadier pacing, less heat + battery).
     const raw = now - (this._rafLast || now); this._rafLast = now;
     if (this.state === 'menu' && raw > 3 && raw < 40) { const H = this._hzS || (this._hzS = []); H.push(raw); if (H.length > 90) H.shift(); this._hzN = (this._hzN || 0) + 1; if (H.length >= 30 && this._hzN % 60 === 0) { const s = H.slice().sort((a, b) => a - b); this.screenMs = s[Math.floor(s.length * 0.3)]; this.applyFps(); } }
-    const capMs = this.settings && this.settings.fps === '120' ? 1000 / 120 : 1000 / 60;
-    if (now - this.last < capMs * 0.83) return;
+    // v1.39: only skip vsyncs when the screen is a clean multiple of the cap (120/144 Hz -> 60, 240 Hz -> 120). On any
+    // other refresh (75, 100, 165 Hz...) skipping made frames uneven and the mouse look stutter, so it runs uncapped.
+    const capMs = this.settings && this.settings.fps === '120' ? 1000 / 120 : 1000 / 60, sm = this.screenMs || 0;
+    const ratio = sm > 0 ? capMs / sm : 0, clean = ratio > 1.8 && Math.abs(ratio - Math.round(ratio)) < 0.12;
+    if (clean && now - this.last < capMs - sm * 0.5) return;
     let dt = (now - this.last) / 1000;
     this.last = now;
     if (!(dt > 0)) dt = 0.016;
@@ -1303,6 +1306,7 @@ BR.Game = class Game {
     if (d < 2.2 && d > 0.25) BR.Audio.whiz(Math.max(-1, Math.min(1, (cx * Math.cos(p.yaw) - cz * Math.sin(p.yaw)) / d)));
   }
   onShot(actor, w) {
+    actor._shotT = this.time;            // v1.39: third-person models drop the running carry pose the moment someone fires
     // v1.33 muzzle smoke + sparks off your own gun (every shot on slow guns, every 4th on automatics; heavy guns throw sparks)
     if (actor.isPlayer && !w.def.melee && !w.def.suppressed && this.fx.smoke) {
       const d = w.def, mp = this.muzzlePoint(actor, this._smv || (this._smv = new THREE.Vector3())); this._smN = (this._smN || 0) + 1;

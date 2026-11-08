@@ -337,6 +337,7 @@
     remoteShot(f) {
       const g = this.g, a = this.byId.get(f[0]);
       const from = new THREE.Vector3(f[1], f[2], f[3]), to = new THREE.Vector3(f[4], f[5], f[6]);
+      if (a) a._shotT = g.time;      // v1.39: their model raises the gun as they fire
       g.fx.tracer(from, to, false, 0xff9a6b, null); if (g.nearMiss) g.nearMiss(from, to, a);
       if (f[8] && a) { const cp = g.camera.position, d = Math.hypot(from.x - cp.x, from.z - cp.z); BR.Audio.shot(BR.Net.WIDS[f[7]], d, 0, false); }
     }

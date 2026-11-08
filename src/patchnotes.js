@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.39.0', date: '2026-11-08', title: 'Smooth mouse, instant shooting poses', notes: [
+    'Fixed the mouse skipping on PC. The game now asks the browser for raw mouse input (no OS acceleration, which also avoids the browser\'s pointer-lock jumps) and ignores the rare bogus jump event, while real fast flicks still go through.',
+    'Fixed stutter on 75, 100, 144 and 165 Hz monitors: the 60 / 120 FPS cap now only applies when your screen is an exact multiple of it (120 Hz for 60, 240 Hz for 120). Otherwise the game runs at your screen\'s full rate.',
+    'Shooting while running now shows straight away. Your gun comes out of the sprint pose the moment you fire, aim or reload (it used to take about half a second, so the first shots came from a lowered gun).',
+    'Other players and bots raise their gun out of the running carry the moment they fire, including online players.',
+  ] },
   { v: '1.38.0', date: '2026-11-08', title: '120 FPS, knock freeze frame, full-body running', notes: [
     'New FRAME RATE setting (Settings): 60 FPS or 120 FPS, on phones and computers. 120 FPS needs a 120 Hz (or faster) screen; the game measures your screen and tells you what it can show, and lowers its resolution a little if your device needs it to hold the frame rate. 60 FPS is now a steady cap that uses less battery.',
     'Team modes: the freeze frame (the split second of slow motion, the banner, the flash and the burst) now hits when you KNOCK an enemy down, since the knock is the kill. It no longer waits until they bleed out or get finished, and it doesn\'t play twice. The banner reads KNOCKED (or HEADSHOT KNOCK).',

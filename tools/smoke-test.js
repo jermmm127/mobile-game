@@ -1416,6 +1416,33 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v139 = await page.evaluate(() => {
+    const g = BR.game, out = {}; BR.AntiCheat._testing = true;
+    g.startMatch({ practice: true }); for (let i = 0; i < 20; i++) g.update(1 / 30);
+    const p = g.player, v = g.vmr; p.slots[0] = BR.Weapons.create('rifle'); p.cur = 0; v.lastWeapon = null; for (let i = 0; i < 40; i++) g.update(1 / 60);
+    // sprinting, then pull the trigger: the gun is up within 0.1 s (was ~0.5 s)
+    const m = p.mover; for (let i = 0; i < 60; i++) { m.onGround = true; m.vel.set(0, 0, -BR.CONFIG.move.runSpeed); p.fireHeld = false; v.update(1 / 60, 0, 0); }
+    const sw0 = v.sprintW; for (let i = 0; i < 6; i++) { m.vel.set(0, 0, -BR.CONFIG.move.runSpeed); p.fireHeld = true; v.update(1 / 60, 0, 0); } p.fireHeld = false;
+    out.sprintSnap = sw0 > 0.8 && v.sprintW < 0.15;
+    g.toMenu();
+    // a bot running in the carry pose raises the gun the moment it fires (online players too: a recent shot counts)
+    const a = new BR.Actor(g, { id: 78, name: 'Carry' }); a.slots[0] = BR.Weapons.create('rifle'); a.cur = 0; a.mover.onGround = true; a.mover.vel.set(0, 0, -5.9);
+    g.time = 100; for (let i = 0; i < 90; i++) a.syncMesh(1 / 60); const c0 = a.mesh.userData.carry;
+    a._shotT = g.time; for (let i = 0; i < 6; i++) a.syncMesh(1 / 60);
+    out.carrySnap = c0 > 0.6 && a.mesh.userData.carry < 0.2;
+    // mouse: a lone bogus jump is dropped, real fast flicks are kept
+    const I = g.input;
+    const fire = (x) => { const e = new MouseEvent('mousemove', { movementX: x, movementY: 0 }); window.dispatchEvent(e); };
+    const wasLocked = I.locked, wasTouch = I.usingTouch; I.locked = true; I.usingTouch = false; I._mAvg = 0; I.consumeLook();
+    fire(4); fire(5); fire(1800); const d1 = I.consumeLook()[0];
+    fire(60); fire(220); fire(380); const d2 = I.consumeLook()[0];
+    I.locked = wasLocked; I.usingTouch = wasTouch;
+    out.mouse = Math.abs(d1 - 9 * 0.4) < 0.01 && Math.abs(d2 - 660 * 0.4) < 0.01;
+    // frame cap only skips vsyncs on clean multiples (120 Hz -> 60), never on 75 / 144 / 165 Hz
+    const clean = (cap, hz) => { const capMs = 1000 / cap, sm = 1000 / hz, r = capMs / sm; return r > 1.8 && Math.abs(r - Math.round(r)) < 0.12; };
+    out.cap = clean(60, 120) && clean(120, 240) && !clean(60, 75) && !clean(60, 144) && !clean(60, 165) && !clean(60, 60) && !clean(120, 120);
+    return out;
+  });
   const v138 = await page.evaluate(() => {
     const g = BR.game, out = {}; BR.AntiCheat._testing = true;
     // knockdown in a team mode plays the kill reward (freeze frame) right away, and not again when they die
@@ -1882,6 +1909,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.39 gun snaps out of the sprint / carry pose when shooting, mouse spike filter keeps flicks, frame cap only on clean refresh multiples', Object.values(v139).every(Boolean), v139],
     ['v1.38 knockdown freeze frame in team modes, 60 / 120 FPS setting, full-body run, smooth device-independent view sway', Object.values(v138).every(Boolean), v138],
     ['v1.37 mobile performance: scenery LOD (detailed models only near you), tiled ground, hidden objects skip matrix updates, triangle + draw-call budget, grade in shaders, loot grid, far bots hidden', ['lod', 'nearColors', 'groundTiles', 'budget', 'skipHidden', 'grade', 'grid', 'farHidden'].every(k => v137[k]), v137],
     ['v1.36 glider redeploys in the air (after a Shockwave) and cuts on crouch, cleaner knife draws, rounder trees / pines / bushes / grass, sky never clips', Object.values(v136).every(Boolean), v136],
@@ -2074,7 +2102,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v139, v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();
