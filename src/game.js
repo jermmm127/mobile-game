@@ -68,7 +68,7 @@ BR.Game = class Game {
     // Filmic grade: ACES tone mapping gives soft highlight roll-off, richer mid-tones and
     // more depth than the raw linear output
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.92;
+    this.renderer.toneMappingExposure = 1.0;            // v1.34 golden-hour grade
     const C = BR.CONFIG.camera;
     this.camera = new THREE.PerspectiveCamera(this.baseFov(), 1, C.near, C.far);
     this.camera.rotation.order = 'YXZ';
@@ -203,19 +203,20 @@ BR.Game = class Game {
     this.resurgence = null; document.body.classList.remove('resurgence');
     if (this.scene) this.disposeScene();
     document.body.classList.remove('menulite');
-    const fogCol = 0xbfcfda;                                    // matches the sky dome's horizon band
+    const fogCol = 0xd2d9dc;                                    // v1.34: matches the warmer, softer horizon band of the sky dome
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(fogCol);
     this.scene.fog = new THREE.Fog(fogCol, 70, this.fogFar || 230);
     // Lighting: cool sky / warm ground bounce, a warm key sun from the sky's sun direction,
     // and a faint cool fill from the other side so shaded faces aren't flat
     // v1.21 art direction: a touch more contrast (warmer, stronger key; darker bounce) so forms read clearly
-    this.scene.add(new THREE.HemisphereLight(0xd2e2ff, 0x4f4636, 0.76));
-    const sun = new THREE.DirectionalLight(0xffe9c8, 1.2);
+    // v1.34 golden hour: a warm, stronger key sun, a cooler sky and a deeper warm bounce, so lit faces glow and shade turns blue
+    this.scene.add(new THREE.HemisphereLight(0xbfd6ff, 0x5a4532, 0.66));
+    const sun = new THREE.DirectionalLight(0xffd6a0, 1.5);
     this.sunDir = new THREE.Vector3(420, 300, 300).normalize();
     sun.position.copy(this.sunDir);
     this.scene.add(sun, sun.target);
-    const fill = new THREE.DirectionalLight(0xa9c4ff, 0.22); fill.position.set(-0.5, 0.35, -0.6); this.scene.add(fill);
+    const fill = new THREE.DirectionalLight(0x8fb2ff, 0.32); fill.position.set(-0.5, 0.35, -0.6); this.scene.add(fill);
     this.muzzleLight = new THREE.PointLight(0xffc27a, 0, 9, 2); this.scene.add(this.muzzleLight);   // flashes on your shots
     this.sun = sun;
     this.world = new BR.World(seed, opts);

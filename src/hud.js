@@ -169,6 +169,7 @@ BR.HUD = class HUD {
     mount.innerHTML = `
 <div id="play">
   <canvas id="view"></canvas>
+  <div id="grade"></div>
   <div id="vignette"></div>
   <div id="zone-tint"></div>
   <div id="speedvig"></div>

@@ -1416,6 +1416,13 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v134 = await page.evaluate(() => {
+    const g = BR.game, out = {}; g.startMatch({ practice: true });
+    out.grade = !!document.getElementById('grade') && getComputedStyle(document.getElementById('grade')).pointerEvents === 'none';
+    let sunI = 0; g.scene.traverse(o => { if (o.isDirectionalLight && o === g.sun) sunI = o.intensity; });
+    out.light = Math.abs(g.renderer.toneMappingExposure - 1) < 0.01 && sunI >= 1.4 && g.scene.fog.color.getHex() === 0xd2d9dc;
+    g.toMenu(); return out;
+  });
   const v1331 = await page.evaluate(() => {
     const g = BR.game, out = {}; BR.AntiCheat._testing = true; g.startMatch({ practice: true }); const p = g.player, xh = document.getElementById('crosshair');
     const hidden = id => { p.slots[0] = BR.Weapons.create(id); p.cur = 0; g.vmr.lastWeapon = null; for (let i = 0; i < 30; i++) { g.input.ads = false; g.update(1 / 30); }
@@ -1783,6 +1790,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.34 golden-hour grade: warm key sun, matched fog, grade layer over the view (never blocks touches)', Object.values(v134).every(Boolean), v134],
     ['v1.33.1 crosshair hides while aiming through holo sights, the sniper scope, the DMR prism and the ACOG; iron sights keep it', Object.values(v1331).every(Boolean), v1331],
     ['v1.33 Gun Game / One in the Chamber / Knife Fight, forged blueprint parts (by rarity, ADS-hidden floaters), layered per-weapon muzzle flash', Object.values(v133).every(Boolean), v133],
     ['v1.32.3 ADS: iron-sight guns aim below the crosshair (still zoomed), optics line up on it', Object.values(v1323).every(Boolean), v1323],
@@ -1970,7 +1978,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

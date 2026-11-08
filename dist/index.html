@@ -95,6 +95,9 @@ button { font: inherit; color: inherit; }
 body.in-menu #play > *:not(#view) { display: none !important; }
 body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 
+/* v1.34 cinematic grade: soft cool vignette framing the view + a faint warm wash from the sun side (cheap: one static gradient layer) */
+#grade { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 46%, transparent 58%, rgba(12, 16, 34, 0.34) 100%), linear-gradient(200deg, rgba(255, 196, 130, 0.07), transparent 45%); }
+body.menulite #grade { display: none; }
 #vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(200, 20, 50, 0.6) 100%); transition: opacity 0.2s; }
 #zone-tint { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(138, 107, 255, 0.04) 30%, rgba(138, 107, 255, 0.42) 100%); transition: opacity 0.3s; }
 #zone-tint.on { opacity: 1; }
@@ -1749,7 +1752,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.33.1',
+  version: '1.34.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2043,6 +2046,11 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.34.0', date: '2026-11-08', title: 'Golden hour', notes: [
+    'New look for every map: warm golden-hour light. The sun is warmer and stronger, shade turns cool blue, and buildings and terrain now stand out instead of looking flat.',
+    'The sky is a deeper blue overhead with a wide warm glow around the sun, and the haze in the distance matches the horizon so far-off hills fade smoothly.',
+    'Richer, sunnier grass, and a soft cinematic vignette framing the screen.',
+  ] },
   { v: '1.33.1', date: '2026-11-08', title: 'Cleaner optics', notes: [
     'Aiming through an optic now hides the crosshair, so the reticle is your only aim point: the holo sights (Holo AR, Talon Burst), the Sniper scope, the DMR prism scope and the LMG ACOG. Iron-sight guns keep the crosshair.',
   ] },
@@ -4240,7 +4248,7 @@ BR.World = class World {
     gt.repeat.set(S / 5, S / 5);
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
-    const GC = this.groundCols || [0x6b8649, 0x58713f, 0x9a9462];
+    const GC = this.groundCols || [0x6f8f45, 0x55733a, 0xa89a5c];      // v1.34: richer, sunnier grass
     const grass = new THREE.Color(GC[0]), grass2 = new THREE.Color(GC[1]), dry = new THREE.Color(GC[2]), dirt = new THREE.Color(0x9c8460);
     const c = new THREE.Color();
     const towns = this.towns || [];
@@ -4299,13 +4307,13 @@ BR.World = class World {
     const SUN = new THREE.Vector3(420, 300, 300).normalize();
     const skyG = new THREE.SphereGeometry(900, 32, 16);
     const sp = skyG.attributes.position, sc = new Float32Array(sp.count * 3);
-    const zen = new THREE.Color(0x2a5a96), mid = new THREE.Color(0x6a98c4), hor = new THREE.Color(0xc4d4de), warm = new THREE.Color(0xf2c896), c = new THREE.Color(), v = new THREE.Vector3();
+    const zen = new THREE.Color(0x1d4a92), mid = new THREE.Color(0x5b94d2), hor = new THREE.Color(0xd5dcdf), warm = new THREE.Color(0xffc98a), c = new THREE.Color(), v = new THREE.Vector3();     // v1.34: deeper zenith, warmer sun glow
     for (let i = 0; i < sp.count; i++) {
       v.set(sp.getX(i), sp.getY(i), sp.getZ(i)).normalize();
       const k = BR.util.clamp(v.y, 0, 1);
       c.copy(hor).lerp(mid, Math.pow(k, 0.5)).lerp(zen, Math.pow(k, 1.6));
       const toSun = Math.max(0, v.dot(SUN));
-      c.lerp(warm, Math.pow(toSun, 6) * (1 - k) * 0.85);                          // warm glow low near the sun
+      c.lerp(warm, Math.min(1, Math.pow(toSun, 4) * (1 - k) * 1.05 + Math.pow(toSun, 24) * 0.4));      // warm glow low near the sun (wider + a hot core)
       if (v.y < 0) c.copy(hor).lerp(new THREE.Color(0x9fb8c8), Math.min(1, -v.y * 3));
       sc[i * 3] = c.r; sc[i * 3 + 1] = c.g; sc[i * 3 + 2] = c.b;
     }
@@ -19036,6 +19044,7 @@ BR.HUD = class HUD {
     mount.innerHTML = `
 <div id="play">
   <canvas id="view"></canvas>
+  <div id="grade"></div>
   <div id="vignette"></div>
   <div id="zone-tint"></div>
   <div id="speedvig"></div>
@@ -20336,7 +20345,7 @@ BR.Game = class Game {
     // Filmic grade: ACES tone mapping gives soft highlight roll-off, richer mid-tones and
     // more depth than the raw linear output
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.92;
+    this.renderer.toneMappingExposure = 1.0;            // v1.34 golden-hour grade
     const C = BR.CONFIG.camera;
     this.camera = new THREE.PerspectiveCamera(this.baseFov(), 1, C.near, C.far);
     this.camera.rotation.order = 'YXZ';
@@ -20471,19 +20480,20 @@ BR.Game = class Game {
     this.resurgence = null; document.body.classList.remove('resurgence');
     if (this.scene) this.disposeScene();
     document.body.classList.remove('menulite');
-    const fogCol = 0xbfcfda;                                    // matches the sky dome's horizon band
+    const fogCol = 0xd2d9dc;                                    // v1.34: matches the warmer, softer horizon band of the sky dome
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(fogCol);
     this.scene.fog = new THREE.Fog(fogCol, 70, this.fogFar || 230);
     // Lighting: cool sky / warm ground bounce, a warm key sun from the sky's sun direction,
     // and a faint cool fill from the other side so shaded faces aren't flat
     // v1.21 art direction: a touch more contrast (warmer, stronger key; darker bounce) so forms read clearly
-    this.scene.add(new THREE.HemisphereLight(0xd2e2ff, 0x4f4636, 0.76));
-    const sun = new THREE.DirectionalLight(0xffe9c8, 1.2);
+    // v1.34 golden hour: a warm, stronger key sun, a cooler sky and a deeper warm bounce, so lit faces glow and shade turns blue
+    this.scene.add(new THREE.HemisphereLight(0xbfd6ff, 0x5a4532, 0.66));
+    const sun = new THREE.DirectionalLight(0xffd6a0, 1.5);
     this.sunDir = new THREE.Vector3(420, 300, 300).normalize();
     sun.position.copy(this.sunDir);
     this.scene.add(sun, sun.target);
-    const fill = new THREE.DirectionalLight(0xa9c4ff, 0.22); fill.position.set(-0.5, 0.35, -0.6); this.scene.add(fill);
+    const fill = new THREE.DirectionalLight(0x8fb2ff, 0.32); fill.position.set(-0.5, 0.35, -0.6); this.scene.add(fill);
     this.muzzleLight = new THREE.PointLight(0xffc27a, 0, 9, 2); this.scene.add(this.muzzleLight);   // flashes on your shots
     this.sun = sun;
     this.world = new BR.World(seed, opts);

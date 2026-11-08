@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.34.0', date: '2026-11-08', title: 'Golden hour', notes: [
+    'New look for every map: warm golden-hour light. The sun is warmer and stronger, shade turns cool blue, and buildings and terrain now stand out instead of looking flat.',
+    'The sky is a deeper blue overhead with a wide warm glow around the sun, and the haze in the distance matches the horizon so far-off hills fade smoothly.',
+    'Richer, sunnier grass, and a soft cinematic vignette framing the screen.',
+  ] },
   { v: '1.33.1', date: '2026-11-08', title: 'Cleaner optics', notes: [
     'Aiming through an optic now hides the crosshair, so the reticle is your only aim point: the holo sights (Holo AR, Talon Burst), the Sniper scope, the DMR prism scope and the LMG ACOG. Iron-sight guns keep the crosshair.',
   ] },

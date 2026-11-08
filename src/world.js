@@ -1340,7 +1340,7 @@ BR.World = class World {
     gt.repeat.set(S / 5, S / 5);
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
-    const GC = this.groundCols || [0x6b8649, 0x58713f, 0x9a9462];
+    const GC = this.groundCols || [0x6f8f45, 0x55733a, 0xa89a5c];      // v1.34: richer, sunnier grass
     const grass = new THREE.Color(GC[0]), grass2 = new THREE.Color(GC[1]), dry = new THREE.Color(GC[2]), dirt = new THREE.Color(0x9c8460);
     const c = new THREE.Color();
     const towns = this.towns || [];
@@ -1399,13 +1399,13 @@ BR.World = class World {
     const SUN = new THREE.Vector3(420, 300, 300).normalize();
     const skyG = new THREE.SphereGeometry(900, 32, 16);
     const sp = skyG.attributes.position, sc = new Float32Array(sp.count * 3);
-    const zen = new THREE.Color(0x2a5a96), mid = new THREE.Color(0x6a98c4), hor = new THREE.Color(0xc4d4de), warm = new THREE.Color(0xf2c896), c = new THREE.Color(), v = new THREE.Vector3();
+    const zen = new THREE.Color(0x1d4a92), mid = new THREE.Color(0x5b94d2), hor = new THREE.Color(0xd5dcdf), warm = new THREE.Color(0xffc98a), c = new THREE.Color(), v = new THREE.Vector3();     // v1.34: deeper zenith, warmer sun glow
     for (let i = 0; i < sp.count; i++) {
       v.set(sp.getX(i), sp.getY(i), sp.getZ(i)).normalize();
       const k = BR.util.clamp(v.y, 0, 1);
       c.copy(hor).lerp(mid, Math.pow(k, 0.5)).lerp(zen, Math.pow(k, 1.6));
       const toSun = Math.max(0, v.dot(SUN));
-      c.lerp(warm, Math.pow(toSun, 6) * (1 - k) * 0.85);                          // warm glow low near the sun
+      c.lerp(warm, Math.min(1, Math.pow(toSun, 4) * (1 - k) * 1.05 + Math.pow(toSun, 24) * 0.4));      // warm glow low near the sun (wider + a hot core)
       if (v.y < 0) c.copy(hor).lerp(new THREE.Color(0x9fb8c8), Math.min(1, -v.y * 3));
       sc[i * 3] = c.r; sc[i * 3 + 1] = c.g; sc[i * 3 + 2] = c.b;
     }
