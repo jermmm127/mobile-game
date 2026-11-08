@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.35.0',
+  version: '1.36.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -123,6 +123,7 @@ BR.CONFIG = {
     chuteFallSpeed: 5.5,    // parachute open: slow descent...
     chuteGlideSpeed: 13,    // ...and gentler steering
     chuteAutoHeight: 22,    // the chute opens by itself this high above the ground
+    glideMinHeight: 7,      // v1.36: redeploy the glider in mid-air from this high up (BR islands)
   },
 
   camera: {

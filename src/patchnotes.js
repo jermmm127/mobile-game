@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.36.0', date: '2026-11-08', title: 'Glider redeploy + nicer nature', notes: [
+    'Redeploy your glider in mid-air. After a Shockwave launch, a jump off a cliff or any big fall (at least 7 m above the ground), press JUMP to open the glider again. The jump button reads GLIDE when you can.',
+    'Cut the glider to drop fast: press CROUCH (the button reads CUT) while gliding. It stays cut until you land, or until you press JUMP to open it again.',
+    'Cleaner knife draws for every knife (Tracker, Bayonet, Karambit, Butterfly). They are shorter and smoother, the arm no longer stretches out of frame, and each one settles straight into the idle pose.',
+    'New nature models across the Battle Royale and Resurgence islands. Leafy trees have full rounded crowns that are darker underneath and sunlit on top, plus a curved trunk with roots and branches. Pines have five jagged, drooping tiers of needles. Bushes are leafy clusters, grass grows in fanned blades, and rocks and boulders are chiselled stone with moss on top.',
+    'Fixed a big pale dome that could appear in the sky when you were far from the middle of the map.',
+  ] },
   { v: '1.35.0', date: '2026-11-08', title: 'Real terrain + new maps', notes: [
     'The Battle Royale and Resurgence islands now have real terrain: rolling hills, ridge lines up to about 30 m high, valleys and slopes running down to the beaches. Every hill can be climbed on foot. Hills block bullets and line of sight, so high ground and cover finally matter.',
     'Fixed the old flat terrain: towns, yards and outposts now sit level on flattened ground that blends into the hills. Containers, towers, rocks and props sit on the slopes instead of floating or splitting apart. Trees, bushes, cars and ponds follow the ground, and the big blocky rock walls are gone (the terrain has real ridges now).',

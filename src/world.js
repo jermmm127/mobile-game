@@ -1600,9 +1600,11 @@ BR.World = class World {
     const sunPos = SUN.clone().multiplyScalar(800);
     const sun = new THREE.Mesh(new THREE.CircleGeometry(22, 32), new THREE.MeshBasicMaterial({ color: 0xfffaea, fog: false, depthWrite: false }));
     sun.position.copy(sunPos); sun.lookAt(0, 0, 0); sun.renderOrder = -9; scene.add(sun);
+    this.skyRig = [sky, sun].map(m => ({ o: m, x: m.position.x, y: m.position.y, z: m.position.z }));      // v1.36: follows the camera (no far-plane clipping off-centre)
     for (const [sz, tex, op] of [[150, glowTex('rgba(255,250,230,1)', 'rgba(255,220,150,0.55)'), 0.9], [360, glowTex('rgba(255,230,180,0.45)', 'rgba(255,190,120,0.12)'), 0.5]]) {
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: op, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
       halo.position.copy(sunPos).multiplyScalar(0.98); halo.scale.set(sz, sz, 1); halo.renderOrder = -8; scene.add(halo);
+      this.skyRig.push({ o: halo, x: halo.position.x, y: halo.position.y, z: halo.position.z });
     }
 
     // Mountains: far snow-capped blue range + nearer green hills (jittered cones, vertex colours)
@@ -1687,57 +1689,39 @@ BR.World = class World {
     // varied greens, pines get four drooping tiers. All instanced, colour-varied per tree.
     const leafy = this.trees.filter(t => !t.pine), pines = this.trees.filter(t => t.pine), tc = new THREE.Color();
     if (this.trees.length) {
-      const trunkG = new THREE.CylinderGeometry(0.17, 0.3, 1, 7); trunkG.translate(0, 0.5, 0);
-      const flareG = new THREE.CylinderGeometry(0.3, 0.46, 0.35, 7); flareG.translate(0, 0.175, 0);
-      const trunk = this.collector(trunkG, new THREE.MeshLambertMaterial({ color: 0x6a4a2e, flatShading: true }), this.trees.length);
-      const flare = this.collector(flareG, new THREE.MeshLambertMaterial({ color: 0x5a3e26, flatShading: true }), this.trees.length);
+      const trunk = this.collector(trunkGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true }), this.trees.length);
+      const BK = [0x54402e, 0x4a3a2a, 0x5e4834];
       this.trees.forEach((t, i) => {
         o.position.set(t.x, 0, t.z); o.rotation.set(0, t.tone * 6, 0); o.scale.set(1, t.h + 0.6, 1); o.updateMatrix(); trunk.setMatrixAt(i, o.matrix);
-        o.scale.set(1, 1, 1); o.updateMatrix(); flare.setMatrixAt(i, o.matrix);
+        trunk.setColorAt(i, tc.setHex(BK[Math.floor(t.tone * 7) % 3]));
       });
-
     }
     if (leafy.length) {
-      // one merged canopy geometry (smooth main blob + 4 low-poly blobs, shaded per blob), one instance per tree
-      const lay = [[0, 0.35, 0, 1, 1], [0.55, 0.05, 0.25, 0.68, 0], [-0.5, 0.1, -0.3, 0.7, 0], [0.15, 0.95, -0.05, 0.62, 0], [-0.2, 0.0, 0.55, 0.6, 0]];
-      const cp = [], cn = [], cc = [], sh = new THREE.Color(), mtx = new THREE.Matrix4();
-      lay.forEach(([dx, dy, dz, sc, det], j) => {
-        const b = new THREE.IcosahedronGeometry(1, det).toNonIndexed();
-        b.applyMatrix4(mtx.makeRotationY(j * 1.3)); b.scale(sc, sc * 0.92, sc); b.translate(dx, dy, dz);
-        // smooth sphere normals (round shading on a low-poly blob)
-        const pa = b.attributes.position, k = 0.86 + (j === 3 ? 0.24 : j * 0.04), nv = new THREE.Vector3();
-        for (let i = 0; i < pa.count; i++) {
-          nv.set(pa.getX(i) - dx, (pa.getY(i) - dy) / 0.92, pa.getZ(i) - dz).normalize();
-          cp.push(pa.getX(i), pa.getY(i), pa.getZ(i)); cn.push(nv.x, nv.y, nv.z); sh.setScalar(k * (0.82 + 0.18 * Math.max(0, nv.y))); cc.push(sh.r, sh.g, sh.b);
-        }
-      });
-      const canopy = new THREE.BufferGeometry();
-      canopy.setAttribute('position', new THREE.Float32BufferAttribute(cp, 3)); canopy.setAttribute('normal', new THREE.Float32BufferAttribute(cn, 3)); canopy.setAttribute('color', new THREE.Float32BufferAttribute(cc, 3));
-      canopy.computeBoundingSphere();
-      const lv = this.collector(canopy, new THREE.MeshLambertMaterial({ vertexColors: true }));
-      const GR = [0x4f8a3a, 0x3f7a34, 0x5e9a40, 0x6aa648, 0x4a7f3e];
-      leafy.forEach((t, i) => {
-        o.position.set(t.x, t.h, t.z); o.scale.set(t.s, t.s, t.s); o.rotation.set(0, t.tone * 6.28, 0);
-        o.updateMatrix(); lv.setMatrixAt(i, o.matrix); lv.setColorAt(i, tc.setHex(GR[Math.floor(t.tone * GR.length)]));
+      // v1.36: two canopy shapes (8 lumpy blobs each, soft dome shading), one instance per tree
+      const geos = [canopyGeometry(this.seed + 101), canopyGeometry(this.seed + 202)], mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+      const groups = [leafy.filter((t, i) => i % 2 === 0), leafy.filter((t, i) => i % 2 === 1)];
+      const GR = [0x4f8a3a, 0x3f7a34, 0x5e9a40, 0x6aa648, 0x4a7f3e, 0x74a24a];
+      groups.forEach((list, gi) => {
+        if (!list.length) return;
+        const lv = this.collector(geos[gi], mat, list.length);
+        list.forEach((t, i) => {
+          o.position.set(t.x, t.h, t.z); o.scale.set(t.s, t.s * (0.92 + t.tone * 0.16), t.s); o.rotation.set(0, t.tone * 6.28, 0);
+          o.updateMatrix(); lv.setMatrixAt(i, o.matrix); lv.setColorAt(i, tc.setHex(GR[Math.floor(t.tone * GR.length)]));
+        });
       });
     }
     if (pines.length) {
-      const cone = new THREE.ConeGeometry(1, 1, 8, 1, false);
-      const cp2 = cone.attributes.position;
-      for (let i = 0; i < cp2.count; i++) if (cp2.getY(i) < 0) cp2.setY(i, cp2.getY(i) + (Math.hypot(cp2.getX(i), cp2.getZ(i)) > 0.5 ? -0.12 : 0));   // droopy tips
-      cone.computeVertexNormals();
-      const pm = this.collector(cone, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), pines.length * 4);
-      const PG = [0x2f5a35, 0x2a5232, 0x376640, 0x2c5e3c];
-      let k = 0;
-      pines.forEach((t, i) => {
-        for (let tier = 0; tier < 4; tier++) {
-          const w = t.s * (1.2 - tier * 0.24), hh = t.s * (1.25 - tier * 0.15);
-          o.position.set(t.x, t.h * 0.45 + tier * t.s * 0.62 + hh / 2, t.z); o.scale.set(w, hh, w); o.rotation.set(0, i + tier * 0.7, 0);
-          o.updateMatrix(); pm.setMatrixAt(k, o.matrix);
-          pm.setColorAt(k++, tc.setHex(PG[Math.floor(t.tone * PG.length)]).multiplyScalar(0.9 + tier * 0.06));
-        }
+      // v1.36: one merged five-tier pine per tree (jagged drooping tiers, shaded toward the trunk)
+      const geos = [pineGeometry(0), pineGeometry(1.7)], mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+      const PG = [0x2f5a35, 0x2a5232, 0x376640, 0x2c5e3c, 0x3a6a3a];
+      [0, 1].forEach(gi => {
+        const list = pines.filter((t, i) => i % 2 === gi); if (!list.length) return;
+        const pm = this.collector(geos[gi], mat, list.length);
+        list.forEach((t, i) => {
+          o.position.set(t.x, t.h * 0.45, t.z); o.scale.setScalar(t.s); o.rotation.set(0, t.tone * 6.28, 0);
+          o.updateMatrix(); pm.setMatrixAt(i, o.matrix); pm.setColorAt(i, tc.setHex(PG[Math.floor(t.tone * PG.length)]).multiplyScalar(1.12));
+        });
       });
-
     }
 
     // Cars: one modelled, vertex-coloured mesh per car (shared geometry per paint colour)
@@ -1752,17 +1736,22 @@ BR.World = class World {
     // ---- Natural rock: ridges / rocks / ledges are hidden collision boxes drawn as jittered,
     // moss-topped boulders; plateaus get rocky skirts so nothing reads as a box.
     const rockGeo = (seed) => {
-      const g = (seed % 2 ? new THREE.IcosahedronGeometry(1, 0) : new THREE.DodecahedronGeometry(1, 0)).toNonIndexed(), p = g.attributes.position, rr = BR.util.rng(seed), jit = {};
+      const g = new THREE.IcosahedronGeometry(1, 1).toNonIndexed(), p = g.attributes.position, rr = BR.util.rng(seed), jit = {};      // v1.36: more facets, chiselled
       for (let i = 0; i < p.count; i++) {
         const k0 = p.getX(i).toFixed(3) + p.getY(i).toFixed(3) + p.getZ(i).toFixed(3);
-        const f = jit[k0] || (jit[k0] = 0.72 + rr() * 0.5);
-        p.setXYZ(i, p.getX(i) * f, p.getY(i) * f, p.getZ(i) * f);
+        const f = jit[k0] || (jit[k0] = 0.8 + rr() * 0.32);
+        const y = p.getY(i), fy = y > 0.55 ? 0.55 + (y - 0.55) * 0.35 : y < -0.6 ? -0.6 + (y + 0.6) * 0.3 : y;      // flattened top + base
+        p.setXYZ(i, p.getX(i) * f, fy * f, p.getZ(i) * f);
       }
       g.computeBoundingBox(); const bb = g.boundingBox, sz = new THREE.Vector3(); bb.getSize(sz); const ct = new THREE.Vector3(); bb.getCenter(ct);
       g.translate(-ct.x, -ct.y, -ct.z); g.scale(1 / sz.x, 1 / sz.y, 1 / sz.z);                    // unit cube [-0.5, 0.5]
       g.computeVertexNormals();
       const n = g.attributes.normal, cl = new Float32Array(p.count * 3), moss = new THREE.Color(0x6f9a4a), stone = new THREE.Color(1, 1, 1), cc = new THREE.Color();
-      for (let i = 0; i < p.count; i++) { cc.copy(stone).lerp(moss, BR.util.clamp((n.getY(i) - 0.55) * 2.2, 0, 0.85)); cl[i * 3] = cc.r; cl[i * 3 + 1] = cc.g; cl[i * 3 + 2] = cc.b; }
+      for (let i = 0; i < p.count; i++) {
+        const y = p.getY(i), ao = 0.68 + 0.32 * BR.util.clamp(y + 0.5, 0, 1), strata = 1 + 0.05 * Math.sin(y * 19 + seed);
+        cc.copy(stone).multiplyScalar(ao * strata).lerp(moss, BR.util.clamp((n.getY(i) - 0.6) * 2.2, 0, 0.8));
+        cl[i * 3] = cc.r; cl[i * 3 + 1] = cc.g; cl[i * 3 + 2] = cc.b;
+      }
       g.setAttribute('color', new THREE.BufferAttribute(cl, 3));
       return g;
     };
@@ -1842,8 +1831,8 @@ BR.World = class World {
     });
     inst(twoTone(new THREE.CylinderGeometry(0.85, 1, 1, 9), 0x5e4129, 0xc9a46c), woodMat, P.stumps, q => { o.position.set(q.x, q.h / 2, q.z); o.scale.set(q.s, q.h, q.s); o.rotation.set(0, q.x, 0); });
     // loose boulders round the rocks
-    inst(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x8a8c86, flatShading: true }), P.boulders, q => {
-      o.position.set(q.x, q.s * 0.45, q.z); o.scale.set(q.s * 1.2, q.s * 0.8, q.s); o.rotation.set(q.x, q.z, 0);
+    inst(rockGeo(41), new THREE.MeshLambertMaterial({ color: 0x9a9c96, vertexColors: true, flatShading: true }), P.boulders, q => {
+      o.position.set(q.x, q.s * 0.55, q.z); o.scale.set(q.s * 2.3, q.s * 1.5, q.s * 2); o.rotation.set((q.x % 1) * 0.3, q.z, 0);
     });
     // ponds: sandy shore, water, lily pads, reeds
     for (const q of P.ponds) {
@@ -1863,24 +1852,20 @@ BR.World = class World {
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
     const nB = this.arena ? 0 : Math.floor(700 * detail), nG = this.arena ? 0 : Math.floor(5000 * detail);
-    const bushG = new THREE.IcosahedronGeometry(1, 1); bushG.computeVertexNormals();
-    const bush = this.collector(bushG, new THREE.MeshLambertMaterial({ color: 0xffffff }), nB * 2);
+    const bush = this.collector(bushGeometry(this.seed + 9), new THREE.MeshLambertMaterial({ vertexColors: true }), nB);      // v1.36: clustered, shaded bushes
     const BG = [0x55803e, 0x4a7a3a, 0x5f8f42, 0x6b9446, 0x47703a], bc = new THREE.Color();
-    const tuft = this.collector(new THREE.ConeGeometry(0.12, 1, 3), new THREE.MeshLambertMaterial({ color: 0x66804a }), nG);
+    const tuft = this.collector(grassTuftGeometry(), new THREE.MeshLambertMaterial({ color: 0x6f8a4c, vertexColors: true, side: THREE.DoubleSide }), nG);      // v1.36: fanned blades
     let bi = 0, gi = 0;
     for (let tries = 0; tries < (nB + nG) * 2 && (bi < nB || gi < nG); tries++) {
       const x = (R() * 2 - 1) * (H - 4), z = (R() * 2 - 1) * (H - 4);
       if (!this.free(x - 0.6, z - 0.6, x + 0.6, z + 0.6, 0)) continue;
-      if (bi < nB * 2 && R() < 0.12) {
-        const s = 0.45 + R() * 0.6, base = BG[Math.floor(R() * BG.length)];
-        for (let j = 0; j < 2; j++) {
-          const a = R() * 6.28, r = j ? s * 0.5 : 0, ss = s * (j ? 0.75 : 1);
-          o.position.set(x + Math.cos(a) * r, ss * 0.55, z + Math.sin(a) * r); o.scale.set(ss * 1.15, ss * 0.85, ss * 1.15); o.rotation.set(R(), R() * 6, 0);
-          o.updateMatrix(); bush.setMatrixAt(bi, o.matrix); bush.setColorAt(bi++, bc.setHex(base).multiplyScalar(0.85 + j * 0.1));
-        }
+      if (bi < nB && R() < 0.12) {
+        const s = 0.5 + R() * 0.6;
+        o.position.set(x, s * 0.42, z); o.scale.set(s * 1.1, s * (0.8 + R() * 0.3), s * 1.1); o.rotation.set(0, R() * 6, 0);
+        o.updateMatrix(); bush.setMatrixAt(bi, o.matrix); bush.setColorAt(bi++, bc.setHex(BG[Math.floor(R() * BG.length)]).multiplyScalar(1.1));
       } else if (gi < nG) {
-        const s = 0.25 + R() * 0.35;
-        o.position.set(x, s * 0.5, z); o.scale.set(1, s, 1); o.rotation.set((R() - 0.5) * 0.4, R() * 6, 0);
+        const s = 0.3 + R() * 0.35;
+        o.position.set(x, 0, z); o.scale.set(s * 1.2, s, s * 1.2); o.rotation.set(0, R() * 6, 0);
         o.updateMatrix(); tuft.setMatrixAt(gi++, o.matrix);
       }
     }
@@ -1980,6 +1965,135 @@ function carGeometry(paint) {
   out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   out.computeBoundingSphere(); out._shared = true;
   return (CAR_CACHE[paint] = out);
+}
+
+// ---- v1.36 scenery geometry helpers: lumpy watertight blobs, smooth normals, colour merges ----
+function sceneryHash(x, y, z, s) { const h = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719 + s * 4.581) * 43758.5453; return h - Math.floor(h); }
+// Icosphere with every shared corner pushed by the same amount (no cracks), plus a soft wave.
+function lumpyBlob(detail, amp, seed) {
+  const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const n = sceneryHash(Math.round(x * 500), Math.round(y * 500), Math.round(z * 500), seed);
+    const w = Math.sin(x * 2.3 + seed) * Math.sin(y * 2.9 + seed * 0.7) * Math.sin(z * 2.1 + seed * 1.3);
+    const f = 1 + amp * ((n - 0.5) * 0.9 + w * 0.7);
+    p.setXYZ(i, x * f, y * f, z * f);
+  }
+  return g;
+}
+// Area-weighted smooth normals over shared positions of a non-indexed geometry.
+function smoothNormals(g) {
+  const p = g.attributes.position, acc = new Map(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const key = i => Math.round(p.getX(i) * 1000) + ',' + Math.round(p.getY(i) * 1000) + ',' + Math.round(p.getZ(i) * 1000);
+  for (let i = 0; i + 2 < p.count; i += 3) {
+    a.fromBufferAttribute(p, i); b.fromBufferAttribute(p, i + 1).sub(a); c.fromBufferAttribute(p, i + 2).sub(a); b.cross(c);
+    for (let k = 0; k < 3; k++) { const kk = key(i + k); let v = acc.get(kk); if (!v) acc.set(kk, v = new THREE.Vector3()); v.add(b); }
+  }
+  const nn = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) { const v = acc.get(key(i)).clone().normalize(); nn[i * 3] = v.x; nn[i * 3 + 1] = v.y; nn[i * 3 + 2] = v.z; }
+  g.setAttribute('normal', new THREE.BufferAttribute(nn, 3));
+  return g;
+}
+// Merge non-indexed parts into one vertex-coloured geometry. shade(x, y, z, nx, ny, nz, part) -> [r, g, b]
+function mergeShaded(parts, shade) {
+  let n = 0; parts.forEach(q => n += q.attributes.position.count);
+  const P = new Float32Array(n * 3), N = new Float32Array(n * 3), C = new Float32Array(n * 3);
+  let o = 0;
+  parts.forEach((q, pi) => {
+    if (!q.attributes.normal) q.computeVertexNormals();
+    const pa = q.attributes.position, na = q.attributes.normal;
+    for (let i = 0; i < pa.count; i++, o++) {
+      const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i), nx = na.getX(i), ny = na.getY(i), nz = na.getZ(i);
+      P[o * 3] = x; P[o * 3 + 1] = y; P[o * 3 + 2] = z; N[o * 3] = nx; N[o * 3 + 1] = ny; N[o * 3 + 2] = nz;
+      const c = shade(x, y, z, nx, ny, nz, pi); C[o * 3] = c[0]; C[o * 3 + 1] = c[1]; C[o * 3 + 2] = c[2];
+    }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(N, 3)); g.setAttribute('color', new THREE.BufferAttribute(C, 3));
+  g.computeBoundingSphere();
+  return g;
+}
+// Leafy canopy: a dome of 8 lumpy blobs with soft unified shading (darker underneath, sunlit crown).
+function canopyGeometry(seed) {
+  const r = BR.util.rng(seed), parts = [], lay = [[0, 0.35, 0, 1.0]];
+  for (let i = 0; i < 5; i++) { const a = i / 5 * 6.283 + r() * 0.6, d = 0.55 + r() * 0.15; lay.push([Math.cos(a) * d, 0.02 + r() * 0.25, Math.sin(a) * d, 0.58 + r() * 0.14]); }
+  for (let i = 0; i < 2; i++) { const a = r() * 6.283; lay.push([Math.cos(a) * 0.25, 0.85 + r() * 0.12, Math.sin(a) * 0.25, 0.55 + r() * 0.08]); }
+  const tint = [];
+  lay.forEach(([dx, dy, dz, sc], j) => {
+    const b = smoothNormals(lumpyBlob(1, 0.2, seed + j * 7));
+    b.scale(sc, sc * 0.86, sc); b.translate(dx, dy, dz);
+    const pa = b.attributes.position, na = b.attributes.normal, v = new THREE.Vector3();
+    for (let i = 0; i < pa.count; i++) {        // lean blob normals toward the canopy's overall dome so it reads as one crown
+      v.set(pa.getX(i), (pa.getY(i) - 0.3) * 1.15, pa.getZ(i)).normalize().multiplyScalar(0.45).add(new THREE.Vector3(na.getX(i), na.getY(i), na.getZ(i)).multiplyScalar(0.55)).normalize();
+      na.setXYZ(i, v.x, v.y, v.z);
+    }
+    parts.push(b); tint.push(0.93 + r() * 0.14);
+  });
+  return mergeShaded(parts, (x, y, z, nx, ny, nz, pi) => {
+    const ao = BR.util.clamp((y + 0.55) / 1.7, 0, 1), k = (0.52 + 0.48 * Math.pow(ao, 0.8)) * tint[pi], sun = Math.max(0, ny) * ao;
+    return [k * (1 + 0.1 * sun), k * (1 + 0.06 * sun), k * (0.95 - 0.12 * sun)];
+  });
+}
+// Trunk with root flare, a gentle bend, two stub branches and bark shading (unit height; scaled per tree).
+function trunkGeometry() {
+  const g = new THREE.CylinderGeometry(0.11, 0.24, 1, 9, 6).toNonIndexed(), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i) + 0.5, a = Math.atan2(p.getZ(i), p.getX(i));
+    let f = 1; if (y < 0.14) f += (1 - y / 0.14) * (0.55 + 0.35 * Math.cos(a * 5));        // roots
+    p.setXYZ(i, p.getX(i) * f + Math.sin(y * 3.1) * 0.05, y, p.getZ(i) * f + Math.sin(y * 2.3 + 1) * 0.03);
+  }
+  const parts = [smoothNormals(g)], m = new THREE.Matrix4();
+  for (const [ya, yy, tilt] of [[0.4, 0.68, 0.75], [2.8, 0.78, 0.65]]) {
+    const br = new THREE.CylinderGeometry(0.035, 0.065, 0.32, 6).toNonIndexed(); br.translate(0, 0.16, 0);
+    br.applyMatrix4(m.makeRotationZ(tilt)); br.applyMatrix4(m.makeRotationY(ya)); br.translate(Math.sin(yy * 3.1) * 0.05, yy, Math.sin(yy * 2.3 + 1) * 0.03);
+    parts.push(br);
+  }
+  return mergeShaded(parts, (x, y, z) => {
+    const a = Math.atan2(z, x), k = (0.62 + 0.38 * BR.util.clamp(y * 1.6, 0, 1)) * (0.9 + 0.1 * Math.sin(a * 7 + y * 9));
+    return [k, k * 0.97, k * 0.93];
+  });
+}
+// Pine: five jagged needle tiers, darker toward the trunk and under each tier (unit scale; base at y 0).
+function pineGeometry(seed) {
+  const parts = [], m = new THREE.Matrix4();
+  for (let t = 0; t < 5; t++) {
+    const w = 1.25 - t * 0.22, hh = 1.15 - t * 0.12, g = new THREE.ConeGeometry(1, 1, 12, 2).toNonIndexed(), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x), j = Math.round((a + Math.PI) / (Math.PI * 2) * 12) % 2;
+      if (y < -0.45 && Math.hypot(x, z) > 0.5) p.setXYZ(i, x * (j ? 0.8 : 1.04), y - (j ? 0 : 0.12), z * (j ? 0.8 : 1.04));     // jagged drooping rim
+      else if (Math.abs(y) < 0.01) p.setXYZ(i, x * 0.96, y - 0.03, z * 0.96);
+    }
+    g.applyMatrix4(m.makeRotationY(t * 0.55 + seed)); g.scale(w, hh, w); g.translate(0, t * 0.5 + hh / 2, 0);
+    parts.push(smoothNormals(g));
+  }
+  return mergeShaded(parts, (x, y, z, nx, ny, nz, t) => {
+    if (ny < -0.6) return [0.32, 0.36, 0.33];                                       // underside of a tier
+    const w = 1.25 - t * 0.22, out = BR.util.clamp(Math.hypot(x, z) / w, 0, 1), k = (0.55 + 0.5 * out) * (0.9 + t * 0.04);
+    return [k * (1 + 0.06 * out), k * (1 + 0.04 * out), k];
+  });
+}
+// Bush: four lumpy blobs, shaded darker at the base.
+function bushGeometry(seed) {
+  const r = BR.util.rng(seed), parts = [];
+  for (const [dx, dy, dz, sc] of [[0, 0.1, 0, 1], [0.6, -0.1, 0.2, 0.7], [-0.5, -0.08, -0.25, 0.72], [0.1, 0.05, 0.55, 0.62]]) {
+    const b = smoothNormals(lumpyBlob(1, 0.24, seed + dx * 10)); b.scale(sc, sc * 0.8, sc); b.rotateY(r() * 6); b.translate(dx, dy, dz); parts.push(b);
+  }
+  return mergeShaded(parts, (x, y, z, nx, ny) => { const k = 0.5 + 0.5 * BR.util.clamp((y + 0.7) / 1.4, 0, 1) + 0.08 * Math.max(0, ny); return [k, k, k * 0.94]; });
+}
+// Grass tuft: five thin blades fanning out, dark at the root and sun-bleached at the tips.
+function grassTuftGeometry() {
+  const P = [], C = [], N = [];
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * 6.283 + 0.4, lean = 0.18 + (i % 2) * 0.12, h = 0.75 + (i % 3) * 0.15, w = 0.045;
+    const bx = Math.cos(a) * 0.05, bz = Math.sin(a) * 0.05, tx = Math.cos(a) * lean, tz = Math.sin(a) * lean, px = -Math.sin(a) * w, pz = Math.cos(a) * w;
+    P.push(bx - px, 0, bz - pz, bx + px, 0, bz + pz, tx, h, tz);
+    C.push(0.55, 0.6, 0.5, 0.55, 0.6, 0.5, 1.12, 1.1, 0.82);
+    N.push(0, 1, 0, 0, 1, 0, 0, 1, 0);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  g.computeBoundingSphere();
+  return g;
 }
 
 function makeTileTexture(grass) {

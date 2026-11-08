@@ -1416,6 +1416,22 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v136 = await page.evaluate(() => {
+    const out = {}, W = new BR.World(4, {}), m = new BR.Mover(W), dt = 1 / 60;
+    const go = (n, inp) => { for (let i = 0; i < n; i++) m.update(dt, Object.assign({ mx: 0, mz: 0, jump: false, crouch: false }, inp || {}), 0); };
+    const x = 120, z = -40, gy = W.heightAt(x, z);
+    m.pos.set(x, gy + 0.01, z); go(10); go(1, { jump: true }); out.groundJumpNoGlide = !m.dropping;
+    m.pos.set(x, gy + 3, z); m.vel.set(0, 18, 0); m.onGround = false; go(30);                    // launched like a Shockwave
+    go(1, { jump: true }); out.redeploy = m.dropping && m.chute;
+    go(1, { crouch: true }); out.cut = m.dropping && !m.chute && m.chuteCut;
+    let reopened = false; for (let i = 0; i < 300 && m.dropping; i++) { go(1); if (m.chute) reopened = true; }
+    out.staysCutAndLands = !reopened && !m.dropping && m.onGround;
+    out.knifeDraw = (() => { const g = BR.game; g.startMatch({ practice: true }); const p = g.player; const k = p.slots.findIndex(w => w && BR.CONFIG.weapons[w.id] && BR.CONFIG.weapons[w.id].melee); if (k < 0) { g.toMenu(); return false; } p.cur = k === 0 ? 1 : 0; g.update(1 / 60); g.render(); p.cur = k; g.update(1 / 60); g.render(); const ok = Math.abs(g.vmr.drawDur - 0.85) < 0.01; g.toMenu(); return ok; })();
+    const can = canopyGeometry(5), pine = pineGeometry(0), bush = bushGeometry(3), tuft = grassTuftGeometry(), trunk = trunkGeometry();
+    out.models = can.attributes.position.count >= 8 * 240 && !!can.attributes.color && pine.attributes.position.count > 5 * 100 && bush.attributes.position.count >= 4 * 240 && tuft.attributes.position.count === 15 && trunk.attributes.position.count > 400;
+    const sc = new THREE.Scene(); W.buildMeshes(sc, 0.3); out.skyFollows = !!(W.skyRig && W.skyRig.length >= 3);
+    return out;
+  });
   const v135 = await page.evaluate(async () => {
     const out = {}, W = new BR.World(4, {});
     out.terrain = !!W.T && W.T.max > 12 && Math.abs(W.heightAt(-100, 50) - W.heightAt(100, -50)) + Math.abs(W.heightAt(0, 0) - W.heightAt(200, 200)) > 1;
@@ -1815,6 +1831,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.36 glider redeploys in the air (after a Shockwave) and cuts on crouch, cleaner knife draws, rounder trees / pines / bushes / grass, sky never clips', Object.values(v136).every(Boolean), v136],
     ['v1.35 real terrain on the BR islands (hills block rays, nothing floating, you land + walk on the slopes), military base / farm POIs, Crossroads / Frostbite / Harbor maps in the TDM + FFA pools', Object.values(v135).every(Boolean), v135],
     ['v1.34 golden-hour grade: warm key sun, matched fog, grade layer over the view (never blocks touches)', Object.values(v134).every(Boolean), v134],
     ['v1.33.1 crosshair hides while aiming through holo sights, the sniper scope, the DMR prism and the ACOG; iron sights keep it', Object.values(v1331).every(Boolean), v1331],
@@ -2004,7 +2021,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

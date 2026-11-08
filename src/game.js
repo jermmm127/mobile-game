@@ -1061,7 +1061,8 @@ BR.Game = class Game {
       if (this._stepD > stride) { this._stepD = 0; BR.Audio.step && BR.Audio.step(sp, m.crouched); } } else this._stepD = 0.6;
     lp.copy(p.pos);
     if (ev.wallrun) BR.Audio.wallrun();
-    if (ev.chute) { BR.Audio.chute(); this.hud.toast('Parachute deployed', 900); this.cam.kick = 0.25; }
+    if (ev.chute) { BR.Audio.chute(); this.hud.toast('Glider deployed · Crouch to cut', 1100); this.cam.kick = 0.25; }
+    if (ev.chuteCut) { BR.Audio.whiz && BR.Audio.whiz(0); this.hud.toast('Glider cut', 700); }
     if (ev.pad) { BR.Audio.pad(); this.cam.shake = Math.max(this.cam.shake, 0.15); }
     if (ev.tech) { this.hud.tech(ev.tech); BR.Audio.tech(); }
   }
@@ -1560,6 +1561,7 @@ BR.Game = class Game {
     if (this.state === 'menu' && !this.scene) return;            // v1.18 light menu: nothing 3D to draw
     BR.Models.tick(performance.now() / 1000);       // animated camo / glove textures
     const r = this.renderer;
+    const W = this.world; if (W && W.skyRig && this.camera) { const cp = this.camera.position; for (const k of W.skyRig) k.o.position.set(k.x + cp.x, k.y, k.z + cp.z); }      // v1.36
     // v1.32: compile every shader in a new match up front (muzzle flashes, impacts, effects, skins), so the first shot,
     // explosion or kill no longer hitches while the GPU compiles mid-fight
     if (this.scene && this._warmed !== this.scene) { this._warmed = this.scene; try { r.compile(this.scene, this.camera); if (this.vmr && this.vmr.scene) r.compile(this.vmr.scene, this.vmr.camera); } catch (e) { /* older browsers: compile on first use */ } }

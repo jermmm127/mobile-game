@@ -363,7 +363,7 @@
       // New weapon in hand: draw animation
       if (w !== this.lastWeapon) {
         this.lastWeapon = w;
-        this.drawDur = this.drawT = w.id === 'tracker' ? 0.9 : def.melee ? 1.05 : def.drawTime || 0.55;
+        this.drawDur = this.drawT = def.melee ? 0.85 : def.drawTime || 0.55;     // v1.36: snappier, cleaner knife draws
         this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0; this.pumpT = 0; this.pumpDelay = 0;
         if (def.melee) BR.Audio.unsheathe(); else BR.Audio.mech('draw');
       }
@@ -443,9 +443,9 @@
           const p1 = easeInOut((t - 0.12) / 0.3), p2 = easeInOut((t - 0.36) / 0.24), settle = win(t, 0.58, 0.63, 0.63, 0.75);
           bfly = { a: Math.PI + Math.PI * p1, flip: Math.PI + Math.PI * p2 - 0.14 * settle, roll: Math.PI * 2 * easeInOut((t - 0.14) / 0.34) };
           const sw = win(t, 0.12, 0.2, 0.4, 0.52);                                       // the wrist carves the arc
-          ory += 0.45 * Math.sin((t - 0.12) / 0.4 * Math.PI * 2) * sw; ox -= 0.04 * sw; oy += 0.05 * sw;
+          ory += 0.28 * Math.sin((t - 0.12) / 0.4 * Math.PI * 2) * sw; ox -= 0.02 * sw; oy += 0.03 * sw;
           const hold = win(t, 0.55, 0.62, 0.72, 0.86);                                   // upright beat
-          oy += 0.06 * hold; ox -= 0.03 * hold; orz += 0.1 * hold;
+          oy += 0.035 * hold; ox -= 0.015 * hold; orz += 0.07 * hold;
           this.bflySwish(t, [0.2, 0.36, 0.5]);
         } else if (w.id === 'tracker') {
           // Tracker deploy (v1.15.4, matched frame by frame to the reference clip): the fist sweeps in
@@ -455,8 +455,8 @@
           // into the idle hold pointing left
           const rise = smooth(t / 0.2);
           oy += -(1 - rise) * 0.24; ox += (1 - rise) * 0.09; orz -= (1 - rise) * 0.55; orx += (1 - rise) * 0.2;
-          const near = 1 - smooth((t - 0.66) / 0.26);
-          ox -= 0.06 * near; oy += 0.06 * near; oz -= 0.02 * near;
+          const near = 1 - smooth((t - 0.58) / 0.38);
+          ox -= 0.025 * near; oy += 0.035 * near; oz -= 0.01 * near;
           bUp = near;
           const rp = clamp01((t - 0.18) / 0.44), a = easeInOut(rp);
           bay = { lift: Math.sin(rp * Math.PI) * 0.014, flip: 0, roll: Math.PI * 2 * a };
@@ -471,23 +471,23 @@
           // into the angled idle with a small settle
           const rise = smooth(t / 0.16);
           oy += -(1 - rise) * 0.26; orx += (1 - rise) * 0.3;
-          const near = 1 - smooth((t - 0.5) / 0.32);
-          ox -= 0.07 * near; oy += 0.07 * near; oz -= 0.03 * near;
+          const near = 1 - smooth((t - 0.44) / 0.48);
+          ox -= 0.03 * near; oy += 0.04 * near; oz -= 0.015 * near;
           bUp = near;
           // v1.11: one clean end-over-end flip (blade up -> forward over the top -> blade up), tossed a
           // little above the palm and caught, instead of the half turn from blade-down
           const a = easeInOut((t - 0.16) / 0.36);
           bay = { lift: Math.sin(clamp01((t - 0.16) / 0.36) * Math.PI) * 0.055, flip: -Math.PI * 2 * a, roll: 0 };
-          const settle = win(t, 0.78, 0.84, 0.84, 0.96); orx -= 0.07 * settle; oy -= 0.012 * settle;
+          const settle = win(t, 0.8, 0.88, 0.88, 0.99); orx -= 0.04 * settle; oy -= 0.006 * settle;
           if (t > 0.14 && !(this.spinSwish & 1)) { this.spinSwish |= 1; BR.Audio.swish(false); }
           if (t > 0.46 && !(this.spinSwish & 2)) { this.spinSwish |= 2; BR.Audio.click(); }
         } else if (def.melee) {
           // Karambit deploy: the hand comes up near the centre, turning a little upright, while the
           // knife twirls twice around the index finger in the ring, then drops into the low hold
-          const rise = smooth(t / 0.08), out = 1 - smooth((t - 0.62) / 0.38);
-          oy += -(1 - rise) * 0.16; oz += -out * 0.06;
-          const lift = win(t, 0.02, 0.12, 0.5, 0.76);
-          ox -= 0.05 * lift; oy += 0.07 * lift; oz -= 0.04 * lift; orz += 0.45 * lift; orx += 0.08 * lift;
+          const rise = smooth(t / 0.12), out = 1 - smooth((t - 0.55) / 0.45);
+          oy += -(1 - rise) * 0.16; oz += -out * 0.03;
+          const lift = win(t, 0.04, 0.16, 0.5, 0.82);
+          ox -= 0.02 * lift; oy += 0.04 * lift; oz -= 0.02 * lift; orz += 0.3 * lift; orx += 0.05 * lift;
           spinAng = easeInOut(t / 0.6) * Math.PI * 4;
           ringW = win(t, 0, 0.07, 0.52, 0.68);                              // index finger in the ring while it rolls
           const turns = Math.floor(spinAng / (Math.PI * 2) + 0.25);

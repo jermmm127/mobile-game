@@ -104,12 +104,21 @@ BR.Mover = class Mover {
     }
     if (inp.jump && !this.dropping && !this.grapple && this.tryWindowVault(yaw)) { this.jumpBuf = 0; ev.mantle = true; ev.tech = 'VAULT'; return; }
 
+    // ---- v1.36 glider redeploy ------------------------------------------------
+    // On the Battle Royale islands: high enough in the air (a Shockwave launch, a jump pad, off a roof or a ridge) and not on a
+    // wall, Jump opens the glider again
+    if (!this.dropping && !this.onGround && this.world.terrainOn && inp.jump && !this.grapple && !this.wallRunning && this.wallContactT > 0.25) {
+      const gy = this.world.groundAt(this.pos.x, this.pos.z, this.pos.y);
+      if (this.pos.y - gy >= M.glideMinHeight) { this.dropping = true; this.chute = true; this.chuteCut = false; ev.chute = true; this.jumpBuf = 0; this.sliding = false; this.crouched = false; }
+    }
     // ---- skydive ----------------------------------------------------------
-    // Freefall until you press Jump (or get close to the ground), then the parachute opens.
+    // Freefall until you press Jump (or get close to the ground), then the parachute opens. v1.36: Crouch cuts the glider
+    // (you freefall and it stays cut until you open it again with Jump).
     if (this.dropping) {
-      if (!this.chute) {
+      if (this.chute && inp.crouch) { this.chute = false; this.chuteCut = true; ev.chuteCut = true; }
+      else if (!this.chute) {
         const groundY = this.world.groundAt(this.pos.x, this.pos.z, this.pos.y);
-        if (inp.jump || this.pos.y - groundY < (this.chuteAt || M.chuteAutoHeight)) { this.chute = true; ev.chute = true; this.jumpBuf = 0; }
+        if (inp.jump || (!this.chuteCut && this.pos.y - groundY < (this.chuteAt || M.chuteAutoHeight))) { this.chute = true; this.chuteCut = false; ev.chute = true; this.jumpBuf = 0; }
       }
       const glide = this.chute ? M.chuteGlideSpeed : M.dropGlideSpeed, fall = this.chute ? M.chuteFallSpeed : M.dropFallSpeed;
       const tx = wx * glide * frac, tz = wz * glide * frac;
@@ -120,7 +129,7 @@ BR.Mover = class Mover {
       if (this.chute && this.vel.y < -fall) this.vel.y = U_lerp(this.vel.y, -fall, 1 - Math.exp(-6 * dt));
       else this.vel.y = Math.max(this.vel.y - M.gravity * dt, -fall);
       this.integrate(dt, false);
-      if (this.onGround) { this.dropping = false; this.chute = false; ev.land = true; this.landSpeed = this.vel.y < -8 ? 8 : 4; this.jumpBuf = 0; }
+      if (this.onGround) { this.dropping = false; this.chute = false; this.chuteCut = false; ev.land = true; this.landSpeed = this.vel.y < -8 ? 8 : 4; this.jumpBuf = 0; }
       return;
     }
 
