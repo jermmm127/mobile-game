@@ -1463,10 +1463,14 @@ BR.World = class World {
   cullChunks(cx, cz, far) {
     const C = this.chunks; if (!C) return;
     for (let i = 0; i < C.length; i++) { const c = C[i], d = Math.hypot(c.x - cx, c.z - cz) - c.r; c.obj.visible = d < far; }
+    this.updateLod(cx, cz);
   }
-  // Drop-in for THREE.InstancedMesh used while building scenery: collects instances, then
-  // flush() splits them into 80 m tiles with real bounds so off-screen tiles are culled.
-  collector(geo, mat) {
+  // Drop-in for THREE.InstancedMesh used while building scenery: collects instances, then flush() splits
+  // them into 320 m tiles with real bounds so off-screen / fogged tiles are culled.
+  // v1.37 lod = { lo: geometry | null, dist: m }: the tiles draw the cheap model (or nothing, lo null) and one extra
+  // "near" mesh draws the detailed model for the instances within dist of the camera (see updateLod), so phones draw a
+  // fraction of the triangles without extra draw calls.
+  collector(geo, mat, _n, lod) {
     const self = this, M = [], Cl = [];
     const col = {
       count: 0, instanceColor: { needsUpdate: false },
@@ -1475,15 +1479,16 @@ BR.World = class World {
       flush(scene) {
         const n = Math.min(this.count, M.length); if (!n) return;
         if (!geo.boundingSphere) geo.computeBoundingSphere();
+        const tileGeo = lod ? lod.lo : geo;
         const gr = geo.boundingSphere.radius + geo.boundingSphere.center.length(), TILE = 320, H = self.half;
         const tiles = new Map();
         for (let i = 0; i < n; i++) { if (!M[i]) continue; const e = M[i].elements, k = Math.floor((e[12] + H) / TILE) + ',' + Math.floor((e[14] + H) / TILE); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(i); }
-        const v = new THREE.Vector3();
-        for (const ids of tiles.values()) {
+        const v = new THREE.Vector3(), where = lod ? new Array(n) : null;      // instance -> [tile mesh, slot]
+        if (tileGeo) for (const ids of tiles.values()) {
           // geometry view sharing the buffers, with this tile's bounding sphere
           const view = new THREE.BufferGeometry();
-          for (const a in geo.attributes) view.setAttribute(a, geo.attributes[a]);
-          if (geo.index) view.setIndex(geo.index);
+          for (const a in tileGeo.attributes) view.setAttribute(a, tileGeo.attributes[a]);
+          if (tileGeo.index) view.setIndex(tileGeo.index);
           let cx = 0, cy = 0, cz = 0;
           for (const i of ids) { const e = M[i].elements; cx += e[12]; cy += e[13]; cz += e[14]; }
           cx /= ids.length; cy /= ids.length; cz /= ids.length;
@@ -1493,15 +1498,57 @@ BR.World = class World {
           view.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy, cz), r);
           view._shared = true;
           const im = new THREE.InstancedMesh(view, mat, ids.length);
-          ids.forEach((i, j) => { im.setMatrixAt(j, M[i]); if (Cl[i]) im.setColorAt(j, Cl[i]); });
+          ids.forEach((i, j) => { im.setMatrixAt(j, M[i]); if (Cl[i]) im.setColorAt(j, Cl[i]); if (where) where[i] = [im, j]; });
           if (im.instanceColor) im.instanceColor.needsUpdate = true;
           scene.add(im);
           self.addChunk(im, v.set(cx, cy, cz), r);
         }
+        if (!lod) return;
+        // near mesh: detailed geometry, refilled as the camera moves. Instances bucketed on a 32 m grid for the lookup.
+        const area = self.size * self.size, cap = Math.min(n, Math.max(48, Math.ceil(n * Math.PI * (lod.dist + 16) * (lod.dist + 16) / area * 4)));
+        const nv = new THREE.BufferGeometry(); for (const a in geo.attributes) nv.setAttribute(a, geo.attributes[a]); if (geo.index) nv.setIndex(geo.index); nv._shared = true;
+        nv.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1);
+        const near = new THREE.InstancedMesh(nv, mat, cap); near.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        if (Cl.length) { near.setColorAt(0, Cl.find(c => c) || new THREE.Color(1, 1, 1)); near.instanceColor.setUsage(THREE.DynamicDrawUsage); }      // (sized by count, so before count = 0)
+        near.count = 0;
+        scene.add(near);
+        const grid = new Map(), C = 32;
+        for (let i = 0; i < n; i++) { if (!M[i]) continue; const e = M[i].elements, k = Math.floor(e[12] / C) + ',' + Math.floor(e[14] / C); let b = grid.get(k); if (!b) grid.set(k, b = []); b.push(i); }
+        let maxSc = 1; for (let i = 0; i < n; i++) if (M[i]) { const e = M[i].elements; maxSc = Math.max(maxSc, v.set(e[0], e[1], e[2]).length(), v.set(e[4], e[5], e[6]).length(), v.set(e[8], e[9], e[10]).length()); }
+        (self.lodSets || (self.lodSets = [])).push({ M, Cl, where, grid, C, near, cap, dist: lod.dist, gr: gr * maxSc, cur: [], cx: 1e9, cz: 1e9, zero: new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) });
       },
     };
     (this._pend || (this._pend = [])).push(col);
     return col;
+  }
+  // v1.37: refill each near mesh when the camera has moved a few metres: those instances get the detailed model
+  // and their slots in the cheap tiles are collapsed (restored when they fall out of range).
+  updateLod(cx, cz) {
+    const S = this.lodSets; if (!S) return;
+    const k = this.lodScale === undefined ? 1 : this.lodScale;
+    for (const L of S) {
+      if (Math.abs(cx - L.cx) < 4 && Math.abs(cz - L.cz) < 4) continue;
+      L.cx = cx; L.cz = cz;
+      const d = L.dist * k, d2 = d * d, ids = [], C = L.C;
+      for (let gx = Math.floor((cx - d) / C); gx <= Math.floor((cx + d) / C); gx++) for (let gz = Math.floor((cz - d) / C); gz <= Math.floor((cz + d) / C); gz++) {
+        const b = L.grid.get(gx + ',' + gz); if (!b) continue;
+        for (const i of b) { const e = L.M[i].elements, dx = e[12] - cx, dz = e[14] - cz; if (dx * dx + dz * dz < d2) ids.push(i); }
+      }
+      ids.sort((a, b) => { const ea = L.M[a].elements, eb = L.M[b].elements; return (ea[12] - cx) ** 2 + (ea[14] - cz) ** 2 - ((eb[12] - cx) ** 2 + (eb[14] - cz) ** 2); });
+      if (ids.length > L.cap) ids.length = L.cap;
+      const now = new Set(ids), dirty = new Set();
+      if (L.where) {
+        for (const i of L.cur) if (!now.has(i)) { const w = L.where[i]; if (w) { w[0].setMatrixAt(w[1], L.M[i]); dirty.add(w[0]); } }
+        const was = new Set(L.cur);
+        for (const i of ids) if (!was.has(i)) { const w = L.where[i]; if (w) { w[0].setMatrixAt(w[1], L.zero); dirty.add(w[0]); } }
+        for (const m of dirty) m.instanceMatrix.needsUpdate = true;
+      }
+      const nm = L.near; let cy = 0;
+      ids.forEach((i, j) => { nm.setMatrixAt(j, L.M[i]); if (nm.instanceColor && L.Cl[i]) nm.setColorAt(j, L.Cl[i]); cy += L.M[i].elements[13]; });
+      nm.count = ids.length; nm.instanceMatrix.needsUpdate = true; if (nm.instanceColor) nm.instanceColor.needsUpdate = true;
+      nm.geometry.boundingSphere.center.set(cx, ids.length ? cy / ids.length : 0, cz); nm.geometry.boundingSphere.radius = d + L.gr + 30;
+      L.cur = ids;
+    }
   }
 
   // Ground with painted grass/dirt variation (vertex colors) under a tiled detail texture.
@@ -1553,9 +1600,24 @@ BR.World = class World {
     }
     if (island) geo.computeVertexNormals();
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const ground = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, map: gt }));
-    ground.rotation.x = -Math.PI / 2;
-    scene.add(ground);
+    // v1.37: the ground is split into tiles (shared vertex buffers, own index ranges) so the parts behind you or past
+    // the fog aren't drawn. One big mesh meant ~90k triangles every frame on the island maps.
+    const gmat = new THREE.MeshLambertMaterial({ vertexColors: true, map: gt }), idx = geo.index.array, per = Math.max(1, Math.ceil(segs / (island ? 7 : 1)));
+    for (let by = 0; by < segs; by += per) for (let bx = 0; bx < segs; bx += per) {
+      const ix = [], ex = Math.min(segs, bx + per), ey = Math.min(segs, by + per);
+      for (let iy = by; iy < ey; iy++) for (let qx = bx; qx < ex; qx++) { const q = (iy * segs + qx) * 6; for (let k = 0; k < 6; k++) ix.push(idx[q + k]); }
+      const tg = new THREE.BufferGeometry();
+      for (const a in geo.attributes) tg.setAttribute(a, geo.attributes[a]);
+      tg.setIndex(ix);
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
+      for (let k = 0; k < ix.length; k++) { const v = ix[k], px = pos.getX(v), py = pos.getY(v), pz = pos.getZ(v); if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; if (pz < z0) z0 = pz; if (pz > z1) z1 = pz; }
+      const ctr = new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), r = Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2;
+      tg.boundingSphere = new THREE.Sphere(ctr, r);
+      const ground = new THREE.Mesh(tg, gmat);
+      ground.rotation.x = -Math.PI / 2; ground.updateMatrix(); ground.matrixAutoUpdate = false;
+      scene.add(ground);
+      if (island) this.addChunk(ground, { x: ctr.x, z: -ctr.y }, r);
+    }
     if (island) {
       // ocean around the island: animated wave texture, shiny, slightly see-through
       const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
@@ -1689,7 +1751,7 @@ BR.World = class World {
     // varied greens, pines get four drooping tiers. All instanced, colour-varied per tree.
     const leafy = this.trees.filter(t => !t.pine), pines = this.trees.filter(t => t.pine), tc = new THREE.Color();
     if (this.trees.length) {
-      const trunk = this.collector(trunkGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true }), this.trees.length);
+      const trunk = this.collector(trunkGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true }), this.trees.length, { lo: trunkGeometry(true), dist: 45 });
       const BK = [0x54402e, 0x4a3a2a, 0x5e4834];
       this.trees.forEach((t, i) => {
         o.position.set(t.x, 0, t.z); o.rotation.set(0, t.tone * 6, 0); o.scale.set(1, t.h + 0.6, 1); o.updateMatrix(); trunk.setMatrixAt(i, o.matrix);
@@ -1698,12 +1760,12 @@ BR.World = class World {
     }
     if (leafy.length) {
       // v1.36: two canopy shapes (8 lumpy blobs each, soft dome shading), one instance per tree
-      const geos = [canopyGeometry(this.seed + 101), canopyGeometry(this.seed + 202)], mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+      const geos = [canopyGeometry(this.seed + 101), canopyGeometry(this.seed + 202)], lows = [canopyGeometry(this.seed + 101, 0), canopyGeometry(this.seed + 202, 0)], mat = new THREE.MeshLambertMaterial({ vertexColors: true });
       const groups = [leafy.filter((t, i) => i % 2 === 0), leafy.filter((t, i) => i % 2 === 1)];
       const GR = [0x4f8a3a, 0x3f7a34, 0x5e9a40, 0x6aa648, 0x4a7f3e, 0x74a24a];
       groups.forEach((list, gi) => {
         if (!list.length) return;
-        const lv = this.collector(geos[gi], mat, list.length);
+        const lv = this.collector(geos[gi], mat, list.length, { lo: lows[gi], dist: 45 });
         list.forEach((t, i) => {
           o.position.set(t.x, t.h, t.z); o.scale.set(t.s, t.s * (0.92 + t.tone * 0.16), t.s); o.rotation.set(0, t.tone * 6.28, 0);
           o.updateMatrix(); lv.setMatrixAt(i, o.matrix); lv.setColorAt(i, tc.setHex(GR[Math.floor(t.tone * GR.length)]));
@@ -1712,11 +1774,11 @@ BR.World = class World {
     }
     if (pines.length) {
       // v1.36: one merged five-tier pine per tree (jagged drooping tiers, shaded toward the trunk)
-      const geos = [pineGeometry(0), pineGeometry(1.7)], mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+      const geos = [pineGeometry(0), pineGeometry(1.7)], lows = [pineGeometry(0, true), pineGeometry(1.7, true)], mat = new THREE.MeshLambertMaterial({ vertexColors: true });
       const PG = [0x2f5a35, 0x2a5232, 0x376640, 0x2c5e3c, 0x3a6a3a];
       [0, 1].forEach(gi => {
         const list = pines.filter((t, i) => i % 2 === gi); if (!list.length) return;
-        const pm = this.collector(geos[gi], mat, list.length);
+        const pm = this.collector(geos[gi], mat, list.length, { lo: lows[gi], dist: 45 });
         list.forEach((t, i) => {
           o.position.set(t.x, t.h * 0.45, t.z); o.scale.setScalar(t.s); o.rotation.set(0, t.tone * 6.28, 0);
           o.updateMatrix(); pm.setMatrixAt(i, o.matrix); pm.setColorAt(i, tc.setHex(PG[Math.floor(t.tone * PG.length)]).multiplyScalar(1.12));
@@ -1735,8 +1797,8 @@ BR.World = class World {
 
     // ---- Natural rock: ridges / rocks / ledges are hidden collision boxes drawn as jittered,
     // moss-topped boulders; plateaus get rocky skirts so nothing reads as a box.
-    const rockGeo = (seed) => {
-      const g = new THREE.IcosahedronGeometry(1, 1).toNonIndexed(), p = g.attributes.position, rr = BR.util.rng(seed), jit = {};      // v1.36: more facets, chiselled
+    const rockGeo = (seed, det) => {
+      const g = new THREE.IcosahedronGeometry(1, det === undefined ? 1 : det).toNonIndexed(), p = g.attributes.position, rr = BR.util.rng(seed), jit = {};      // v1.36: more facets, chiselled
       for (let i = 0; i < p.count; i++) {
         const k0 = p.getX(i).toFixed(3) + p.getY(i).toFixed(3) + p.getZ(i).toFixed(3);
         const f = jit[k0] || (jit[k0] = 0.8 + rr() * 0.32);
@@ -1790,7 +1852,7 @@ BR.World = class World {
     }
     if (chunks.length) {
       const geos = [rockGeo(11), rockGeo(29)], mats = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-      const half = Math.ceil(chunks.length / 2), meshes = geos.map((gg, i) => this.collector(gg, mats, i ? chunks.length - half : half)); meshes.forEach(m => { m.noLift = true; });     // (rock chunks come from already-lifted boxes)
+      const half = Math.ceil(chunks.length / 2), meshes = geos.map((gg, i) => this.collector(gg, mats, i ? chunks.length - half : half, { lo: rockGeo(i ? 29 : 11, 0), dist: 60 })); meshes.forEach(m => { m.noLift = true; });     // (rock chunks come from already-lifted boxes)
       const rcol = new THREE.Color();
       chunks.forEach((q, i) => {
         const m = meshes[i < half ? 0 : 1], j = i < half ? i : i - half;
@@ -1802,9 +1864,9 @@ BR.World = class World {
 
     // Props from the dressing pass (instanced: one draw call each)
     const P = this.props, col = new THREE.Color();
-    const inst = (geo, mat, list, place) => {
+    const inst = (geo, mat, list, place, lod) => {
       if (!list.length) return null;
-      const m = this.collector(geo, mat, list.length);
+      const m = this.collector(geo, mat, list.length, lod);
       list.forEach((q, i) => { place(q, i); o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
       return m;
     };
@@ -1833,7 +1895,7 @@ BR.World = class World {
     // loose boulders round the rocks
     inst(rockGeo(41), new THREE.MeshLambertMaterial({ color: 0x9a9c96, vertexColors: true, flatShading: true }), P.boulders, q => {
       o.position.set(q.x, q.s * 0.55, q.z); o.scale.set(q.s * 2.3, q.s * 1.5, q.s * 2); o.rotation.set((q.x % 1) * 0.3, q.z, 0);
-    });
+    }, { lo: rockGeo(41, 0), dist: 45 });
     // ponds: sandy shore, water, lily pads, reeds
     for (const q of P.ponds) {
       const shore = new THREE.Mesh(new THREE.CircleGeometry(q.r + 1.4, 28), new THREE.MeshLambertMaterial({ color: 0xa89a6c }));
@@ -1852,9 +1914,9 @@ BR.World = class World {
 
     // Bushes + grass tufts scattered on open ground (count scales with Graphics)
     const nB = this.arena ? 0 : Math.floor(700 * detail), nG = this.arena ? 0 : Math.floor(5000 * detail);
-    const bush = this.collector(bushGeometry(this.seed + 9), new THREE.MeshLambertMaterial({ vertexColors: true }), nB);      // v1.36: clustered, shaded bushes
+    const bush = this.collector(bushGeometry(this.seed + 9), new THREE.MeshLambertMaterial({ vertexColors: true }), nB, { lo: bushGeometry(this.seed + 9, 0), dist: 30 });      // v1.36: clustered, shaded bushes
     const BG = [0x55803e, 0x4a7a3a, 0x5f8f42, 0x6b9446, 0x47703a], bc = new THREE.Color();
-    const tuft = this.collector(grassTuftGeometry(), new THREE.MeshLambertMaterial({ color: 0x6f8a4c, vertexColors: true, side: THREE.DoubleSide }), nG);      // v1.36: fanned blades
+    const tuft = this.collector(grassTuftGeometry(), new THREE.MeshLambertMaterial({ color: 0x6f8a4c, vertexColors: true, side: THREE.DoubleSide }), nG, { lo: null, dist: 40 });      // v1.36: fanned blades
     let bi = 0, gi = 0;
     for (let tries = 0; tries < (nB + nG) * 2 && (bi < nB || gi < nG); tries++) {
       const x = (R() * 2 - 1) * (H - 4), z = (R() * 2 - 1) * (H - 4);
@@ -1875,7 +1937,7 @@ BR.World = class World {
     // Wildflower patches
     const nF = this.arena ? 0 : Math.floor(2400 * detail), FC = [0xf4f4f4, 0xf2d24a, 0xe0546a, 0x9a6ad9, 0xf28a3c];
     if (nF > 0) {
-      const fl = this.collector(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), nF);
+      const fl = this.collector(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), nF, { lo: null, dist: 40 });
       let fi = 0;
       for (let tries = 0; tries < nF && fi < nF; tries++) {
         const px = (R() * 2 - 1) * (H - 6), pz = (R() * 2 - 1) * (H - 6);
@@ -2014,13 +2076,13 @@ function mergeShaded(parts, shade) {
   return g;
 }
 // Leafy canopy: a dome of 8 lumpy blobs with soft unified shading (darker underneath, sunlit crown).
-function canopyGeometry(seed) {
+function canopyGeometry(seed, det) {
   const r = BR.util.rng(seed), parts = [], lay = [[0, 0.35, 0, 1.0]];
   for (let i = 0; i < 5; i++) { const a = i / 5 * 6.283 + r() * 0.6, d = 0.55 + r() * 0.15; lay.push([Math.cos(a) * d, 0.02 + r() * 0.25, Math.sin(a) * d, 0.58 + r() * 0.14]); }
   for (let i = 0; i < 2; i++) { const a = r() * 6.283; lay.push([Math.cos(a) * 0.25, 0.85 + r() * 0.12, Math.sin(a) * 0.25, 0.55 + r() * 0.08]); }
   const tint = [];
   lay.forEach(([dx, dy, dz, sc], j) => {
-    const b = smoothNormals(lumpyBlob(1, 0.2, seed + j * 7));
+    const b = smoothNormals(lumpyBlob(det === undefined ? 1 : det, 0.2, seed + j * 7));
     b.scale(sc, sc * 0.86, sc); b.translate(dx, dy, dz);
     const pa = b.attributes.position, na = b.attributes.normal, v = new THREE.Vector3();
     for (let i = 0; i < pa.count; i++) {        // lean blob normals toward the canopy's overall dome so it reads as one crown
@@ -2035,15 +2097,15 @@ function canopyGeometry(seed) {
   });
 }
 // Trunk with root flare, a gentle bend, two stub branches and bark shading (unit height; scaled per tree).
-function trunkGeometry() {
-  const g = new THREE.CylinderGeometry(0.11, 0.24, 1, 9, 6).toNonIndexed(), p = g.attributes.position;
+function trunkGeometry(lo) {
+  const g = new THREE.CylinderGeometry(0.11, 0.24, 1, lo ? 5 : 9, lo ? 2 : 6).toNonIndexed(), p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
     const y = p.getY(i) + 0.5, a = Math.atan2(p.getZ(i), p.getX(i));
     let f = 1; if (y < 0.14) f += (1 - y / 0.14) * (0.55 + 0.35 * Math.cos(a * 5));        // roots
     p.setXYZ(i, p.getX(i) * f + Math.sin(y * 3.1) * 0.05, y, p.getZ(i) * f + Math.sin(y * 2.3 + 1) * 0.03);
   }
   const parts = [smoothNormals(g)], m = new THREE.Matrix4();
-  for (const [ya, yy, tilt] of [[0.4, 0.68, 0.75], [2.8, 0.78, 0.65]]) {
+  for (const [ya, yy, tilt] of lo ? [] : [[0.4, 0.68, 0.75], [2.8, 0.78, 0.65]]) {
     const br = new THREE.CylinderGeometry(0.035, 0.065, 0.32, 6).toNonIndexed(); br.translate(0, 0.16, 0);
     br.applyMatrix4(m.makeRotationZ(tilt)); br.applyMatrix4(m.makeRotationY(ya)); br.translate(Math.sin(yy * 3.1) * 0.05, yy, Math.sin(yy * 2.3 + 1) * 0.03);
     parts.push(br);
@@ -2054,12 +2116,12 @@ function trunkGeometry() {
   });
 }
 // Pine: five jagged needle tiers, darker toward the trunk and under each tier (unit scale; base at y 0).
-function pineGeometry(seed) {
+function pineGeometry(seed, lo) {
   const parts = [], m = new THREE.Matrix4();
   for (let t = 0; t < 5; t++) {
-    const w = 1.25 - t * 0.22, hh = 1.15 - t * 0.12, g = new THREE.ConeGeometry(1, 1, 12, 2).toNonIndexed(), p = g.attributes.position;
+    const w = 1.25 - t * 0.22, hh = 1.15 - t * 0.12, S = lo ? 6 : 12, g = new THREE.ConeGeometry(1, 1, S, lo ? 1 : 2).toNonIndexed(), p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x), j = Math.round((a + Math.PI) / (Math.PI * 2) * 12) % 2;
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x), j = Math.round((a + Math.PI) / (Math.PI * 2) * S) % 2;
       if (y < -0.45 && Math.hypot(x, z) > 0.5) p.setXYZ(i, x * (j ? 0.8 : 1.04), y - (j ? 0 : 0.12), z * (j ? 0.8 : 1.04));     // jagged drooping rim
       else if (Math.abs(y) < 0.01) p.setXYZ(i, x * 0.96, y - 0.03, z * 0.96);
     }
@@ -2073,10 +2135,10 @@ function pineGeometry(seed) {
   });
 }
 // Bush: four lumpy blobs, shaded darker at the base.
-function bushGeometry(seed) {
+function bushGeometry(seed, det) {
   const r = BR.util.rng(seed), parts = [];
   for (const [dx, dy, dz, sc] of [[0, 0.1, 0, 1], [0.6, -0.1, 0.2, 0.7], [-0.5, -0.08, -0.25, 0.72], [0.1, 0.05, 0.55, 0.62]]) {
-    const b = smoothNormals(lumpyBlob(1, 0.24, seed + dx * 10)); b.scale(sc, sc * 0.8, sc); b.rotateY(r() * 6); b.translate(dx, dy, dz); parts.push(b);
+    const b = smoothNormals(lumpyBlob(det === undefined ? 1 : det, 0.24, seed + dx * 10)); b.scale(sc, sc * 0.8, sc); b.rotateY(r() * 6); b.translate(dx, dy, dz); parts.push(b);
   }
   return mergeShaded(parts, (x, y, z, nx, ny) => { const k = 0.5 + 0.5 * BR.util.clamp((y + 0.7) / 1.4, 0, 1) + 0.08 * Math.max(0, ny); return [k, k, k * 0.94]; });
 }

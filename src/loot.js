@@ -240,14 +240,28 @@ BR.Loot = class Loot {
     }
   }
 
+  // v1.37: items bucketed on a 6 m grid (rebuilt when items are added/removed or every 0.25 s for tossed ones);
+  // returns the items in the 3x3 cells round (x, z). Pickup radius is well under a cell.
+  nearItems(x, z) {
+    const t = this.game.time || 0, C = 6;
+    if (!this._grid || this._gN !== this.items.length || t - this._gT > 0.25 || t < this._gT) {
+      const G = this._grid = new Map(); this._gN = this.items.length; this._gT = t;
+      for (const it of this.items) { const k = Math.floor(it.pos.x / C) * 4096 + Math.floor(it.pos.z / C); let b = G.get(k); if (!b) G.set(k, b = []); b.push(it); }
+    }
+    const out = this._near || (this._near = []); out.length = 0;
+    const gx = Math.floor(x / C), gz = Math.floor(z / C);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const b = this._grid.get((gx + i) * 4096 + gz + j); if (b) for (const it of b) out.push(it); }
+    return out.slice();
+  }
   // Called a few times a second per actor. Returns the nearest weapon the
   // actor could swap to (used for the player's Swap prompt), or null.
   autoPickup(actor) {
     const C = BR.CONFIG, R = C.loot.pickupRadius;
     const p = actor.pos;
     let swapCandidate = null, swapD = Infinity;
-    for (let i = this.items.length - 1; i >= 0; i--) {
-      const it = this.items[i];
+    const near = this.nearItems(p.x, p.z);              // v1.37: grid lookup instead of every item on the map
+    for (let i = near.length - 1; i >= 0; i--) {
+      const it = near[i]; if (it.taken) continue;
       const dx = it.pos.x - p.x, dz = it.pos.z - p.z, dy = it.pos.y - p.y;
       if (Math.abs(dx) > R || Math.abs(dz) > R || dy > 1.6 || dy < -1.2) continue;
       const d = Math.hypot(dx, dz);

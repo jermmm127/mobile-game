@@ -67,7 +67,12 @@ BR.Game = class Game {
     this.renderer.autoClear = false;
     // Filmic grade: ACES tone mapping gives soft highlight roll-off, richer mid-tones and
     // more depth than the raw linear output
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // v1.37: the base colour grade (a touch less saturation, a touch more contrast) runs in the shaders right after ACES,
+    // instead of a CSS filter on the canvas: that filter cost phones a full-screen pass every frame. Same maths
+    // (saturate then contrast, in output space); only this renderer opts in, so shop / party previews are unchanged.
+    THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars_fragment.replace('vec3 CustomToneMapping( vec3 color ) { return color; }',
+      'vec3 CustomToneMapping( vec3 color ) { color = ACESFilmicToneMapping( color ); color = mix( vec3( dot( color, vec3( 0.2126, 0.7152, 0.0722 ) ) ), color, 0.88 ); return ( color - 0.5 ) * 1.06 + 0.5; }');
+    this.renderer.toneMapping = THREE.CustomToneMapping;
     this.renderer.toneMappingExposure = 1.0;            // v1.34 golden-hour grade
     const C = BR.CONFIG.camera;
     this.camera = new THREE.PerspectiveCamera(this.baseFov(), 1, C.near, C.far);
@@ -121,6 +126,7 @@ BR.Game = class Game {
     this.renderer.setPixelRatio(this.basePR);
     this.fogFar = g.fogFar;
     this.detail = g.detail;
+    if (this.world) { this.world.lodScale = (this.settings.gfx || 'medium') === 'low' ? 0.6 : 1; if (this.world.lodSets) this.world.lodSets.forEach(L => { L.cx = 1e9; }); }
     if (this.scene && this.scene.fog) this.scene.fog.far = g.fogFar;
     this.resize();
     if (this.sun) this.applyShadows();
@@ -130,8 +136,10 @@ BR.Game = class Game {
   applyColor() {
     // base grade: slightly desaturated with a touch more contrast (tactical-shooter look),
     // then the player's own saturation setting on top
-    const sat = (this.settings.saturation ?? 1) * 0.88, c = this.renderer.domElement;
-    const f = `saturate(${sat.toFixed(3)}) contrast(1.06)`;
+    // v1.37: the base grade is in the shaders (see CustomToneMapping); the canvas only gets a CSS filter when the
+    // player moves the saturation slider off 100%
+    const sat = this.settings.saturation ?? 1, c = this.renderer.domElement;
+    const f = Math.abs(sat - 1) < 0.005 ? '' : `saturate(${sat.toFixed(3)})`;
     if (c.style.filter !== f) c.style.filter = f;
   }
 
@@ -205,6 +213,13 @@ BR.Game = class Game {
     document.body.classList.remove('menulite');
     const fogCol = 0xd2d9dc;                                    // v1.34: matches the warmer, softer horizon band of the sky dome
     this.scene = new THREE.Scene();
+    // v1.37: hidden top-level objects (loot past 50 m, culled map tiles, pooled effects) skip the per-frame matrix pass.
+    // They get it again the frame they're shown, before drawing. Thousands of loot parts made this a big CPU cost on phones.
+    this.scene.updateMatrixWorld = function (force) {
+      if (this.matrixAutoUpdate) this.updateMatrix();
+      if (this.matrixWorldNeedsUpdate || force) { this.matrixWorld.copy(this.matrix); this.matrixWorldNeedsUpdate = false; force = true; }
+      const ch = this.children; for (let i = 0; i < ch.length; i++) { const c = ch[i]; if (c.visible) c.updateMatrixWorld(force); else if (force) c.matrixWorldNeedsUpdate = true; }
+    };
     this.scene.background = new THREE.Color(fogCol);
     this.scene.fog = new THREE.Fog(fogCol, 70, this.fogFar || 230);
     // Lighting: cool sky / warm ground bounce, a warm key sun from the sky's sun direction,
@@ -221,6 +236,7 @@ BR.Game = class Game {
     this.sun = sun;
     this.world = new BR.World(seed, opts);
     this.world.buildMeshes(this.scene, this.detail);
+    this.world.lodScale = (this.settings.gfx || 'medium') === 'low' ? 0.6 : 1;      // v1.37: Low switches to the cheap scenery models sooner
     // sky, clouds and far mountains are already painted in display colours: keep them out of the filmic curve
     this.scene.traverse(o => { const m = o.material; if (m && m.isMeshBasicMaterial && m.fog === false) m.toneMapped = false; });
     this.hud.setStaticMap(this.world.renderMinimap(1024));
@@ -728,7 +744,7 @@ BR.Game = class Game {
     const cp = this.camera.position;
     for (const a of this.actors) {
       if (!a.alive && a.mesh && a.mesh.parent && this.time - a.deathT > 4) this.scene.remove(a.mesh);
-      else if (a.mesh && a.alive) a.mesh.visible = Math.abs(a.pos.x - cp.x) + Math.abs(a.pos.z - cp.z) < 260;
+      else if (a.mesh && a.alive) { const fr = (this.scene.fog ? this.scene.fog.far : 230) + 15, dx = a.pos.x - cp.x, dz = a.pos.z - cp.z; a.mesh.visible = a.isPlayer || dx * dx + dz * dz < fr * fr; }      // v1.37: hidden past the fog (was a fixed 260 m)
     }
     if (BR.Squads.on(this)) BR.Squads.update(this, dt);        // (BR squads + team duels)
     while (this.recentShots.length && this.time - this.recentShots[0].t > 2) this.recentShots.shift();

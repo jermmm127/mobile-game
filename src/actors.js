@@ -457,7 +457,22 @@ BR.Actor = class Actor {
     }
     for (const w of this.slots) if (w) BR.Weapons.update(w, dt, this);
     if (this.fireHeld) BR.Weapons.tryFire(this.game, this);
-    if (this.mesh) this.syncMesh(dt);
+    if (this.mesh) this.syncMeshLod(dt);
+  }
+  // v1.37: other players' models past the fog only follow their position; past 70 m they animate every 2nd frame,
+  // past 140 m every 3rd (with the skipped time), so 30 bots cost a fraction of the CPU on phones.
+  syncMeshLod(dt) {
+    const g = this.game, cp = !this.isPlayer && g && g.camera && g.camera.position, me = this.mesh;
+    if (!cp) return this.syncMesh(dt);
+    if (!me.visible) { me.position.copy(this.mover.pos); this._skipDt = 0; return; }
+    const d = Math.abs(this.pos.x - cp.x) + Math.abs(this.pos.z - cp.z);
+    if (d > 70) {
+      this._skipDt = (this._skipDt || 0) + dt; this._lodF = (this._lodF || 0) + 1;
+      if (this._lodF % (d > 140 ? 3 : 2)) { me.position.copy(this.mover.pos); return; }
+      dt = Math.min(0.1, this._skipDt);
+    }
+    this._skipDt = 0;
+    this.syncMesh(dt);
   }
 
   heal(amount) {

@@ -1416,6 +1416,30 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v137 = await page.evaluate(() => {
+    const g = BR.game, out = {}; BR.AntiCheat._testing = true; g.startMatch({ seed: 4 }); const p = g.player, W = g.world;
+    for (let i = 0; i < 600 && (p.mover.dropping || p.mover.chute); i++) g.update(1 / 30);
+    for (let i = 0; i < 5; i++) g.update(1 / 60); g.render();
+    // scenery LOD: detailed models only near the camera, cheap ones in the tiles
+    out.lod = (W.lodSets || []).length >= 6 && W.lodSets.every(L => L.near.count <= L.cap) && W.lodSets.some(L => L.near.count > 0) && W.lodSets.every(L => L.near.count === 0 || L.cur.every(i => { const e = L.M[i].elements; return Math.hypot(e[12] - g.camera.position.x, e[14] - g.camera.position.z) < L.dist + 1; }));
+    out.nearColors = W.lodSets.filter(L => L.near.instanceColor).every(L => L.near.instanceColor.array.length >= L.cap * 3);
+    // ground is tiled and culled
+    let tiles = 0; g.scene.children.forEach(o => { if (o.isMesh && o.material && o.material.map && o.geometry.index && o.geometry.attributes.color && !o.isInstancedMesh && o.geometry.index.count < 47000 * 3) tiles++; });
+    out.groundTiles = tiles >= 20;
+    // triangles drawn per frame stay low
+    const ri = g.renderer.info; ri.autoReset = false; ri.reset(); g.render(); out.tris = ri.render.triangles; out.calls = ri.render.calls; ri.autoReset = true;
+    out.budget = out.tris < 600000 && out.calls < 200;
+    // hidden top-level objects skip the matrix pass
+    const hid = g.loot.items.find(it => !it.mesh.visible); out.skipHidden = !!hid && (() => { hid.mesh.position.x += 1; hid.mesh.matrixWorldNeedsUpdate = false; const before = hid.mesh.matrixWorld.elements[12]; g.scene.updateMatrixWorld(); const ok = hid.mesh.matrixWorld.elements[12] === before; hid.mesh.position.x -= 1; return ok; })();
+    // grade in the shaders, no CSS filter at default saturation
+    out.grade = g.renderer.toneMapping === THREE.CustomToneMapping && !g.renderer.domElement.style.filter && THREE.ShaderChunk.tonemapping_pars_fragment.includes('0.88');
+    // pickups use the grid and still work
+    const it = g.loot.items.find(q => q.kind === 'ammo'); out.grid = !!it && g.loot.nearItems(it.pos.x, it.pos.z).includes(it) && !g.loot.nearItems(it.pos.x + 40, it.pos.z + 40).includes(it);
+    // far bots: hidden past the fog, animation thinned past 70 m
+    const far = g.actors.find(a => a !== p && a.alive && a.mesh && Math.hypot(a.pos.x - p.pos.x, a.pos.z - p.pos.z) > g.scene.fog.far + 30); out.farHidden = !far || far.mesh.visible === false;
+    g.toMenu();
+    return out;
+  });
   const v136 = await page.evaluate(() => {
     const out = {}, W = new BR.World(4, {}), m = new BR.Mover(W), dt = 1 / 60;
     const go = (n, inp) => { for (let i = 0; i < n; i++) m.update(dt, Object.assign({ mx: 0, mz: 0, jump: false, crouch: false }, inp || {}), 0); };
@@ -1833,6 +1857,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.37 mobile performance: scenery LOD (detailed models only near you), tiled ground, hidden objects skip matrix updates, triangle + draw-call budget, grade in shaders, loot grid, far bots hidden', ['lod', 'nearColors', 'groundTiles', 'budget', 'skipHidden', 'grade', 'grid', 'farHidden'].every(k => v137[k]), v137],
     ['v1.36 glider redeploys in the air (after a Shockwave) and cuts on crouch, cleaner knife draws, rounder trees / pines / bushes / grass, sky never clips', Object.values(v136).every(Boolean), v136],
     ['v1.35 real terrain on the BR islands (hills block rays, nothing floating, you land + walk on the slopes), military base / farm POIs, Crossroads / Frostbite / Harbor maps in the TDM + FFA pools', Object.values(v135).every(Boolean), v135],
     ['v1.34 golden-hour grade: warm key sun, matched fog, grade layer over the view (never blocks touches)', Object.values(v134).every(Boolean), v134],
@@ -2023,7 +2048,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

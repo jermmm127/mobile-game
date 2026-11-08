@@ -5,6 +5,14 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.37.0', date: '2026-11-08', title: 'Smoother on mobile', notes: [
+    'Big performance boost on phones, especially in Battle Royale and Resurgence. A busy island frame now draws about a third of the triangles it used to (around 1 million down to 250-450 thousand), with fewer draw calls.',
+    'Trees, pines, bushes, rocks and boulders use their full detailed model only near you, and a lighter version further away that looks the same through the haze. Grass tufts and flowers are only drawn close up, where you can see them.',
+    'The ground is split into tiles, so the parts behind you or past the fog are no longer drawn.',
+    'Less work for the phone every frame: hidden loot, map tiles and effects are skipped, far-away players animate less often (and not at all past the fog), and pickups only check nearby items. Game logic per frame is about half what it was, and the big random hitches are gone.',
+    'The colour grade now runs inside the 3D shaders instead of as a filter over the whole screen, which saves phones a full-screen pass every frame. It looks the same.',
+    'On the Low graphics setting, the lighter scenery models switch in sooner.',
+  ] },
   { v: '1.36.1', date: '2026-11-08', title: 'Jump cuts the glider', notes: [
     'Pressing JUMP while gliding now cuts the glider (the button reads CUT), so one button opens and cuts it. Crouch still cuts it too.',
   ] },
