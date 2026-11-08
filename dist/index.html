@@ -3242,7 +3242,7 @@ BR.World = class World {
     }
     // ground slab (v1.35: on terrain maps it sits at the terrain height under the query)
     if (this.T) { const gh = this.heightAt((x0 + x1) / 2, (z0 + z1) / 2); if (y0 < gh) { this.ground.y1 = gh; this.ground.y0 = gh - 10; out.push(this.ground); } }
-    else if (y0 < 0) out.push(this.ground);
+    else if (y0 < 0) { this.ground.y1 = 0; this.ground.y0 = -10; out.push(this.ground); }      // (flat: always at 0, even if a terrain query moved it)
     return out;
   }
 

@@ -31,7 +31,7 @@ const server = http.createServer((req, res) => {
 
   const mech = await page.evaluate(() => {
     const dt = 1 / 60, yawFor = (dx, dz) => Math.atan2(-dx, -dz);
-    const mkWorld = boxes => { const w = new BR.World(1); w.boxes = []; w.cells = w.cells.map(() => []); boxes.forEach(b => w.addBox(...b)); return w; };
+    const mkWorld = boxes => { const w = new BR.World(1); w.T = null; w.boxes = []; w.cells = w.cells.map(() => []);      /* (v1.35: a truly flat test world: drop the island terrain) */ boxes.forEach(b => w.addBox(...b)); return w; };
     const go = (m, n, inp, yaw) => { for (let i = 0; i < n; i++) m.update(dt, Object.assign({ mx: 0, mz: 0, jump: false, crouch: false }, typeof inp === 'function' ? inp(i) : inp), yaw); };
     const run = BR.CONFIG.move.runSpeed, r = {};
     const E = yawFor(1, 0);
@@ -102,7 +102,7 @@ const server = http.createServer((req, res) => {
     let peak = y0; for (let i = 0; i < 60; i++) { p.mover.update(1 / 60, { mx: 0, mz: 0 }, p.yaw); peak = Math.max(peak, p.pos.y); }
     r.shotgunJump = peak - y0;
     // super jump cooldown: two slide-jumps in a row -> only the first is super
-    { const fw = new BR.World(1); fw.boxes = []; fw.cells = fw.cells.map(() => []);
+    { const fw = new BR.World(1); fw.T = null; fw.boxes = []; fw.cells = fw.cells.map(() => []);
       const m = new BR.Mover(fw); m.pos.set(0, 0, 0);
       const go = (n, inp) => { for (let i = 0; i < n; i++) m.update(1 / 60, Object.assign({ mx: 0, mz: 0, jump: false, crouch: false }, inp), 0); };
       for (let i = 0; i < 200 && !m.onGround; i++) go(1, {});
@@ -186,7 +186,7 @@ const server = http.createServer((req, res) => {
   // Parachute + practice mode + HUD editor coverage
   const extra = await page.evaluate(() => {
     BR.Profile.data.equip.melee = 'knife'; BR.Profile.save(); BR.game.refreshCosmetics(); 
-    const r = {}, flat = new BR.World(1); flat.boxes = []; flat.cells = flat.cells.map(() => []);
+    const r = {}, flat = new BR.World(1); flat.T = null; flat.boxes = []; flat.cells = flat.cells.map(() => []);
     const fall = (pressAt) => {
       const m = new BR.Mover(flat); m.pos.set(0, 110, 0); m.dropping = true; let t = 0, openedAt = null, landV = 0;
       while (m.dropping && t < 60) { const j = pressAt !== null && m.pos.y < pressAt && !m.chute; m.update(1 / 60, { mx: 0, mz: 1, jump: j, crouch: false }, 0); t += 1 / 60; if (m.chute && openedAt === null) openedAt = m.pos.y; landV = m.vel.y; }
