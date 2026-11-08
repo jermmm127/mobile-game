@@ -1752,7 +1752,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.36.0',
+  version: '1.36.1',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2047,6 +2047,9 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.36.1', date: '2026-11-08', title: 'Jump cuts the glider', notes: [
+    'Pressing JUMP while gliding now cuts the glider (the button reads CUT), so one button opens and cuts it. Crouch still cuts it too.',
+  ] },
   { v: '1.36.0', date: '2026-11-08', title: 'Glider redeploy + nicer nature', notes: [
     'Redeploy your glider in mid-air. After a Shockwave launch, a jump off a cliff or any big fall (at least 7 m above the ground), press JUMP to open the glider again. The jump button reads GLIDE when you can.',
     'Cut the glider to drop fast: press CROUCH (the button reads CUT) while gliding. It stays cut until you land, or until you press JUMP to open it again.',
@@ -5795,15 +5798,16 @@ BR.Mover = class Mover {
     // ---- v1.36 glider redeploy ------------------------------------------------
     // On the Battle Royale islands: high enough in the air (a Shockwave launch, a jump pad, off a roof or a ridge) and not on a
     // wall, Jump opens the glider again
+    let justOpened = false;      // (the press that opens the glider must not also cut it)
     if (!this.dropping && !this.onGround && this.world.terrainOn && inp.jump && !this.grapple && !this.wallRunning && this.wallContactT > 0.25) {
       const gy = this.world.groundAt(this.pos.x, this.pos.z, this.pos.y);
-      if (this.pos.y - gy >= M.glideMinHeight) { this.dropping = true; this.chute = true; this.chuteCut = false; ev.chute = true; this.jumpBuf = 0; this.sliding = false; this.crouched = false; }
+      if (this.pos.y - gy >= M.glideMinHeight) { this.dropping = true; this.chute = true; this.chuteCut = false; ev.chute = true; justOpened = true; this.jumpBuf = 0; this.sliding = false; this.crouched = false; }
     }
     // ---- skydive ----------------------------------------------------------
-    // Freefall until you press Jump (or get close to the ground), then the parachute opens. v1.36: Crouch cuts the glider
+    // Freefall until you press Jump (or get close to the ground), then the parachute opens. v1.36: Jump or Crouch cuts the glider
     // (you freefall and it stays cut until you open it again with Jump).
     if (this.dropping) {
-      if (this.chute && inp.crouch) { this.chute = false; this.chuteCut = true; ev.chuteCut = true; }
+      if (this.chute && (inp.crouch || (inp.jump && !justOpened))) { this.chute = false; this.chuteCut = true; ev.chuteCut = true; }      // v1.36.1: Jump cuts it too
       else if (!this.chute) {
         const groundY = this.world.groundAt(this.pos.x, this.pos.z, this.pos.y);
         if (inp.jump || (!this.chuteCut && this.pos.y - groundY < (this.chuteAt || M.chuteAutoHeight))) { this.chute = true; this.chuteCut = false; ev.chute = true; this.jumpBuf = 0; }
@@ -20226,7 +20230,7 @@ BR.HUD = class HUD {
       el.style.setProperty('--cd', (v / BR.CONFIG.move.tech.superJumpCooldown * 360).toFixed(0) + 'deg');
     });
     const canGlide = !m.dropping && !m.onGround && game.world && game.world.terrainOn && !m.wallRunning && p.pos.y - game.world.groundAt(p.pos.x, p.pos.z, p.pos.y) >= BR.CONFIG.move.glideMinHeight;
-    const jLbl = m.dropping ? (m.chute ? 'JUMP' : 'CHUTE') : canGlide ? 'GLIDE' : 'JUMP';     // v1.36: mid-air glider
+    const jLbl = m.dropping ? (m.chute ? 'CUT' : 'CHUTE') : canGlide ? 'GLIDE' : 'JUMP';     // v1.36: mid-air glider
     this.set('jl', e.jumpBtn, jLbl, (el, v) => { el.querySelector('span').textContent = v; el.classList.toggle('on-toggle', v === 'CHUTE' || v === 'GLIDE'); });
     const cLbl = m.dropping && m.chute ? 'CUT' : m.sliding ? 'SLIDE' : m.crouched ? 'STAND' : m.speedH >= BR.CONFIG.move.runSpeed * BR.CONFIG.move.slideMinSpeed ? 'SLIDE' : 'CROUCH';
     this.set('cl', e.crouchBtn, cLbl, (el, v) => { el.querySelector('span').textContent = v; el.classList.toggle('on-toggle', m.crouched); });
@@ -21784,7 +21788,7 @@ BR.Game = class Game {
       if (this._stepD > stride) { this._stepD = 0; BR.Audio.step && BR.Audio.step(sp, m.crouched); } } else this._stepD = 0.6;
     lp.copy(p.pos);
     if (ev.wallrun) BR.Audio.wallrun();
-    if (ev.chute) { BR.Audio.chute(); this.hud.toast('Glider deployed · Crouch to cut', 1100); this.cam.kick = 0.25; }
+    if (ev.chute) { BR.Audio.chute(); this.hud.toast('Glider deployed · Jump to cut', 1100); this.cam.kick = 0.25; }
     if (ev.chuteCut) { BR.Audio.whiz && BR.Audio.whiz(0); this.hud.toast('Glider cut', 700); }
     if (ev.pad) { BR.Audio.pad(); this.cam.shake = Math.max(this.cam.shake, 0.15); }
     if (ev.tech) { this.hud.tech(ev.tech); BR.Audio.tech(); }

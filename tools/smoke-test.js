@@ -1426,6 +1426,8 @@ const server = http.createServer((req, res) => {
     go(1, { crouch: true }); out.cut = m.dropping && !m.chute && m.chuteCut;
     let reopened = false; for (let i = 0; i < 300 && m.dropping; i++) { go(1); if (m.chute) reopened = true; }
     out.staysCutAndLands = !reopened && !m.dropping && m.onGround;
+    m.pos.set(x, gy + 40, z); m.vel.set(0, 0, 0); m.onGround = false; go(5); go(1, { jump: true }); const opened = m.dropping && m.chute; go(3); go(1, { jump: true });
+    out.jumpCuts = opened && m.dropping && !m.chute && m.chuteCut;
     out.knifeDraw = (() => { const g = BR.game; g.startMatch({ practice: true }); const p = g.player; const k = p.slots.findIndex(w => w && BR.CONFIG.weapons[w.id] && BR.CONFIG.weapons[w.id].melee); if (k < 0) { g.toMenu(); return false; } p.cur = k === 0 ? 1 : 0; g.update(1 / 60); g.render(); p.cur = k; g.update(1 / 60); g.render(); const ok = Math.abs(g.vmr.drawDur - 0.85) < 0.01; g.toMenu(); return ok; })();
     const can = canopyGeometry(5), pine = pineGeometry(0), bush = bushGeometry(3), tuft = grassTuftGeometry(), trunk = trunkGeometry();
     out.models = can.attributes.position.count >= 8 * 240 && !!can.attributes.color && pine.attributes.position.count > 5 * 100 && bush.attributes.position.count >= 4 * 240 && tuft.attributes.position.count === 15 && trunk.attributes.position.count > 400;

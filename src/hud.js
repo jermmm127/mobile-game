@@ -906,7 +906,7 @@ BR.HUD = class HUD {
       el.style.setProperty('--cd', (v / BR.CONFIG.move.tech.superJumpCooldown * 360).toFixed(0) + 'deg');
     });
     const canGlide = !m.dropping && !m.onGround && game.world && game.world.terrainOn && !m.wallRunning && p.pos.y - game.world.groundAt(p.pos.x, p.pos.z, p.pos.y) >= BR.CONFIG.move.glideMinHeight;
-    const jLbl = m.dropping ? (m.chute ? 'JUMP' : 'CHUTE') : canGlide ? 'GLIDE' : 'JUMP';     // v1.36: mid-air glider
+    const jLbl = m.dropping ? (m.chute ? 'CUT' : 'CHUTE') : canGlide ? 'GLIDE' : 'JUMP';     // v1.36: mid-air glider
     this.set('jl', e.jumpBtn, jLbl, (el, v) => { el.querySelector('span').textContent = v; el.classList.toggle('on-toggle', v === 'CHUTE' || v === 'GLIDE'); });
     const cLbl = m.dropping && m.chute ? 'CUT' : m.sliding ? 'SLIDE' : m.crouched ? 'STAND' : m.speedH >= BR.CONFIG.move.runSpeed * BR.CONFIG.move.slideMinSpeed ? 'SLIDE' : 'CROUCH';
     this.set('cl', e.crouchBtn, cLbl, (el, v) => { el.querySelector('span').textContent = v; el.classList.toggle('on-toggle', m.crouched); });

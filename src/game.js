@@ -1061,7 +1061,7 @@ BR.Game = class Game {
       if (this._stepD > stride) { this._stepD = 0; BR.Audio.step && BR.Audio.step(sp, m.crouched); } } else this._stepD = 0.6;
     lp.copy(p.pos);
     if (ev.wallrun) BR.Audio.wallrun();
-    if (ev.chute) { BR.Audio.chute(); this.hud.toast('Glider deployed · Crouch to cut', 1100); this.cam.kick = 0.25; }
+    if (ev.chute) { BR.Audio.chute(); this.hud.toast('Glider deployed · Jump to cut', 1100); this.cam.kick = 0.25; }
     if (ev.chuteCut) { BR.Audio.whiz && BR.Audio.whiz(0); this.hud.toast('Glider cut', 700); }
     if (ev.pad) { BR.Audio.pad(); this.cam.shake = Math.max(this.cam.shake, 0.15); }
     if (ev.tech) { this.hud.tech(ev.tech); BR.Audio.tech(); }

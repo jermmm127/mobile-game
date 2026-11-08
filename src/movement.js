@@ -107,15 +107,16 @@ BR.Mover = class Mover {
     // ---- v1.36 glider redeploy ------------------------------------------------
     // On the Battle Royale islands: high enough in the air (a Shockwave launch, a jump pad, off a roof or a ridge) and not on a
     // wall, Jump opens the glider again
+    let justOpened = false;      // (the press that opens the glider must not also cut it)
     if (!this.dropping && !this.onGround && this.world.terrainOn && inp.jump && !this.grapple && !this.wallRunning && this.wallContactT > 0.25) {
       const gy = this.world.groundAt(this.pos.x, this.pos.z, this.pos.y);
-      if (this.pos.y - gy >= M.glideMinHeight) { this.dropping = true; this.chute = true; this.chuteCut = false; ev.chute = true; this.jumpBuf = 0; this.sliding = false; this.crouched = false; }
+      if (this.pos.y - gy >= M.glideMinHeight) { this.dropping = true; this.chute = true; this.chuteCut = false; ev.chute = true; justOpened = true; this.jumpBuf = 0; this.sliding = false; this.crouched = false; }
     }
     // ---- skydive ----------------------------------------------------------
-    // Freefall until you press Jump (or get close to the ground), then the parachute opens. v1.36: Crouch cuts the glider
+    // Freefall until you press Jump (or get close to the ground), then the parachute opens. v1.36: Jump or Crouch cuts the glider
     // (you freefall and it stays cut until you open it again with Jump).
     if (this.dropping) {
-      if (this.chute && inp.crouch) { this.chute = false; this.chuteCut = true; ev.chuteCut = true; }
+      if (this.chute && (inp.crouch || (inp.jump && !justOpened))) { this.chute = false; this.chuteCut = true; ev.chuteCut = true; }      // v1.36.1: Jump cuts it too
       else if (!this.chute) {
         const groundY = this.world.groundAt(this.pos.x, this.pos.z, this.pos.y);
         if (inp.jump || (!this.chuteCut && this.pos.y - groundY < (this.chuteAt || M.chuteAutoHeight))) { this.chute = true; this.chuteCut = false; ev.chute = true; this.jumpBuf = 0; }

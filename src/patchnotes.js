@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.36.1', date: '2026-11-08', title: 'Jump cuts the glider', notes: [
+    'Pressing JUMP while gliding now cuts the glider (the button reads CUT), so one button opens and cuts it. Crouch still cuts it too.',
+  ] },
   { v: '1.36.0', date: '2026-11-08', title: 'Glider redeploy + nicer nature', notes: [
     'Redeploy your glider in mid-air. After a Shockwave launch, a jump off a cliff or any big fall (at least 7 m above the ground), press JUMP to open the glider again. The jump button reads GLIDE when you can.',
     'Cut the glider to drop fast: press CROUCH (the button reads CUT) while gliding. It stays cut until you land, or until you press JUMP to open it again.',
