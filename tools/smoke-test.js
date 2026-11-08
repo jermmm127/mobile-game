@@ -1416,6 +1416,13 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v1331 = await page.evaluate(() => {
+    const g = BR.game, out = {}; BR.AntiCheat._testing = true; g.startMatch({ practice: true }); const p = g.player, xh = document.getElementById('crosshair');
+    const hidden = id => { p.slots[0] = BR.Weapons.create(id); p.cur = 0; g.vmr.lastWeapon = null; for (let i = 0; i < 30; i++) { g.input.ads = false; g.update(1 / 30); }
+      const hip = xh.classList.contains('hide'); for (let i = 0; i < 40; i++) { g.input.ads = true; g.update(1 / 30); } const ads = xh.classList.contains('hide'); g.input.ads = false; for (let i = 0; i < 20; i++) g.update(1 / 30); return !hip && ads; };
+    out.holo = hidden('holoar') && hidden('burst'); out.scopes = hidden('sniper') && hidden('dmr') && hidden('lmg'); out.irons = !hidden('rifle') && !hidden('pistol');
+    g.toMenu(); return out;
+  });
   const v133 = await page.evaluate(async () => {
     const g = BR.game, L = BR.Lobby, M0 = BR.Models, out = {}; BR.AntiCheat._testing = true;
     out.presets = ['gungame', 'oitc', 'knives'].every(k => BR.ARENA_PRESETS[k]);
@@ -1776,6 +1783,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.33.1 crosshair hides while aiming through holo sights, the sniper scope, the DMR prism and the ACOG; iron sights keep it', Object.values(v1331).every(Boolean), v1331],
     ['v1.33 Gun Game / One in the Chamber / Knife Fight, forged blueprint parts (by rarity, ADS-hidden floaters), layered per-weapon muzzle flash', Object.values(v133).every(Boolean), v133],
     ['v1.32.3 ADS: iron-sight guns aim below the crosshair (still zoomed), optics line up on it', Object.values(v1323).every(Boolean), v1323],
     ['v1.32.2 Shotgun Duels picker: Breacher / Riot Auto / Pump Action, the pick arms you + saves, bots vary, no undefined team header', Object.values(v1322).every(Boolean), v1322],
@@ -1962,7 +1970,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

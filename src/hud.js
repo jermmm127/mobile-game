@@ -925,7 +925,10 @@ BR.HUD = class HUD {
     const prism = !!(optic && w.def.optic === 'prism'), acog = !!(optic && w.def.optic === 'acog');
     this.set('scope2', e.scope2, prism, el => el.classList.toggle('on', prism));
     this.set('scope3', e.scope3, acog, el => el.classList.toggle('on', acog));
-    this.set('xh', e.crosshair, !!(scoped || optic), (el, v) => el.classList.toggle('hide', v));   // the crosshair stays up while aiming (only scopes / magnified optics replace it)
+    // v1.33.1: aiming through any optic (holo sights, the sniper scope, the DMR prism, the ACOG) hides the crosshair: the
+    // optic's own reticle is the aim point. Iron sights keep it (the gun sits below it).
+    const glass = !!(p.ads && p.alive && w && (w.def.holo || w.def.scope || w.def.optic) && game.vmr.adsW > 0.6);
+    this.set('xh', e.crosshair, !!(scoped || optic || glass), (el, v) => el.classList.toggle('hide', v));
 
     // Low health vignette + storm tint
     const hurt = 1 - Math.max(0, p.health) / A.maxHealth;

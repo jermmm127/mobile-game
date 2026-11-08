@@ -5,6 +5,9 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.33.1', date: '2026-11-08', title: 'Cleaner optics', notes: [
+    'Aiming through an optic now hides the crosshair, so the reticle is your only aim point: the holo sights (Holo AR, Talon Burst), the Sniper scope, the DMR prism scope and the LMG ACOG. Iron-sight guns keep the crosshair.',
+  ] },
   { v: '1.33.0', date: '2026-11-07', title: 'New modes, forged blueprints, real muzzle flash', notes: [
     'New mode: GUN GAME. Free For All, 6 players: every kill moves you to the next gun through 14 of them, from SMG to pistol. The last step is the knife, and a knife kill on it wins. Get knifed and you drop a level.',
     'New mode: ONE IN THE CHAMBER. Everyone gets a revolver with ONE bullet and a knife. Every hit kills. Each kill gives you another bullet. You have 3 lives, and the last player standing wins.',
