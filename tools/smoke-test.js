@@ -929,7 +929,7 @@ const server = http.createServer((req, res) => {
       P.data.equip.melee = 'bayonet'; g.refreshCosmetics();
       // Discover browser + lobby PLAY
       g.toMenu(); document.getElementById('mode-cur').click();
-      v.discover = !document.getElementById('discover').classList.contains('hidden') && document.querySelectorAll('#dc-rows .dc-tile').length === 11;
+      v.discover = !document.getElementById('discover').classList.contains('hidden') && document.querySelectorAll('#dc-rows .dc-tile').length === 14;     /* (v1.33: + Gun Game, One in the Chamber, Knife Fight) */
       document.querySelector('#discover [data-m="aim"]').click();
       v.selected = g.settings.mode === 'aim' && /AIM TRAINER/.test(document.getElementById('mc-name').textContent);
       document.getElementById('btn-go').click(); v.goAim = g.mode instanceof BR.AimTrainer;
