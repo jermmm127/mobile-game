@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.35.0', date: '2026-11-08', title: 'Real terrain + new maps', notes: [
+    'The Battle Royale and Resurgence islands now have real terrain: rolling hills, ridge lines up to about 30 m high, valleys and slopes running down to the beaches. Every hill can be climbed on foot. Hills block bullets and line of sight, so high ground and cover finally matter.',
+    'Fixed the old flat terrain: towns, yards and outposts now sit level on flattened ground that blends into the hills. Containers, towers, rocks and props sit on the slopes instead of floating or splitting apart. Trees, bushes, cars and ponds follow the ground, and the big blocky rock walls are gone (the terrain has real ridges now).',
+    'The ground shows the shape of the land: rocky patches on steep slopes, drier grass up high. The minimap now has shaded relief, so you can read the hills before you drop.',
+    'New Battle Royale locations. Military bases: a walled compound with gates, climbable corner watchtowers with chests, barracks, a two-storey command post, an open hangar with a jeep, a helipad, fuel tanks and sandbags. Farms: a big barn with a hay loft (chest up there), a silo, a farmhouse, a water tower, fenced crop fields, hay bales and a tractor.',
+    'Three new maps for Team Deathmatch, Free For All and the fun modes. CROSSROADS: a desert village with a covered market street through the middle, a rooftop route with stairs up north and a back alley with a well. FROSTBITE: a snowy outpost with a two-storey lab and a roof catwalk in the middle, plus sheds, a snowcat and crates round the frozen yard. HARBOR: docks with a walk-through warehouse in the middle, container stacks under gantry cranes and a pier with moored boats.',
+  ] },
   { v: '1.34.0', date: '2026-11-08', title: 'Golden hour', notes: [
     'New look for every map: warm golden-hour light. The sun is warmer and stronger, shade turns cool blue, and buildings and terrain now stand out instead of looking flat.',
     'The sky is a deeper blue overhead with a wide warm glow around the sun, and the haze in the distance matches the horizon so far-off hills fade smoothly.',

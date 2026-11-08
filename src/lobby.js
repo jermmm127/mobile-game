@@ -37,9 +37,13 @@
     { id: 'district', name: 'DISTRICT', sub: 'Big town block · houses + plaza', art: 'linear-gradient(150deg,#e6c79a,#7a4a3a 50%,#24201c)', big: true },
     { id: 'suburb', name: 'CUL-DE-SAC', sub: 'Two houses · one street', art: 'linear-gradient(150deg,#9fd0e8,#6f8a52 50%,#2a2420)', mid: true },
     { id: 'skyline', name: 'SKYLINE', sub: 'Rooftop duel · AC units + water tank', art: 'linear-gradient(150deg,#ffb36b,#5b5e65 50%,#1a1c22)' },
+    // v1.35 three-lane TDM / FFA maps
+    { id: 'crossroads', name: 'CROSSROADS', sub: 'Desert village · market street + rooftops', art: 'linear-gradient(150deg,#ffd9a0,#b8864a 50%,#3a2614)', mid: true },
+    { id: 'frostbite', name: 'FROSTBITE', sub: 'Snowy outpost · two-storey lab + catwalk', art: 'linear-gradient(150deg,#f2f8ff,#8fb4cc 50%,#1a2a3a)', mid: true },
+    { id: 'harbor', name: 'HARBOR', sub: 'Docks · warehouse, cranes + pier', art: 'linear-gradient(150deg,#9fd0e8,#4a6070 50%,#14202a)', mid: true },
   ];
   // v1.21: Free For All plays on the big maps (District, Killhouse); TDM adds District to its pool; duels keep the small ones
-  L.pool = preset => (BR.ARENA_PRESETS[preset] || {}).kind === 'ffa' ? L.MAPS.filter(m => m.id === 'district' || m.id === 'killhouse' || m.id === 'suburb') : preset === 'tdm' ? L.MAPS.filter(m => m.id !== 'skyline') : L.MAPS.filter(m => !m.big && !m.mid);     // v1.23: Cul-de-Sac in TDM/FFA, Skyline in duels
+  L.pool = preset => (BR.ARENA_PRESETS[preset] || {}).kind === 'ffa' ? L.MAPS.filter(m => ['district', 'killhouse', 'suburb', 'crossroads', 'frostbite', 'harbor'].includes(m.id)) : preset === 'tdm' ? L.MAPS.filter(m => m.id !== 'skyline') : L.MAPS.filter(m => !m.big && !m.mid);     // v1.23: Cul-de-Sac in TDM/FFA, Skyline in duels
   L.rollMap = () => { const P = L.pool(L.preset); return P[Math.floor(Math.random() * P.length)].id; };
   L.play = (opts) => {
     const g = BR.game; BR.Audio.init();

@@ -46,7 +46,9 @@ BR.World = class World {
     this.props = { barrels: [], logs: [], stumps: [], ponds: [], boulders: [], rockFill: [] };
     this.hit = { t: 0, box: null };
     this.ground = { x0: -1e4, y0: -10, z0: -1e4, x1: 1e4, y1: 0, z1: 1e4, ground: true };
-    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.mapId === 'district') this.generateDistrict(); else if (this.mapId === 'suburb') this.generateSuburb(); else if (this.mapId === 'skyline') this.generateSkyline(); else if (this.arena) this.generateArena(); else this.generate();
+    this.terrainOn = !this.arena && !this.halloween && !this.range && !this.overdrive;      // v1.35: the BR + Resurgence islands get real hills
+    if (this.halloween) this.generateHalloween(); else if (this.range) this.generateRange(); else if (this.overdrive) this.generateOverdrive(); else if (this.reef) this.generateReef(); else if (this.mapId === 'killhouse') this.generateKillhouse(); else if (this.mapId === 'cargo') this.generateCargo(); else if (this.mapId === 'district') this.generateDistrict(); else if (this.mapId === 'suburb') this.generateSuburb(); else if (this.mapId === 'skyline') this.generateSkyline(); else if (this.mapId === 'crossroads') this.generateCrossroads(); else if (this.mapId === 'frostbite') this.generateFrostbite(); else if (this.mapId === 'harbor') this.generateHarbor(); else if (this.arena) this.generateArena(); else this.generate();
+    if (this.terrainOn) this.buildTerrain();
   }
 
   // ------------------------------------------------------------------ zombies: Hollow Graves
@@ -323,8 +325,9 @@ BR.World = class World {
         }
       }
     }
-    // ground slab
-    if (y0 < 0) out.push(this.ground);
+    // ground slab (v1.35: on terrain maps it sits at the terrain height under the query)
+    if (this.T) { const gh = this.heightAt((x0 + x1) / 2, (z0 + z1) / 2); if (y0 < gh) { this.ground.y1 = gh; this.ground.y0 = gh - 10; out.push(this.ground); } }
+    else if (y0 < 0) out.push(this.ground);
     return out;
   }
 
@@ -333,7 +336,8 @@ BR.World = class World {
   raycast(ox, oy, oz, dx, dy, dz, maxDist) {
     const U = BR.util;
     let best = maxDist, bestBox = null;
-    if (dy < 0) { const t = -oy / dy; if (t >= 0 && t < best) { best = t; bestBox = this.ground; } }
+    if (this.T) { const t = this.rayTerrain(ox, oy, oz, dx, dy, dz, best); if (t < best) { best = t; bestBox = this.ground; } }       // v1.35: hills block shots + sight
+    else if (dy < 0) { const t = -oy / dy; if (t >= 0 && t < best) { best = t; bestBox = this.ground; } }
     const ix = U.inv(dx), iy = U.inv(dy), iz = U.inv(dz);
     const cs = this.cell, h = this.gridHalf, n = this.n;
     let cx = Math.floor((ox + h) / cs) + 1, cz = Math.floor((oz + h) / cs) + 1;
@@ -368,7 +372,7 @@ BR.World = class World {
     let best = maxDist;
     for (const t of this.trees) {
       if (Math.abs(t.x - ox) > maxDist + 4 || Math.abs(t.z - oz) > maxDist + 4) continue;
-      const hit = BR.util.raySphere(ox, oy, oz, dx, dy, dz, t.x, t.h + t.s * 0.4, t.z, t.s * 1.05, best);
+      const hit = BR.util.raySphere(ox, oy, oz, dx, dy, dz, t.x, (t.y || 0) + t.h + t.s * 0.4, t.z, t.s * 1.05, best);
       if (hit < best) best = hit;
     }
     return best;
@@ -384,11 +388,102 @@ BR.World = class World {
 
   // Highest walkable surface under (x,z) below height `fromY`.
   groundAt(x, z, fromY) {
-    let top = 0;
+    let top = this.T ? this.heightAt(x, z) : 0;
     const tmp = this._gtmp || (this._gtmp = []);
     this.query(x - 0.2, 0, z - 0.2, x + 0.2, fromY, z + 0.2, tmp);
     for (const b of tmp) if (!b.ground && b.y1 <= fromY && b.y1 > top) top = b.y1;
     return top;
+  }
+
+  // ------------------------------------------------------------- v1.35 TERRAIN
+  // A height field on a 5 m grid (bilinear between points). Generation runs on flat ground as before; then the terrain
+  // is built: rolling hills, ridge lines and valleys from seeded noise, falling to the beach at the coast, slopes capped so
+  // you can always run up them, and flattened pads under everything that was built (largest first). Then every box, loot
+  // spot, tree and prop is lifted onto it, so buildings sit level and nothing floats.
+  heightAt(x, z) {
+    const T = this.T; if (!T) return 0;
+    const fx = (x - T.o) / T.C, fz = (z - T.o) / T.C, i = Math.max(0, Math.min(T.N - 2, Math.floor(fx))), j = Math.max(0, Math.min(T.N - 2, Math.floor(fz)));
+    const u = Math.max(0, Math.min(1, fx - i)), v = Math.max(0, Math.min(1, fz - j)), h = T.h, N = T.N, k = j * N + i;
+    return (h[k] * (1 - u) + h[k + 1] * u) * (1 - v) + (h[k + N] * (1 - u) + h[k + N + 1] * u) * v;
+  }
+  buildTerrain() {
+    const H = this.half, C = 5, S = this.size + 140, N = Math.ceil(S / C) + 1, o = -S / 2, h = new Float32Array(N * N);
+    // seeded gradient noise
+    const R = BR.util.rng(this.seed * 7 + 13), P = new Uint8Array(512), G = [];
+    const pp = Array.from({ length: 256 }, (_, i) => i); for (let i = 255; i > 0; i--) { const k = Math.floor(R() * (i + 1)); [pp[i], pp[k]] = [pp[k], pp[i]]; }
+    for (let i = 0; i < 512; i++) P[i] = pp[i & 255];
+    for (let i = 0; i < 256; i++) { const a = R() * Math.PI * 2; G.push([Math.cos(a), Math.sin(a)]); }
+    const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+    const noise = (x, z) => { const X = Math.floor(x), Z = Math.floor(z), xf = x - X, zf = z - Z, xi = X & 255, zi = Z & 255;
+      const g = (a, b, dx, dz) => { const v = G[P[P[a] + b]]; return v[0] * dx + v[1] * dz; };
+      const n00 = g(xi, zi, xf, zf), n10 = g(xi + 1, zi, xf - 1, zf), n01 = g(xi, zi + 1, xf, zf - 1), n11 = g(xi + 1, zi + 1, xf - 1, zf - 1), u = fade(xf), w = fade(zf);
+      return ((n00 * (1 - u) + n10 * u) * (1 - w) + (n01 * (1 - u) + n11 * u) * w) * 1.42; };
+    const fbm = (x, z, oc) => { let v = 0, a = 1, f = 1, t = 0; for (let k = 0; k < oc; k++) { v += noise(x * f + k * 17.3, z * f - k * 9.1) * a; t += a; a *= 0.5; f *= 2.03; } return v / t; };
+    const sm = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const big = this.reef ? 0.6 : 1;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x = o + i * C, z = o + j * C;
+      let v = 7 + 12 * big * fbm(x / 230, z / 230, 3) + 3.2 * noise(x / 52 + 11, z / 52 - 7);
+      const r = 1 - Math.abs(noise(x / 270 + 40, z / 270 + 3)); v += 17 * big * Math.pow(Math.max(0, r - 0.6) / 0.4, 2);         // ridge lines
+      const d = Math.min(H - Math.abs(x), H - Math.abs(z));
+      h[j * N + i] = Math.max(0.3, v) * sm(-8, 95, d) + 0.12;                                                                      // down to the beach at the coast
+    }
+    this.T = { C, N, o, h };
+    // flattened pads under everything built (largest first, so small ones inside big ones inherit the big pad's height)
+    const rects = this.occupied.map(r => [r[0], r[1], r[2], r[3]]).concat(this.buildings.map(B => [B.x0 - 2, B.z0 - 2, B.x1 + 2, B.z1 + 2]));
+    for (const p of this.pois || []) rects.push([p.x - 40, p.z - 40, p.x + 40, p.z + 40]);
+    rects.sort((a, b) => (b[2] - b[0]) * (b[3] - b[1]) - (a[2] - a[0]) * (a[3] - a[1]));
+    for (const [x0, z0, x1, z1] of rects) {
+      const m = Math.max(3, Math.min(14, Math.min(x1 - x0, z1 - z0) * 0.6)), ph = (this.heightAt((x0 + x1) / 2, (z0 + z1) / 2) * 2 + this.heightAt(x0, z0) + this.heightAt(x1, z0) + this.heightAt(x0, z1) + this.heightAt(x1, z1)) / 6;
+      const i0 = Math.max(0, Math.floor((x0 - m - o) / C)), i1 = Math.min(N - 1, Math.ceil((x1 + m - o) / C)), j0 = Math.max(0, Math.floor((z0 - m - o) / C)), j1 = Math.min(N - 1, Math.ceil((z1 + m - o) / C));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const x = o + i * C, z = o + j * C, dd = Math.hypot(Math.max(0, x0 - x, x - x1), Math.max(0, z0 - z, z - z1));
+        const w = dd <= 0 ? 1 : 1 - sm(0, m, dd); if (w > 0) h[j * N + i] += (ph - h[j * N + i]) * w; }
+    }
+    // cap the slope so every hill can be climbed on foot (and bots never get stuck): relax neighbours that differ too much
+    const maxD = C * 0.6;
+    for (let it = 0; it < 6; it++) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = j * N + i;
+      if (i + 1 < N) { const d = h[k + 1] - h[k]; if (Math.abs(d) > maxD) { const e = (Math.abs(d) - maxD) / 2 * Math.sign(d); h[k] += e; h[k + 1] -= e; } }
+      if (j + 1 < N) { const d = h[k + N] - h[k]; if (Math.abs(d) > maxD) { const e = (Math.abs(d) - maxD) / 2 * Math.sign(d); h[k] += e; h[k + N] -= e; } } }
+    // re-flatten the pads exactly (the slope pass may have nudged their rims)
+    for (const [x0, z0, x1, z1] of rects) { const ph = this.heightAt((x0 + x1) / 2, (z0 + z1) / 2);
+      const i0 = Math.max(0, Math.ceil((x0 - o) / C)), i1 = Math.min(N - 1, Math.floor((x1 - o) / C)), j0 = Math.max(0, Math.ceil((z0 - o) / C)), j1 = Math.min(N - 1, Math.floor((z1 - o) / C));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) h[j * N + i] = ph; }
+    let mx = 0; for (let k = 0; k < h.length; k++) if (h[k] > mx) mx = h[k]; this.T.max = mx;
+    // lift the world onto the ground
+    const at = (x, z) => this.heightAt(x, z);
+    // each box sits at the LOWEST ground under it (structures are on flat pads, so that's their pad; a loose crate or rock on a
+    // slope sinks a little into the uphill side instead of floating over the downhill one)
+    const lo = b => Math.min(at((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2), at(b.x0, b.z0), at(b.x1, b.z0), at(b.x0, b.z1), at(b.x1, b.z1));
+    // boxes that touch (stacked containers, a tower's legs + deck, a wall and its coping) form one cluster and move as one:
+    // the whole cluster sits at the lowest ground under any of its parts, so nothing comes apart on a slope
+    const B = this.boxes.filter(b => b.tag !== 'edge'), par = new Map(), find = b => { let r = b; while (par.get(r) !== r) r = par.get(r); let c = b; while (par.get(c) !== r) { const n = par.get(c); par.set(c, r); c = n; } return r; };
+    for (const b of B) par.set(b, b);
+    const e = 0.06, tmp = [];
+    for (const b of B) { this.query(b.x0 - e, b.y0 - e, b.z0 - e, b.x1 + e, b.y1 + e, b.z1 + e, tmp); for (const o of tmp) if (o !== b && !o.ground && o.tag !== 'edge' && par.has(o)) { const ra = find(b), rb = find(o); if (ra !== rb) par.set(ra, rb); } }
+    const lift = new Map(); for (const b of B) { const r = find(b), y = lo(b); lift.set(r, Math.min(lift.has(r) ? lift.get(r) : Infinity, y)); }
+    const decorLift = d => { this.query(d.x0 - e, d.y0 - e, d.z0 - e, d.x1 + e, d.y1 + e, d.z1 + e, tmp); for (const o of tmp) if (!o.ground && par.has(o)) return lift.get(find(o)); return lo(d); };
+    const dl = this.decor.map(decorLift);                        // (measured before any box moves)
+    for (const b of B) { const y = lift.get(find(b)); b.y0 += y; b.y1 += y; }
+    this.decor.forEach((d, i) => { d.y0 += dl[i]; d.y1 += dl[i]; });
+    for (const q of this.lootSpots.concat(this.chestSpots)) q.y += at(q.x, q.z);
+    for (const t of this.trees) t.y = at(t.x, t.z);
+    for (const B of this.buildings) B.base = at((B.x0 + B.x1) / 2, (B.z0 + B.z1) / 2);
+    for (const q of (this.props.cars || []).concat(this.props.ponds || [])) q.y = at(q.x, q.z);
+    for (const p of this.pois || []) p.y = at(p.x, p.z);
+    // (this.containers holds the same box objects as this.boxes: already lifted)
+  }
+  // first terrain hit along a ray (march + refine), or Infinity
+  rayTerrain(ox, oy, oz, dx, dy, dz, maxT) {
+    const T = this.T; if (!T || (oy > T.max + 0.5 && dy >= 0)) return Infinity;
+    let prev = 0, step = 2.2;
+    if (oy - this.heightAt(ox, oz) < 0) return 0;
+    for (let t = step; t <= maxT + step; t += step) {
+      const tt = Math.min(t, maxT), y = oy + dy * tt;
+      if (y <= this.heightAt(ox + dx * tt, oz + dz * tt)) { let a = prev, b = tt; for (let k = 0; k < 7; k++) { const m = (a + b) / 2; if (oy + dy * m <= this.heightAt(ox + dx * m, oz + dz * m)) b = m; else a = m; } return b; }
+      if (y > T.max + 0.5 && dy >= 0) return Infinity;
+      prev = tt; if (tt >= maxT) break;
+    }
+    return Infinity;
   }
 
   // ------------------------------------------------------------- generation
@@ -426,7 +521,7 @@ BR.World = class World {
     // decides what gets built there.
     const NAMES = ['Relay Spire', 'Rust Basin', 'Dustwater', 'Hollow Yards', 'Cinder Flats', 'Skyhook',
       'Gravel Point', 'Ironbark', 'Saltmarsh', 'Bastion', 'Lowtide', 'Overpass', 'Redline', 'Kestrel Ridge'];
-    const TYPES = ['town', 'yard', 'town', 'relay', 'town', 'outpost', 'town', 'yard', 'town', 'relay', 'outpost', 'town', 'yard', 'town'];
+    const TYPES = ['town', 'military', 'town', 'farm', 'yard', 'town', 'relay', 'military', 'town', 'outpost', 'farm', 'town', 'yard', 'town'];     // v1.35: + military base, farm
     const pois = [];
     for (let tries = 0; pois.length < Math.min(14, Math.round(12 * Math.sqrt(A))) && tries < 3000; tries++) {
       const px = U.rand(R, -H + 60, H - 60), pz = U.rand(R, -H + 60, H - 60);
@@ -440,11 +535,13 @@ BR.World = class World {
       if (p.type === 'town') this.town(p.x, p.z);
       else if (p.type === 'yard') this.yard(p.x, p.z);
       else if (p.type === 'outpost') this.outpost(p.x, p.z);
+      else if (p.type === 'military') this.military(p.x, p.z);
+      else if (p.type === 'farm') this.farm(p.x, p.z);
       else this.relay(p.x, p.z);
     }
 
     // Long rock ridges carve the map into regions (with gaps to run through)
-    for (let i = 0; i < N(7); i++) this.ridge();
+    if (!this.terrainOn) for (let i = 0; i < N(7); i++) this.ridge();
 
     // Landmarks
     for (let i = 0; i < N(4); i++) this.placeRandom(34, 34, (x, z) => this.mesa(x, z));
@@ -809,6 +906,82 @@ BR.World = class World {
     this.jumpPad(cx + W / 2 + 4, cz); this.jumpPad(cx - W / 2 - 4, cz);
   }
 
+  // v1.35 MILITARY BASE: a walled compound (gates on all four sides), corner watchtowers you can climb with chests on top,
+  // barracks, a two-storey command post, an open hangar with a jeep, a helipad, fuel tanks, sandbags and concrete barriers.
+  military(cx, cz) {
+    const W = 66, WH = 3.6, t = 0.6, B = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c), D = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    if (!this.free(cx - W / 2 - 8, cz - W / 2 - 8, cx + W / 2 + 8, cz + W / 2 + 8, 4)) { this.outpost(cx, cz); return; }
+    this.claim(cx - W / 2 - 8, cz - W / 2 - 8, cx + W / 2 + 8, cz + W / 2 + 8);
+    const CON = 0x8d8a82, OD = 0x55603f, STEEL = PAL.tower, R = this.rand;
+    D(cx - W / 2, 0, cz - W / 2, cx + W / 2, 0.05, cz + W / 2, 0x77746c);                                                   // concrete yard
+    const h = W / 2, g = 4;                                                                                                   // walls with a gate in the middle of each side
+    for (const s of [-1, 1]) {
+      B(cx - h, 0, cz + s * h - t / 2, cx - g, WH, cz + s * h + t / 2, CON); B(cx + g, 0, cz + s * h - t / 2, cx + h, WH, cz + s * h + t / 2, CON);
+      B(cx + s * h - t / 2, 0, cz - h, cx + s * h + t / 2, WH, cz - g, CON); B(cx + s * h - t / 2, 0, cz + g, cx + s * h + t / 2, WH, cz + h, CON);
+      for (let x = -h; x <= h; x += 3) { D(cx + x - 0.04, WH, cz + s * h - 0.04, cx + x + 0.04, WH + 0.7, cz + s * h + 0.04, 0x2a2d33); D(cx + s * h - 0.04, WH, cz + x - 0.04, cx + s * h + 0.04, WH + 0.7, cz + x + 0.04, 0x2a2d33); }   // wire posts
+      D(cx - h, WH + 0.5, cz + s * h - 0.02, cx + h, WH + 0.55, cz + s * h + 0.02, 0x2a2d33); D(cx + s * h - 0.02, WH + 0.5, cz - h, cx + s * h + 0.02, WH + 0.55, cz + h, 0x2a2d33);
+    }
+    const tower = (x, z) => { const th = 7;
+      for (const [a, b] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) B(x + a - 0.15, 0, z + b - 0.15, x + a + 0.15, th, z + b + 0.15, STEEL);
+      B(x - 2.2, th, z - 2.2, x + 2.2, th + 0.3, z + 2.2, OD);
+      for (const [a, b, c, d] of [[-2.2, -2.2, 2.2, -2], [-2.2, 2, 2.2, 2.2], [-2.2, -2.2, -2, 2.2], [2, -2.2, 2.2, 2.2]]) B(x + a, th + 0.3, z + b, x + c, th + 1.3, z + d, OD);
+      D(x - 2.5, th + 3, z - 2.5, x + 2.5, th + 3.3, z + 2.5, 0x3a3d42); for (const [a, b] of [[-2.1, -2.1], [2.1, -2.1], [-2.1, 2.1], [2.1, 2.1]]) D(x + a - 0.07, th + 1.3, z + b - 0.07, x + a + 0.07, th + 3, z + b + 0.07, 0x3a3d42);
+      for (let i = 0; i < 8; i++) { const y = (i + 1) * 0.85; B(x - 0.6, y - 0.2, z + 1.8, x + 0.6, y, z + 2.6, PAL.parkour); }       // rungs
+      this.chestSpots.push({ x, y: th + 0.3, z, tier: 2 });
+    };
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) tower(cx + a * (h - 3.5), cz + b * (h - 3.5));
+    // barracks + command post (real buildings: doors, floors, loot)
+    this.building(cx - 17, cz - 15, 16, 9, 1); this.building(cx - 17, cz + 15, 16, 9, 1); this.building(cx + 16, cz + 16, 12, 12, 2);
+    // hangar: open-fronted shed with a roof, a jeep and loot inside
+    const hx = cx + 15, hz = cz - 14, hw = 20, hd = 14, hh = 7;
+    B(hx - hw / 2, 0, hz - hd / 2, hx + hw / 2, hh, hz - hd / 2 + 0.4, OD); B(hx - hw / 2, 0, hz - hd / 2, hx - hw / 2 + 0.4, hh, hz + hd / 2, OD); B(hx + hw / 2 - 0.4, 0, hz - hd / 2, hx + hw / 2, hh, hz + hd / 2, OD);
+    B(hx - hw / 2 - 0.4, hh, hz - hd / 2 - 0.4, hx + hw / 2 + 0.4, hh + 0.4, hz + hd / 2 + 0.4, 0x4a4f42);
+    for (let i = 0; i < 4; i++) D(hx - hw / 2 + 2 + i * 5.3, hh - 0.6, hz - hd / 2 + 0.4, hx - hw / 2 + 2.4 + i * 5.3, hh, hz + hd / 2, 0x3a3d42);   // roof beams
+    this.car(hx - 3, hz, 'z', 0x55603f);
+    for (const [lx, lz] of [[hx + 5, hz - 3], [hx + 5, hz + 3], [hx - 6, hz - 4]]) this.lootSpots.push({ x: lx, y: 0, z: lz, tier: 2, force: 'weapon' });
+    // helipad, fuel tanks, sandbags, barriers
+    D(cx - 6, 0.05, cz - 6, cx + 6, 0.08, cz + 6, 0x3c3f44); D(cx - 3, 0.08, cz - 3.2, cx - 2, 0.1, cz + 3.2, 0xf2f2f2); D(cx + 2, 0.08, cz - 3.2, cx + 3, 0.1, cz + 3.2, 0xf2f2f2); D(cx - 2, 0.08, cz - 0.5, cx + 2, 0.1, cz + 0.5, 0xf2f2f2);
+    this.chestSpots.push({ x: cx, y: 0.1, z: cz, tier: 3 });
+    for (let i = 0; i < 3; i++) { const fx = cx - 26 + i * 4.2, fz = cz - 1; B(fx - 1.6, 0, fz - 1.6, fx + 1.6, 3.2, fz + 1.6, 0xc8c2b4); D(fx - 1.7, 3.2, fz - 1.7, fx + 1.7, 3.4, fz + 1.7, 0x8a8478); }
+    const bag = (x, z, alongX) => { const L = 3.6; if (alongX) B(x - L / 2, 0, z - 0.45, x + L / 2, 1.1, z + 0.45, 0x8a7a5a); else B(x - 0.45, 0, z - L / 2, x + 0.45, 1.1, z + L / 2, 0x8a7a5a); };
+    bag(cx, cz - h + 6, true); bag(cx, cz + h - 6, true); bag(cx - h + 6, cz, false); bag(cx + h - 6, cz, false); bag(cx - 6, cz + 9, true); bag(cx + 7, cz - 4, false);
+    for (let i = 0; i < 6; i++) { const x = cx + BR.util.rand(R, -h + 6, h - 6), z = cz + BR.util.rand(R, -h + 6, h - 6); if (Math.abs(x - cx) < 8 && Math.abs(z - cz) < 8) continue; B(x - 1.2, 0, z - 0.3, x + 1.2, 1.0, z + 0.3, CON); this.lootSpots.push({ x: x + 1.6, y: 0, z, tier: 1 }); }
+  }
+  // v1.35 FARM: a big barn with a climbable hay loft (chest up there), a silo, a farmhouse, a water tower, fenced crop fields,
+  // hay bales for cover and a tractor
+  farm(cx, cz) {
+    const W = 74, B = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c), D = (x0, y0, z0, x1, y1, z1, c) => this.addBox(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    if (!this.free(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2, 4)) { this.town(cx, cz); return; }
+    this.claim(cx - W / 2, cz - W / 2, cx + W / 2, cz + W / 2);
+    const RED = 0x9a3a2e, WHITE = 0xe8e2d4, WOOD = 0x7a5a3a, R = this.rand;
+    // barn (open doorways front + back, loft floor with a ladder, stepped gable roof)
+    const bx = cx - 12, bz = cz - 8, bw = 16, bd = 22, bh = 6.5, t = 0.3;
+    B(bx - bw / 2, 0, bz - bd / 2, bx + bw / 2, 0.1, bz + bd / 2, 0x6a5a44);
+    B(bx - bw / 2, 0, bz - bd / 2, bx - bw / 2 + t, bh, bz + bd / 2, RED); B(bx + bw / 2 - t, 0, bz - bd / 2, bx + bw / 2, bh, bz + bd / 2, RED);
+    for (const s of [-1, 1]) { const z = bz + s * (bd / 2 - t / 2); B(bx - bw / 2, 0, z - t / 2, bx - 2.5, bh, z + t / 2, RED); B(bx + 2.5, 0, z - t / 2, bx + bw / 2, bh, z + t / 2, RED); B(bx - 2.5, 3.6, z - t / 2, bx + 2.5, bh, z + t / 2, RED);
+      D(bx - 2.5, 0, z - t / 2 - 0.05 * s, bx - 2.3, 3.6, z + t / 2 + 0.05 * s, WHITE); D(bx + 2.3, 0, z - t / 2 - 0.05 * s, bx + 2.5, 3.6, z + t / 2 + 0.05 * s, WHITE); D(bx - 2.5, 3.4, z - t / 2 - 0.05 * s, bx + 2.5, 3.6, z + t / 2 + 0.05 * s, WHITE);
+      D(bx - 2.3, 0.2, z - 0.02 * s, bx + 2.3, 3.4, z + 0.02 * s + (s > 0 ? 0.01 : -0.01), 0x7a2a22); }
+    B(bx - bw / 2 + t, 3.5, bz - bd / 2 + t, bx + bw / 2 - t, 3.8, bz - 1, WOOD);                                            // loft floor (back half)
+    for (let i = 0; i < 4; i++) { const y = (i + 1) * 0.85; B(bx + bw / 2 - 1.4, y - 0.2, bz - 0.6, bx + bw / 2 - 0.5, y, bz + 0.2, WOOD); }   // ladder up to the loft
+    for (let i = 0; i < 5; i++) { const w = bw / 2 + 0.6 - i * 1.7, y = bh + i * 0.8; B(bx - w, y, bz - bd / 2 - 0.3, bx + w, y + 0.8, bz + bd / 2 + 0.3, i % 2 ? 0x5a2a22 : 0x6a3328); }   // stepped roof
+    this.chestSpots.push({ x: bx - 3, y: 3.8, z: bz - 6, tier: 2 }); this.lootSpots.push({ x: bx + 3, y: 0.1, z: bz + 4, tier: 1, force: 'weapon' }, { x: bx - 4, y: 3.8, z: bz - 3, tier: 1 });
+    for (let i = 0; i < 4; i++) B(bx - 5 + i * 1.3, 0.1, bz + 6, bx - 4 + i * 1.3, 1.1, bz + 7.4, 0xc8a85a);                    // hay inside
+    // silo (octagonal stack) + water tower
+    const sx = bx + bw / 2 + 4.5, sz = bz - 6;
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 4, c = Math.cos(a) * 2.6, s2 = Math.sin(a) * 2.6; B(sx - Math.abs(c) - 0.9, 0, sz - Math.abs(s2) - 0.9, sx + Math.abs(c) + 0.9, 13, sz + Math.abs(s2) + 0.9, 0xb8b4aa); }
+    D(sx - 3.2, 13, sz - 3.2, sx + 3.2, 13.6, sz + 3.2, 0x8a8a86); D(sx - 2, 13.6, sz - 2, sx + 2, 14.4, sz + 2, 0x8a8a86);
+    const wx = cx + 22, wz = cz - 22; for (const [a, b] of [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]]) B(wx + a - 0.12, 0, wz + b - 0.12, wx + a + 0.12, 8, wz + b + 0.12, 0x5a4a3a);
+    B(wx - 2.4, 8, wz - 2.4, wx + 2.4, 11.5, wz + 2.4, 0x7a6248); D(wx - 2.6, 11.5, wz - 2.6, wx + 2.6, 12, wz + 2.6, 0x4a3a2a);
+    // farmhouse
+    this.building(cx + 14, cz + 6, 12, 10, 2);
+    // fenced crop fields + hay bales + tractor
+    const field = (fx, fz, fw, fd, col) => { for (let x = fx - fw / 2 + 1; x < fx + fw / 2; x += 1.6) D(x, 0, fz - fd / 2 + 0.6, x + 0.7, 0.5 + R() * 0.25, fz + fd / 2 - 0.6, col);
+      for (const s of [-1, 1]) { for (let x = fx - fw / 2; x <= fx + fw / 2; x += 3) B(x - 0.07, 0, fz + s * fd / 2 - 0.07, x + 0.07, 1.1, fz + s * fd / 2 + 0.07, PAL.fence); D(fx - fw / 2, 0.75, fz + s * fd / 2 - 0.04, fx + fw / 2, 0.85, fz + s * fd / 2 + 0.04, PAL.fence); } };
+    field(cx - 14, cz + 22, 26, 16, 0x9aa83a); field(cx + 16, cz + 26, 20, 12, 0xc8a84a);
+    for (let i = 0; i < 7; i++) { const x = cx + BR.util.rand(R, -W / 2 + 4, W / 2 - 4), z = cz + BR.util.rand(R, -6, 12); if (Math.abs(x - bx) < bw / 2 + 2 && Math.abs(z - bz) < bd / 2 + 2) continue; if (Math.abs(x - cx - 14) < 8 && Math.abs(z - cz - 6) < 7) continue;
+      B(x - 0.8, 0, z - 0.6, x + 0.8, 1.2, z + 0.6, 0xc8a85a); this.lootSpots.push({ x: x + 1.4, y: 0, z, tier: 0 }); }
+    this.car(cx + 2, cz - 18, 'x', 0xc83a2a);
+  }
   // Relay: the movement hub — spiral tower, pillar maze, wall-run lane and a parkour course.
   relay(cx, cz) {
     const W = 70;
@@ -1297,7 +1470,7 @@ BR.World = class World {
     const self = this, M = [], Cl = [];
     const col = {
       count: 0, instanceColor: { needsUpdate: false },
-      setMatrixAt(i, m) { M[i] = m.clone(); if (i + 1 > this.count) this.count = i + 1; },
+      setMatrixAt(i, m) { M[i] = m.clone(); if (self.T && !this.noLift) M[i].elements[13] += self.heightAt(m.elements[12], m.elements[14]); if (i + 1 > this.count) this.count = i + 1; },      // (v1.35: sits on the terrain)
       setColorAt(i, c) { Cl[i] = c.clone(); },
       flush(scene) {
         const n = Math.min(this.count, M.length); if (!n) return;
@@ -1334,7 +1507,7 @@ BR.World = class World {
   // Ground with painted grass/dirt variation (vertex colors) under a tiled detail texture.
   buildGround(scene) {
     const gt = makeTileTexture(true);
-    const S = this.arena ? 420 : this.size + 300, segs = this.arena ? 40 : 120;
+    const S = this.arena ? 420 : this.size + 300, segs = this.arena ? 40 : this.T ? Math.round(S / 5) : 120;     // (v1.35: 5 m grid to follow the terrain)
     const H0 = this.half, island = !this.arena;
     const sand = new THREE.Color(0xd9c58e), wetSand = new THREE.Color(0xb9a46e), seabed = new THREE.Color(0x6f8a7a);
     gt.repeat.set(S / 5, S / 5);
@@ -1358,6 +1531,13 @@ BR.World = class World {
         const k = BR.util.clamp(((x - T.x) * ex + (z - T.z) * ez) / L2, 0, 1);
         const rd = Math.hypot(x - (T.x + ex * k), z - (T.z + ez * k));
         if (rd < 4) c.lerp(dirt, (4 - rd) / 4 * 0.75);
+      }
+      if (this.T) {                                     // v1.35 terrain: height + rock on steep slopes, drier grass up high, darker in hollows
+        const y = this.heightAt(x, z), gx = this.heightAt(x + 2.5, z) - this.heightAt(x - 2.5, z), gz = this.heightAt(x, z + 2.5) - this.heightAt(x, z - 2.5), sl = Math.hypot(gx, gz) / 5;
+        pos.setZ(i, y);
+        c.lerp(dry, BR.util.clamp((y - 9) / 14, 0, 0.55));
+        c.lerp(new THREE.Color(0x8a8371), BR.util.clamp((sl - 0.28) / 0.25, 0, 0.85));
+        c.multiplyScalar(0.92 + 0.08 * BR.util.clamp(y / 8, 0, 1));
       }
       if (island) {
         // irregular coastline: beach inside the last ~24 m, then the land slopes under the sea
@@ -1563,7 +1743,7 @@ BR.World = class World {
     // Cars: one modelled, vertex-coloured mesh per car (shared geometry per paint colour)
     for (const c of (this.props.cars || [])) {
       const m = new THREE.Mesh(carGeometry(c.color), carMat());
-      m.position.set(c.x, 0, c.z); m.rotation.y = (c.axis === 'x' ? 0 : Math.PI / 2) + (c.flip ? Math.PI : 0);
+      m.position.set(c.x, c.y || 0, c.z); m.rotation.y = (c.axis === 'x' ? 0 : Math.PI / 2) + (c.flip ? Math.PI : 0);
       m.matrixAutoUpdate = false; m.updateMatrix();
       scene.add(m);
       this.addChunk(m, m.position, 3);
@@ -1615,13 +1795,13 @@ BR.World = class World {
         for (let i = 0; i < n; i++) {
           const u = (i + 0.5) / n - 0.5, hh = h * (0.7 + RR() * 0.35), sz2 = 3.4 + RR() * 2;
           const px = ax ? (ax < 0 ? b.x0 : b.x1) + ax * 0.6 : b.x0 + w / 2 + u * w, pz = az ? (az < 0 ? b.z0 : b.z1) + az * 0.6 : b.z0 + d / 2 + u * d;
-          chunks.push({ x: px, y: hh / 2, z: pz, sx: ax ? 2.6 : sz2, sy: hh, sz: az ? 2.6 : sz2, ry: RR() * 6, tone: 0.6 + RR() * 0.15 });
+          chunks.push({ x: px, y: b.y0 + hh / 2, z: pz, sx: ax ? 2.6 : sz2, sy: hh, sz: az ? 2.6 : sz2, ry: RR() * 6, tone: 0.6 + RR() * 0.15 });      // (absolute, like the others)
         }
       }
     }
     if (chunks.length) {
       const geos = [rockGeo(11), rockGeo(29)], mats = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-      const half = Math.ceil(chunks.length / 2), meshes = geos.map((gg, i) => this.collector(gg, mats, i ? chunks.length - half : half));
+      const half = Math.ceil(chunks.length / 2), meshes = geos.map((gg, i) => this.collector(gg, mats, i ? chunks.length - half : half)); meshes.forEach(m => { m.noLift = true; });     // (rock chunks come from already-lifted boxes)
       const rcol = new THREE.Color();
       chunks.forEach((q, i) => {
         const m = meshes[i < half ? 0 : 1], j = i < half ? i : i - half;
@@ -1668,9 +1848,9 @@ BR.World = class World {
     // ponds: sandy shore, water, lily pads, reeds
     for (const q of P.ponds) {
       const shore = new THREE.Mesh(new THREE.CircleGeometry(q.r + 1.4, 28), new THREE.MeshLambertMaterial({ color: 0xa89a6c }));
-      shore.rotation.x = -Math.PI / 2; shore.position.set(q.x, 0.02, q.z); scene.add(shore);
+      shore.rotation.x = -Math.PI / 2; shore.position.set(q.x, (q.y || 0) + 0.02, q.z); scene.add(shore);
       const water = new THREE.Mesh(new THREE.CircleGeometry(q.r, 28), new THREE.MeshPhongMaterial({ color: 0x3a7aa6, specular: 0xcfe8ff, shininess: 80, transparent: true, opacity: 0.88 }));
-      water.rotation.x = -Math.PI / 2; water.position.set(q.x, 0.05, q.z); scene.add(water);
+      water.rotation.x = -Math.PI / 2; water.position.set(q.x, (q.y || 0) + 0.05, q.z); scene.add(water);
       q.mesh = water;
     }
     const pads = [], reeds = [];
@@ -1736,9 +1916,19 @@ BR.World = class World {
     const k = px / this.size, H = this.half;
     ctx.fillStyle = '#4e6440';
     ctx.fillRect(0, 0, px, px);
+    if (this.T) {                                      // v1.35: shaded relief (lit from the north-west), greener low, drier and rockier up high
+      const q = Math.max(1, Math.round(px / 384)), pw = Math.ceil(px / q), cv2 = document.createElement('canvas'); cv2.width = cv2.height = pw; const c2 = cv2.getContext('2d');
+      const img = c2.createImageData(pw, pw), D = img.data, st = this.size / pw;
+      for (let yy = 0; yy < pw; yy++) for (let xx = 0; xx < pw; xx++) {
+        const x = -H + (xx + 0.5) * st, z = -H + (yy + 0.5) * st, y = this.heightAt(x, z), gx = this.heightAt(x + 3, z) - this.heightAt(x - 3, z), gz = this.heightAt(x, z + 3) - this.heightAt(x, z - 3);
+        const sh = BR.util.clamp(0.82 - (gx + gz) * 0.09, 0.45, 1.25), t = BR.util.clamp(y / 26, 0, 1), o2 = (yy * pw + xx) * 4;
+        D[o2] = Math.min(255, (78 + 70 * t) * sh); D[o2 + 1] = Math.min(255, (100 + 40 * t) * sh); D[o2 + 2] = Math.min(255, (64 + 40 * t) * sh); D[o2 + 3] = 255;
+      }
+      c2.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = true; ctx.drawImage(cv2, 0, 0, px, px);
+    }
     const sorted = this.boxes.filter(b => b.tag !== 'edge').sort((a, b) => a.y1 - b.y1);
     for (const b of sorted) {
-      const l = Math.min(1, 0.35 + b.y1 / 12);
+      const l = Math.min(1, 0.35 + (b.y1 - (this.T ? this.heightAt((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2) : 0)) / 12);
       ctx.fillStyle = `rgba(${Math.round(190 * l + 40)},${Math.round(185 * l + 40)},${Math.round(165 * l + 40)},0.9)`;
       ctx.fillRect((b.x0 + H) * k, (b.z0 + H) * k, Math.max(1, (b.x1 - b.x0) * k), Math.max(1, (b.z1 - b.z0) * k));
     }

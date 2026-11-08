@@ -1275,7 +1275,7 @@ const server = http.createServer((req, res) => {
     // v1.7.8: stair holes stay open (no slab over them); patch notes page
     { g.settings.bots = 2; g.startMatch(); let covered = 0, n = 0;
       for (const B of g.world.buildings) { if (B.floors < 2) continue; n++; const hx = B.x0 + 0.3 + 0.65, hz = B.z0 + 0.3 + 2.2;
-        for (let f = 1; f < B.floors; f++) covered += g.world.boxes.filter(o => hx > o.x0 && hx < o.x1 && hz > o.z0 && hz < o.z1 && o.y1 > f * B.fh - 0.3 && o.y0 < f * B.fh + 0.2).length; }
+        for (let f = 1; f < B.floors; f++) covered += g.world.boxes.filter(o => hx > o.x0 && hx < o.x1 && hz > o.z0 && hz < o.z1 && o.y1 > (B.base || 0) + f * B.fh - 0.3 && o.y0 < (B.base || 0) + f * B.fh + 0.2).length; }     /* (v1.35: buildings sit on terrain: measure from their base) */
       const NOTES = BR.PATCH_NOTES || [];
       document.getElementById('btn-notes').click();
       const shown = !document.getElementById('patchnotes').classList.contains('hidden'), rows = document.querySelectorAll('#pn-list details').length;
@@ -1416,6 +1416,27 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v135 = await page.evaluate(async () => {
+    const out = {}, W = new BR.World(4, {});
+    out.terrain = !!W.T && W.T.max > 12 && Math.abs(W.heightAt(-100, 50) - W.heightAt(100, -50)) + Math.abs(W.heightAt(0, 0) - W.heightAt(200, 200)) > 1;
+    const ry = W.raycast(50, 80, 50, 0, -1, 0, 200); out.rayHitsHills = Math.abs((80 - ry.t) - W.heightAt(50, 50)) < 0.15;
+    let float = 0; for (const b of W.boxes) { if (b.tag === 'edge') continue; const y = W.heightAt((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2); if (b.y0 > y + 0.6 && b.y0 < y + 1.2 && b.y1 - b.y0 > 2) float++; }
+    out.grounded = float < 40;
+    out.pois = W.pois.some(p => p.type === 'military' || p.type === 'farm') || new BR.World(9, {}).pois.some(p => p.type === 'military' || p.type === 'farm');
+    const g = BR.game; BR.AntiCheat._testing = true; g.startMatch({ seed: 4 }); const p = g.player, Wg = g.world;
+    for (let i = 0; i < 600 && (p.mover.dropping || p.mover.chute); i++) g.update(1 / 30);
+    for (const a of g.actors) if (a !== p) a.brain = null;
+    out.landed = Math.abs(p.pos.y - Wg.groundAt(p.pos.x, p.pos.z, p.pos.y + 1)) < 0.05;
+    const s0 = p.pos.clone(); let off = 0; p.yaw = 0.8;
+    for (let i = 0; i < 180; i++) { g.input.moveY = 1; g.input.moveX = 0; g.update(1 / 60); if (p.mover.onGround) off = Math.max(off, Math.abs(p.pos.y - Wg.groundAt(p.pos.x, p.pos.z, p.pos.y + 1))); }
+    g.input.moveY = 0; out.walk = Math.hypot(p.pos.x - s0.x, p.pos.z - s0.z) > 10 && off < 0.05 && Math.abs(p.pos.x) < 500;
+    g.toMenu();
+    const maps = ['crossroads', 'frostbite', 'harbor'].map(m => new BR.World(1, { arena: true, map: m }));
+    out.maps = maps.every(m => m.boxes.length > 50 && (m.ffaSpots || []).length >= 12 && m.spawns.length === 2 && !m.T);
+    const pool = id => BR.Lobby.pool(id).map(m => m.id);
+    out.pools = ['crossroads', 'frostbite', 'harbor'].every(id => pool('ffa').includes(id) && pool('tdm').includes(id) && !pool('duel').includes(id));
+    return out;
+  });
   const v134 = await page.evaluate(() => {
     const g = BR.game, out = {}; g.startMatch({ practice: true });
     out.grade = !!document.getElementById('grade') && getComputedStyle(document.getElementById('grade')).pointerEvents === 'none';
@@ -1790,6 +1811,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.35 real terrain on the BR islands (hills block rays, nothing floating, you land + walk on the slopes), military base / farm POIs, Crossroads / Frostbite / Harbor maps in the TDM + FFA pools', Object.values(v135).every(Boolean), v135],
     ['v1.34 golden-hour grade: warm key sun, matched fog, grade layer over the view (never blocks touches)', Object.values(v134).every(Boolean), v134],
     ['v1.33.1 crosshair hides while aiming through holo sights, the sniper scope, the DMR prism and the ACOG; iron sights keep it', Object.values(v1331).every(Boolean), v1331],
     ['v1.33 Gun Game / One in the Chamber / Knife Fight, forged blueprint parts (by rarity, ADS-hidden floaters), layered per-weapon muzzle flash', Object.values(v133).every(Boolean), v133],
@@ -1978,7 +2000,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

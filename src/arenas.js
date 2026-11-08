@@ -217,6 +217,116 @@ Object.assign(BR.World.prototype, {
     this.groundCols = [0x6d6e6c, 0x626361, 0x77756f];
   },
 
+  // ---- v1.35 three more original TDM / FFA maps (three-lane layouts in the spirit of classic arena shooters, mirrored end to end)
+  // a walk-in house with a flat roof you can stand on (stairs up the outside), doors + windows on the long sides
+  arenaHouse(cx, cz, w, d, h, col, roofCol, doorSide, stairSide) {
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(Math.min(x0, x1), y0, Math.min(z0, z1), Math.max(x0, x1), y1, Math.max(z0, z1), c, o);
+    const x0 = cx - w / 2, x1 = cx + w / 2, z0 = cz - d / 2, z1 = cz + d / 2;
+    this.arenaWallX(x0, x1, z0, h, col, [[cx - 0.8, cx + 0.8, doorSide !== 1 ? 'door' : 'window'], [x0 + 1, x0 + 2.2, 'window']]);
+    this.arenaWallX(x0, x1, z1, h, col, [[cx - 0.8, cx + 0.8, doorSide !== -1 ? 'door' : 'window'], [x1 - 2.2, x1 - 1, 'window']]);
+    this.arenaWallZ(z0, z1, x0, h, col, [[cz - 0.9, cz + 0.9, 'window']]); this.arenaWallZ(z0, z1, x1, h, col, [[cz - 0.9, cz + 0.9, 'window']]);
+    B(x0 - 0.2, h, z0 - 0.2, x1 + 0.2, h + 0.25, z1 + 0.2, roofCol);                                                   // flat roof
+    for (const [a, b, c, e] of [[x0 - 0.2, x1 + 0.2, z0 - 0.2, z0 + 0.05], [x0 - 0.2, x1 + 0.2, z1 - 0.05, z1 + 0.2]]) B(a, h + 0.25, c, b, h + 0.95, e, roofCol);   // parapet
+    if (stairSide) { const sx = stairSide > 0 ? x1 : x0; for (let i = 0; i < 7; i++) { const y = (i + 1) * (h + 0.25) / 7, zz = z0 + 0.6 + i * 0.75; B(sx + stairSide * 0.2, 0, zz, sx + stairSide * 1.4, y, zz + 0.75, roofCol); } }
+  },
+  generateCrossroads() {
+    const X = 40, Z = 28, WH = 8, HH = 3.6;
+    const CON = 0xb89c74, CON2 = 0x9c8260, MUD = [0xd4b48a, 0xc9a77a, 0xdcbf96], ROOF = 0xa88a62, CLOTH = [0xb8463c, 0x3f6fae, 0xd19a3c], BLUE = 0x2f6fd8, RED = 0xd8443a, STONE = 0x9a8e7a;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(Math.min(x0, x1), y0, Math.min(z0, z1), Math.max(x0, x1), y1, Math.max(z0, z1), c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => B(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    this.pois = [{ x: 0, z: 0, name: 'Crossroads', type: 'arena' }]; this.towns = [];
+    this.spawns = [{ x: -35, z: 0, yaw: -Math.PI / 2 }, { x: 35, z: 0, yaw: Math.PI / 2 }];
+    this.arenaShell(X, Z, WH, CON, CON2);
+    // middle lane: the market street (stalls with cloth awnings) and a stone well in the centre square
+    B(-1.6, 0, -1.6, 1.6, 1.0, 1.6, STONE); Dc(-1.3, 1.0, -1.3, 1.3, 1.05, 1.3, 0x2f5a7a); for (const s of [-1, 1]) Dc(s * 1.4 - 0.1, 1.0, -0.1, s * 1.4 + 0.1, 2.6, 0.1, 0x6a5a44); Dc(-1.5, 2.6, -0.12, 1.5, 2.75, 0.12, 0x6a5a44);
+    for (const sx of [-1, 1]) {
+      const tc = sx < 0 ? BLUE : RED;
+      for (let i = 0; i < 3; i++) { const x = sx * (8 + i * 5.5), z = (i % 2 ? 1 : -1) * 5.2; B(x - 1.4, 0, z - 0.6, x + 1.4, 1.05, z + 0.6, 0x8a6a48); Dc(x - 1.6, 2.4, z - 1.4, x + 1.6, 2.5, z + 1.4, CLOTH[(i + (sx > 0 ? 1 : 0)) % 3]);
+        for (const [a, b] of [[-1.5, -1.3], [1.5, -1.3], [-1.5, 1.3], [1.5, 1.3]]) Dc(x + a - 0.05, 0, z + b - 0.05, x + a + 0.05, 2.4, z + b + 0.05, 0x6a5a44); }
+      // north lane: two houses with roofs you can run along (stairs on the outside) and a bridge plank between them
+      this.arenaHouse(sx * 12, 18, 10, 8, HH, MUD[0], ROOF, -1, sx);
+      this.arenaHouse(sx * 26, 19, 8, 7, HH, MUD[1], ROOF, -1, 0);
+      B(sx * 17, HH, 17.2, sx * 22, HH + 0.25, 18.8, 0x7a5a3a);
+      // south lane: an alley between garden walls, archway gaps, a donkey cart
+      B(sx * 6, 0, -12.5, sx * 20, 2.2, -12.0, CON2); B(sx * 24, 0, -12.5, sx * 34, 2.2, -12.0, CON2);
+      for (const z of [-17, -22]) { this.arenaCrate(sx * (10 + (z === -17 ? 0 : 6)), z, 1.2); }
+      B(sx * 28 - 1.3, 0, -20.5, sx * 28 + 1.3, 1.3, -19.3, 0x7a5a3a); Dc(sx * 28 - 1.5, 0, -21, sx * 28 - 1.2, 0.9, -18.8, 0x3a2a1a);
+      this.arenaHouse(sx * 15, -23, 9, 6, HH, MUD[2], ROOF, 1, 0);
+      // spawn ends
+      B(sx * 30 - 0.35, 0, -3, sx * 30 + 0.35, 1.25, 3, CON2); Dc(sx * 30 - 0.4, 1.25, -3.05, sx * 30 + 0.4, 1.32, 3.05, tc);
+      Dc(sx * (X - 0.02), 1.0, -Z, sx * (X - 0.12), 2.2, Z, tc);
+      for (const sz of [-1, 1]) { B(sx * 31, 0, sz * 9 - 0.3, sx * 24, 3, sz * 9 + 0.3, CON2); }
+    }
+    this.ffaSpots = [[-35, 0], [35, 0], [-35, 18], [35, -18], [-35, -18], [35, 18], [0, 8], [0, -8], [-12, 18], [12, 18], [-15, -23], [15, -23], [-20, -16], [20, -16], [-22, 6], [22, -6]];
+    this.groundCols = [0xc8ad82, 0xbda274, 0xd2b88e];
+  },
+  generateFrostbite() {
+    const X = 40, Z = 28, WH = 8, HH = 3.4;
+    const CON = 0x9aa6b0, CON2 = 0x7e8a94, LAB = 0xdfe4e8, TRIM = 0x3a4652, ORANGE = 0xd9622a, STEEL = 0x55606c, BLUE = 0x2f6fd8, RED = 0xd8443a, ICE = 0xbfe2f2;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(Math.min(x0, x1), y0, Math.min(z0, z1), Math.max(x0, x1), y1, Math.max(z0, z1), c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => B(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    this.pois = [{ x: 0, z: 0, name: 'Frostbite', type: 'arena' }]; this.towns = [];
+    this.spawns = [{ x: -35, z: 0, yaw: -Math.PI / 2 }, { x: 35, z: 0, yaw: Math.PI / 2 }];
+    this.arenaShell(X, Z, WH, CON, CON2);
+    // centre: a two-storey lab (doors on all sides, a mezzanine inside, stairs up, a roof catwalk with a railing)
+    this.arenaWallX(-9, 9, -6, HH * 2, LAB, [[-1, 1, 'door'], [-6, -4.5, 'window'], [4.5, 6, 'window']]);
+    this.arenaWallX(-9, 9, 6, HH * 2, LAB, [[-1, 1, 'door'], [-6, -4.5, 'window'], [4.5, 6, 'window']]);
+    this.arenaWallZ(-6, 6, -9, HH * 2, LAB, [[-1, 1, 'door']]); this.arenaWallZ(-6, 6, 9, HH * 2, LAB, [[-1, 1, 'door']]);
+    B(-9, HH, -6, -2, HH + 0.25, 6, STEEL); B(2, HH, -6, 9, HH + 0.25, 6, STEEL);                                               // mezzanines either side of an open middle
+    for (let i = 0; i < 8; i++) { const y = (i + 1) * HH / 8; B(-1.4 + i * 0.4 - 0.2, 0, -5.6, -1.4 + i * 0.4 + 0.2, y, -4.2, STEEL); }
+    B(-9.3, HH * 2, -6.3, 9.3, HH * 2 + 0.25, 6.3, TRIM); for (const z of [-6.3, 6.3]) Dc(-9.3, HH * 2 + 0.25, z - 0.05, 9.3, HH * 2 + 1.1, z + 0.05, ORANGE);
+    for (let i = 0; i < 10; i++) { const y = (i + 1) * (HH * 2 + 0.25) / 10; B(9.4, 0, -5.8 + i * 1.0, 10.6, y, -4.8 + i * 1.0, STEEL); }                // outside stairs to the roof
+    Dc(-0.2, HH * 2 + 0.25, -0.2, 0.2, HH * 2 + 4.5, 0.2, STEEL); Dc(-1.6, HH * 2 + 4.3, -0.1, 1.6, HH * 2 + 4.6, 0.1, 0xe8e8e8);                            // radar mast
+    for (const sx of [-1, 1]) {
+      const tc = sx < 0 ? BLUE : RED;
+      // sheds north + south, fuel drums, ice blocks, a snowcat
+      for (const sz of [-1, 1]) { const x = sx * 20, z = sz * 17; this.arenaWallX(x - 5, x + 5, z - sz * 3, HH, LAB, [[x - 1, x + 1, 'door']]); this.arenaWallX(x - 5, x + 5, z + sz * 3, HH, LAB, []);
+        this.arenaWallZ(Math.min(z - 3, z + 3), Math.max(z - 3, z + 3), x - 5, HH, LAB, [[z - 0.9, z + 0.9, 'window']]); this.arenaWallZ(Math.min(z - 3, z + 3), Math.max(z - 3, z + 3), x + 5, HH, LAB, [[z - 0.9, z + 0.9, 'window']]);
+        B(x - 5.3, HH, z - 3.3, x + 5.3, HH + 0.25, z + 3.3, ORANGE); }
+      for (let i = 0; i < 3; i++) B(sx * 12 - 0.4 + i * 0.85 * sx, 0, 11 - 0.4, sx * 12 + 0.4 + i * 0.85 * sx, 1.0, 11 + 0.4, ORANGE);
+      B(sx * 13 - 1.2, 0, -11.5, sx * 13 + 1.2, 1.4, -10.3, ICE); B(sx * 27 - 1, 0, 4, sx * 27 + 1, 1.2, 5.6, ICE);
+      B(sx * 28 - 1.4, 0.4, -9, sx * 28 + 1.4, 2.0, -5.2, ORANGE); Dc(sx * 28 - 1.5, 0, -9.2, sx * 28 + 1.5, 0.45, -5, 0x2a2d33);
+      this.arenaCrate(sx * 15, 0, 1.2); this.arenaCrate(sx * 15, 1.4, 2.4);
+      B(sx * 30 - 0.35, 0, -3, sx * 30 + 0.35, 1.25, 3, CON2); Dc(sx * 30 - 0.4, 1.25, -3.05, sx * 30 + 0.4, 1.32, 3.05, tc);
+      Dc(sx * (X - 0.02), 1.0, -Z, sx * (X - 0.12), 2.2, Z, tc);
+    }
+    this.ffaSpots = [[-35, 0], [35, 0], [-35, 18], [35, -18], [-35, -18], [35, 18], [-5, 0], [5, 0], [-20, 17], [20, -17], [-20, -17], [20, 17], [-13, 6], [13, -6], [0, -20], [0, 20]];
+    this.groundCols = [0xe8eef2, 0xd9e2e8, 0xf2f6f8];
+  },
+  generateHarbor() {
+    const X = 40, Z = 28, WH = 7, HH = 4.2;
+    const CON = 0x6a7078, CON2 = 0x565c64, WARE = 0x8a8f86, ROOF = 0x4a5058, WOOD = 0x7a5a3a, BLUE = 0x2f6fd8, RED = 0xd8443a, Y = 0xf2b234, WATER = 0x2f6a8a;
+    const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(Math.min(x0, x1), y0, Math.min(z0, z1), Math.max(x0, x1), y1, Math.max(z0, z1), c, o);
+    const Dc = (x0, y0, z0, x1, y1, z1, c) => B(x0, y0, z0, x1, y1, z1, c, { decor: true });
+    this.pois = [{ x: 0, z: 0, name: 'Harbor', type: 'arena' }]; this.towns = [];
+    this.spawns = [{ x: -35, z: 0, yaw: -Math.PI / 2 }, { x: 35, z: 0, yaw: Math.PI / 2 }];
+    this.arenaShell(X, Z, WH, CON, CON2);
+    // centre: a warehouse you can run straight through (big doors both ends), side doors, crates + a forklift inside
+    this.arenaWallX(-11, 11, -7, HH, WARE, [[-2, 2, 'door'], [-8, -6.5, 'window'], [6.5, 8, 'window']]);
+    this.arenaWallX(-11, 11, 7, HH, WARE, [[-8, -6.5, 'window'], [6.5, 8, 'window']]);
+    this.arenaWallZ(-7, 7, -11, HH, WARE, [[-2.2, 2.2, 'door']]); this.arenaWallZ(-7, 7, 11, HH, WARE, [[-2.2, 2.2, 'door']]);
+    B(-11.3, HH, -7.3, 11.3, HH + 0.3, 7.3, ROOF); for (let x = -9; x <= 9; x += 4.5) Dc(x - 0.1, HH - 0.5, -7, x + 0.1, HH, 7, 0x3a3d42);
+    for (const [x, z, h] of [[-6, 3, 1.2], [-6, 4.4, 2.4], [5, -3, 1.2], [6.4, -3, 1.2], [0, 4, 2.4]]) this.arenaCrate(x, z, h);
+    B(-1.2, 0.3, -4, 1.2, 1.4, -1.6, Y);
+    // north: container stacks + a gantry crane over them; south: the pier with bollards, a fishing boat, water beyond
+    for (const sx of [-1, 1]) {
+      const tc = sx < 0 ? BLUE : RED;
+      this.arenaContainer(sx * 9, 16, true, 2); this.arenaContainer(sx * 20, 18, false, 1); this.arenaContainer(sx * 27, 14, true, 1);
+      for (const z of [12, 22]) { B(sx * 15 - 0.4, 0, z - 0.4, sx * 15 + 0.4, 9, z + 0.4, Y); }
+      Dc(sx * 15 - 0.5, 9, 11.5, sx * 15 + 0.5, 9.6, 22.5, Y);
+      this.arenaCrate(sx * 4, 12, 1.2); this.arenaCrate(sx * 24, 9, 2.4);
+      for (let x = 6; x <= 34; x += 7) B(sx * x - 0.3, 0, -20.5, sx * x + 0.3, 0.8, -19.9, 0x2a2d33);
+      B(sx * 18 - 4, 0, -24, sx * 18 + 4, 1.4, -21.6, 0xe8e2d4); B(sx * 18 - 1.5, 1.4, -23.5, sx * 18 + 1.5, 3.2, -22, 0x2f6a8a); Dc(sx * 18 - 4.1, 0.9, -24.05, sx * 18 + 4.1, 1.05, -21.55, 0xd8443a);
+      this.arenaCrate(sx * 8, -15, 1.2); this.arenaCrate(sx * 26, -15, 1.2); this.arenaCrate(sx * 26, -13.7, 2.4);
+      B(sx * 30 - 0.35, 0, -3, sx * 30 + 0.35, 1.25, 3, CON2); Dc(sx * 30 - 0.4, 1.25, -3.05, sx * 30 + 0.4, 1.32, 3.05, tc);
+      Dc(sx * (X - 0.02), 1.0, -Z, sx * (X - 0.12), 2.2, Z, tc);
+    }
+    Dc(-X, 0.01, -Z, X, 0.02, -24.6, WATER); Dc(-X, 0.02, -24.6, X, 0.03, -24.4, 0xdff2ff);                                                         // water along the pier
+    for (let x = -X; x < X; x += 1.6) Dc(x, 0.015, -20.2, x + 0.8, 0.02, -19.9, Y);
+    this.ffaSpots = [[-35, 0], [35, 0], [-35, 18], [35, -18], [-35, -18], [35, 18], [-6, 0], [6, 0], [0, 12], [0, -15], [-20, 10], [20, -10], [-24, -16], [24, 16], [-13, -9], [13, 9]];
+    this.groundCols = [0x6d6e6c, 0x626361, 0x77756f];
+  },
+
   // v1.21 "District": a big original town block made for Free For All (about 2.5x the Killhouse floor).
   // A plaza with a raised fountain in the middle, four walk-in houses (doors + windows you can vault
   // through), a covered market row, container alleys round the edge and a raised footbridge across the

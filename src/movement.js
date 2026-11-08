@@ -471,12 +471,19 @@ BR.Mover = class Mover {
       return;
     }
 
-    let top = -Infinity, bottom = Infinity, edge = d > 0 ? Infinity : -Infinity;
+    let top = -Infinity, bottom = Infinity, edge = d > 0 ? Infinity : -Infinity, solid = false, gTop = -Infinity;
     for (const b of list) {
+      if (b.ground) { gTop = b.y1; continue; }            // v1.35 terrain: the slab under you, handled below (never a wall edge)
+      solid = true;
       if (b.y1 > top) top = b.y1;
       if (b.y0 < bottom) bottom = b.y0;
       if (axis === 'x') edge = d > 0 ? Math.min(edge, b.x0) : Math.max(edge, b.x1);
       else edge = d > 0 ? Math.min(edge, b.z0) : Math.max(edge, b.z1);
+    }
+    if (!solid) {                                          // only terrain here: walk up the slope, or stop at one too steep to climb
+      const gh = gTop - p.y;
+      if (gh <= M.stepHeight * 1.5) { p.y = gTop + 0.001; return; }
+      p[axis] -= d; this.vel[axis] *= 0.25; return;
     }
     const dh = top - p.y;
     const grounded = this.onGround || this.wasGround;
