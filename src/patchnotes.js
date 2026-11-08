@@ -5,6 +5,13 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.38.0', date: '2026-11-08', title: '120 FPS, knock freeze frame, full-body running', notes: [
+    'New FRAME RATE setting (Settings): 60 FPS or 120 FPS, on phones and computers. 120 FPS needs a 120 Hz (or faster) screen; the game measures your screen and tells you what it can show, and lowers its resolution a little if your device needs it to hold the frame rate. 60 FPS is now a steady cap that uses less battery.',
+    'Team modes: the freeze frame (the split second of slow motion, the banner, the flash and the burst) now hits when you KNOCK an enemy down, since the knock is the kill. It no longer waits until they bleed out or get finished, and it doesn\'t play twice. The banner reads KNOCKED (or HEADSHOT KNOCK).',
+    'Running moves the whole body now, not just the legs. Players lean into the run and dip on each step, the hips swing while the shoulders twist and roll against them, and the head stays level. When they\'re not shooting, the gun drops into a carry across the chest and pumps with the stride.',
+    'Fixed the first-person gun twitching on computers. The way the gun lags behind your view now follows how fast you actually turn, smoothed, so it moves the same with a mouse, touch or a controller, and at 60 or 120 FPS.',
+    'Cleaner weapon models on every device: the factory finish is a smooth, even black instead of a blotchy, dusty grey, and the first-person lighting no longer tints guns blue.',
+  ] },
   { v: '1.37.0', date: '2026-11-08', title: 'Smoother on mobile', notes: [
     'Big performance boost on phones, especially in Battle Royale and Resurgence. A busy island frame now draws about a third of the triangles it used to (around 1 million down to 250-450 thousand), with fewer draw calls.',
     'Trees, pines, bushes, rocks and boulders use their full detailed model only near you, and a lighter version further away that looks the same through the haze. Grass tufts and flowers are only drawn close up, where you can see them.',

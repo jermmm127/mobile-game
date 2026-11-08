@@ -346,8 +346,8 @@ const server = http.createServer((req, res) => {
     // stretched res + saturation
     const asp0 = g.camera.aspect; g.settings.stretch = 1; g.resize(); const asp1 = g.camera.aspect;
     g.settings.saturation = 1.6; g.applyColor(); const filt = g.renderer.domElement.style.filter;
-    g.settings.stretch = 0; g.settings.saturation = 1; g.resize();
-    r.video = { asp0, asp1, filt, reset: /saturate\(0\.88/.test(g.renderer.domElement.style.filter) && Math.abs(g.camera.aspect - asp0) < 1e-6 };
+    g.settings.stretch = 0; g.settings.saturation = 1; g.resize(); g.applyColor();
+    r.video = { asp0, asp1, filt, reset: g.renderer.domElement.style.filter === '' && Math.abs(g.camera.aspect - asp0) < 1e-6 };      // (v1.37: the base grade is in the shaders, no CSS filter at 100%)
     r.editable = ['slot0', 'slot1', 'slot2', 'interact', 'map', 'pause', 'fire', 'jump', 'knife', 'spawnmenu', 'stim'].every(k => keys.includes(k));
     return r;
   });
@@ -1416,6 +1416,31 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v138 = await page.evaluate(() => {
+    const g = BR.game, out = {}; BR.AntiCheat._testing = true;
+    // knockdown in a team mode plays the kill reward (freeze frame) right away, and not again when they die
+    g.startMatch({ seed: 4, squad: 2 }); const p = g.player; for (let i = 0; i < 600 && (p.mover.dropping || p.mover.chute); i++) g.update(1 / 30);
+    const foe = g.actors.find(a => a.alive && a.team !== p.team && g.actors.some(b => b !== a && b.alive && b.team === a.team));
+    if (foe) { g.hitStop = 0; const down = BR.Squads.tryDown(g, foe, p, 'rifle', false); out.knockFreeze = down && g.hitStop > 0 && foe._knockRewarded === true;
+      g.hitStop = 0; g.kill(foe, p, 'bleed', false); out.noDoubleFreeze = g.hitStop === 0; } else out.knockFreeze = out.noDoubleFreeze = false;
+    g.toMenu();
+    // frame rate setting: 60 / 120, the adaptive target follows it (never faster than the screen)
+    const S = g.settings, f0 = S.fps; S.fps = '120'; g.screenMs = 1000 / 120; g.applyFps(); const h120 = (document.getElementById('fps-hint') || {}).textContent || '';
+    g.screenMs = 1000 / 60; g.applyFps(); const h60screen = (document.getElementById('fps-hint') || {}).textContent || '';
+    S.fps = f0 || '60'; g.screenMs = 0; g.applyFps();
+    out.fps = !!document.querySelector('#set-fpsmode [data-v="120"]') && /120/.test(h120) && /60 Hz/.test(h60screen);
+    // full-body run: torso leans forward, the gun drops into the carry pose, the hips swing
+    const a = new BR.Actor(g, { id: 77, name: 'Runner' }); a.slots[0] = BR.Weapons.create('rifle'); a.cur = 0; const m = a.mover; m.onGround = true; a.yaw = 0; m.vel.set(0, 0, -5.9);
+    for (let i = 0; i < 90; i++) a.syncMesh(1 / 60); const u = a.mesh.userData;
+    out.run = u.upper.rotation.x < -0.08 && u.carry > 0.6 && u.gun.rotation.z > 0.15;
+    // view sway follows the turn rate (same with a mouse, touch, 60 or 120 FPS) and stays bounded
+    g.startMatch({ practice: true }); for (let i = 0; i < 20; i++) g.update(1 / 30);
+    const v = g.vmr, pl = g.player; let mx = 0; for (let i = 0; i < 30; i++) { pl.yaw -= 0.05; v.update(1 / 60, 400, 0); mx = Math.max(mx, Math.abs(v.swY)); }
+    const s60 = v.swY; for (let i = 0; i < 120; i++) { pl.yaw -= 0.025; v.update(1 / 120, 200, 0); } const s120 = v.swY;
+    out.sway = mx > 0.02 && mx <= 0.11 && Math.abs(s60 - s120) < 0.02;
+    g.toMenu();
+    return out;
+  });
   const v137 = await page.evaluate(() => {
     const g = BR.game, out = {}; BR.AntiCheat._testing = true; g.startMatch({ seed: 4 }); const p = g.player, W = g.world;
     for (let i = 0; i < 600 && (p.mover.dropping || p.mover.chute); i++) g.update(1 / 30);
@@ -1857,6 +1882,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.38 knockdown freeze frame in team modes, 60 / 120 FPS setting, full-body run, smooth device-independent view sway', Object.values(v138).every(Boolean), v138],
     ['v1.37 mobile performance: scenery LOD (detailed models only near you), tiled ground, hidden objects skip matrix updates, triangle + draw-call budget, grade in shaders, loot grid, far bots hidden', ['lod', 'nearColors', 'groundTiles', 'budget', 'skipHidden', 'grade', 'grid', 'farHidden'].every(k => v137[k]), v137],
     ['v1.36 glider redeploys in the air (after a Shockwave) and cuts on crouch, cleaner knife draws, rounder trees / pines / bushes / grass, sky never clips', Object.values(v136).every(Boolean), v136],
     ['v1.35 real terrain on the BR islands (hills block rays, nothing floating, you land + walk on the slopes), military base / farm POIs, Crossroads / Frostbite / Harbor maps in the TDM + FFA pools', Object.values(v135).every(Boolean), v135],
@@ -1926,7 +1952,7 @@ const server = http.createServer((req, res) => {
     ['hunting rifle is accurate from the hip, even moving/airborne', extra.hunter.hunterAir < extra.hunter.sniperStill * 0.5 && extra.hunter.hunterAir < extra.hunter.hunterStill * 2 && extra.hunter.light],
     ['bot aim eases in and respects its turn rate', extra.botAim.first < extra.botAim.peak * 0.5 && extra.botAim.peak <= extra.botAim.cap + 1e-6 && extra.botAim.err < 0.02],
     ['stim: 4s cooldown, speed boost, heals 10/s for 5s', extra.stim.used && !extra.stim.again && extra.stim.vBoost > BR_RUN * 1.2 && extra.stim.vAfter < BR_RUN * 1.05 && extra.stim.hp1 >= 29 && extra.stim.hp1 <= 31 && extra.stim.hpEnd === 70 && extra.stim.cdBack && extra.stim.ready && extra.stim.hudBtn],
-    ['stretched res widens the picture; saturation filters the 3D view', extra.video.asp1 < extra.video.asp0 / 1.5 && /saturate\(1\.40?8/.test(extra.video.filt) && extra.video.reset],
+    ['stretched res widens the picture; saturation filters the 3D view', extra.video.asp1 < extra.video.asp0 / 1.5 && /saturate\(1\.60?0?/.test(extra.video.filt) && extra.video.reset],
     ['karambit gives a movement speed boost', extra.newstuff.knifeSpeed > BR_RUN * 1.15],
     ['sniper + hunting rifle are bolt actions (bolt lifts, pulls back, returns)', extra.newstuff.bolts && (extra.newstuff.sniperBolt || extra.newstuff.sniperImported) && extra.newstuff.lift > 0.8 && extra.newstuff.back > 0.05 && extra.newstuff.settled],
     ['stim + grapple have first-person arm animations', extra.fpAnims.injSeen && extra.fpAnims.injGone && extra.fpAnims.launchSeen && extra.fpAnims.launchGone],
@@ -2048,7 +2074,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

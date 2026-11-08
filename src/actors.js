@@ -642,6 +642,7 @@ BR.Actor = class Actor {
     let hL = 0, kL = 0, hR = 0, kR = 0, lean = 0, bodyY = 0, bodyX = 0, armsUp = 0, armsOut = 0, hipYaw = 0, hipRoll = 0, hipShift = 0;
     let crawl = 0;
     let crawlZ = 0;
+    u.shRoll = 0; u.pump = 0; u.run = 0;
     if (this.downed) {                            // v1.27.2 knocked down: crawling on hands and knees, centred on the hitbox
       u.ct = (u.ct || 0) + dt * (1.2 + Math.min(1, sp) * 3.2);   // the crawl cycle runs with the crawl speed (a slow sway when still)
       const c = Math.sin(u.ct), K = CRAWL;
@@ -670,10 +671,13 @@ BR.Actor = class Actor {
       const lift = a * (1.25 + 0.35 * sd);                                             // knees lift on the swing (also when side-stepping)
       kL = Math.max(0, -cc) * lift + (spd > 0.4 ? 0.12 : 0); kR = Math.max(0, cc) * lift + (spd > 0.4 ? 0.12 : 0);
       u.side = c * a * 0.55 * sd * Math.sign(u.gl || 1);                              // legs open + cross when strafing
-      lean = U.clamp(u.gf * spd * 0.011, -0.05, 0.11);
-      bodyY = -(0.5 - 0.5 * Math.cos(u.t * 2)) * Math.min(spd * 0.0065, 0.04);         // smooth double bounce per stride (no sharp dip)
-      const amp = Math.min(1, spd / 5);
-      hipYaw = c * 0.17 * amp * fw; hipRoll = c * 0.06 * amp - u.gl * Math.min(spd * 0.012, 0.07); hipShift = c * 0.03 * amp;
+      // v1.38 full-body run: the torso leans into the run and dips on every footfall, the hips swing and the shoulders
+      // twist + roll against them, the body bounces, and the arms pump the gun (see the carry pose below)
+      const amp = Math.min(1, spd / 5), run = U.clamp((spd - 2.4) / (BR.CONFIG.move.runSpeed - 2.4), 0, 1);
+      lean = -U.clamp(u.gf * spd * 0.03, -0.06, 0.24) - (0.5 - 0.5 * Math.cos(u.t * 2)) * 0.05 * amp;      // (negative = forward on this rig)
+      bodyY = -(0.5 - 0.5 * Math.cos(u.t * 2)) * Math.min(spd * 0.009, 0.055);         // smooth double bounce per stride (no sharp dip)
+      hipYaw = c * (0.17 + 0.07 * run) * amp * fw; hipRoll = c * (0.06 + 0.03 * run) * amp - u.gl * Math.min(spd * 0.012, 0.07); hipShift = c * 0.035 * amp;
+      u.shRoll = c * 0.07 * amp; u.pump = c * amp; u.run = run;
     }
     const D = (o, key, v, k) => { o[key] = U.damp(o[key], v, k, dt); };
     D(u.L.hip.rotation, 'x', hL, 16); D(u.L.knee.rotation, 'x', kL, 16);
@@ -686,12 +690,20 @@ BR.Actor = class Actor {
     D(u.body.rotation, 'z', (m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : m.sliding ? 0.1 : 0) + hipRoll, 10);
     D(u.body.rotation, 'y', hipYaw, 12); D(u.body.position, 'x', hipShift, 12); D(u.body.position, 'z', crawlZ, 10);
     if (this.downed) { D(u.L.hip.rotation, 'z', -CRAWL.hz, 10); D(u.R.hip.rotation, 'z', CRAWL.hz, 10); }
-    D(u.upper.rotation, 'z', -hipRoll * 0.8, 12);
+    D(u.upper.rotation, 'z', -hipRoll * 0.8 - (u.shRoll || 0), 12);
     u.hipYaw = u.body.rotation.y;
     // Aim: head + arms + gun follow the (smoothed) pitch together
     const aimP = u.pitch - u.upper.rotation.x;
-    u.head.rotation.x = this.downed ? CRAWL.head : aimP * 0.6;           // downed: chin up, looking ahead
-    u.gun.rotation.x = aimP;
+    u.head.rotation.x = this.downed ? CRAWL.head : aimP * 0.6 - u.upper.rotation.x * 0.35;           // downed: chin up, looking ahead (v1.38: the head stays level through the lean)
+    // v1.38 running carry: not shooting at anything while running -> the gun drops and cants across the chest and
+    // bobs with the stride, so the arms swing with the run instead of staying locked in the aim pose
+    const busy = this.fireHeld || this.ads || (this.brain && this.brain.target) || this.downed;
+    u.carry = U.damp(u.carry || 0, !busy && m.onGround && !m.sliding && !m.crouched ? (u.run || 0) : 0, 8, dt);
+    if (!u.gunBase) u.gunBase = u.gun.position.clone();
+    const ca = u.carry, pump = u.pump || 0;
+    u.gun.position.set(u.gunBase.x - 0.04 * ca + pump * 0.025 * ca, u.gunBase.y - 0.07 * ca + Math.abs(pump) * 0.02 * ca, u.gunBase.z + 0.05 * ca);
+    u.gun.rotation.x = aimP - 0.42 * ca + pump * 0.06 * ca;
+    u.gun.rotation.z = 0.32 * ca;
     // Arms: two-bone IK puts the right hand on the grip and the left on the foregrip
     // of whatever gun is held; blends to holding the risers (canopy) or spread (freefall).
     const gp = u.gp || { grip: _ikV.set(0, -0.05, 0.1).clone(), fore: null };

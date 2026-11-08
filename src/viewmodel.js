@@ -94,7 +94,7 @@
       this.camera = new THREE.PerspectiveCamera(58, 1, 0.01, 10);
       this.scene.add(new THREE.HemisphereLight(0xffffff, 0x6b6250, 0.85));
       const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(1, 2, 1.5); this.scene.add(key);
-      const rim = new THREE.DirectionalLight(0x9fc4ff, 0.35); rim.position.set(-2, 0.5, -1); this.scene.add(rim);
+      const rim = new THREE.DirectionalLight(0xd2defa, 0.26); rim.position.set(-2, 0.5, -1); this.scene.add(rim);      // v1.38: a softer, more neutral rim (guns read black, not blue)
       this.root = new THREE.Group();
       this.scene.add(this.root);
       this.models = {};
@@ -411,9 +411,15 @@
       let rx = 0, ry = 0, rz = 0;
       if (w.id === 'revolver') { const k = 1 - A; rx += RV.rx * k; ry += RV.ry * k; rz += RV.rz * k; }
       // Sway: the gun lags behind where you look
-      ry += U.clamp(-lookDX * 0.0022, -0.12, 0.12) * nA;
-      rx += U.clamp(-lookDY * 0.0018, -0.1, 0.1) * nA;
-      tx += U.clamp(-lookDX * 0.0004, -0.02, 0.02) * nA;
+      // v1.38: driven by how fast the view actually turns (rad/s), smoothed, instead of the raw input delta per frame:
+      // a mouse sends far bigger, spikier deltas than a touch screen (and 120 FPS halves them), so the gun twitched
+      // on computers. Now it lags the same, smoothly, with a mouse, touch, a controller, at 60 or 120 FPS.
+      const yawR = p.yaw, pitR = p.pitch;
+      if (this._swYaw === undefined || dt <= 0) { this._swYaw = yawR; this._swPit = pitR; }
+      const wy = U.wrapAngle(yawR - this._swYaw) / Math.max(dt, 1e-3), wp = (pitR - this._swPit) / Math.max(dt, 1e-3);
+      this._swYaw = yawR; this._swPit = pitR;
+      this.swY = U.damp(this.swY || 0, U.clamp(wy * 0.028, -0.11, 0.11), 9, dt); this.swP = U.damp(this.swP || 0, U.clamp(wp * 0.022, -0.08, 0.08), 9, dt);
+      ry += this.swY * nA; rx += this.swP * nA; tx += this.swY * 0.16 * nA;
       // Sprint: lowered and canted
       const W = this.sprintW;
       tx += 0.02 * W; ty -= 0.035 * W; tz += 0.03 * W; rx -= 0.22 * W; ry += 0.5 * W; rz += 0.32 * W;
@@ -824,7 +830,7 @@
       // Charm swings from look + movement + recoil
       const ch = ud.charmObj;
       if (ch) {
-        const force = -lookDX * 0.02 + p.input.mx * 0.4 - K.z.v * 8 + (P.y.vel || 0) * 0.5;
+        const force = (this.swY || 0) * 3 + p.input.mx * 0.4 - K.z.v * 8 + (P.y.vel || 0) * 0.5;
         this.charmV += (-55 * this.charmA - 5 * this.charmV + force * 30) * dt;
         this.charmA += this.charmV * dt;
         ch.rotation.z = U.clamp(this.charmA, -1.2, 1.2);

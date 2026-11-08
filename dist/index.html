@@ -1729,6 +1729,9 @@ body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint 
 .gl-diag { margin-top: 16px; font-size: 13px; line-height: 1.45; } .gl-diag details { margin-top: 8px; opacity: 0.8; } .gl-diag ol { margin: 6px 0 6px 20px; font-size: 12px; } .fatal { overflow-y: auto; max-height: 100vh; }
 body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a desktop thing */
 
+/* v1.38 frame rate hint under the FPS setting */
+#settings .row.hint, .row.hint { font-size: 11px; opacity: 0.7; line-height: 1.35; margin-top: -4px; padding: 0 2px; }
+
 </style>
 </head>
 <body>
@@ -1752,7 +1755,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.37.0',
+  version: '1.38.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2047,6 +2050,13 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.38.0', date: '2026-11-08', title: '120 FPS, knock freeze frame, full-body running', notes: [
+    'New FRAME RATE setting (Settings): 60 FPS or 120 FPS, on phones and computers. 120 FPS needs a 120 Hz (or faster) screen; the game measures your screen and tells you what it can show, and lowers its resolution a little if your device needs it to hold the frame rate. 60 FPS is now a steady cap that uses less battery.',
+    'Team modes: the freeze frame (the split second of slow motion, the banner, the flash and the burst) now hits when you KNOCK an enemy down, since the knock is the kill. It no longer waits until they bleed out or get finished, and it doesn\'t play twice. The banner reads KNOCKED (or HEADSHOT KNOCK).',
+    'Running moves the whole body now, not just the legs. Players lean into the run and dip on each step, the hips swing while the shoulders twist and roll against them, and the head stays level. When they\'re not shooting, the gun drops into a carry across the chest and pumps with the stride.',
+    'Fixed the first-person gun twitching on computers. The way the gun lags behind your view now follows how fast you actually turn, smoothed, so it moves the same with a mouse, touch or a controller, and at 60 or 120 FPS.',
+    'Cleaner weapon models on every device: the factory finish is a smooth, even black instead of a blotchy, dusty grey, and the first-person lighting no longer tints guns blue.',
+  ] },
   { v: '1.37.0', date: '2026-11-08', title: 'Smoother on mobile', notes: [
     'Big performance boost on phones, especially in Battle Royale and Resurgence. A busy island frame now draws about a third of the triangles it used to (around 1 million down to 250-450 thousand), with fewer draw calls.',
     'Trees, pines, bushes, rocks and boulders use their full detailed model only near you, and a lighter version further away that looks the same through the haze. Grass tufts and flowers are only drawn close up, where you can see them.',
@@ -7348,16 +7358,16 @@ BR.Models = (function () {
     return canvasTex('w-' + kind + '-' + base, (c, S) => {
       const R = BR.util.rng(base % 9973 + kind.length * 31), col = new THREE.Color(base), css = k => { const o = col.clone(); if (k > 0) o.lerp(new THREE.Color(0xffffff), k); else o.multiplyScalar(1 + k); return '#' + o.getHexString(); };
       c.fillStyle = css(0); c.fillRect(0, 0, S, S);
-      for (let i = 0; i < 46; i++) { const x = R() * S, y = R() * S, r = 18 + R() * 60, g2 = c.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, R() < 0.5 ? css(0.05) : css(-0.09)); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = 0.38; c.fillStyle = g2; c.fillRect(x - r, y - r, r * 2, r * 2); }
+      for (let i = 0; i < 46; i++) { const x = R() * S, y = R() * S, r = 18 + R() * 60, g2 = c.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, R() < 0.5 ? css(0.05) : css(-0.09)); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = kind === 'gun' ? 0.16 : 0.38; c.fillStyle = g2; c.fillRect(x - r, y - r, r * 2, r * 2); }      // (v1.38: a cleaner, even factory finish on guns)
       c.globalAlpha = 1;
-      for (let i = 0; i < 22; i++) { c.fillStyle = `rgba(20,16,10,${0.05 + R() * 0.08})`; const x = R() * S; c.fillRect(x, R() * S, 2 + R() * 5, 20 + R() * 70); }          // grime streaks
+      for (let i = 0; i < (kind === 'gun' ? 6 : 22); i++) { c.fillStyle = `rgba(20,16,10,${0.05 + R() * 0.08})`; const x = R() * S; c.fillRect(x, R() * S, 2 + R() * 5, 20 + R() * 70); }          // grime streaks
       const nS = kind === 'metal' ? 150 : kind === 'blade' ? 260 : kind === 'gun' ? 90 : 45, gun = kind === 'gun';
       c.lineCap = 'round';
       for (let i = 0; i < nS; i++) { const x = R() * S, y = R() * S, a = kind === 'blade' ? (R() - 0.5) * 0.3 : R() * Math.PI, l = 2 + R() * (kind === 'blade' ? 50 : 12);
         c.strokeStyle = kind === 'blade' ? `rgba(255,255,255,${0.05 + R() * 0.09})` : css(gun ? 0.16 + R() * 0.12 : 0.3 + R() * 0.25); c.globalAlpha = kind === 'blade' ? 1 : gun ? 0.05 + R() * 0.08 : 0.06 + R() * 0.14; c.lineWidth = R() < 0.85 ? 0.8 : 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
       c.globalAlpha = 1;
       for (let i = 0; i < (kind === 'polymer' ? 40 : gun ? 30 : 90); i++) { c.fillStyle = css(gun ? 0.18 + R() * 0.1 : 0.4 + R() * 0.3); c.globalAlpha = gun ? 0.1 + R() * 0.12 : 0.18 + R() * 0.3; c.fillRect(R() * S, R() * S, 1 + R() * 2.4, 1 + R() * 1.6); }      // chips
-      for (let i = 0; i < (gun ? 2400 : 500); i++) { c.fillStyle = R() < 0.5 ? `rgba(255,255,255,${gun ? 0.05 : 0.10})` : `rgba(0,0,0,${gun ? 0.12 : 0.14})`; c.globalAlpha = 1; c.fillRect(R() * S, R() * S, 1, 1); }        // dust
+      for (let i = 0; i < (gun ? 700 : 500); i++) { c.fillStyle = R() < 0.5 ? `rgba(255,255,255,${gun ? 0.035 : 0.10})` : `rgba(0,0,0,${gun ? 0.07 : 0.14})`; c.globalAlpha = 1; c.fillRect(R() * S, R() * S, 1, 1); }        // dust
     }, 256);
   }
   // fabric for gloves: the glove colour with a woven grain + soft wear
@@ -10774,7 +10784,7 @@ BR.Models = (function () {
       this.camera = new THREE.PerspectiveCamera(58, 1, 0.01, 10);
       this.scene.add(new THREE.HemisphereLight(0xffffff, 0x6b6250, 0.85));
       const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(1, 2, 1.5); this.scene.add(key);
-      const rim = new THREE.DirectionalLight(0x9fc4ff, 0.35); rim.position.set(-2, 0.5, -1); this.scene.add(rim);
+      const rim = new THREE.DirectionalLight(0xd2defa, 0.26); rim.position.set(-2, 0.5, -1); this.scene.add(rim);      // v1.38: a softer, more neutral rim (guns read black, not blue)
       this.root = new THREE.Group();
       this.scene.add(this.root);
       this.models = {};
@@ -11091,9 +11101,15 @@ BR.Models = (function () {
       let rx = 0, ry = 0, rz = 0;
       if (w.id === 'revolver') { const k = 1 - A; rx += RV.rx * k; ry += RV.ry * k; rz += RV.rz * k; }
       // Sway: the gun lags behind where you look
-      ry += U.clamp(-lookDX * 0.0022, -0.12, 0.12) * nA;
-      rx += U.clamp(-lookDY * 0.0018, -0.1, 0.1) * nA;
-      tx += U.clamp(-lookDX * 0.0004, -0.02, 0.02) * nA;
+      // v1.38: driven by how fast the view actually turns (rad/s), smoothed, instead of the raw input delta per frame:
+      // a mouse sends far bigger, spikier deltas than a touch screen (and 120 FPS halves them), so the gun twitched
+      // on computers. Now it lags the same, smoothly, with a mouse, touch, a controller, at 60 or 120 FPS.
+      const yawR = p.yaw, pitR = p.pitch;
+      if (this._swYaw === undefined || dt <= 0) { this._swYaw = yawR; this._swPit = pitR; }
+      const wy = U.wrapAngle(yawR - this._swYaw) / Math.max(dt, 1e-3), wp = (pitR - this._swPit) / Math.max(dt, 1e-3);
+      this._swYaw = yawR; this._swPit = pitR;
+      this.swY = U.damp(this.swY || 0, U.clamp(wy * 0.028, -0.11, 0.11), 9, dt); this.swP = U.damp(this.swP || 0, U.clamp(wp * 0.022, -0.08, 0.08), 9, dt);
+      ry += this.swY * nA; rx += this.swP * nA; tx += this.swY * 0.16 * nA;
       // Sprint: lowered and canted
       const W = this.sprintW;
       tx += 0.02 * W; ty -= 0.035 * W; tz += 0.03 * W; rx -= 0.22 * W; ry += 0.5 * W; rz += 0.32 * W;
@@ -11504,7 +11520,7 @@ BR.Models = (function () {
       // Charm swings from look + movement + recoil
       const ch = ud.charmObj;
       if (ch) {
-        const force = -lookDX * 0.02 + p.input.mx * 0.4 - K.z.v * 8 + (P.y.vel || 0) * 0.5;
+        const force = (this.swY || 0) * 3 + p.input.mx * 0.4 - K.z.v * 8 + (P.y.vel || 0) * 0.5;
         this.charmV += (-55 * this.charmA - 5 * this.charmV + force * 30) * dt;
         this.charmA += this.charmV * dt;
         ch.rotation.z = U.clamp(this.charmA, -1.2, 1.2);
@@ -12517,6 +12533,7 @@ BR.Actor = class Actor {
     let hL = 0, kL = 0, hR = 0, kR = 0, lean = 0, bodyY = 0, bodyX = 0, armsUp = 0, armsOut = 0, hipYaw = 0, hipRoll = 0, hipShift = 0;
     let crawl = 0;
     let crawlZ = 0;
+    u.shRoll = 0; u.pump = 0; u.run = 0;
     if (this.downed) {                            // v1.27.2 knocked down: crawling on hands and knees, centred on the hitbox
       u.ct = (u.ct || 0) + dt * (1.2 + Math.min(1, sp) * 3.2);   // the crawl cycle runs with the crawl speed (a slow sway when still)
       const c = Math.sin(u.ct), K = CRAWL;
@@ -12545,10 +12562,13 @@ BR.Actor = class Actor {
       const lift = a * (1.25 + 0.35 * sd);                                             // knees lift on the swing (also when side-stepping)
       kL = Math.max(0, -cc) * lift + (spd > 0.4 ? 0.12 : 0); kR = Math.max(0, cc) * lift + (spd > 0.4 ? 0.12 : 0);
       u.side = c * a * 0.55 * sd * Math.sign(u.gl || 1);                              // legs open + cross when strafing
-      lean = U.clamp(u.gf * spd * 0.011, -0.05, 0.11);
-      bodyY = -(0.5 - 0.5 * Math.cos(u.t * 2)) * Math.min(spd * 0.0065, 0.04);         // smooth double bounce per stride (no sharp dip)
-      const amp = Math.min(1, spd / 5);
-      hipYaw = c * 0.17 * amp * fw; hipRoll = c * 0.06 * amp - u.gl * Math.min(spd * 0.012, 0.07); hipShift = c * 0.03 * amp;
+      // v1.38 full-body run: the torso leans into the run and dips on every footfall, the hips swing and the shoulders
+      // twist + roll against them, the body bounces, and the arms pump the gun (see the carry pose below)
+      const amp = Math.min(1, spd / 5), run = U.clamp((spd - 2.4) / (BR.CONFIG.move.runSpeed - 2.4), 0, 1);
+      lean = -U.clamp(u.gf * spd * 0.03, -0.06, 0.24) - (0.5 - 0.5 * Math.cos(u.t * 2)) * 0.05 * amp;      // (negative = forward on this rig)
+      bodyY = -(0.5 - 0.5 * Math.cos(u.t * 2)) * Math.min(spd * 0.009, 0.055);         // smooth double bounce per stride (no sharp dip)
+      hipYaw = c * (0.17 + 0.07 * run) * amp * fw; hipRoll = c * (0.06 + 0.03 * run) * amp - u.gl * Math.min(spd * 0.012, 0.07); hipShift = c * 0.035 * amp;
+      u.shRoll = c * 0.07 * amp; u.pump = c * amp; u.run = run;
     }
     const D = (o, key, v, k) => { o[key] = U.damp(o[key], v, k, dt); };
     D(u.L.hip.rotation, 'x', hL, 16); D(u.L.knee.rotation, 'x', kL, 16);
@@ -12561,12 +12581,20 @@ BR.Actor = class Actor {
     D(u.body.rotation, 'z', (m.wallRunning ? 0.35 * (m.wallN.x + m.wallN.z) : m.sliding ? 0.1 : 0) + hipRoll, 10);
     D(u.body.rotation, 'y', hipYaw, 12); D(u.body.position, 'x', hipShift, 12); D(u.body.position, 'z', crawlZ, 10);
     if (this.downed) { D(u.L.hip.rotation, 'z', -CRAWL.hz, 10); D(u.R.hip.rotation, 'z', CRAWL.hz, 10); }
-    D(u.upper.rotation, 'z', -hipRoll * 0.8, 12);
+    D(u.upper.rotation, 'z', -hipRoll * 0.8 - (u.shRoll || 0), 12);
     u.hipYaw = u.body.rotation.y;
     // Aim: head + arms + gun follow the (smoothed) pitch together
     const aimP = u.pitch - u.upper.rotation.x;
-    u.head.rotation.x = this.downed ? CRAWL.head : aimP * 0.6;           // downed: chin up, looking ahead
-    u.gun.rotation.x = aimP;
+    u.head.rotation.x = this.downed ? CRAWL.head : aimP * 0.6 - u.upper.rotation.x * 0.35;           // downed: chin up, looking ahead (v1.38: the head stays level through the lean)
+    // v1.38 running carry: not shooting at anything while running -> the gun drops and cants across the chest and
+    // bobs with the stride, so the arms swing with the run instead of staying locked in the aim pose
+    const busy = this.fireHeld || this.ads || (this.brain && this.brain.target) || this.downed;
+    u.carry = U.damp(u.carry || 0, !busy && m.onGround && !m.sliding && !m.crouched ? (u.run || 0) : 0, 8, dt);
+    if (!u.gunBase) u.gunBase = u.gun.position.clone();
+    const ca = u.carry, pump = u.pump || 0;
+    u.gun.position.set(u.gunBase.x - 0.04 * ca + pump * 0.025 * ca, u.gunBase.y - 0.07 * ca + Math.abs(pump) * 0.02 * ca, u.gunBase.z + 0.05 * ca);
+    u.gun.rotation.x = aimP - 0.42 * ca + pump * 0.06 * ca;
+    u.gun.rotation.z = 0.32 * ca;
     // Arms: two-bone IK puts the right hand on the grip and the left on the foregrip
     // of whatever gun is held; blends to holding the risers (canopy) or spread (freefall).
     const gp = u.gp || { grip: _ikV.set(0, -0.05, 0.1).clone(), fore: null };
@@ -13034,13 +13062,14 @@ BR.Squads = {
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const nm = a => `<b class="${a.isPlayer ? 'me' : a.team === g.player.team ? 'mate' : ''}">${esc(a.name)}</b>`;
     g.hud.killfeed(killer ? `${nm(killer)} <i>knocked</i> ${nm(v)}` : `${nm(v)} <i>went down</i>`, v.isPlayer || (killer && killer.isPlayer) ? 'feed-none' : '');
-    if (killer && killer.isPlayer) { g.hud.toast('KNOCKED · ' + v.name, 900); BR.Audio.kill && BR.Audio.kill(head, 1); }
+    // v1.38: knocking is the kill in team modes, so the freeze frame + kill reward hit now (not when they finally die)
+    if (killer && killer.isPlayer) { if (g.killReward) { g.killReward(v, head, false, true); v._knockRewarded = true; } else BR.Audio.kill && BR.Audio.kill(head, 1); }
     if (v.isPlayer) { g.hud.toast('YOU\'RE DOWN · crawl to cover, a teammate can revive you', 2200); BR.Audio.hurt(); g.vmr.hide && g.vmr.hide(); }
     return true;
   },
 
   revive(g, v, by) {
-    v.downed = false; v.reviver = null; v.reviveP = 0; v.health = this.REVIVE_HP; v.mover.prone = false; v.mover.crouched = false;
+    v.downed = false; v._knockRewarded = false; v.reviver = null; v.reviveP = 0; v.health = this.REVIVE_HP; v.mover.prone = false; v.mover.crouched = false;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     g.hud.killfeed(`<b class="${by.isPlayer ? 'me' : 'mate'}">${esc(by.name)}</b> <i>revived</i> <b class="${v.isPlayer ? 'me' : 'mate'}">${esc(v.name)}</b>`, 'feed-none');
     if (v.isPlayer) { g.hud.toast('REVIVED', 900); g.vmr.lastWeapon = null; }
@@ -19838,6 +19867,9 @@ BR.HUD = class HUD {
         <button data-v="off">OFF</button><button data-v="subtle">SUBTLE</button><button data-v="bright">BRIGHT</button></div></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
         <button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
+      <div class="row"><label>FRAME RATE</label><div class="seg" id="set-fpsmode">
+        <button data-v="60">60 FPS</button><button data-v="120">120 FPS</button></div></div>
+      <div class="row hint" id="fps-hint"></div>
       <div class="row"><label for="set-vol">VOLUME</label><input id="set-vol" type="range" min="0" max="1" step="0.05"><output id="out-vol"></output></div>
       <div class="row toggles">
         <label class="tg"><input type="checkbox" id="set-assist"> AIM ASSIST</label>
@@ -20429,7 +20461,7 @@ BR.HUD = class HUD {
   killBanner(o) {
     const k = this.$('killban'), f = this.$('killflash'); if (!k) return;
     const MK = [null, null, 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'RAMPAGE', 'UNSTOPPABLE'];
-    k.querySelector('.kb-t').textContent = o.streak >= 2 ? MK[Math.min(o.streak, 6)] : o.head ? 'HEADSHOT' : 'ELIMINATED';
+    k.querySelector('.kb-t').textContent = o.streak >= 2 ? MK[Math.min(o.streak, 6)] : o.knock ? (o.head ? 'HEADSHOT KNOCK' : 'KNOCKED') : o.head ? 'HEADSHOT' : 'ELIMINATED';
     k.querySelector('.kb-n').textContent = o.name || '';
     k.querySelector('.kb-x').textContent = o.streak >= 2 ? '×' + o.streak : '';
     k.querySelector('.kb-c').textContent = o.coins ? '+' + o.coins : '';
@@ -20929,18 +20961,28 @@ BR.Game = class Game {
   adaptResolution(ms) {
     const P = this.perf; if (!P || (this.state !== 'playing' && this.state !== 'dead' && this.state !== 'won')) return;
     if (ms > 80) return;                                   // tab switch / hitch, not steady load
-    if (ms > 17.6) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);          // v1.25: aim for a solid 60 fps (16.7 ms)
+    // v1.38: the target frame time follows the FPS setting, but never faster than the screen can show
+    const tgt = Math.max(this.settings.fps === '120' ? 1000 / 120 : 1000 / 60, this.screenMs || 0), slowMs = tgt * 1.055, goodMs = tgt * 1.012;
+    if (ms > slowMs) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);          // v1.25: aim for a solid frame rate
     if (P.slow > 10 && P.scale <= 0.56 && this.fogFar > 140) {         // v1.25: still slow at the lowest resolution: it's draw calls, not pixels, so draw less far
       this.fogFar = Math.max(140, this.fogFar * 0.85); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; P.slow = 0; P.good = 0; P.shrunk = true;
     } else if (P.slow > 10 && P.scale > 0.55) {
       P.cap = Math.min(P.cap, P.scale - 0.01); P.scale = Math.max(0.55, P.scale * 0.88); P.slow = 0; P.good = 0; P.calm = 0;
       this.renderer.setPixelRatio(this.basePR * P.scale); this.resize();
-    } else if (ms < 16.9) {
+    } else if (ms < goodMs) {
       P.good += ms / 1000; P.calm = (P.calm || 0) + ms / 1000;
       if (P.calm > 30 && P.cap < 1) { P.cap = Math.min(1, P.cap + 0.05); P.calm = 0; }   // a one-off hitch doesn't cap you forever
       if (P.shrunk && P.good > 12) { const g0 = (BR.CONFIG.graphics[this.settings.gfx] || BR.CONFIG.graphics.medium).fogFar; this.fogFar = Math.min(g0, this.fogFar * 1.08); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; if (this.fogFar >= g0) P.shrunk = false; P.good = 0; }
       if (P.good > 8 && P.scale < P.cap) { P.scale = Math.min(P.cap, P.scale * 1.06); P.good = 0; this.renderer.setPixelRatio(this.basePR * P.scale); this.resize(); }
     } else P.good = 0;
+  }
+
+  // v1.38: frame rate setting. 120 FPS needs a 120 Hz screen; the hint says what this screen can do.
+  applyFps() {
+    if (this.perf) { this.perf.slow = 0; this.perf.good = 0; this.perf.cap = 1; }
+    const h = document.getElementById('fps-hint'); if (!h) return;
+    const hz = this.screenMs ? Math.round(1000 / this.screenMs / 5) * 5 : 0;
+    h.textContent = this.settings.fps === '120' ? (hz && hz < 100 ? `This screen refreshes at ${hz} Hz, so it shows up to ${hz} FPS. Use a 120 Hz screen (and turn off battery saver) for 120.` : 'Up to 120 FPS. The game lowers its resolution a little if your device needs it to hold 120.') : 'Steady 60 FPS. Uses less battery.';
   }
 
   baseFov() { return this.settings.fov || BR.CONFIG.camera.fov; }
@@ -21519,6 +21561,12 @@ BR.Game = class Game {
   // ------------------------------------------------------------------- loop
   loop(now) {
     requestAnimationFrame(t => this.loop(t));
+    // v1.38 frame rate: measure the screen's refresh while the menu is idle (cheap frames), then cap to 60 FPS or run
+    // up to 120 FPS. The 60 cap skips vsyncs on fast screens (steadier pacing, less heat + battery).
+    const raw = now - (this._rafLast || now); this._rafLast = now;
+    if (this.state === 'menu' && raw > 3 && raw < 40) { const H = this._hzS || (this._hzS = []); H.push(raw); if (H.length > 90) H.shift(); this._hzN = (this._hzN || 0) + 1; if (H.length >= 30 && this._hzN % 60 === 0) { const s = H.slice().sort((a, b) => a - b); this.screenMs = s[Math.floor(s.length * 0.3)]; this.applyFps(); } }
+    const capMs = this.settings && this.settings.fps === '120' ? 1000 / 120 : 1000 / 60;
+    if (now - this.last < capMs * 0.83) return;
     let dt = (now - this.last) / 1000;
     this.last = now;
     if (!(dt > 0)) dt = 0.016;
@@ -22075,17 +22123,10 @@ BR.Game = class Game {
       if (unlocked.length) setTimeout(() => this.hud.toast('UNLOCKED · ' + unlocked.join(', ') + ' camo', 2400), 900);
       const fin = P.equip.finishers;
       if (fin && fin !== 'none' && this.fx.finisher) this.fx.finisher(fin, victim.pos.clone(), victim);
-      // multi-kill streak (kills within 4 s of each other)
-      const mk = this.multiKill || (this.multiKill = { n: 0, t: -9 });
-      mk.n = this.time - mk.t < 4 ? mk.n + 1 : 1; mk.t = this.time;
-      // the reward: on-body burst (lighter under a finisher), banner + screen flash, layered sound,
-      // a split second of slow motion and a punch on the camera
-      if (this.fx.killBurst) this.fx.killBurst(victim.pos.clone(), head, mk.n, !!(fin && fin !== 'none'));
-      this.hud.killBanner({ name: victim.name, head, streak: mk.n, coins: BR.CONFIG.coins.perKill });
-      BR.Audio.kill(head, mk.n);
-      this.hitStop = head || mk.n >= 2 ? 0.12 : 0.08;
-      this.cam.shake = Math.max(this.cam.shake || 0, 0.14 + (head ? 0.06 : 0)); this.cam.hitFov = Math.min(10, (this.cam.hitFov || 0) - 3.5);
+      // v1.38: in team modes the knock is the kill, so the reward (freeze frame, banner, burst) already played on the knockdown
+      if (!victim._knockRewarded) this.killReward(victim, head, !!(fin && fin !== 'none'));
     }
+    victim._knockRewarded = false;
     if (victim === this.player) {
       this.deathPos = victim.pos.clone();
       this.killer = killer;
@@ -22096,6 +22137,18 @@ BR.Game = class Game {
       };
     }
     if (BR.Squads.on(this)) BR.Squads.onDeath(this, victim);
+  }
+
+  // The kill reward: on-body burst (lighter under a finisher), banner + screen flash, layered sound, a split second
+  // of slow motion (the freeze frame) and a punch on the camera. v1.38: also plays on a knockdown in team modes.
+  killReward(victim, head, fin, knock) {
+      const mk = this.multiKill || (this.multiKill = { n: 0, t: -9 });
+      mk.n = this.time - mk.t < 4 ? mk.n + 1 : 1; mk.t = this.time;
+      if (this.fx.killBurst) this.fx.killBurst(victim.pos.clone(), head, mk.n, fin);
+      this.hud.killBanner({ name: victim.name, head, streak: mk.n, coins: BR.CONFIG.coins.perKill, knock: !!knock });
+      BR.Audio.kill(head, mk.n);
+      this.hitStop = head || mk.n >= 2 ? 0.12 : 0.08;
+      this.cam.shake = Math.max(this.cam.shake || 0, 0.14 + (head ? 0.06 : 0)); this.cam.hitFov = Math.min(10, (this.cam.hitFov || 0) - 3.5);
   }
 
   // v1.32: an enemy round passing within ~2 m of your head (and not hitting you) snaps past with a whizz
@@ -22429,7 +22482,7 @@ BR.Game = class Game {
 // MAIN — boot, menu / settings / shop wiring. Settings persist per device.
 // =============================================================================
 (function boot() {
-  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyro: 'off', gyroSens: 1, gyroInvX: false, gyroInvY: false, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', highlight: 'subtle', volume: 0.6, assist: true, autoFire: false, showFps: false, showSpeed: true,
+  const DEFAULTS = { difficulty: 'normal', bots: BR.CONFIG.match.defaultBots, duel: { diff: 'normal', target: 5, roundTime: 90, loadout: ['rifle', 'shotgun'] }, sens: 1.0, aimSmooth: 0.3, sensX: 1, sensY: 1, sensAds: 1, sensScope: 1, sensFire: 1, sensCurve: 0, gyro: 'off', gyroSens: 1, gyroInvX: false, gyroInvY: false, stretch: 0, saturation: 1, fov: BR.CONFIG.camera.fov, gfx: 'medium', fps: '60', highlight: 'subtle', volume: 0.6, assist: true, autoFire: false, showFps: false, showSpeed: true,
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
@@ -22516,6 +22569,7 @@ BR.Game = class Game {
   };
   seg('set-diff', 'difficulty');
   seg('set-gfx', 'gfx', () => game.applyGraphics());
+  seg('set-fpsmode', 'fps', () => game.applyFps());      // v1.38: 60 / 120 FPS
   if (!settings.highlight) settings.highlight = 'subtle';
   seg('set-hl', 'highlight', () => game.applyHighlight());
   $('set-bots').max = BR.CONFIG.match.maxBots;

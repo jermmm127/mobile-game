@@ -1712,3 +1712,6 @@ body.pad.touch .touch-only, body.pad.touch #joy-hint, body.pad.touch #look-hint 
 .fatal.ctx-lost { position: fixed; inset: 0; z-index: 9999; max-width: none; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: rgba(8, 6, 16, 0.92); color: #fff; cursor: pointer; }
 .gl-diag { margin-top: 16px; font-size: 13px; line-height: 1.45; } .gl-diag details { margin-top: 8px; opacity: 0.8; } .gl-diag ol { margin: 6px 0 6px 20px; font-size: 12px; } .fatal { overflow-y: auto; max-height: 100vh; }
 body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a desktop thing */
+
+/* v1.38 frame rate hint under the FPS setting */
+#settings .row.hint, .row.hint { font-size: 11px; opacity: 0.7; line-height: 1.35; margin-top: -4px; padding: 0 2px; }

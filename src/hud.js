@@ -415,6 +415,9 @@ BR.HUD = class HUD {
         <button data-v="off">OFF</button><button data-v="subtle">SUBTLE</button><button data-v="bright">BRIGHT</button></div></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
         <button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
+      <div class="row"><label>FRAME RATE</label><div class="seg" id="set-fpsmode">
+        <button data-v="60">60 FPS</button><button data-v="120">120 FPS</button></div></div>
+      <div class="row hint" id="fps-hint"></div>
       <div class="row"><label for="set-vol">VOLUME</label><input id="set-vol" type="range" min="0" max="1" step="0.05"><output id="out-vol"></output></div>
       <div class="row toggles">
         <label class="tg"><input type="checkbox" id="set-assist"> AIM ASSIST</label>
@@ -1006,7 +1009,7 @@ BR.HUD = class HUD {
   killBanner(o) {
     const k = this.$('killban'), f = this.$('killflash'); if (!k) return;
     const MK = [null, null, 'DOUBLE KILL', 'TRIPLE KILL', 'QUAD KILL', 'RAMPAGE', 'UNSTOPPABLE'];
-    k.querySelector('.kb-t').textContent = o.streak >= 2 ? MK[Math.min(o.streak, 6)] : o.head ? 'HEADSHOT' : 'ELIMINATED';
+    k.querySelector('.kb-t').textContent = o.streak >= 2 ? MK[Math.min(o.streak, 6)] : o.knock ? (o.head ? 'HEADSHOT KNOCK' : 'KNOCKED') : o.head ? 'HEADSHOT' : 'ELIMINATED';
     k.querySelector('.kb-n').textContent = o.name || '';
     k.querySelector('.kb-x').textContent = o.streak >= 2 ? '×' + o.streak : '';
     k.querySelector('.kb-c').textContent = o.coins ? '+' + o.coins : '';

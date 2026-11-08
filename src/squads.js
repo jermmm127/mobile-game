@@ -67,13 +67,14 @@ BR.Squads = {
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const nm = a => `<b class="${a.isPlayer ? 'me' : a.team === g.player.team ? 'mate' : ''}">${esc(a.name)}</b>`;
     g.hud.killfeed(killer ? `${nm(killer)} <i>knocked</i> ${nm(v)}` : `${nm(v)} <i>went down</i>`, v.isPlayer || (killer && killer.isPlayer) ? 'feed-none' : '');
-    if (killer && killer.isPlayer) { g.hud.toast('KNOCKED · ' + v.name, 900); BR.Audio.kill && BR.Audio.kill(head, 1); }
+    // v1.38: knocking is the kill in team modes, so the freeze frame + kill reward hit now (not when they finally die)
+    if (killer && killer.isPlayer) { if (g.killReward) { g.killReward(v, head, false, true); v._knockRewarded = true; } else BR.Audio.kill && BR.Audio.kill(head, 1); }
     if (v.isPlayer) { g.hud.toast('YOU\'RE DOWN · crawl to cover, a teammate can revive you', 2200); BR.Audio.hurt(); g.vmr.hide && g.vmr.hide(); }
     return true;
   },
 
   revive(g, v, by) {
-    v.downed = false; v.reviver = null; v.reviveP = 0; v.health = this.REVIVE_HP; v.mover.prone = false; v.mover.crouched = false;
+    v.downed = false; v._knockRewarded = false; v.reviver = null; v.reviveP = 0; v.health = this.REVIVE_HP; v.mover.prone = false; v.mover.crouched = false;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     g.hud.killfeed(`<b class="${by.isPlayer ? 'me' : 'mate'}">${esc(by.name)}</b> <i>revived</i> <b class="${v.isPlayer ? 'me' : 'mate'}">${esc(v.name)}</b>`, 'feed-none');
     if (v.isPlayer) { g.hud.toast('REVIVED', 900); g.vmr.lastWeapon = null; }

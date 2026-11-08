@@ -540,16 +540,16 @@ BR.Models = (function () {
     return canvasTex('w-' + kind + '-' + base, (c, S) => {
       const R = BR.util.rng(base % 9973 + kind.length * 31), col = new THREE.Color(base), css = k => { const o = col.clone(); if (k > 0) o.lerp(new THREE.Color(0xffffff), k); else o.multiplyScalar(1 + k); return '#' + o.getHexString(); };
       c.fillStyle = css(0); c.fillRect(0, 0, S, S);
-      for (let i = 0; i < 46; i++) { const x = R() * S, y = R() * S, r = 18 + R() * 60, g2 = c.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, R() < 0.5 ? css(0.05) : css(-0.09)); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = 0.38; c.fillStyle = g2; c.fillRect(x - r, y - r, r * 2, r * 2); }
+      for (let i = 0; i < 46; i++) { const x = R() * S, y = R() * S, r = 18 + R() * 60, g2 = c.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, R() < 0.5 ? css(0.05) : css(-0.09)); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = kind === 'gun' ? 0.16 : 0.38; c.fillStyle = g2; c.fillRect(x - r, y - r, r * 2, r * 2); }      // (v1.38: a cleaner, even factory finish on guns)
       c.globalAlpha = 1;
-      for (let i = 0; i < 22; i++) { c.fillStyle = `rgba(20,16,10,${0.05 + R() * 0.08})`; const x = R() * S; c.fillRect(x, R() * S, 2 + R() * 5, 20 + R() * 70); }          // grime streaks
+      for (let i = 0; i < (kind === 'gun' ? 6 : 22); i++) { c.fillStyle = `rgba(20,16,10,${0.05 + R() * 0.08})`; const x = R() * S; c.fillRect(x, R() * S, 2 + R() * 5, 20 + R() * 70); }          // grime streaks
       const nS = kind === 'metal' ? 150 : kind === 'blade' ? 260 : kind === 'gun' ? 90 : 45, gun = kind === 'gun';
       c.lineCap = 'round';
       for (let i = 0; i < nS; i++) { const x = R() * S, y = R() * S, a = kind === 'blade' ? (R() - 0.5) * 0.3 : R() * Math.PI, l = 2 + R() * (kind === 'blade' ? 50 : 12);
         c.strokeStyle = kind === 'blade' ? `rgba(255,255,255,${0.05 + R() * 0.09})` : css(gun ? 0.16 + R() * 0.12 : 0.3 + R() * 0.25); c.globalAlpha = kind === 'blade' ? 1 : gun ? 0.05 + R() * 0.08 : 0.06 + R() * 0.14; c.lineWidth = R() < 0.85 ? 0.8 : 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
       c.globalAlpha = 1;
       for (let i = 0; i < (kind === 'polymer' ? 40 : gun ? 30 : 90); i++) { c.fillStyle = css(gun ? 0.18 + R() * 0.1 : 0.4 + R() * 0.3); c.globalAlpha = gun ? 0.1 + R() * 0.12 : 0.18 + R() * 0.3; c.fillRect(R() * S, R() * S, 1 + R() * 2.4, 1 + R() * 1.6); }      // chips
-      for (let i = 0; i < (gun ? 2400 : 500); i++) { c.fillStyle = R() < 0.5 ? `rgba(255,255,255,${gun ? 0.05 : 0.10})` : `rgba(0,0,0,${gun ? 0.12 : 0.14})`; c.globalAlpha = 1; c.fillRect(R() * S, R() * S, 1, 1); }        // dust
+      for (let i = 0; i < (gun ? 700 : 500); i++) { c.fillStyle = R() < 0.5 ? `rgba(255,255,255,${gun ? 0.035 : 0.10})` : `rgba(0,0,0,${gun ? 0.07 : 0.14})`; c.globalAlpha = 1; c.fillRect(R() * S, R() * S, 1, 1); }        // dust
     }, 256);
   }
   // fabric for gloves: the glove colour with a woven grain + soft wear

@@ -103,18 +103,28 @@ BR.Game = class Game {
   adaptResolution(ms) {
     const P = this.perf; if (!P || (this.state !== 'playing' && this.state !== 'dead' && this.state !== 'won')) return;
     if (ms > 80) return;                                   // tab switch / hitch, not steady load
-    if (ms > 17.6) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);          // v1.25: aim for a solid 60 fps (16.7 ms)
+    // v1.38: the target frame time follows the FPS setting, but never faster than the screen can show
+    const tgt = Math.max(this.settings.fps === '120' ? 1000 / 120 : 1000 / 60, this.screenMs || 0), slowMs = tgt * 1.055, goodMs = tgt * 1.012;
+    if (ms > slowMs) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);          // v1.25: aim for a solid frame rate
     if (P.slow > 10 && P.scale <= 0.56 && this.fogFar > 140) {         // v1.25: still slow at the lowest resolution: it's draw calls, not pixels, so draw less far
       this.fogFar = Math.max(140, this.fogFar * 0.85); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; P.slow = 0; P.good = 0; P.shrunk = true;
     } else if (P.slow > 10 && P.scale > 0.55) {
       P.cap = Math.min(P.cap, P.scale - 0.01); P.scale = Math.max(0.55, P.scale * 0.88); P.slow = 0; P.good = 0; P.calm = 0;
       this.renderer.setPixelRatio(this.basePR * P.scale); this.resize();
-    } else if (ms < 16.9) {
+    } else if (ms < goodMs) {
       P.good += ms / 1000; P.calm = (P.calm || 0) + ms / 1000;
       if (P.calm > 30 && P.cap < 1) { P.cap = Math.min(1, P.cap + 0.05); P.calm = 0; }   // a one-off hitch doesn't cap you forever
       if (P.shrunk && P.good > 12) { const g0 = (BR.CONFIG.graphics[this.settings.gfx] || BR.CONFIG.graphics.medium).fogFar; this.fogFar = Math.min(g0, this.fogFar * 1.08); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; if (this.fogFar >= g0) P.shrunk = false; P.good = 0; }
       if (P.good > 8 && P.scale < P.cap) { P.scale = Math.min(P.cap, P.scale * 1.06); P.good = 0; this.renderer.setPixelRatio(this.basePR * P.scale); this.resize(); }
     } else P.good = 0;
+  }
+
+  // v1.38: frame rate setting. 120 FPS needs a 120 Hz screen; the hint says what this screen can do.
+  applyFps() {
+    if (this.perf) { this.perf.slow = 0; this.perf.good = 0; this.perf.cap = 1; }
+    const h = document.getElementById('fps-hint'); if (!h) return;
+    const hz = this.screenMs ? Math.round(1000 / this.screenMs / 5) * 5 : 0;
+    h.textContent = this.settings.fps === '120' ? (hz && hz < 100 ? `This screen refreshes at ${hz} Hz, so it shows up to ${hz} FPS. Use a 120 Hz screen (and turn off battery saver) for 120.` : 'Up to 120 FPS. The game lowers its resolution a little if your device needs it to hold 120.') : 'Steady 60 FPS. Uses less battery.';
   }
 
   baseFov() { return this.settings.fov || BR.CONFIG.camera.fov; }
@@ -693,6 +703,12 @@ BR.Game = class Game {
   // ------------------------------------------------------------------- loop
   loop(now) {
     requestAnimationFrame(t => this.loop(t));
+    // v1.38 frame rate: measure the screen's refresh while the menu is idle (cheap frames), then cap to 60 FPS or run
+    // up to 120 FPS. The 60 cap skips vsyncs on fast screens (steadier pacing, less heat + battery).
+    const raw = now - (this._rafLast || now); this._rafLast = now;
+    if (this.state === 'menu' && raw > 3 && raw < 40) { const H = this._hzS || (this._hzS = []); H.push(raw); if (H.length > 90) H.shift(); this._hzN = (this._hzN || 0) + 1; if (H.length >= 30 && this._hzN % 60 === 0) { const s = H.slice().sort((a, b) => a - b); this.screenMs = s[Math.floor(s.length * 0.3)]; this.applyFps(); } }
+    const capMs = this.settings && this.settings.fps === '120' ? 1000 / 120 : 1000 / 60;
+    if (now - this.last < capMs * 0.83) return;
     let dt = (now - this.last) / 1000;
     this.last = now;
     if (!(dt > 0)) dt = 0.016;
@@ -1249,17 +1265,10 @@ BR.Game = class Game {
       if (unlocked.length) setTimeout(() => this.hud.toast('UNLOCKED · ' + unlocked.join(', ') + ' camo', 2400), 900);
       const fin = P.equip.finishers;
       if (fin && fin !== 'none' && this.fx.finisher) this.fx.finisher(fin, victim.pos.clone(), victim);
-      // multi-kill streak (kills within 4 s of each other)
-      const mk = this.multiKill || (this.multiKill = { n: 0, t: -9 });
-      mk.n = this.time - mk.t < 4 ? mk.n + 1 : 1; mk.t = this.time;
-      // the reward: on-body burst (lighter under a finisher), banner + screen flash, layered sound,
-      // a split second of slow motion and a punch on the camera
-      if (this.fx.killBurst) this.fx.killBurst(victim.pos.clone(), head, mk.n, !!(fin && fin !== 'none'));
-      this.hud.killBanner({ name: victim.name, head, streak: mk.n, coins: BR.CONFIG.coins.perKill });
-      BR.Audio.kill(head, mk.n);
-      this.hitStop = head || mk.n >= 2 ? 0.12 : 0.08;
-      this.cam.shake = Math.max(this.cam.shake || 0, 0.14 + (head ? 0.06 : 0)); this.cam.hitFov = Math.min(10, (this.cam.hitFov || 0) - 3.5);
+      // v1.38: in team modes the knock is the kill, so the reward (freeze frame, banner, burst) already played on the knockdown
+      if (!victim._knockRewarded) this.killReward(victim, head, !!(fin && fin !== 'none'));
     }
+    victim._knockRewarded = false;
     if (victim === this.player) {
       this.deathPos = victim.pos.clone();
       this.killer = killer;
@@ -1270,6 +1279,18 @@ BR.Game = class Game {
       };
     }
     if (BR.Squads.on(this)) BR.Squads.onDeath(this, victim);
+  }
+
+  // The kill reward: on-body burst (lighter under a finisher), banner + screen flash, layered sound, a split second
+  // of slow motion (the freeze frame) and a punch on the camera. v1.38: also plays on a knockdown in team modes.
+  killReward(victim, head, fin, knock) {
+      const mk = this.multiKill || (this.multiKill = { n: 0, t: -9 });
+      mk.n = this.time - mk.t < 4 ? mk.n + 1 : 1; mk.t = this.time;
+      if (this.fx.killBurst) this.fx.killBurst(victim.pos.clone(), head, mk.n, fin);
+      this.hud.killBanner({ name: victim.name, head, streak: mk.n, coins: BR.CONFIG.coins.perKill, knock: !!knock });
+      BR.Audio.kill(head, mk.n);
+      this.hitStop = head || mk.n >= 2 ? 0.12 : 0.08;
+      this.cam.shake = Math.max(this.cam.shake || 0, 0.14 + (head ? 0.06 : 0)); this.cam.hitFov = Math.min(10, (this.cam.hitFov || 0) - 3.5);
   }
 
   // v1.32: an enemy round passing within ~2 m of your head (and not hitting you) snaps past with a whizz
