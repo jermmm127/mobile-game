@@ -1416,6 +1416,36 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v141 = await page.evaluate(() => {
+    const g = BR.game, out = {}, A = BR.Attach, D = BR.Profile.data, keep = { owned: D.owned.attach.slice(), eq: JSON.stringify(D.equip.attach), coins: D.coins };
+    // slots: none on the Sniper / Launcher / knives; built-in optics keep theirs; pistols take no grip or stock
+    out.slots = !A.slots('sniper').length && !A.slots('launcher').length && !A.slots('bayonet').length && A.slots('rifle').join() === 'optic,muzzle,grip,stock' && !A.slots('holoar').includes('optic') && !A.slots('lmg').includes('optic') && A.slots('revolver').join() === 'optic,muzzle' && A.guns().length >= 12;
+    // only owned attachments equip; the choke is shotgun-only
+    D.owned.attach = []; D.equip.attach = {}; A.set('rifle', 'optic', 'holo'); out.needOwned = !A.on('rifle').optic;
+    D.owned.attach = ['holo', 'supp', 'vert', 'choke', 'heavy']; A.set('rifle', 'optic', 'holo'); A.set('rifle', 'muzzle', 'supp'); A.set('rifle', 'grip', 'vert'); A.set('rifle', 'stock', 'heavy'); A.set('rifle', 'muzzle', 'choke');
+    out.equip = A.on('rifle').optic === 'holo' && A.on('rifle').muzzle === undefined && A.fits('choke', 'shotgun') && !A.fits('choke', 'rifle');
+    A.set('rifle', 'muzzle', 'supp');
+    // stats: handling only (never damage / fire rate / magazine), on your gun; bots' guns are untouched
+    const w = BR.Weapons.create('rifle'), b0 = BR.CONFIG.weapons.rifle; A.apply(w);
+    out.stats = w.def.zoom === 1.4 && w.def.holo === true && w.def.suppressed === true && w.def.recoil < b0.recoil * 0.8 && w.def.dmg === b0.dmg && w.def.rpm === b0.rpm && w.def.mag === b0.mag && BR.CONFIG.weapons.rifle.zoom === b0.zoom && !BR.CONFIG.weapons.rifle.suppressed;
+    A.set('rifle', 'optic', ''); A.apply(w); out.unequip = w.def.zoom === b0.zoom && !w.def.holo;
+    A.set('rifle', 'optic', 'holo');
+    // first-person parts: the optic moves the aim point up, the suppressor moves the muzzle out, a grip is added
+    const bare = BR.Models.weapon('rifle', 'default', 'none', 'default'), sy = bare.userData.sight.position.y, fz = bare.userData.flash.position.z;
+    const m = BR.Models.weapon('rifle', 'default', 'none', 'default'); A.fit(m, 'rifle'); let parts = 0; m.traverse(o => { if (o.parent && o.parent.userData && o.parent.userData.attach) parts++; });
+    out.parts = m.userData.sight.position.y > sy + 0.02 && m.userData.flash.position.z < fz - 0.1 && parts >= 3 && m.userData.attOptic === 'holo';
+    // the case: the only source, every attachment is in it, a roll adds one (or refunds a duplicate)
+    const pool = BR.CaseItems.all('attach'); out.pool = pool.length === Object.keys(BR.ATTACH).length && pool.every(e => e.cat === 'attach') && !BR.CaseItems.all('release').some(e => e.cat === 'attach') && Object.values(BR.ATTACH).every(a => a.caseOnly);
+    D.owned.attach = []; D.coins = 1000; const r = BR.Profile.openCase('attach'); out.roll = !!r && r.cat === 'attach' && D.owned.attach.length === 1 && D.coins === 1000 - BR.CASES.attach.price;
+    const r2 = (() => { D.owned.attach = Object.keys(BR.ATTACH); D.coins = 1000; return BR.Profile.openCase('attach'); })(); out.dup = r2.dup && r2.refund > 0 && D.coins === 1000 - BR.CASES.attach.price + r2.refund;
+    // UI: the inventory button opens the screen; locked cards can't be equipped
+    out.ui = !!document.getElementById('inv-attach') && !!document.querySelector('#cs-pick [data-c="attach"]'); A.open('rifle'); out.ui = out.ui && document.querySelectorAll('#att-grid .att-card').length >= 7 && document.querySelectorAll('#att-slots button').length === 4; document.getElementById('attach').classList.add('hidden');
+    D.owned.attach = keep.owned; D.equip.attach = JSON.parse(keep.eq); D.coins = keep.coins; A.ver++; BR.Profile.save();
+    // lag fixes: HUD animation restarts don't force a layout; weapon models are prebuilt; saves wait during a match
+    out.kick = typeof BR.kick === 'function' && !/offsetWidth/.test(String(g.hud.hitmarker)) && !/offsetWidth/.test(String(g.hud.killBanner)) && !/offsetWidth/.test(String(g.hud.damageNumber));
+    out.deferSave = typeof BR.Profile.flush === 'function' && typeof BR.Profile.saveNow === 'function';
+    return out;
+  });
   const v140 = await page.evaluate(() => {
     const g = BR.game, out = {}, S = g.settings, gfx0 = S.gfx, auto0 = S.gfxAuto;
     // Lite graphics tier: lower resolution, shorter view, fewer sparks, scenery LOD closer, HUD effects off
@@ -1930,6 +1960,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.41 attachments (slots, case-only, stats on your gun only, first-person parts, Attachment Case rolls + duplicate refund, UI) and kill-hitch fixes', Object.values(v141).every(Boolean), v141],
     ['v1.40 Lite graphics tier + device detection, rim-light blueprint aura, cover on the open maps, knife timings from the videos', Object.values(v140).every(Boolean), v140],
     ['v1.39 gun snaps out of the sprint / carry pose when shooting, mouse spike filter keeps flicks, frame cap only on clean refresh multiples', Object.values(v139).every(Boolean), v139],
     ['v1.38 knockdown freeze frame in team modes, 60 / 120 FPS setting, full-body run, smooth device-independent view sway', Object.values(v138).every(Boolean), v138],
@@ -2124,7 +2155,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v140, v139, v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v141, v140, v139, v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

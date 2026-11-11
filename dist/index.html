@@ -1800,6 +1800,24 @@ label.tg input[type=checkbox] { accent-color: var(--accent); width: 17px; height
 @media (prefers-reduced-motion: reduce) { .overlay:not(.menu) > .panel, .overlay:not(.menu) > .settings, .overlay:not(.menu) > .modes { animation: none; } .mbtn:hover, .card:hover, .gcard:hover, .mode:hover { transform: none; } }
 body.gfx-lite .overlay:not(.menu) > .panel, body.gfx-lite .overlay:not(.menu) > .settings, body.gfx-lite .overlay:not(.menu) > .modes { animation: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset; }
 
+/* v1.41 attachments */
+.att-panel { width: min(760px, 100%); max-height: calc(100vh - 24px); overflow-y: auto; }
+#att-guns { margin: 2px 0 4px; flex: none; min-height: 32px; } #att-slots, .att-panel .tip, .att-panel .shop-foot { flex: none; } .att-grid { flex: none; } #att-guns em { font-style: normal; font-size: 10px; margin-left: 4px; padding: 0 5px; border-radius: 8px; background: rgba(0, 0, 0, 0.35); }
+#att-slots button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; }
+#att-slots button small { font: 600 10px var(--ui); letter-spacing: 0.02em; text-transform: none; opacity: 0.75; }
+.att-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 4px 0; }
+.att-card { position: relative; min-height: 120px; border-left: 3px solid var(--r, var(--line)); }
+.att-card .att-d { font: 500 11px/1.3 var(--ui); color: var(--muted); }
+.att-card .att-st { display: flex; flex-wrap: wrap; gap: 3px 6px; }
+.att-card .att-st b { font: 700 10.5px var(--ui); } .att-card .att-st b.up { color: var(--health); } .att-card .att-st b.dn { color: var(--danger); }
+.att-card .rar { color: var(--r); } .att-card .cp { margin-top: auto; font-size: 11px; }
+.att-card.locked { opacity: 0.5; } .att-card.locked .cp { color: var(--muted); }
+.att-card.none { justify-content: center; border-left-color: var(--line); }
+.sw.att-ic { display: grid; place-items: center; width: 100%; height: 34px; background: rgba(0, 0, 0, 0.28); border-radius: 8px; } .sw.att-ic svg { width: 26px; height: 26px; }
+.cs-card .sw.att-ic { height: 52px; } .cs-card .sw.att-ic svg { width: 40px; height: 40px; filter: drop-shadow(0 0 6px currentColor); }
+.att-open { margin-left: auto; margin-right: 8px; border-color: rgba(178, 107, 255, 0.5); }
+#cs-case.attach { background: linear-gradient(160deg, #3a3f4a, #1c1f26 55%, #5a3aa8); }
+
 </style>
 </head>
 <body>
@@ -1823,7 +1841,7 @@ body.gfx-lite .overlay:not(.menu) > .panel, body.gfx-lite .overlay:not(.menu) > 
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.40.0',
+  version: '1.41.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2119,6 +2137,16 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.41.0', date: '2026-11-11', title: 'Attachments', notes: [
+    'New: ATTACHMENTS. Fit an optic, a muzzle, a grip and a stock to every gun except the Sniper and the Shockwave Launcher. Open them from the ATTACHMENTS button in your Inventory. Once you own an attachment it fits every gun that has that slot.',
+    'Optics: Red Dot, Reflex Sight, Holo Sight, 1.5x Optic, Delta 2x, ACOG 3x and the Legendary Apex Holo. Each sits on the gun in first person with a working reticle, sets its own zoom and lines up on your aim point.',
+    'Muzzles: Muzzle Brake, Flash Hider, Compensator, Choke (shotguns only), Long Barrel, Suppressor, Monolith Suppressor and the Legendary Phantom Suppressor. Suppressors make your shots quiet and hide the flash.',
+    'Grips: Vertical, Angled, Stubby, Laser Sight (with a red beam), Commando Foregrip and the Legendary Gyro Grip. Stocks: Padded, Skeleton, Heavy and Tactical.',
+    'Attachments change handling only: recoil, spread, aim speed, zoom, range and sound. They never change damage, fire rate or magazine size. Each card shows exactly what it does, with the downsides in red.',
+    'New ATTACHMENT CASE (400 coins) in Cases. It is the only way to get attachments. Odds: Common 40%, Uncommon 28%, Rare 20%, Epic 10%, Legendary 2%. A duplicate gives 180 coins back.',
+    'Guns with a built-in optic (Holo AR, Talon Burst, LMG, DMR) keep it and have no optic slot. The Pistol and Holo AR are already suppressed, so they have no muzzle slot. Pistols take no grip or stock.',
+    'Fixed lag spikes after kills and in big fights. Hit markers, damage numbers and the kill banner no longer make the browser re-lay-out the whole HUD. Your profile no longer saves on every kill (it saves at a quiet moment, and always when the match ends or you leave). Weapon models are built before the match instead of the first time each one appears.',
+  ] },
   { v: '1.40.0', date: '2026-11-11', title: 'Lite graphics, fresh UI, cleaner blueprints', notes: [
     'New LITE graphics setting for weak phones and old laptops: lower resolution, a shorter view distance, lighter scenery, fewer sparks and no blur or heavy shadows in the HUD. It draws about a third of what Medium does.',
     'The game picks a graphics setting for your device the first time you play. If a match still runs slowly at the lowest resolution, it steps the setting down by itself and tells you. Choosing a setting yourself turns that off.',
@@ -10948,6 +10976,7 @@ BR.Models = (function () {
       for (const id in BR.CONFIG.weapons) {
         const bp = (eq.blueprints || {})[id];
         const m = BR.Models.weapon(id, BR.Profile.skinFor(id), BR.CONFIG.weapons[id].melee ? 'none' : eq.charms, bp);
+        if (BR.Attach && !BR.CONFIG.weapons[id].melee) { try { BR.Attach.fit(m, id); } catch (e) { /* the gun still works bare */ } }      // v1.41 attachments
         const holder = new THREE.Group();
         if (id === 'knife') {
           // (v1.18.2, matched to the reference screenshot) CS-style idle: the handle runs diagonally through
@@ -18674,6 +18703,233 @@ BR.AntiCheat = {
 <script>
 'use strict';
 // =============================================================================
+// ATTACHMENTS (v1.41)
+// Optics, muzzles, grips and stocks for every gun except the Sniper and the Shockwave Launcher.
+//  * You only get attachments from the ATTACHMENT CASE (BR.CASES.attach). Once you own one you can fit it to
+//    every gun that has that slot.
+//  * Equipped per gun: Profile.data.equip.attach[gunId] = { optic, muzzle, grip, stock }.
+//  * Stats: BR.Attach.apply(w) gives YOUR weapon its own stat copy with the attachment changes (handling only:
+//    recoil, spread, aim speed, zoom, range, sound. Never damage, fire rate or magazine size).
+//  * Looks: BR.Attach.fit(model, gunId) bolts the parts onto your first-person gun (optic on the sight line with a
+//    working reticle, muzzle device on the barrel, grip under the handguard).
+// =============================================================================
+BR.ATTACH = {
+  // ---- optics: `zoom` replaces the gun's own aim zoom; all of them line up on the crosshair and hide it
+  reddot:  { slot: 'optic', name: 'Red Dot', rarity: 'Common', kind: 'reddot', zoom: 1.25, m: { adsRate: 1.05 }, desc: 'Clean 1x dot. Slightly faster aim.' },
+  reflex:  { slot: 'optic', name: 'Reflex Sight', rarity: 'Uncommon', kind: 'reflex', zoom: 1.3, m: { adsRate: 1.12 }, desc: 'Open frame, wide view, quick to aim.' },
+  holo:    { slot: 'optic', name: 'Holo Sight', rarity: 'Rare', kind: 'holo', zoom: 1.4, m: { ads: 0.9 }, desc: 'Ring-and-dot reticle. Tighter aimed shots.' },
+  x15:     { slot: 'optic', name: '1.5x Optic', rarity: 'Rare', kind: 'tube', zoom: 1.5, m: { ads: 0.88, adsRate: 0.97 }, desc: 'A little magnification for mid range.' },
+  delta2:  { slot: 'optic', name: 'Delta 2x', rarity: 'Epic', kind: 'tube2', zoom: 2.0, m: { ads: 0.8, adsRate: 0.9 }, desc: '2x scope. Slower to aim, steadier at range.' },
+  acog:    { slot: 'optic', name: 'ACOG 3x', rarity: 'Epic', kind: 'acog', zoom: 2.6, m: { ads: 0.72, adsRate: 0.82, recoil: 1.05 }, desc: '3x combat scope with a chevron. For long lanes.' },
+  apex:    { slot: 'optic', name: 'Apex Holo', rarity: 'Legendary', kind: 'apex', zoom: 1.5, m: { ads: 0.82, adsRate: 1.12 }, desc: 'Holo with a 1.5x view that still aims fast.' },
+  // ---- muzzles
+  brake:   { slot: 'muzzle', name: 'Muzzle Brake', rarity: 'Common', kind: 'brake', m: { recoil: 0.9 }, desc: 'Vents gas sideways to cut recoil.' },
+  flash:   { slot: 'muzzle', name: 'Flash Hider', rarity: 'Common', kind: 'flash', m: { bloom: 0.88, bloomMax: 0.9 }, desc: 'Spray spreads less as you hold the trigger.' },
+  comp:    { slot: 'muzzle', name: 'Compensator', rarity: 'Uncommon', kind: 'comp', m: { recoil: 0.84, kick: 0.9, adsRate: 0.97 }, desc: 'Strong recoil control, a touch slower to aim.' },
+  choke:   { slot: 'muzzle', name: 'Choke', rarity: 'Uncommon', kind: 'choke', only: 'shotgun', m: { spread: 0.8, range: 1.1 }, desc: 'Shotguns only: tighter pellets, more reach.' },
+  supp:    { slot: 'muzzle', name: 'Suppressor', rarity: 'Rare', kind: 'supp', suppressed: true, m: { range: 0.94, recoil: 0.96 }, desc: 'Quiet shots, no flash. Slightly less range.' },
+  longb:   { slot: 'muzzle', name: 'Long Barrel', rarity: 'Rare', kind: 'long', m: { range: 1.2, spread: 0.92, adsRate: 0.92 }, desc: 'More range and accuracy, slower handling.' },
+  mono:    { slot: 'muzzle', name: 'Monolith Suppressor', rarity: 'Epic', kind: 'mono', suppressed: true, m: { range: 1.08, recoil: 0.93, adsRate: 0.9 }, desc: 'Heavy suppressor: quiet AND more range.' },
+  phantom: { slot: 'muzzle', name: 'Phantom Suppressor', rarity: 'Legendary', kind: 'phantom', suppressed: true, m: { range: 1.1, recoil: 0.9 }, desc: 'Silent, longer range, less recoil. No downside.' },
+  // ---- grips
+  vert:    { slot: 'grip', name: 'Vertical Grip', rarity: 'Common', kind: 'vert', m: { recoil: 0.92 }, desc: 'Steadier recoil.' },
+  angled:  { slot: 'grip', name: 'Angled Grip', rarity: 'Uncommon', kind: 'angled', m: { adsRate: 1.15 }, desc: 'Faster aim down sights.' },
+  stubby:  { slot: 'grip', name: 'Stubby Grip', rarity: 'Rare', kind: 'stubby', m: { spread: 0.8, bloom: 0.92 }, desc: 'Tighter hip fire.' },
+  laser:   { slot: 'grip', name: 'Laser Sight', rarity: 'Rare', kind: 'laser', m: { spread: 0.7 }, desc: 'Much tighter hip fire. Shows a red beam.' },
+  cmd:     { slot: 'grip', name: 'Commando Foregrip', rarity: 'Epic', kind: 'cmd', m: { recoil: 0.86, bloom: 0.9, adsRate: 0.96 }, desc: 'Big recoil and spray control.' },
+  gyro:    { slot: 'grip', name: 'Gyro Grip', rarity: 'Legendary', kind: 'gyro', m: { recoil: 0.8, kick: 0.85, spread: 0.9 }, desc: 'Stabilised grip: the steadiest recoil there is.' },
+  // ---- stocks
+  padded:  { slot: 'stock', name: 'Padded Stock', rarity: 'Common', kind: 'stock', m: { kick: 0.85 }, desc: 'Softer kick on every shot.' },
+  skel:    { slot: 'stock', name: 'Skeleton Stock', rarity: 'Uncommon', kind: 'stock', m: { adsRate: 1.12, drawTime: 0.88, recoil: 1.05 }, desc: 'Light: faster aim and swaps, a bit more recoil.' },
+  heavy:   { slot: 'stock', name: 'Heavy Stock', rarity: 'Rare', kind: 'stock', m: { recoil: 0.88, adsRate: 0.93 }, desc: 'Less recoil, slower to aim.' },
+  tac:     { slot: 'stock', name: 'Tactical Stock', rarity: 'Epic', kind: 'stock', m: { recoil: 0.92, adsRate: 1.08, bloom: 0.94 }, desc: 'A bit better at everything.' },
+};
+for (const id in BR.ATTACH) { BR.ATTACH[id].caseOnly = true; BR.ATTACH[id].case = 'attach'; }
+
+BR.Attach = {
+  SLOTS: ['optic', 'muzzle', 'grip', 'stock'],
+  LABEL: { optic: 'OPTIC', muzzle: 'MUZZLE', grip: 'GRIP', stock: 'STOCK' },
+  // which slots a gun has (none for knives, the Sniper and the Shockwave Launcher)
+  slots(id) {
+    const d = BR.CONFIG.weapons[id];
+    if (!d || d.melee || id === 'sniper' || id === 'launcher' || d.launcher) return [];
+    const pistol = id === 'pistol' || id === 'mpistol' || id === 'revolver', out = [];
+    if (!d.holo && !d.optic && !d.scope) out.push('optic');          // (guns with a built-in optic keep it)
+    if (!d.suppressed) out.push('muzzle');                           // (already suppressed from the factory)
+    if (!pistol) out.push('grip', 'stock');
+    return out;
+  },
+  guns() { return Object.keys(BR.CONFIG.weapons).filter(id => this.slots(id).length); },
+  fits(attId, gunId) {
+    const a = BR.ATTACH[attId]; if (!a || !this.slots(gunId).includes(a.slot)) return false;
+    return !(a.only === 'shotgun' && !(BR.CONFIG.weapons[gunId].pellets > 1));
+  },
+  owned(attId) { const o = BR.Profile && BR.Profile.data && BR.Profile.data.owned.attach; return !!(o && o.includes(attId)); },
+  // equipped on a gun: { optic, muzzle, grip, stock } (only attachments you own and that fit)
+  on(gunId) {
+    const D = BR.Profile && BR.Profile.data, e = D && D.equip.attach && D.equip.attach[gunId], out = {};
+    if (e) for (const s of this.SLOTS) if (e[s] && this.owned(e[s]) && this.fits(e[s], gunId)) out[s] = e[s];
+    return out;
+  },
+  set(gunId, slot, attId) {
+    const D = BR.Profile.data; D.equip.attach = D.equip.attach || {}; const e = D.equip.attach[gunId] || (D.equip.attach[gunId] = {});
+    if (attId && this.owned(attId) && this.fits(attId, gunId)) e[slot] = attId; else delete e[slot];
+    BR.Profile.save(); this.ver++;
+  },
+  ver: 1,
+  stamp(gunId) { const o = this.on(gunId); return this.ver + ':' + this.SLOTS.map(s => o[s] || '').join(','); },
+  // Give a weapon instance its own stats with the equipped attachments (the player's guns only).
+  apply(w) {
+    if (!w || !w.def || w.def.melee) return;
+    const base = w._baseDef || (w._baseDef = w.def), on = this.on(w.id), ids = this.SLOTS.map(s => on[s]).filter(Boolean);
+    w._att = this.stamp(w.id);
+    if (!ids.length) { w.def = base; return; }
+    const d = Object.assign({}, base);
+    if (d.adsRate === undefined) d.adsRate = 13; if (d.drawTime === undefined) d.drawTime = 0.55;
+    for (const id of ids) {
+      const a = BR.ATTACH[id];
+      for (const k in a.m) if (typeof d[k] === 'number') d[k] *= a.m[k];
+      if (a.zoom) { d.zoom = a.zoom; d.holo = true; }
+      if (a.suppressed) d.suppressed = true;
+    }
+    d.att = ids;
+    w.def = d;
+  },
+  // "+12% aim speed" style lines for the UI: [text, good?]
+  lines(attId) {
+    const a = BR.ATTACH[attId], out = [], N = { recoil: ['recoil', -1], kick: ['kick', -1], spread: ['hip spread', -1], bloom: ['spray spread', -1], bloomMax: null, ads: ['aimed spread', -1], adsRate: ['aim speed', 1], range: ['range', 1], drawTime: ['swap time', -1] };
+    if (a.zoom) out.push([a.zoom.toFixed(a.zoom % 1 ? 2 : 1).replace(/0$/, '') + 'x zoom', true]);
+    if (a.suppressed) out.push(['Suppressed', true]);
+    for (const k in a.m) { const n = N[k]; if (!n) continue; const pct = Math.round((a.m[k] - 1) * 100); if (!pct) continue; out.push([(pct > 0 ? '+' : '') + pct + '% ' + n[0], pct * n[1] > 0]); }
+    return out;
+  },
+
+  // ---------------------------------------------------------------- first-person parts
+  mats() {
+    if (this._m) return this._m;
+    const P = (c, sh) => new THREE.MeshPhongMaterial({ color: c, specular: 0x555a62, shininess: sh || 40 });
+    return (this._m = { body: P(0x1b1d21, 34), steel: P(0x34383f, 70), tan: P(0x5a5348, 20), gold: P(0xc9a24a, 90),
+      lens: new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide }),
+      red: new THREE.MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0.95, depthWrite: false }),
+      cyan: new THREE.MeshBasicMaterial({ color: 0x5ff0ff, transparent: true, opacity: 0.95, depthWrite: false }),
+      beam: new THREE.MeshBasicMaterial({ color: 0xff2020, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }) });
+  },
+  // Bolt the equipped parts onto a freshly built first-person gun model.
+  fit(model, gunId) {
+    const on = this.on(gunId), ud = model.userData; if (!ud) return;
+    const M = this.mats(), small = gunId === 'pistol' || gunId === 'mpistol' || gunId === 'revolver', S = small ? 0.8 : 1;
+    const g = new THREE.Group(); g.userData.attach = true; model.add(g);
+    const box = (w, h, d, mat, x, y, z, par) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); (par || g).add(m); return m; };
+    const tube = (r0, r1, L, mat, x, y, z, par, open, seg) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, L, seg || 18, 1, !!open), mat); if (open) { mat = mat.clone(); mat.side = THREE.DoubleSide; m.material = mat; } m.rotation.x = Math.PI / 2; m.position.set(x, y, z); (par || g).add(m); return m; };
+    const mark = o => { o.userData.isFlash = true; o.userData.noUV = true; o.renderOrder = 5; return o; };
+    // ---- optic: sits on the sight line; the gun's aim point moves up to the centre of its lens
+    if (on.optic && ud.sight) {
+      const a = BR.ATTACH[on.optic], k = a.kind, sp = ud.sight.position, o = new THREE.Group(); o.position.set(sp.x, sp.y + 0.006, sp.z); g.add(o);          // (riser: the optic's line of sight clears the iron sights)
+      const R = M[k === 'apex' ? 'cyan' : 'red'];
+      let cy = 0.034, len = 0.05;
+      box(0.024, 0.026, k === 'acog' ? 0.1 : 0.06, M.steel, 0, -0.003, 0, o);                         // rail mount + riser
+      if (k === 'reddot') { tube(0.021, 0.021, 0.05, M.body, 0, cy, 0, o, true); box(0.008, 0.008, 0.012, M.steel, 0.024, cy, 0, o); }
+      else if (k === 'reflex') { cy = 0.036; box(0.03, 0.008, 0.04, M.body, 0, 0.012, 0.006, o); for (const sx of [-1, 1]) box(0.003, 0.042, 0.004, M.body, sx * 0.022, cy, -0.012, o); box(0.047, 0.003, 0.004, M.body, 0, cy + 0.021, -0.012, o); mark(box(0.041, 0.039, 0.0006, M.lens, 0, cy, -0.012, o)); }
+      else if (k === 'holo' || k === 'apex') { cy = 0.036; len = 0.05; box(0.05, 0.004, len, M.body, 0, cy + 0.021, 0, o); box(0.05, 0.004, len, M.body, 0, cy - 0.021, 0, o); for (const sx of [-1, 1]) box(0.004, 0.046, len, M.body, sx * 0.025, cy, 0, o);
+        if (k === 'apex') { box(0.052, 0.002, len + 0.002, M.gold, 0, cy + 0.0235, 0, o); }
+        mark(box(0.046, 0.038, 0.0006, M.lens, 0, cy, -len / 2 + 0.002, o)); }
+      else { len = k === 'acog' ? 0.12 : k === 'tube2' ? 0.095 : 0.075; const r = k === 'acog' ? 0.022 : 0.021; cy = 0.036;
+        tube(r, r * (k === 'acog' ? 0.86 : 1), len, M.body, 0, cy, 0, o, true); tube(r + 0.003, r + 0.003, 0.012, M.steel, 0, cy, -len / 2 + 0.006, o, true); tube(r + 0.002, r + 0.002, 0.01, M.steel, 0, cy, len / 2 - 0.005, o, true);
+        if (k === 'acog') box(0.006, 0.004, 0.07, M.red, 0, cy + r + 0.002, -0.005, o);                       // fibre-optic strip
+        box(0.012, 0.014, 0.02, M.steel, 0, 0.016, 0, o);
+        mark(tube(r * 0.94, r * 0.94, 0.0006, M.lens, 0, cy, -len / 2 + 0.004, o, false, 20)); }
+      // reticle on the aim line (drawn over the lens)
+      const ret = new THREE.Group(); ret.position.set(0, cy, k === 'reflex' ? -0.012 : 0); o.add(ret);
+      const dot = (r, mat) => mark(new THREE.Mesh(new THREE.CircleGeometry(r, 14), mat));
+      if (k === 'holo' || k === 'apex') { ret.add(mark(new THREE.Mesh(new THREE.RingGeometry(0.0062, 0.0072, 28), R))); ret.add(dot(0.0011, R)); for (const [x, y] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const t = mark(box(x ? 0.003 : 0.0008, y ? 0.003 : 0.0008, 0.0001, R, x * 0.0085, y * 0.0085, 0, ret)); void t; } }
+      else if (k === 'acog') { const sh = new THREE.Shape(); sh.moveTo(0, 0.0012); sh.lineTo(0.0034, -0.0034); sh.lineTo(0.0022, -0.0034); sh.lineTo(0, -0.0006); sh.lineTo(-0.0022, -0.0034); sh.lineTo(-0.0034, -0.0034); sh.closePath(); ret.add(mark(new THREE.Mesh(new THREE.ShapeGeometry(sh), R))); mark(box(0.0006, 0.007, 0.0001, R, 0, -0.0075, 0, ret)); }
+      else if (k === 'tube' || k === 'tube2') { ret.add(dot(0.001, R)); for (const sx of [-1, 1]) mark(box(0.006, 0.0006, 0.0001, R, sx * 0.0075, 0, 0, ret)); mark(box(0.0006, 0.006, 0.0001, R, 0, -0.0075, 0, ret)); }
+      else ret.add(dot(0.0014, R));
+      // aim through the centre of the optic, held a little closer so the window is big on screen
+      const aim = new THREE.Object3D(); aim.position.set(sp.x, sp.y + 0.006 + cy, sp.z); model.add(aim);
+      ud.sight = aim; ud.sightDist = k === 'acog' ? 0.27 : k === 'tube2' ? 0.23 : k === 'tube' ? 0.2 : 0.21; ud.attOptic = on.optic;
+    }
+    // ---- muzzle device: on the end of the barrel; the flash moves out to its tip (and is hidden when suppressed)
+    if (on.muzzle && ud.flash) {
+      const a = BR.ATTACH[on.muzzle], k = a.kind, fp = ud.flash.position, mz = new THREE.Group(); mz.position.copy(fp); g.add(mz);
+      let L = 0.05;
+      if (k === 'supp' || k === 'mono' || k === 'phantom') { L = (k === 'supp' ? 0.14 : 0.17) * S; const r = (k === 'supp' ? 0.019 : 0.022) * S; tube(r, r, L, k === 'phantom' ? M.steel : M.body, 0, 0, -L / 2, mz); tube(r + 0.0015, r + 0.0015, 0.012, M.steel, 0, 0, -0.008, mz); tube(r + 0.0015, r + 0.0015, 0.01, k === 'phantom' ? M.gold : M.steel, 0, 0, -L + 0.006, mz);
+        if (k === 'mono') for (let i = 1; i < 5; i++) tube(r + 0.001, r + 0.001, 0.004, M.steel, 0, 0, -L * i / 5, mz); }
+      else if (k === 'long') { L = 0.12 * S; tube(0.011 * S, 0.011 * S, L, M.steel, 0, 0, -L / 2, mz); tube(0.014 * S, 0.014 * S, 0.014, M.body, 0, 0, -L + 0.007, mz); }
+      else if (k === 'choke') { L = 0.035; tube(0.023, 0.02, L, M.steel, 0, 0, -L / 2, mz); }
+      else { L = (k === 'comp' ? 0.055 : 0.045) * S; const r = 0.0165 * S; tube(r, r, L, M.steel, 0, 0, -L / 2, mz);
+        if (k === 'flash') for (let i = 0; i < 4; i++) { const b = box(0.004, r * 2.3, L * 0.6, M.body, 0, 0, -L * 0.62, mz); b.rotation.z = i * Math.PI / 4; }
+        else for (const z of k === 'comp' ? [0.3, 0.55, 0.8] : [0.4, 0.75]) { box(r * 2.4, 0.005, 0.007, M.body, 0, k === 'comp' ? r * 0.55 : 0, -L * z, mz); if (k === 'brake') box(0.005, r * 2.4, 0.007, M.body, 0, 0, -L * z, mz); } }
+      fp.z -= L; if (ud.muzzle && ud.muzzle.position) ud.muzzle.position.z -= L;
+    }
+    // ---- grip: under the handguard, just ahead of your support hand
+    if (on.grip && ud.fore) {
+      const a = BR.ATTACH[on.grip], k = a.kind, f = ud.fore, gp = new THREE.Group(); gp.position.set(f.x, f.y - 0.012, f.z - 0.085); g.add(gp);
+      const V = (r, L, mat) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.9, L, 12), mat); m.position.y = -L / 2 - 0.006; gp.add(m); return m; };
+      box(0.022, 0.008, 0.045, M.steel, 0, -0.003, 0, gp);
+      if (k === 'vert') V(0.0135, 0.075, M.body);
+      else if (k === 'stubby') V(0.0155, 0.042, M.body);
+      else if (k === 'cmd') { V(0.015, 0.07, M.tan); box(0.03, 0.01, 0.03, M.body, 0, -0.08, 0, gp); }
+      else if (k === 'gyro') { V(0.0145, 0.07, M.body); const r = mark(new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.0022, 6, 22), M.cyan)); r.rotation.x = Math.PI / 2; r.position.y = -0.03; gp.add(r); box(0.024, 0.004, 0.047, M.gold, 0, 0.0015, 0, gp); }
+      else if (k === 'angled') { const w = box(0.022, 0.016, 0.085, M.body, 0, -0.022, 0.005, gp); w.rotation.x = -0.5; }
+      else if (k === 'laser') { box(0.018, 0.018, 0.05, M.body, 0.024, 0.012, 0, gp); tube(0.005, 0.005, 0.012, M.steel, 0.024, 0.012, -0.03, gp);
+        const b = mark(box(0.0016, 0.0016, 5, M.beam, 0.024, 0.012, -2.53, gp)); b.userData.adsHide = true; ud.laser = b; }
+    }
+    ud.attFit = this.stamp(gunId);
+  },
+
+  // ---------------------------------------------------------------- UI
+  icon(a) {
+    const P = { optic: '<circle cx="12" cy="11" r="6"/><circle cx="12" cy="11" r="1.2" fill="currentColor"/><path d="M8 19h8M12 17v2"/>', muzzle: '<rect x="3" y="9" width="14" height="6" rx="2"/><path d="M17 12h4M7 9v6M11 9v6"/>', grip: '<path d="M4 7h16v4H4z"/><path d="M10 11l-1 9h5l-1-9"/>', stock: '<path d="M3 9h12l6 3v5h-7l-2-3H3z"/>' };
+    return `<i class="sw att-ic" style="color:${BR.COS_RARITY[a.rarity]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${P[a.slot]}</svg></i>`;
+  },
+  ui: { gun: 'rifle', slot: 'optic' },
+  open(gun) {
+    let el = document.getElementById('attach');
+    if (!el) {
+      el = document.createElement('div'); el.id = 'attach'; el.className = 'overlay hidden';
+      el.innerHTML = `<div class="panel metal wide att-panel"><button id="att-x" class="xbtn" aria-label="Close attachments">✕</button>
+        <div class="ptitle">ATTACHMENTS</div>
+        <p class="tip">Fit optics, muzzles, grips and stocks to your guns. Attachments only come from the <b>Attachment Case</b>; once you own one it fits every gun with that slot.</p>
+        <div id="att-guns" class="chips"></div>
+        <div id="att-slots" class="seg"></div>
+        <div id="att-grid" class="att-grid"></div>
+        <div class="shop-foot"><span id="att-msg"></span><button id="att-case" class="mbtn sm hot">OPEN ATTACHMENT CASE</button></div></div>`;
+      (document.getElementById('app') || document.body).appendChild(el);
+      el.querySelector('#att-x').addEventListener('click', () => el.classList.add('hidden'));
+      el.querySelector('#att-case').addEventListener('click', () => { el.classList.add('hidden'); const inv = document.getElementById('inventory'); if (inv) inv.classList.add('hidden'); document.getElementById('btn-cases').click(); const b = document.querySelector('#cs-pick [data-c="attach"]'); if (b) b.click(); });
+      el.querySelector('#att-guns').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (!b) return; this.ui.gun = b.dataset.g; BR.Audio.click(); this.render(); });
+      el.querySelector('#att-slots').addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (!b) return; this.ui.slot = b.dataset.s; BR.Audio.click(); this.render(); });
+      el.querySelector('#att-grid').addEventListener('click', e => {
+        const c = e.target.closest('[data-a]'); if (!c) return; const id = c.dataset.a, U = this.ui;
+        if (id && !this.owned(id)) { BR.Audio.click(); document.getElementById('att-msg').textContent = 'Locked · find it in the Attachment Case'; return; }
+        const cur = this.on(U.gun)[U.slot] || '';
+        this.set(U.gun, U.slot, id && id !== cur ? id : '');
+        BR.Audio.pickup && BR.Audio.pickup(); if (BR.game && BR.game.refreshCosmetics) BR.game.refreshCosmetics(); this.render();
+      });
+    }
+    if (gun && this.slots(gun).length) this.ui.gun = gun;
+    el.classList.remove('hidden'); this.render();
+  },
+  render() {
+    const U = this.ui, guns = this.guns(); if (!guns.includes(U.gun)) U.gun = guns[0];
+    const slots = this.slots(U.gun); if (!slots.includes(U.slot)) U.slot = slots[0];
+    const on = this.on(U.gun), W = BR.CONFIG.weapons, $ = id => document.getElementById(id);
+    $('att-guns').innerHTML = guns.map(g => `<button data-g="${g}" class="${g === U.gun ? 'sel' : ''}">${W[g].name}${Object.keys(this.on(g)).length ? ' <em>' + Object.keys(this.on(g)).length + '</em>' : ''}</button>`).join('');
+    $('att-slots').innerHTML = slots.map(s => `<button data-s="${s}" class="${s === U.slot ? 'sel' : ''}">${this.LABEL[s]}<small>${on[s] ? BR.ATTACH[on[s]].name : 'None'}</small></button>`).join('');
+    const order = BR.COS_ORDER, list = Object.keys(BR.ATTACH).filter(id => BR.ATTACH[id].slot === U.slot && this.fits(id, U.gun)).sort((a, b) => (this.owned(b) - this.owned(a)) || (order.indexOf(BR.ATTACH[b].rarity) - order.indexOf(BR.ATTACH[a].rarity)));          // the ones you own first, then common -> legendary
+    const card = id => { const a = BR.ATTACH[id], own = this.owned(id), eq = on[U.slot] === id;
+      return `<button class="card att-card${eq ? ' sel eq' : ''}${own ? '' : ' locked'}" data-a="${id}" style="--r:${BR.COS_RARITY[a.rarity]}">${this.icon(a)}<span class="rar">${a.rarity}</span><span class="cn">${a.name}</span><span class="att-d">${a.desc}</span><span class="att-st">${this.lines(id).map(([t, good]) => `<b class="${good ? 'up' : 'dn'}">${t}</b>`).join('')}</span><span class="cp">${eq ? '✓ Equipped' : own ? 'Tap to equip' : '🔒 Case only'}</span></button>`; };
+    $('att-grid').innerHTML = `<button class="card att-card none${on[U.slot] ? '' : ' sel'}" data-a=""><span class="cn">No ${this.LABEL[U.slot].toLowerCase()}</span><span class="att-d">Factory ${U.slot === 'optic' ? 'iron sights' : U.slot}.</span></button>` + list.map(card).join('');
+    const have = Object.keys(BR.ATTACH).filter(id => this.owned(id)).length;
+    $('att-msg').textContent = have + ' / ' + Object.keys(BR.ATTACH).length + ' attachments owned';
+  },
+};
+
+</script>
+<script>
+'use strict';
+// =============================================================================
 // PROFILE + SHOP — coins earned in matches, spent on cosmetics. Saved per
 // device in localStorage. The shop shows a live 3D preview (Game.renderShop).
 // =============================================================================
@@ -18857,6 +19113,8 @@ BR.CASES = {
   // Season 2: only Legendary and up. Every drop is animated.
   nova: { name: 'Nova Case', price: 900, odds: { Legendary: 58, Mythic: 34, Exotic: 8 }, dupRefund: 0.4, label: 'NOVA', sub: 'CASE · SEASON 2' },
   // v1.32: a cheap starter case, mostly Common + Uncommon with a shot at Rare, Epic and one Legendary
+  // v1.41: the only way to get attachments (optics, muzzles, grips, stocks)
+  attach: { name: 'Attachment Case', price: 400, odds: { Common: 40, Uncommon: 28, Rare: 20, Epic: 10, Legendary: 2 }, dupRefund: 0.45, label: 'ATTACH', sub: 'CASE · GUNSMITH' },
   street: { name: 'Street Case', price: 250, odds: { Common: 44, Uncommon: 33, Rare: 15, Epic: 7, Legendary: 1 }, dupRefund: 0.3, label: 'STREET', sub: 'CASE · STARTER' },
 };
 BR.CaseItems = {
@@ -18873,6 +19131,7 @@ BR.CaseItems = {
     for (const w in M.BLUEPRINTS) add('blueprints', M.BLUEPRINTS[w], w + ':');
     add('skins', M.SKINS); add('gloves', M.GLOVES); add('tracers', M.TRACERS); add('feeds', BR.FEEDS); add('finishers', BR.FINISHERS);
     add('outfits', BR.OUTFITS); add('masks', BR.MASKS); add('hats', BR.HATS);
+    if (BR.ATTACH) add('attach', BR.ATTACH);          // v1.41 (all in the Attachment Case)
     return (this._all = out);
   },
   roll(caseId, R) {
@@ -18931,6 +19190,7 @@ BR.Profile = {
     if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
     if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
+    if (!this.data.owned.attach) this.data.owned.attach = []; if (!this.data.equip.attach) this.data.equip.attach = {};          // v1.41 attachments
     for (const k of ['outfits', 'masks', 'hats']) { if (!this.data.owned[k]) this.data.owned[k] = ['default']; if (!this.data.equip[k]) this.data.equip[k] = 'default'; }     // v1.26 character
     // v1.14: new accounts start from scratch — default skins only, the Tracker knife, level 0.
     // Older saves get XP credited for what they already did (kills, wins, matches, zombies).
@@ -18964,7 +19224,20 @@ BR.Profile = {
     add('finishers', Object.keys(BR.FINISHERS)); add('outfits', Object.keys(BR.OUTFITS)); add('masks', Object.keys(BR.MASKS)); add('hats', Object.keys(BR.HATS));
     for (const w in M.BLUEPRINTS) add('blueprints', Object.keys(M.BLUEPRINTS[w]).map(b => w + ':' + b));
   },
-  save() { if (BR.AntiCheat) BR.AntiCheat.saveSigned(this.KEY, this.data); else BR.util.save(this.KEY, this.data); },
+  // v1.41: saving signs + writes the whole profile (several storage writes), which was a hitch on EVERY kill. During a
+  // match the save now waits for a quiet moment (at most 15 s, and straight away when the match ends, you pause, or the
+  // tab is hidden / closed), so nothing is lost and fights stay smooth.
+  save() {
+    const g = BR.game;
+    if (g && g.state === 'playing' && !(BR.AntiCheat && BR.AntiCheat.testing && BR.AntiCheat.testing())) {
+      if (!this._saveT) this._saveT = setTimeout(() => { this._saveT = 0; this.saveNow(); }, 15000);
+      if (!this._saveHook) { this._saveHook = true; const fl = () => this.flush(); window.addEventListener('pagehide', fl); document.addEventListener('visibilitychange', () => { if (document.hidden) fl(); }); }
+      return;
+    }
+    this.saveNow();
+  },
+  flush() { if (this._saveT) this.saveNow(); },
+  saveNow() { if (this._saveT) { clearTimeout(this._saveT); this._saveT = 0; } if (BR.AntiCheat) BR.AntiCheat.saveSigned(this.KEY, this.data); else BR.util.save(this.KEY, this.data); },
   // Blueprint ids are "weapon:blueprint" (e.g. "rifle:vandal"); every weapon owns "default".
   owns(cat, id) {
     if (cat === 'blueprints' && id.endsWith(':default')) return true;
@@ -19124,6 +19397,7 @@ BR.Profile = {
   },
   // Equip a case drop where it makes sense (tracers go on every gun)
   equipDrop(r) {
+    if (r.cat === 'attach') { const a = BR.ATTACH[r.id]; for (const g of BR.Attach.guns()) if (BR.Attach.fits(r.id, g) && !BR.Attach.on(g)[a.slot]) BR.Attach.set(g, a.slot, r.id); return; }      // v1.41: onto every gun with that slot free
     if (r.cat === 'tracers') { for (const [w] of SHOP_WEAPONS) this.data.equip.tracerByGun[w] = r.id; }
     else this.setEquip(r.cat, r.id, r.cat === 'skins' ? ((BR.shopWeapon && BR.shopWeapon()) || 'rifle') : undefined);
     this.save();
@@ -19453,6 +19727,7 @@ BR.Inventory = class Inventory {
     });
     this.el.action.addEventListener('click', () => this.act());
     $('inv-back').addEventListener('click', () => this.close());
+    { const ab = $('inv-attach'); if (ab) ab.addEventListener('click', () => { BR.Audio.click(); BR.Attach.open(BR.CONFIG.weapons[this.weapon] ? this.weapon : undefined); }); }      // v1.41
     this.bindDrag();
   }
 
@@ -19744,6 +20019,14 @@ const TECH_HELP = `
   <p><b>SHOTGUN JUMP:</b> fire the Breacher at your feet for a big launch, or mid-air to blast yourself the other way.</p>
   <p><b>GRAPPLE SLINGSHOT:</b> grapple, then jump before you arrive to fly off with the speed.</p>`;
 
+// v1.41: restart an element's CSS animation WITHOUT forcing a page layout. The old trick (clear the class, read
+// offsetWidth, set the class) made the browser lay out the whole HUD on every hit marker, damage number and kill
+// banner: a hitch on phones in every gunfight. Restarting the running animations only needs a style pass.
+BR.kick = (el, cls) => {
+  if (cls !== undefined) el.className = cls;
+  if (el.getAnimations) { const A = el.getAnimations({ subtree: true }); for (let i = 0; i < A.length; i++) { try { A[i].cancel(); A[i].play(); } catch (e) { /* finished + removed */ } } return; }
+  const c = el.className; el.className = ''; void el.offsetWidth; el.className = c;          // (very old browsers)
+};
 BR.HUD = class HUD {
   constructor(mount) {
     const V = BR.CONFIG.version;
@@ -20070,7 +20353,7 @@ BR.HUD = class HUD {
     <div class="inv-hint"><svg viewBox="0 0 24 24"><path d="M9 11V5a2 2 0 0 1 4 0v5M13 10V8a2 2 0 0 1 4 0v4M9 11l-1.5-1.5a2 2 0 0 0-3 2.6L9 17c1.5 2 3 3 6 3a5 5 0 0 0 5-5v-3a2 2 0 0 0-3 0"/></svg>Drag to inspect · pinch / scroll to zoom · double-tap to reset</div>
   </div>
   <div class="shop-panel metal">
-    <div class="shop-head"><div class="ptitle">INVENTORY</div><div class="coins-pill"><span id="inv-count" class="num">0</span>&nbsp;items</div></div>
+    <div class="shop-head"><div class="ptitle">INVENTORY</div><button id="inv-attach" class="mbtn sm att-open">ATTACHMENTS</button><div class="coins-pill"><span id="inv-count" class="num">0</span>&nbsp;items</div></div>
     <div id="inv-tabs" class="seg">
       <button data-cat="character" class="tab-char">CHARACTER</button><button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
@@ -20288,7 +20571,7 @@ BR.HUD = class HUD {
   <div class="panel metal wide cases-panel">
     <button id="cs-x" class="xbtn" aria-label="Close">✕</button>
     <div class="cs-head"><div class="ptitle" id="cs-title">RELEASE CASE</div><div class="coins-pill"><i class="coin"></i><span id="cs-coins" class="num">0</span></div></div>
-    <div class="seg cs-pick" id="cs-pick"><button data-c="release" class="sel">RELEASE · S1</button><button data-c="nova">NOVA · S2</button><button data-c="street">STREET <em>NEW</em></button></div>
+    <div class="seg cs-pick" id="cs-pick"><button data-c="release" class="sel">RELEASE · S1</button><button data-c="nova">NOVA · S2</button><button data-c="street">STREET</button><button data-c="attach">ATTACHMENTS <em>NEW</em></button></div>
     <div class="cs-stage">
       <div class="cs-case" id="cs-case"><div class="cs-lid"></div><div class="cs-body"><b id="cs-label">RELEASE</b><span id="cs-sub">CASE · SEASON 1</span></div><i class="cs-shine"></i></div>
       <div class="cs-reel hidden" id="cs-reel"><div class="cs-strip" id="cs-strip"></div><i class="cs-mark"></i></div>
@@ -20595,9 +20878,9 @@ BR.HUD = class HUD {
     k.querySelector('.kb-x').textContent = o.streak >= 2 ? '×' + o.streak : '';
     k.querySelector('.kb-c').textContent = o.coins ? '+' + o.coins : '';
     const cls = (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak s' + Math.min(o.streak, 5) : '');
-    k.className = ''; void k.offsetWidth; k.className = 'on' + cls;
+    BR.kick(k, 'on' + cls);
     clearTimeout(this._kbTO); this._kbTO = setTimeout(() => { k.className = 'out' + cls; }, 1500 + Math.min(o.streak || 1, 4) * 150);
-    if (f) { f.className = ''; void f.offsetWidth; f.className = 'on' + (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak' : ''); }
+    if (f) BR.kick(f, 'on' + (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak' : ''));
   }
 
   // Patch notes page: every update, newest first, with the date it shipped (latest 3 open)
@@ -20756,20 +21039,16 @@ BR.HUD = class HUD {
 
   hitmarker(head, kill) {
     const h = this.el.hitmarker;
-    h.className = '';
-    void h.offsetWidth;
-    h.className = 'on' + (head ? ' head' : '') + (kill ? ' kill' : '');
+    BR.kick(h, 'on' + (head ? ' head' : '') + (kill ? ' kill' : ''));
     const c = this.$('hitcrit');
-    if (c && (head || kill)) { c.className = ''; void c.offsetWidth; c.className = 'on' + (kill ? ' kill' : ''); }
+    if (c && (head || kill)) BR.kick(c, 'on' + (kill ? ' kill' : ''));
   }
 
   // Movement-tech callout under the crosshair
   tech(text) {
     const t = this.el.tech;
     t.textContent = text;
-    t.className = '';
-    void t.offsetWidth;
-    t.className = 'on';
+    BR.kick(t, 'on');
   }
 
   prompt(text, col) {
@@ -20790,8 +21069,8 @@ BR.HUD = class HUD {
         n.victim = null; n.total = q.dmg * k; n.age = 0; n.life = 0.95 + i * 0.03; n.head = q.head;
         n.pos.set(q.x, q.y, q.z); n.dx = (i - (P.length - 1) / 2) * 19 + (Math.random() - 0.5) * 6; n.dy = (i % 2 ? -17 : 0) + (Math.random() - 0.5) * 6;     // fanned out so each one reads
         const el = n.el; el.innerHTML = (q.head ? '<i>✦</i>' : '') + Math.max(1, Math.round(n.total));
-        el.className = 'dnum pellet' + (q.head ? ' head' : shield ? ' shield' : ''); el.style.animationDelay = (i * 0.018).toFixed(3) + 's';
-        void el.offsetWidth; el.classList.add('pop'); el.style.opacity = 1;
+        el.style.animationDelay = (i * 0.018).toFixed(3) + 's';
+        BR.kick(el, 'dnum pellet pop' + (q.head ? ' head' : shield ? ' shield' : '')); el.style.opacity = 1;
       });
       return;
     }
@@ -20806,8 +21085,8 @@ BR.HUD = class HUD {
     n.head = n.head && n.age > 0 ? n.head || head : head;
     const el = n.el;
     el.innerHTML = (head ? '<i>✦</i>' : '') + Math.round(n.total);
-    el.className = 'dnum' + (head ? ' head' : shield ? ' shield' : ''); el.style.animationDelay = '';
-    void el.offsetWidth; el.classList.add('pop');
+    el.style.animationDelay = '';
+    BR.kick(el, 'dnum pop' + (head ? ' head' : shield ? ' shield' : ''));
     el.style.opacity = 1;
   }
 
@@ -21706,6 +21985,7 @@ BR.Game = class Game {
     // v1.38 frame rate: measure the screen's refresh while the menu is idle (cheap frames), then cap to 60 FPS or run
     // up to 120 FPS. The 60 cap skips vsyncs on fast screens (steadier pacing, less heat + battery).
     const raw = now - (this._rafLast || now); this._rafLast = now;
+    if (this.state !== 'playing' && BR.Profile && BR.Profile._saveT) BR.Profile.flush();      // v1.41: a save held back during the fight is written as soon as you're out of it
     if (this.state === 'menu' && raw > 3 && raw < 40) { const H = this._hzS || (this._hzS = []); H.push(raw); if (H.length > 90) H.shift(); this._hzN = (this._hzN || 0) + 1; if (H.length >= 30 && this._hzN % 60 === 0) { const s = H.slice().sort((a, b) => a - b); this.screenMs = s[Math.floor(s.length * 0.3)]; this.applyFps(); } }
     // v1.39: only skip vsyncs when the screen is a clean multiple of the cap (120/144 Hz -> 60, 240 Hz -> 120). On any
     // other refresh (75, 100, 165 Hz...) skipping made frames uneven and the mouse look stutter, so it runs uncapped.
@@ -21964,6 +22244,7 @@ BR.Game = class Game {
     }
     this.lookD = [dx, dy];
     const w = p.weapon;
+    if (w && BR.Attach && !w.def.melee && w._att !== BR.Attach.stamp(w.id)) BR.Attach.apply(w);      // v1.41: your attachments' handling
     const zoom = p.ads && w ? w.def.zoom : 1;
     const scoped = p.ads && w && (w.def.scope || w.def.optic);
     let sens = L.touch * S.sens * (p.ads ? L.adsMult * (scoped ? (S.sensScope ?? 1) : (S.sensAds ?? 1)) : 1) / Math.sqrt(zoom);
@@ -22605,7 +22886,10 @@ BR.Game = class Game {
     const W = this.world; if (W && W.skyRig && this.camera) { const cp = this.camera.position; for (const k of W.skyRig) k.o.position.set(k.x + cp.x, k.y, k.z + cp.z); }      // v1.36
     // v1.32: compile every shader in a new match up front (muzzle flashes, impacts, effects, skins), so the first shot,
     // explosion or kill no longer hitches while the GPU compiles mid-fight
-    if (this.scene && this._warmed !== this.scene) { this._warmed = this.scene; try { r.compile(this.scene, this.camera); if (this.vmr && this.vmr.scene) r.compile(this.vmr.scene, this.vmr.camera); } catch (e) { /* older browsers: compile on first use */ } }
+    if (this.scene && this._warmed !== this.scene) { this._warmed = this.scene;
+      // v1.41: build every weapon's hand positions + its dropped-on-the-ground model once, up front. They used to be built the
+      // first time a bot was seen holding that gun, or the first time one was dropped by a kill: a hitch mid-fight.
+      if (!BR._gunsWarm) { BR._gunsWarm = true; try { for (const id in BR.CONFIG.weapons) { BR.Models.gripPoints(id); BR.Models.worldWeapon(id); } } catch (e) { /* a model failed: it builds on demand as before */ } } try { r.compile(this.scene, this.camera); if (this.vmr && this.vmr.scene) r.compile(this.vmr.scene, this.vmr.camera); } catch (e) { /* older browsers: compile on first use */ } }
     r.clear();
     if (this.state === 'shop') { r.render(this.shopScene, this.shopCam); return; }
     if (!this.scene) return;
@@ -23173,8 +23457,9 @@ BR.Game = class Game {
   };
   // ---- Release Case: CS-style reel that decelerates onto the drop
   const RCOL = BR.COS_RARITY;
-  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask', hats: 'Hat' };
+  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask', hats: 'Hat', attach: 'Attachment' };
   const caseCard = (e, extra) => {
+    if (e.cat === 'attach') return `<div class="cs-card r-${e.item.rarity}${extra || ''}" style="--rc:${RCOL[e.item.rarity]}">${BR.Attach.icon(e.item)}<span class="cc-cat">${BR.Attach.LABEL[e.item.slot]}</span><span class="cc-name">${e.item.name}</span></div>`;
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
     const hex = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
     const ck = e.cat + ':' + e.id, sp = BR.WeaponIcons && BR.WeaponIcons.spin[ck], cp = BR.WeaponIcons && BR.WeaponIcons.cpic[ck];
@@ -23189,12 +23474,12 @@ BR.Game = class Game {
     const all = BR.CaseItems.all(curCase), C = BR.CASES[curCase], order = BR.COS_ORDER;
     $('cs-odds').innerHTML = order.filter(t => C.odds[t]).map(t => `<span style="--rc:${RCOL[t]}"><b>${t}</b> ${C.odds[t]}%</span>`).join('');
     $('cs-title').textContent = C.name.toUpperCase(); $('cs-label').textContent = C.label; $('cs-sub').textContent = C.sub; $('cs-price').textContent = BR.Profile.keys(curCase) > 0 ? 'FREE KEY ×' + BR.Profile.keys(curCase) : C.price;
-    $('cs-case').classList.toggle('nova', curCase === 'nova'); $('cs-case').classList.toggle('street', curCase === 'street');
+    $('cs-case').classList.toggle('nova', curCase === 'nova'); $('cs-case').classList.toggle('street', curCase === 'street'); $('cs-case').classList.toggle('attach', curCase === 'attach');
     document.querySelectorAll('#cs-pick button').forEach(b => b.classList.toggle('sel', b.dataset.c === curCase));
     $('cs-grid').innerHTML = order.flatMap(t => all.filter(e => e.item.rarity === t)).map(e => caseCard(e, BR.Profile.owns(e.cat, e.id) ? ' owned' : '')).join('');
   };
   // spin the case items: render turntables in the background and swap them in as they finish
-  const spinCase = () => BR.WeaponIcons.queueSpins(BR.CaseItems.all(curCase), (key, url) => {
+  const spinCase = () => curCase === 'attach' ? null : BR.WeaponIcons.queueSpins(BR.CaseItems.all(curCase), (key, url) => {
     document.querySelectorAll('#cases img.cc-img').forEach(im => { if (im.dataset.ck === key) { const i = document.createElement('i'); i.className = 'cc-spin'; i.style.backgroundImage = `url(${url})`; im.replaceWith(i); } });
   });
   const openCasePanel = () => { setTimeout(spinCase, 60); $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden'); $('cs-reel').classList.add('hidden'); $('cs-case').classList.remove('hidden'); caseRefresh(); game.hud.show('cases', true); };
@@ -23233,7 +23518,7 @@ BR.Game = class Game {
       const col = RCOL[r.item.rarity];
       $('cs-result').classList.remove('hidden');
       $('cs-result').innerHTML = `<div class="cs-reveal r-${r.item.rarity}" style="--rc:${col}"><span class="rv-r">${r.item.rarity.toUpperCase()}</span>${caseCard(r, ' big')}<b>${r.item.name}</b><span>${r.dup ? 'Duplicate · +' + r.refund + ' coins back' : 'NEW · added to your collection'}</span></div>`;
-      $('cs-equip').classList.remove('hidden'); $('cs-inspect').classList.remove('hidden');
+      $('cs-equip').classList.remove('hidden'); $('cs-inspect').classList.remove('hidden'); $('cs-inspect').textContent = r.cat === 'attach' ? 'ATTACHMENTS' : 'INSPECT';
       BR.Audio.kill(r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic');
       if (r.item.rarity === 'Legendary' || r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic') BR.Audio.coin();
       $('cs-coins').textContent = BR.Profile.coinsLabel();
@@ -23241,7 +23526,7 @@ BR.Game = class Game {
       BR.updateCoins();
     }, 5800);
   });
-  $('cs-inspect').addEventListener('click', () => { if (!lastDrop) return; game.hud.show('cases', false); inv.open({ cat: lastDrop.cat, id: lastDrop.id }); });
+  $('cs-inspect').addEventListener('click', () => { if (!lastDrop) return; game.hud.show('cases', false); if (lastDrop.cat === 'attach') { BR.Attach.open(); return; } inv.open({ cat: lastDrop.cat, id: lastDrop.id }); });
   $('cs-equip').addEventListener('click', () => { if (!lastDrop) return; BR.Profile.equipDrop(lastDrop); game.refreshCosmetics(); BR.Audio.pickup(); $('cs-equip').classList.add('hidden'); });
 
   // ---- Ranked leaderboard

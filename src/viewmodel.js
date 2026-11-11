@@ -147,6 +147,7 @@
       for (const id in BR.CONFIG.weapons) {
         const bp = (eq.blueprints || {})[id];
         const m = BR.Models.weapon(id, BR.Profile.skinFor(id), BR.CONFIG.weapons[id].melee ? 'none' : eq.charms, bp);
+        if (BR.Attach && !BR.CONFIG.weapons[id].melee) { try { BR.Attach.fit(m, id); } catch (e) { /* the gun still works bare */ } }      // v1.41 attachments
         const holder = new THREE.Group();
         if (id === 'knife') {
           // (v1.18.2, matched to the reference screenshot) CS-style idle: the handle runs diagonally through

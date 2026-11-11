@@ -183,6 +183,8 @@ BR.CASES = {
   // Season 2: only Legendary and up. Every drop is animated.
   nova: { name: 'Nova Case', price: 900, odds: { Legendary: 58, Mythic: 34, Exotic: 8 }, dupRefund: 0.4, label: 'NOVA', sub: 'CASE · SEASON 2' },
   // v1.32: a cheap starter case, mostly Common + Uncommon with a shot at Rare, Epic and one Legendary
+  // v1.41: the only way to get attachments (optics, muzzles, grips, stocks)
+  attach: { name: 'Attachment Case', price: 400, odds: { Common: 40, Uncommon: 28, Rare: 20, Epic: 10, Legendary: 2 }, dupRefund: 0.45, label: 'ATTACH', sub: 'CASE · GUNSMITH' },
   street: { name: 'Street Case', price: 250, odds: { Common: 44, Uncommon: 33, Rare: 15, Epic: 7, Legendary: 1 }, dupRefund: 0.3, label: 'STREET', sub: 'CASE · STARTER' },
 };
 BR.CaseItems = {
@@ -199,6 +201,7 @@ BR.CaseItems = {
     for (const w in M.BLUEPRINTS) add('blueprints', M.BLUEPRINTS[w], w + ':');
     add('skins', M.SKINS); add('gloves', M.GLOVES); add('tracers', M.TRACERS); add('feeds', BR.FEEDS); add('finishers', BR.FINISHERS);
     add('outfits', BR.OUTFITS); add('masks', BR.MASKS); add('hats', BR.HATS);
+    if (BR.ATTACH) add('attach', BR.ATTACH);          // v1.41 (all in the Attachment Case)
     return (this._all = out);
   },
   roll(caseId, R) {
@@ -257,6 +260,7 @@ BR.Profile = {
     if (!this.data.owned.finishers) this.data.owned.finishers = ['none'];
     if (!this.data.equip.finishers) this.data.equip.finishers = 'none';
     if (!this.data.owned.feeds) this.data.owned.feeds = ['none'];
+    if (!this.data.owned.attach) this.data.owned.attach = []; if (!this.data.equip.attach) this.data.equip.attach = {};          // v1.41 attachments
     for (const k of ['outfits', 'masks', 'hats']) { if (!this.data.owned[k]) this.data.owned[k] = ['default']; if (!this.data.equip[k]) this.data.equip[k] = 'default'; }     // v1.26 character
     // v1.14: new accounts start from scratch — default skins only, the Tracker knife, level 0.
     // Older saves get XP credited for what they already did (kills, wins, matches, zombies).
@@ -290,7 +294,20 @@ BR.Profile = {
     add('finishers', Object.keys(BR.FINISHERS)); add('outfits', Object.keys(BR.OUTFITS)); add('masks', Object.keys(BR.MASKS)); add('hats', Object.keys(BR.HATS));
     for (const w in M.BLUEPRINTS) add('blueprints', Object.keys(M.BLUEPRINTS[w]).map(b => w + ':' + b));
   },
-  save() { if (BR.AntiCheat) BR.AntiCheat.saveSigned(this.KEY, this.data); else BR.util.save(this.KEY, this.data); },
+  // v1.41: saving signs + writes the whole profile (several storage writes), which was a hitch on EVERY kill. During a
+  // match the save now waits for a quiet moment (at most 15 s, and straight away when the match ends, you pause, or the
+  // tab is hidden / closed), so nothing is lost and fights stay smooth.
+  save() {
+    const g = BR.game;
+    if (g && g.state === 'playing' && !(BR.AntiCheat && BR.AntiCheat.testing && BR.AntiCheat.testing())) {
+      if (!this._saveT) this._saveT = setTimeout(() => { this._saveT = 0; this.saveNow(); }, 15000);
+      if (!this._saveHook) { this._saveHook = true; const fl = () => this.flush(); window.addEventListener('pagehide', fl); document.addEventListener('visibilitychange', () => { if (document.hidden) fl(); }); }
+      return;
+    }
+    this.saveNow();
+  },
+  flush() { if (this._saveT) this.saveNow(); },
+  saveNow() { if (this._saveT) { clearTimeout(this._saveT); this._saveT = 0; } if (BR.AntiCheat) BR.AntiCheat.saveSigned(this.KEY, this.data); else BR.util.save(this.KEY, this.data); },
   // Blueprint ids are "weapon:blueprint" (e.g. "rifle:vandal"); every weapon owns "default".
   owns(cat, id) {
     if (cat === 'blueprints' && id.endsWith(':default')) return true;
@@ -450,6 +467,7 @@ BR.Profile = {
   },
   // Equip a case drop where it makes sense (tracers go on every gun)
   equipDrop(r) {
+    if (r.cat === 'attach') { const a = BR.ATTACH[r.id]; for (const g of BR.Attach.guns()) if (BR.Attach.fits(r.id, g) && !BR.Attach.on(g)[a.slot]) BR.Attach.set(g, a.slot, r.id); return; }      // v1.41: onto every gun with that slot free
     if (r.cat === 'tracers') { for (const [w] of SHOP_WEAPONS) this.data.equip.tracerByGun[w] = r.id; }
     else this.setEquip(r.cat, r.id, r.cat === 'skins' ? ((BR.shopWeapon && BR.shopWeapon()) || 'rifle') : undefined);
     this.save();
@@ -779,6 +797,7 @@ BR.Inventory = class Inventory {
     });
     this.el.action.addEventListener('click', () => this.act());
     $('inv-back').addEventListener('click', () => this.close());
+    { const ab = $('inv-attach'); if (ab) ab.addEventListener('click', () => { BR.Audio.click(); BR.Attach.open(BR.CONFIG.weapons[this.weapon] ? this.weapon : undefined); }); }      // v1.41
     this.bindDrag();
   }
 

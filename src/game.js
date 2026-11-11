@@ -719,6 +719,7 @@ BR.Game = class Game {
     // v1.38 frame rate: measure the screen's refresh while the menu is idle (cheap frames), then cap to 60 FPS or run
     // up to 120 FPS. The 60 cap skips vsyncs on fast screens (steadier pacing, less heat + battery).
     const raw = now - (this._rafLast || now); this._rafLast = now;
+    if (this.state !== 'playing' && BR.Profile && BR.Profile._saveT) BR.Profile.flush();      // v1.41: a save held back during the fight is written as soon as you're out of it
     if (this.state === 'menu' && raw > 3 && raw < 40) { const H = this._hzS || (this._hzS = []); H.push(raw); if (H.length > 90) H.shift(); this._hzN = (this._hzN || 0) + 1; if (H.length >= 30 && this._hzN % 60 === 0) { const s = H.slice().sort((a, b) => a - b); this.screenMs = s[Math.floor(s.length * 0.3)]; this.applyFps(); } }
     // v1.39: only skip vsyncs when the screen is a clean multiple of the cap (120/144 Hz -> 60, 240 Hz -> 120). On any
     // other refresh (75, 100, 165 Hz...) skipping made frames uneven and the mouse look stutter, so it runs uncapped.
@@ -977,6 +978,7 @@ BR.Game = class Game {
     }
     this.lookD = [dx, dy];
     const w = p.weapon;
+    if (w && BR.Attach && !w.def.melee && w._att !== BR.Attach.stamp(w.id)) BR.Attach.apply(w);      // v1.41: your attachments' handling
     const zoom = p.ads && w ? w.def.zoom : 1;
     const scoped = p.ads && w && (w.def.scope || w.def.optic);
     let sens = L.touch * S.sens * (p.ads ? L.adsMult * (scoped ? (S.sensScope ?? 1) : (S.sensAds ?? 1)) : 1) / Math.sqrt(zoom);
@@ -1618,7 +1620,10 @@ BR.Game = class Game {
     const W = this.world; if (W && W.skyRig && this.camera) { const cp = this.camera.position; for (const k of W.skyRig) k.o.position.set(k.x + cp.x, k.y, k.z + cp.z); }      // v1.36
     // v1.32: compile every shader in a new match up front (muzzle flashes, impacts, effects, skins), so the first shot,
     // explosion or kill no longer hitches while the GPU compiles mid-fight
-    if (this.scene && this._warmed !== this.scene) { this._warmed = this.scene; try { r.compile(this.scene, this.camera); if (this.vmr && this.vmr.scene) r.compile(this.vmr.scene, this.vmr.camera); } catch (e) { /* older browsers: compile on first use */ } }
+    if (this.scene && this._warmed !== this.scene) { this._warmed = this.scene;
+      // v1.41: build every weapon's hand positions + its dropped-on-the-ground model once, up front. They used to be built the
+      // first time a bot was seen holding that gun, or the first time one was dropped by a kill: a hitch mid-fight.
+      if (!BR._gunsWarm) { BR._gunsWarm = true; try { for (const id in BR.CONFIG.weapons) { BR.Models.gripPoints(id); BR.Models.worldWeapon(id); } } catch (e) { /* a model failed: it builds on demand as before */ } } try { r.compile(this.scene, this.camera); if (this.vmr && this.vmr.scene) r.compile(this.vmr.scene, this.vmr.camera); } catch (e) { /* older browsers: compile on first use */ } }
     r.clear();
     if (this.state === 'shop') { r.render(this.shopScene, this.shopCam); return; }
     if (!this.scene) return;

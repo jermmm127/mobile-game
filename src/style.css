@@ -1783,3 +1783,21 @@ label.tg input[type=checkbox] { accent-color: var(--accent); width: 17px; height
 
 @media (prefers-reduced-motion: reduce) { .overlay:not(.menu) > .panel, .overlay:not(.menu) > .settings, .overlay:not(.menu) > .modes { animation: none; } .mbtn:hover, .card:hover, .gcard:hover, .mode:hover { transform: none; } }
 body.gfx-lite .overlay:not(.menu) > .panel, body.gfx-lite .overlay:not(.menu) > .settings, body.gfx-lite .overlay:not(.menu) > .modes { animation: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset; }
+
+/* v1.41 attachments */
+.att-panel { width: min(760px, 100%); max-height: calc(100vh - 24px); overflow-y: auto; }
+#att-guns { margin: 2px 0 4px; flex: none; min-height: 32px; } #att-slots, .att-panel .tip, .att-panel .shop-foot { flex: none; } .att-grid { flex: none; } #att-guns em { font-style: normal; font-size: 10px; margin-left: 4px; padding: 0 5px; border-radius: 8px; background: rgba(0, 0, 0, 0.35); }
+#att-slots button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; }
+#att-slots button small { font: 600 10px var(--ui); letter-spacing: 0.02em; text-transform: none; opacity: 0.75; }
+.att-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 4px 0; }
+.att-card { position: relative; min-height: 120px; border-left: 3px solid var(--r, var(--line)); }
+.att-card .att-d { font: 500 11px/1.3 var(--ui); color: var(--muted); }
+.att-card .att-st { display: flex; flex-wrap: wrap; gap: 3px 6px; }
+.att-card .att-st b { font: 700 10.5px var(--ui); } .att-card .att-st b.up { color: var(--health); } .att-card .att-st b.dn { color: var(--danger); }
+.att-card .rar { color: var(--r); } .att-card .cp { margin-top: auto; font-size: 11px; }
+.att-card.locked { opacity: 0.5; } .att-card.locked .cp { color: var(--muted); }
+.att-card.none { justify-content: center; border-left-color: var(--line); }
+.sw.att-ic { display: grid; place-items: center; width: 100%; height: 34px; background: rgba(0, 0, 0, 0.28); border-radius: 8px; } .sw.att-ic svg { width: 26px; height: 26px; }
+.cs-card .sw.att-ic { height: 52px; } .cs-card .sw.att-ic svg { width: 40px; height: 40px; filter: drop-shadow(0 0 6px currentColor); }
+.att-open { margin-left: auto; margin-right: 8px; border-color: rgba(178, 107, 255, 0.5); }
+#cs-case.attach { background: linear-gradient(160deg, #3a3f4a, #1c1f26 55%, #5a3aa8); }

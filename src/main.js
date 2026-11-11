@@ -548,8 +548,9 @@
   };
   // ---- Release Case: CS-style reel that decelerates onto the drop
   const RCOL = BR.COS_RARITY;
-  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask', hats: 'Hat' };
+  const CAT_LABEL = { blueprints: 'Blueprint', skins: 'Camo', gloves: 'Gloves', tracers: 'Tracer', feeds: 'Kill feed', finishers: 'Finisher', outfits: 'Outfit', masks: 'Mask', hats: 'Hat', attach: 'Attachment' };
   const caseCard = (e, extra) => {
+    if (e.cat === 'attach') return `<div class="cs-card r-${e.item.rarity}${extra || ''}" style="--rc:${RCOL[e.item.rarity]}">${BR.Attach.icon(e.item)}<span class="cc-cat">${BR.Attach.LABEL[e.item.slot]}</span><span class="cc-name">${e.item.name}</span></div>`;
     const nm = e.item.name + (e.cat === 'blueprints' ? ' · ' + BR.CONFIG.weapons[e.id.split(':')[0]].name : '');
     const hex = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
     const ck = e.cat + ':' + e.id, sp = BR.WeaponIcons && BR.WeaponIcons.spin[ck], cp = BR.WeaponIcons && BR.WeaponIcons.cpic[ck];
@@ -564,12 +565,12 @@
     const all = BR.CaseItems.all(curCase), C = BR.CASES[curCase], order = BR.COS_ORDER;
     $('cs-odds').innerHTML = order.filter(t => C.odds[t]).map(t => `<span style="--rc:${RCOL[t]}"><b>${t}</b> ${C.odds[t]}%</span>`).join('');
     $('cs-title').textContent = C.name.toUpperCase(); $('cs-label').textContent = C.label; $('cs-sub').textContent = C.sub; $('cs-price').textContent = BR.Profile.keys(curCase) > 0 ? 'FREE KEY ×' + BR.Profile.keys(curCase) : C.price;
-    $('cs-case').classList.toggle('nova', curCase === 'nova'); $('cs-case').classList.toggle('street', curCase === 'street');
+    $('cs-case').classList.toggle('nova', curCase === 'nova'); $('cs-case').classList.toggle('street', curCase === 'street'); $('cs-case').classList.toggle('attach', curCase === 'attach');
     document.querySelectorAll('#cs-pick button').forEach(b => b.classList.toggle('sel', b.dataset.c === curCase));
     $('cs-grid').innerHTML = order.flatMap(t => all.filter(e => e.item.rarity === t)).map(e => caseCard(e, BR.Profile.owns(e.cat, e.id) ? ' owned' : '')).join('');
   };
   // spin the case items: render turntables in the background and swap them in as they finish
-  const spinCase = () => BR.WeaponIcons.queueSpins(BR.CaseItems.all(curCase), (key, url) => {
+  const spinCase = () => curCase === 'attach' ? null : BR.WeaponIcons.queueSpins(BR.CaseItems.all(curCase), (key, url) => {
     document.querySelectorAll('#cases img.cc-img').forEach(im => { if (im.dataset.ck === key) { const i = document.createElement('i'); i.className = 'cc-spin'; i.style.backgroundImage = `url(${url})`; im.replaceWith(i); } });
   });
   const openCasePanel = () => { setTimeout(spinCase, 60); $('cs-result').classList.add('hidden'); $('cs-equip').classList.add('hidden'); $('cs-reel').classList.add('hidden'); $('cs-case').classList.remove('hidden'); caseRefresh(); game.hud.show('cases', true); };
@@ -608,7 +609,7 @@
       const col = RCOL[r.item.rarity];
       $('cs-result').classList.remove('hidden');
       $('cs-result').innerHTML = `<div class="cs-reveal r-${r.item.rarity}" style="--rc:${col}"><span class="rv-r">${r.item.rarity.toUpperCase()}</span>${caseCard(r, ' big')}<b>${r.item.name}</b><span>${r.dup ? 'Duplicate · +' + r.refund + ' coins back' : 'NEW · added to your collection'}</span></div>`;
-      $('cs-equip').classList.remove('hidden'); $('cs-inspect').classList.remove('hidden');
+      $('cs-equip').classList.remove('hidden'); $('cs-inspect').classList.remove('hidden'); $('cs-inspect').textContent = r.cat === 'attach' ? 'ATTACHMENTS' : 'INSPECT';
       BR.Audio.kill(r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic');
       if (r.item.rarity === 'Legendary' || r.item.rarity === 'Mythic' || r.item.rarity === 'Exotic') BR.Audio.coin();
       $('cs-coins').textContent = BR.Profile.coinsLabel();
@@ -616,7 +617,7 @@
       BR.updateCoins();
     }, 5800);
   });
-  $('cs-inspect').addEventListener('click', () => { if (!lastDrop) return; game.hud.show('cases', false); inv.open({ cat: lastDrop.cat, id: lastDrop.id }); });
+  $('cs-inspect').addEventListener('click', () => { if (!lastDrop) return; game.hud.show('cases', false); if (lastDrop.cat === 'attach') { BR.Attach.open(); return; } inv.open({ cat: lastDrop.cat, id: lastDrop.id }); });
   $('cs-equip').addEventListener('click', () => { if (!lastDrop) return; BR.Profile.equipDrop(lastDrop); game.refreshCosmetics(); BR.Audio.pickup(); $('cs-equip').classList.add('hidden'); });
 
   // ---- Ranked leaderboard

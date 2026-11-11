@@ -5,6 +5,16 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.41.0', date: '2026-11-11', title: 'Attachments', notes: [
+    'New: ATTACHMENTS. Fit an optic, a muzzle, a grip and a stock to every gun except the Sniper and the Shockwave Launcher. Open them from the ATTACHMENTS button in your Inventory. Once you own an attachment it fits every gun that has that slot.',
+    'Optics: Red Dot, Reflex Sight, Holo Sight, 1.5x Optic, Delta 2x, ACOG 3x and the Legendary Apex Holo. Each sits on the gun in first person with a working reticle, sets its own zoom and lines up on your aim point.',
+    'Muzzles: Muzzle Brake, Flash Hider, Compensator, Choke (shotguns only), Long Barrel, Suppressor, Monolith Suppressor and the Legendary Phantom Suppressor. Suppressors make your shots quiet and hide the flash.',
+    'Grips: Vertical, Angled, Stubby, Laser Sight (with a red beam), Commando Foregrip and the Legendary Gyro Grip. Stocks: Padded, Skeleton, Heavy and Tactical.',
+    'Attachments change handling only: recoil, spread, aim speed, zoom, range and sound. They never change damage, fire rate or magazine size. Each card shows exactly what it does, with the downsides in red.',
+    'New ATTACHMENT CASE (400 coins) in Cases. It is the only way to get attachments. Odds: Common 40%, Uncommon 28%, Rare 20%, Epic 10%, Legendary 2%. A duplicate gives 180 coins back.',
+    'Guns with a built-in optic (Holo AR, Talon Burst, LMG, DMR) keep it and have no optic slot. The Pistol and Holo AR are already suppressed, so they have no muzzle slot. Pistols take no grip or stock.',
+    'Fixed lag spikes after kills and in big fights. Hit markers, damage numbers and the kill banner no longer make the browser re-lay-out the whole HUD. Your profile no longer saves on every kill (it saves at a quiet moment, and always when the match ends or you leave). Weapon models are built before the match instead of the first time each one appears.',
+  ] },
   { v: '1.40.0', date: '2026-11-11', title: 'Lite graphics, fresh UI, cleaner blueprints', notes: [
     'New LITE graphics setting for weak phones and old laptops: lower resolution, a shorter view distance, lighter scenery, fewer sparks and no blur or heavy shadows in the HUD. It draws about a third of what Medium does.',
     'The game picks a graphics setting for your device the first time you play. If a match still runs slowly at the lowest resolution, it steps the setting down by itself and tells you. Choosing a setting yourself turns that off.',

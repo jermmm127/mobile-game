@@ -163,6 +163,14 @@ const TECH_HELP = `
   <p><b>SHOTGUN JUMP:</b> fire the Breacher at your feet for a big launch, or mid-air to blast yourself the other way.</p>
   <p><b>GRAPPLE SLINGSHOT:</b> grapple, then jump before you arrive to fly off with the speed.</p>`;
 
+// v1.41: restart an element's CSS animation WITHOUT forcing a page layout. The old trick (clear the class, read
+// offsetWidth, set the class) made the browser lay out the whole HUD on every hit marker, damage number and kill
+// banner: a hitch on phones in every gunfight. Restarting the running animations only needs a style pass.
+BR.kick = (el, cls) => {
+  if (cls !== undefined) el.className = cls;
+  if (el.getAnimations) { const A = el.getAnimations({ subtree: true }); for (let i = 0; i < A.length; i++) { try { A[i].cancel(); A[i].play(); } catch (e) { /* finished + removed */ } } return; }
+  const c = el.className; el.className = ''; void el.offsetWidth; el.className = c;          // (very old browsers)
+};
 BR.HUD = class HUD {
   constructor(mount) {
     const V = BR.CONFIG.version;
@@ -489,7 +497,7 @@ BR.HUD = class HUD {
     <div class="inv-hint"><svg viewBox="0 0 24 24"><path d="M9 11V5a2 2 0 0 1 4 0v5M13 10V8a2 2 0 0 1 4 0v4M9 11l-1.5-1.5a2 2 0 0 0-3 2.6L9 17c1.5 2 3 3 6 3a5 5 0 0 0 5-5v-3a2 2 0 0 0-3 0"/></svg>Drag to inspect · pinch / scroll to zoom · double-tap to reset</div>
   </div>
   <div class="shop-panel metal">
-    <div class="shop-head"><div class="ptitle">INVENTORY</div><div class="coins-pill"><span id="inv-count" class="num">0</span>&nbsp;items</div></div>
+    <div class="shop-head"><div class="ptitle">INVENTORY</div><button id="inv-attach" class="mbtn sm att-open">ATTACHMENTS</button><div class="coins-pill"><span id="inv-count" class="num">0</span>&nbsp;items</div></div>
     <div id="inv-tabs" class="seg">
       <button data-cat="character" class="tab-char">CHARACTER</button><button data-cat="blueprints">BLUEPRINTS</button><button data-cat="skins">CAMOS</button><button data-cat="tracers">TRACERS</button><button data-cat="gloves">GLOVES</button><button data-cat="charms">CHARMS</button><button data-cat="feeds">KILL FEED</button><button data-cat="finishers">FINISHERS</button>
     </div>
@@ -707,7 +715,7 @@ BR.HUD = class HUD {
   <div class="panel metal wide cases-panel">
     <button id="cs-x" class="xbtn" aria-label="Close">✕</button>
     <div class="cs-head"><div class="ptitle" id="cs-title">RELEASE CASE</div><div class="coins-pill"><i class="coin"></i><span id="cs-coins" class="num">0</span></div></div>
-    <div class="seg cs-pick" id="cs-pick"><button data-c="release" class="sel">RELEASE · S1</button><button data-c="nova">NOVA · S2</button><button data-c="street">STREET <em>NEW</em></button></div>
+    <div class="seg cs-pick" id="cs-pick"><button data-c="release" class="sel">RELEASE · S1</button><button data-c="nova">NOVA · S2</button><button data-c="street">STREET</button><button data-c="attach">ATTACHMENTS <em>NEW</em></button></div>
     <div class="cs-stage">
       <div class="cs-case" id="cs-case"><div class="cs-lid"></div><div class="cs-body"><b id="cs-label">RELEASE</b><span id="cs-sub">CASE · SEASON 1</span></div><i class="cs-shine"></i></div>
       <div class="cs-reel hidden" id="cs-reel"><div class="cs-strip" id="cs-strip"></div><i class="cs-mark"></i></div>
@@ -1014,9 +1022,9 @@ BR.HUD = class HUD {
     k.querySelector('.kb-x').textContent = o.streak >= 2 ? '×' + o.streak : '';
     k.querySelector('.kb-c').textContent = o.coins ? '+' + o.coins : '';
     const cls = (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak s' + Math.min(o.streak, 5) : '');
-    k.className = ''; void k.offsetWidth; k.className = 'on' + cls;
+    BR.kick(k, 'on' + cls);
     clearTimeout(this._kbTO); this._kbTO = setTimeout(() => { k.className = 'out' + cls; }, 1500 + Math.min(o.streak || 1, 4) * 150);
-    if (f) { f.className = ''; void f.offsetWidth; f.className = 'on' + (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak' : ''); }
+    if (f) BR.kick(f, 'on' + (o.head ? ' head' : '') + (o.streak >= 2 ? ' streak' : ''));
   }
 
   // Patch notes page: every update, newest first, with the date it shipped (latest 3 open)
@@ -1175,20 +1183,16 @@ BR.HUD = class HUD {
 
   hitmarker(head, kill) {
     const h = this.el.hitmarker;
-    h.className = '';
-    void h.offsetWidth;
-    h.className = 'on' + (head ? ' head' : '') + (kill ? ' kill' : '');
+    BR.kick(h, 'on' + (head ? ' head' : '') + (kill ? ' kill' : ''));
     const c = this.$('hitcrit');
-    if (c && (head || kill)) { c.className = ''; void c.offsetWidth; c.className = 'on' + (kill ? ' kill' : ''); }
+    if (c && (head || kill)) BR.kick(c, 'on' + (kill ? ' kill' : ''));
   }
 
   // Movement-tech callout under the crosshair
   tech(text) {
     const t = this.el.tech;
     t.textContent = text;
-    t.className = '';
-    void t.offsetWidth;
-    t.className = 'on';
+    BR.kick(t, 'on');
   }
 
   prompt(text, col) {
@@ -1209,8 +1213,8 @@ BR.HUD = class HUD {
         n.victim = null; n.total = q.dmg * k; n.age = 0; n.life = 0.95 + i * 0.03; n.head = q.head;
         n.pos.set(q.x, q.y, q.z); n.dx = (i - (P.length - 1) / 2) * 19 + (Math.random() - 0.5) * 6; n.dy = (i % 2 ? -17 : 0) + (Math.random() - 0.5) * 6;     // fanned out so each one reads
         const el = n.el; el.innerHTML = (q.head ? '<i>✦</i>' : '') + Math.max(1, Math.round(n.total));
-        el.className = 'dnum pellet' + (q.head ? ' head' : shield ? ' shield' : ''); el.style.animationDelay = (i * 0.018).toFixed(3) + 's';
-        void el.offsetWidth; el.classList.add('pop'); el.style.opacity = 1;
+        el.style.animationDelay = (i * 0.018).toFixed(3) + 's';
+        BR.kick(el, 'dnum pellet pop' + (q.head ? ' head' : shield ? ' shield' : '')); el.style.opacity = 1;
       });
       return;
     }
@@ -1225,8 +1229,8 @@ BR.HUD = class HUD {
     n.head = n.head && n.age > 0 ? n.head || head : head;
     const el = n.el;
     el.innerHTML = (head ? '<i>✦</i>' : '') + Math.round(n.total);
-    el.className = 'dnum' + (head ? ' head' : shield ? ' shield' : ''); el.style.animationDelay = '';
-    void el.offsetWidth; el.classList.add('pop');
+    el.style.animationDelay = '';
+    BR.kick(el, 'dnum pop' + (head ? ' head' : shield ? ' shield' : ''));
     el.style.opacity = 1;
   }
 
