@@ -1732,6 +1732,74 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 /* v1.38 frame rate hint under the FPS setting */
 #settings .row.hint, .row.hint { font-size: 11px; opacity: 0.7; line-height: 1.35; margin-top: -4px; padding: 0 2px; }
 
+/* v1.40 Lite / Low graphics: the HUD and menus skip the expensive effects (blur behind panels, big soft shadows) */
+body.gfx-lite * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+body.gfx-lite #play * { box-shadow: none !important; }
+body.gfx-lite #grade, body.gfx-lite #speedfx { display: none !important; }
+
+/* =============================================================================
+   v1.40 UI polish layer: same purple theme, more modern surfaces.
+   Glass panels with a soft purple edge light, pill controls, real sliders,
+   lifted cards, thin scrollbars and a gentle open animation.
+   ============================================================================= */
+:root { --glass: linear-gradient(165deg, rgba(34, 24, 58, 0.92), rgba(13, 11, 24, 0.94) 55%, rgba(10, 9, 18, 0.96)); --edge: rgba(178, 107, 255, 0.28); --r-lg: 20px; --r-md: 13px; }
+.overlay:not(.menu) { background: radial-gradient(120% 90% at 50% 0%, rgba(74, 38, 140, 0.34), rgba(6, 6, 12, 0.78) 62%); }
+.overlay:not(.menu) > .panel, .overlay:not(.menu) > .settings, .overlay:not(.menu) > .modes {
+  background: var(--glass); border: 1px solid var(--edge); border-radius: var(--r-lg);
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.03) inset, 0 1px 0 rgba(255, 255, 255, 0.09) inset, 0 0 46px -14px rgba(140, 80, 255, 0.5);
+  animation: ui-rise 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+@keyframes ui-rise { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
+.panel h2, .settings h2, .panel > h1 { letter-spacing: 0.02em; position: relative; padding-bottom: 9px; }
+.panel h2::after, .settings h2::after { content: ''; position: absolute; left: 0; bottom: 0; width: 44px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--accent), rgba(178, 107, 255, 0)); }
+.panel:not(.wide) h2::after { left: 50%; transform: translateX(-50%); background: linear-gradient(90deg, rgba(178, 107, 255, 0), var(--accent), rgba(178, 107, 255, 0)); width: 70px; }
+
+/* buttons */
+.mbtn { border-radius: var(--r-md); transition: transform 0.12s ease, background 0.16s, border-color 0.16s, box-shadow 0.16s, filter 0.16s; }
+.mbtn:hover { box-shadow: 0 6px 18px -10px rgba(178, 107, 255, 0.8); transform: translateY(-1px); }
+.mbtn:active { transform: translateY(0) scale(0.975); }
+.mbtn.hot { background: linear-gradient(135deg, #c79bff, var(--accent) 45%, var(--accent-2)); box-shadow: 0 10px 26px -12px rgba(140, 70, 255, 0.95), 0 1px 0 rgba(255, 255, 255, 0.35) inset; }
+.mbtn.hot:hover { box-shadow: 0 14px 30px -12px rgba(150, 80, 255, 1), 0 1px 0 rgba(255, 255, 255, 0.4) inset; }
+
+/* segmented controls + chips: soft pills with a glowing selection */
+.seg { border-radius: 999px; padding: 4px; background: rgba(8, 6, 16, 0.6); border-color: rgba(255, 255, 255, 0.07); }
+.seg button { border-radius: 999px; padding: 8px 6px; transition: background 0.18s, color 0.18s, box-shadow 0.18s; }
+.seg button.sel { background: linear-gradient(135deg, #c79bff, var(--accent)); box-shadow: 0 4px 14px -6px rgba(178, 107, 255, 0.9), 0 1px 0 rgba(255, 255, 255, 0.4) inset; }
+.chips button { transition: background 0.16s, color 0.16s, border-color 0.16s, transform 0.12s; }
+.chips button:hover { color: var(--text); border-color: rgba(178, 107, 255, 0.5); }
+.chips button.sel { background: linear-gradient(135deg, #c79bff, var(--accent)); box-shadow: 0 4px 12px -6px rgba(178, 107, 255, 0.9); }
+
+/* sliders: a filled purple track + a round thumb (was the browser default) */
+input[type=range] { -webkit-appearance: none; appearance: none; height: 22px; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, rgba(178, 107, 255, 0.55), rgba(124, 58, 237, 0.25)); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset; }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, rgba(178, 107, 255, 0.55), rgba(124, 58, 237, 0.25)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #d9c2ff 45%, var(--accent)); border: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(178, 107, 255, 0.18); transition: box-shadow 0.15s, transform 0.12s; }
+input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #d9c2ff 45%, var(--accent)); border: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(178, 107, 255, 0.18); }
+input[type=range]:hover::-webkit-slider-thumb, input[type=range]:active::-webkit-slider-thumb { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 7px rgba(178, 107, 255, 0.28); transform: scale(1.06); }
+
+/* cards + tiles: a touch of depth, lift on hover / press */
+.card, .gcard { border-radius: 14px; background: linear-gradient(170deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.02)); transition: transform 0.14s ease, border-color 0.16s, background 0.16s, box-shadow 0.16s; }
+.card:hover, .gcard:hover { transform: translateY(-2px); border-color: rgba(178, 107, 255, 0.45); box-shadow: 0 10px 22px -14px rgba(0, 0, 0, 0.9), 0 0 18px -8px rgba(178, 107, 255, 0.7); }
+.card:active, .gcard:active { transform: translateY(0) scale(0.985); }
+.card.sel, .gcard.sel { box-shadow: 0 0 0 1px var(--accent), 0 0 22px -6px rgba(178, 107, 255, 0.75); }
+.mode { border-radius: 16px; transition: transform 0.16s ease, box-shadow 0.18s, border-color 0.18s; }
+.mode:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.9), 0 0 26px -10px rgba(178, 107, 255, 0.8); }
+
+/* toggles */
+label.tg input[type=checkbox] { accent-color: var(--accent); width: 17px; height: 17px; }
+
+/* scrollbars: thin, purple, out of the way */
+.overlay *, .overlay { scrollbar-width: thin; scrollbar-color: rgba(178, 107, 255, 0.45) transparent; }
+.overlay ::-webkit-scrollbar { width: 6px; height: 6px; }
+.overlay ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(199, 155, 255, 0.6), rgba(124, 58, 237, 0.5)); border-radius: 6px; }
+.overlay ::-webkit-scrollbar-track { background: transparent; }
+
+/* toast: a glass pill */
+#toast { border-radius: 999px; border: 1px solid var(--edge); background: linear-gradient(165deg, rgba(40, 26, 70, 0.9), rgba(12, 10, 22, 0.92)); box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.9), 0 0 24px -10px rgba(178, 107, 255, 0.7); }
+
+@media (prefers-reduced-motion: reduce) { .overlay:not(.menu) > .panel, .overlay:not(.menu) > .settings, .overlay:not(.menu) > .modes { animation: none; } .mbtn:hover, .card:hover, .gcard:hover, .mode:hover { transform: none; } }
+body.gfx-lite .overlay:not(.menu) > .panel, body.gfx-lite .overlay:not(.menu) > .settings, body.gfx-lite .overlay:not(.menu) > .modes { animation: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset; }
+
 </style>
 </head>
 <body>
@@ -1755,7 +1823,7 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.39.0',
+  version: '1.40.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -1992,7 +2060,8 @@ BR.CONFIG = {
   },
 
   graphics: {
-    low:    { pixelRatio: 1.0, fogFar: 170, detail: 0.4 },    // pixelRatio is capped by the device's own;
+    lite:   { pixelRatio: 0.8, fogFar: 125, detail: 0.2, lod: 0.4, fx: 0.4, minScale: 0.5 },      // v1.40: for weak phones / old laptops (set automatically on first launch when the device looks slow)
+    low:    { pixelRatio: 1.0, fogFar: 170, detail: 0.4, lod: 0.6, fx: 0.7 },    // pixelRatio is capped by the device's own;
     medium: { pixelRatio: 1.6, fogFar: 230, detail: 0.8 },    // (v1.25: 1.6 keeps a 60 Hz phone at 60 fps; still sharp on a 6 inch screen)    // adaptive resolution lowers it if frames drop
     high:   { pixelRatio: 3.0, fogFar: 300, detail: 1.0 },
   },
@@ -2050,6 +2119,14 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.40.0', date: '2026-11-11', title: 'Lite graphics, fresh UI, cleaner blueprints', notes: [
+    'New LITE graphics setting for weak phones and old laptops: lower resolution, a shorter view distance, lighter scenery, fewer sparks and no blur or heavy shadows in the HUD. It draws about a third of what Medium does.',
+    'The game picks a graphics setting for your device the first time you play. If a match still runs slowly at the lowest resolution, it steps the setting down by itself and tells you. Choosing a setting yourself turns that off.',
+    'Menus got a visual refresh in the same purple theme: glass panels with a soft purple edge light, pill-shaped toggles and tabs, proper purple sliders, cards that lift when you hover or press, thin scrollbars and a smooth open animation.',
+    'Legendary, Mythic and Exotic blueprints look cleaner: the milky glow that washed out the gun is replaced by a crisp light that traces its edges, with pulses of energy running along it and a band of light sweeping down. The energy rings are thin hoops now. Works on guns and knives, and costs less to draw.',
+    'Knife draw and inspect timings now match the reference videos: M9 Bayonet and Tracker draw in 0.6 s and inspect for 5.4 s, the Karambit draws in 0.8 s and inspects for 4 s, the Butterfly draws in 0.8 s and inspects for 3.2 s.',
+    'District, Frostbite and Harbor got more cover on their long open stretches (containers, concrete barriers and crates), mirrored so both sides stay even and never placed on a spawn.',
+  ] },
   { v: '1.39.0', date: '2026-11-08', title: 'Smooth mouse, instant shooting poses', notes: [
     'Fixed the mouse skipping on PC. The game now asks the browser for raw mouse input (no OS acceleration, which also avoids the browser\'s pointer-lock jumps) and ignores the rare bogus jump event, while real fast flicks still go through.',
     'Fixed stutter on 75, 100, 144 and 165 Hz monitors: the 60 / 120 FPS cap now only applies when your screen is an exact multiple of it (120 Hz for 60, 240 Hz for 120). Otherwise the game runs at your screen\'s full rate.',
@@ -5396,6 +5473,28 @@ Object.assign(BR.World.prototype, {
     }
   },
   arenaCrate(x, z, h) { this.addBox(x - 0.65, 0, z - 0.65, x + 0.65, h || 1.2, z + 0.65, 0xa77b4f); },
+  // v1.40: fill a map's big open stretches with cover, mirrored east/west so both sides stay fair. Each piece is only
+  // placed where nothing stands within 1.6 m and no spawn / respawn spot is within 4 m. kind: 'c' crate, 'C' tall crate,
+  // 'b' concrete barrier (along z), 'B' barrier (along x), 'k' container (along z), 'K' container (along x).
+  arenaCover(list) {
+    const spots = (this.ffaSpots || []).concat((this.spawns || []).map(q => [q.x, q.z]));
+    const clear = (x0, z0, x1, z1) => {
+      for (const q of this.boxes) { if (q.tag === 'edge' || q.decor || q.y0 > 2.4) continue; if (q.x1 > x0 - 1.6 && q.x0 < x1 + 1.6 && q.z1 > z0 - 1.6 && q.z0 < z1 + 1.6) return false; }
+      for (const [sx, sz] of spots) if (sx > x0 - 4 && sx < x1 + 4 && sz > z0 - 4 && sz < z1 + 4) return false;
+      const P = this.playBounds; return !P || (x0 > P.x0 + 1.5 && x1 < P.x1 - 1.5 && z0 > P.z0 + 1.5 && z1 < P.z1 - 1.5);
+    };
+    let n = 0;
+    for (const [kind, x, z] of list) for (const sx of x === 0 ? [1] : [-1, 1]) {
+      const px = sx * x;
+      const [hw, hd] = kind === 'b' ? [0.35, 2.2] : kind === 'B' ? [2.2, 0.35] : kind === 'k' ? [1.25, 3.1] : kind === 'K' ? [3.1, 1.25] : [0.65, 0.65];
+      if (!clear(px - hw, z - hd, px + hw, z + hd)) continue;
+      if (kind === 'c' || kind === 'C') this.arenaCrate(px, z, kind === 'C' ? 2.4 : 1.2);
+      else if (kind === 'b' || kind === 'B') { this.addBox(px - hw, 0, z - hd, px + hw, 1.2, z + hd, 0x8a8d90); this.addBox(px - hw - 0.04, 1.2, z - hd - 0.04, px + hw + 0.04, 1.27, z + hd + 0.04, 0xf2b234, { decor: true }); }
+      else this.arenaContainer(px, z, kind === 'K', 1);
+      n++;
+    }
+    return n;
+  },
   arenaShell(X, Z, WH, CON, CON2) {
     const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
     this.playBounds = { x0: -X, x1: X, z0: -Z, z1: Z, y1: WH + 14 };       // v1.28.2: the hard play area (inside the walls)
@@ -5553,6 +5652,7 @@ Object.assign(BR.World.prototype, {
       Dc(sx * (X - 0.02), 1.0, -Z, sx * (X - 0.12), 2.2, Z, tc);
     }
     this.ffaSpots = [[-35, 0], [35, 0], [-35, 18], [35, -18], [-35, -18], [35, 18], [-5, 0], [5, 0], [-20, 17], [20, -17], [-20, -17], [20, 17], [-13, 6], [13, -6], [0, -20], [0, 20]];
+    this.arenaCover([['b', 20, 0], ['c', 24, -9], ['C', 24, 9], ['B', 10, -17], ['B', 10, 17], ['c', 0, -19], ['c', 0, 19], ['c', 26, 3.5]]);      // v1.40: cover round the frozen yard
     this.groundCols = [0xe8eef2, 0xd9e2e8, 0xf2f6f8];
   },
   generateHarbor() {
@@ -5586,6 +5686,7 @@ Object.assign(BR.World.prototype, {
     Dc(-X, 0.01, -Z, X, 0.02, -24.6, WATER); Dc(-X, 0.02, -24.6, X, 0.03, -24.4, 0xdff2ff);                                                         // water along the pier
     for (let x = -X; x < X; x += 1.6) Dc(x, 0.015, -20.2, x + 0.8, 0.02, -19.9, Y);
     this.ffaSpots = [[-35, 0], [35, 0], [-35, 18], [35, -18], [-35, -18], [35, 18], [-6, 0], [6, 0], [0, 12], [0, -15], [-20, 10], [20, -10], [-24, -16], [24, 16], [-13, -9], [13, 9]];
+    this.arenaCover([['k', 20, -1.5], ['c', 17, 6], ['C', 23, -7.5], ['B', 16, -13], ['c', 31, 10], ['b', 6, -12]]);      // v1.40: cover on the open lanes between the spawns and the warehouse
     this.groundCols = [0x6d6e6c, 0x626361, 0x77756f];
   },
 
@@ -5640,6 +5741,8 @@ Object.assign(BR.World.prototype, {
     for (let i = 0; i < 6; i++) Dc(-1.6 + i * 0.6, 0, 9, -1.3 + i * 0.6, 0.015, 12, 0xe8e4dc);
     this.ffaSpots = [[-46, 0], [46, 0], [-46, -32], [46, 32], [-46, 32], [46, -32], [0, -36], [0, 36], [-24, -17], [24, 17], [-24, 17], [24, -17],
       [-12, 0], [12, 0], [0, -10], [0, 10], [-34, -12], [34, 12], [-34, 14], [34, -14], [-14, 24], [14, -24], [-14, -24], [14, 24]];
+    // v1.40: cover across the long open streets and corners (placed only where there is room)
+    this.arenaCover([['K', 38, -8], ['K', 38, 8], ['b', 30, -26], ['b', 30, 26], ['C', 42, -18], ['C', 42, 18], ['c', 36, 0], ['B', 12, -30], ['B', 12, 30], ['c', 8, -14], ['c', 8, 14], ['b', 18, 0], ['c', 44, -8], ['c', 44, 9.3], ['B', 26, -34], ['B', 26, 34], ['k', 0, -27], ['c', 20, -30], ['c', 20, 30]]);
     this.groundCols = [0x7f7a70, 0x77736a, 0x8a8478];
   },
 });
@@ -9185,9 +9288,7 @@ BR.Models = (function () {
     const T = BR.Effects.tex(), C = new THREE.Color(col), tmp = new THREE.Color();
     if (!src.geometry.boundingBox) src.geometry.computeBoundingBox();
     const bb = src.geometry.boundingBox, ctr = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3()), len = Math.max(size.x, size.y, size.z);
-    const shells = [[1.02 + 0.006 * tier, 0.16 + 0.05 * tier], [1.05 + 0.01 * tier, 0.07 + 0.03 * tier]].map(([k, op]) => {
-      const m = new THREE.Mesh(src.geometry, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide, fog: false }));
-      m.scale.setScalar(k); m.position.copy(ctr).multiplyScalar(1 - k); m.userData.isFlash = true; m.userData.noUV = true; src.add(m); return { m, op }; });
+    const shells = [];      // (v1.40: the milky glow shells are gone; a crisp rim light replaces them, see the aura shader below)
     // sparkles drift along the weapon's long axis and twinkle (in the model's own space so they follow every pose)
     const P = src.parent || g, axis = size.z >= size.x && size.z >= size.y ? 'z' : size.y >= size.x ? 'y' : 'x', motes = [];
     for (let i = 0; i < 5 + tier * 3; i++) {
@@ -9195,20 +9296,24 @@ BR.Models = (function () {
       sp.userData.isFlash = true; P.add(sp); motes.push({ sp, o: Math.random(), a: Math.random() * 6.28, r: 0.4 + Math.random() * 0.6 });
     }
     const half = size.clone().multiplyScalar(0.5);
-    // v1.32: a band of light that sweeps down the weapon (two on Exotic, opposite ways), over the whole surface
+    // v1.40 aura: ONE additive pass over the weapon. A fresnel rim light traces every edge and silhouette in the
+    // blueprint's colour (so the gun's own finish stays readable instead of being washed out), a band of light sweeps
+    // down it (two on Exotic, opposite ways), and fine energy pulses run along the rim.
     const sweep = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide, fog: false,
-      uniforms: { t: { value: 0 }, col: { value: new THREE.Color(col) }, lo: { value: bb.min[axis] }, hi: { value: bb.max[axis] }, w: { value: 0.07 + 0.02 * tier }, k: { value: 0.55 + 0.2 * tier }, two: { value: tier >= 3 ? 1 : 0 } },
-      vertexShader: 'varying float a; uniform float lo, hi; void main(){ a = (position.' + axis + ' - lo) / max(1e-4, hi - lo); gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 1.004, 1.0); }',
-      fragmentShader: 'varying float a; uniform float t, w, k, two; uniform vec3 col; void main(){ float p = fract(t * 0.42); float b = smoothstep(w, 0.0, abs(a - (1.0 - p * 1.3 + 0.15)));'
-        + ' if (two > 0.5) b = max(b, smoothstep(w, 0.0, abs(a - (p * 1.3 - 0.15)))); gl_FragColor = vec4(col * b * k, b * k); }' });
-    const lite = !!(BR.game && BR.game.settings && BR.game.settings.gfx === 'low');          // (Low graphics: keep the glow + sparkles, skip the extra passes)
-    if (!lite) { const sm = new THREE.Mesh(src.geometry, sweep); sm.userData.isFlash = true; sm.userData.noUV = true; sm.renderOrder = 3; src.add(sm); }
+      uniforms: { t: { value: 0 }, col: { value: new THREE.Color(col) }, lo: { value: bb.min[axis] }, hi: { value: bb.max[axis] }, w: { value: 0.06 + 0.015 * tier }, k: { value: 0.5 + 0.18 * tier }, two: { value: tier >= 3 ? 1 : 0 }, rim: { value: 0.55 + 0.22 * tier } },
+      vertexShader: 'varying float a; varying vec3 vN; varying vec3 vV; uniform float lo, hi; void main(){ a = (position.' + axis + ' - lo) / max(1e-4, hi - lo); vec4 mv = modelViewMatrix * vec4(position * 1.003, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'varying float a; varying vec3 vN; varying vec3 vV; uniform float t, w, k, two, rim; uniform vec3 col; void main(){ float p = fract(t * 0.42); float b = smoothstep(w, 0.0, abs(a - (1.0 - p * 1.3 + 0.15)));'
+        + ' if (two > 0.5) b = max(b, smoothstep(w, 0.0, abs(a - (p * 1.3 - 0.15))));'
+        + ' float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.6); float pulse = 0.72 + 0.28 * sin(t * 2.4); float run = 0.75 + 0.25 * sin(a * 46.0 - t * 7.0);'
+        + ' float g = f * rim * pulse * run + b * k; vec3 c = mix(col, vec3(1.0), clamp(b * 0.55 + f * f * 0.35, 0.0, 0.8)); gl_FragColor = vec4(c * g, g); }' });
+    const lite = !!(BR.game && BR.game.settings && (BR.game.settings.gfx === 'low' || BR.game.settings.gfx === 'lite'));          // (Low / Lite graphics: the aura pass + sparkles, no rings)
+    { const sm = new THREE.Mesh(src.geometry, sweep); sm.userData.isFlash = true; sm.userData.noUV = true; sm.renderOrder = 3; src.add(sm); }
     // Mythic + Exotic: rings of energy that slide from the stock out past the muzzle and fade
     const rings = [];
     if (tier >= 2 && !lite) {
       const rr = Math.max(axis === 'z' ? Math.max(half.x, half.y) : Math.max(half.x, half.z), len * 0.03) * 0.85;
       for (let i = 0; i < (tier >= 3 ? 3 : 2); i++) {
-        const r = new THREE.Mesh(new THREE.TorusGeometry(rr, rr * 0.09, 6, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+        const r = new THREE.Mesh(new THREE.TorusGeometry(rr * 0.82, rr * 0.028, 6, 40), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
         if (axis === 'z') r.rotation.y = 0.5; else if (axis === 'x') r.rotation.y = Math.PI / 2 + 0.5; else r.rotation.x = Math.PI / 2;     // (tilted: reads as a ring from the side too)
         r.userData.isFlash = true; r.userData.noUV = true; r.userData.adsHide = true; P.add(r); rings.push(r);
       }
@@ -9216,7 +9321,7 @@ BR.Models = (function () {
     anim(g, t => {
       sweep.uniforms.t.value = t; if (tier === 3) sweep.uniforms.col.value.setHSL((t * 0.18 + 0.5) % 1, 1, 0.6);
       rings.forEach((r, i) => { const f = (t * 0.55 + i / rings.length) % 1; r.position.copy(ctr); r.position[axis] = bb.max[axis] - f * (bb.max[axis] - bb.min[axis]) * 1.15;
-        const sc = 0.7 + f * 0.6; r.scale.setScalar(sc); r.material.opacity = Math.sin(f * Math.PI) * (tier >= 3 ? 0.75 : 0.6);
+        const sc = 0.7 + f * 0.6; r.scale.setScalar(sc); r.material.opacity = Math.pow(Math.sin(f * Math.PI), 1.5) * (tier >= 3 ? 0.6 : 0.48); r.rotation.z = t * 0.9 + i;      // (v1.40: thin, elegant hoops)
         if (tier === 3) r.material.color.setHSL((t * 0.18 + i / rings.length) % 1, 1, 0.6); });
       const pulse = 0.65 + 0.35 * Math.sin(t * 2.4);
       if (tier === 3) C.setHSL((t * 0.18) % 1, 1, 0.6);
@@ -11021,7 +11126,7 @@ BR.Models = (function () {
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.id === 'tracker' ? 5.0 : BAYLIKE(w.id) ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 3.2 : w.id === 'tracker' ? 5.4 : BAYLIKE(w.id) ? 5.4 : w.def.melee ? 4.0 : 2.1;      /* v1.40: timed against the reference videos (butterfly 3.2 s, Tracker + M9 5.4 s, karambit 4.0 s) */ this.lastBflyT = 0; this.spinSwish = 0; }
 
     hide() { if (this.sparks) { for (const q of this.sparks) { q.life = 0; q.m.visible = false; } for (const q of this.rings) { q.life = 0; q.m.visible = false; } }      // v1.11.1: no frozen white spark boxes while skydiving
       if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
@@ -11059,7 +11164,7 @@ BR.Models = (function () {
       // New weapon in hand: draw animation
       if (w !== this.lastWeapon) {
         this.lastWeapon = w;
-        this.drawDur = this.drawT = def.melee ? 0.85 : def.drawTime || 0.55;     // v1.36: snappier, cleaner knife draws
+        this.drawDur = this.drawT = def.melee ? (w.id === 'tracker' || BAYLIKE(w.id) ? 0.6 : 0.8) : def.drawTime || 0.55;      // v1.40: draw lengths from the reference videos (M9 + Tracker 0.6 s, karambit + butterfly 0.8 s)     // v1.36: snappier, cleaner knife draws
         this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0; this.pumpT = 0; this.pumpDelay = 0;
         if (def.melee) BR.Audio.unsheathe(); else BR.Audio.mech('draw');
       }
@@ -12365,9 +12470,10 @@ BR.Actor = class Actor {
     if (!cp) return this.syncMesh(dt);
     if (!me.visible) { me.position.copy(this.mover.pos); this._skipDt = 0; return; }
     const d = Math.abs(this.pos.x - cp.x) + Math.abs(this.pos.z - cp.z);
-    if (d > 70) {
+    const k = BR.gfxLite ? 0.45 : 1;                    // (v1.40 Lite: thinned out much closer)
+    if (d > 70 * k) {
       this._skipDt = (this._skipDt || 0) + dt; this._lodF = (this._lodF || 0) + 1;
-      if (this._lodF % (d > 140 ? 3 : 2)) { me.position.copy(this.mover.pos); return; }
+      if (this._lodF % (d > 140 * k ? 3 : 2)) { me.position.copy(this.mover.pos); return; }
       dt = Math.min(0.1, this._skipDt);
     }
     this._skipDt = 0;
@@ -16834,6 +16940,7 @@ BR.Effects = class Effects {
 
   // Burst of n sparks from p: color, speed, size, life, gravity
   burst(p, color, n, speed, size, life, grav) {
+    if (BR.fxScale && BR.fxScale < 1) n = Math.max(1, Math.round(n * BR.fxScale));      // v1.40: fewer sparks on Lite / Low
     for (let i = 0; i < n; i++) {
       const s = this.sparks[this.si++ % this.sparks.length];
       s.p.copy(p); s.m.position.copy(p);
@@ -19888,7 +19995,7 @@ BR.HUD = class HUD {
       <div class="row"><label>ENEMY HIGHLIGHT</label><div class="seg" id="set-hl">
         <button data-v="off">OFF</button><button data-v="subtle">SUBTLE</button><button data-v="bright">BRIGHT</button></div></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
-        <button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
+        <button data-v="lite">LITE</button><button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
       <div class="row"><label>FRAME RATE</label><div class="seg" id="set-fpsmode">
         <button data-v="60">60 FPS</button><button data-v="120">120 FPS</button></div></div>
       <div class="row hint" id="fps-hint"></div>
@@ -20986,10 +21093,21 @@ BR.Game = class Game {
     // v1.38: the target frame time follows the FPS setting, but never faster than the screen can show
     const tgt = Math.max(this.settings.fps === '120' ? 1000 / 120 : 1000 / 60, this.screenMs || 0), slowMs = tgt * 1.055, goodMs = tgt * 1.012;
     if (ms > slowMs) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);          // v1.25: aim for a solid frame rate
-    if (P.slow > 10 && P.scale <= 0.56 && this.fogFar > 140) {         // v1.25: still slow at the lowest resolution: it's draw calls, not pixels, so draw less far
-      this.fogFar = Math.max(140, this.fogFar * 0.85); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; P.slow = 0; P.good = 0; P.shrunk = true;
-    } else if (P.slow > 10 && P.scale > 0.55) {
-      P.cap = Math.min(P.cap, P.scale - 0.01); P.scale = Math.max(0.55, P.scale * 0.88); P.slow = 0; P.good = 0; P.calm = 0;
+    const mn = P.min || 0.55, fogMin = BR.gfxLite ? 95 : 140;
+    // v1.40: still slow at the lowest resolution and the shortest view distance -> drop one graphics setting (once it has
+    // clearly stayed slow; only while the setting is still on automatic)
+    if (P.slow > 10 && P.scale <= mn + 0.01 && this.fogFar <= fogMin) {
+      P.slow = 0; P.stuck = (P.stuck || 0) + 1;
+      const order = ['high', 'medium', 'low', 'lite'], i = order.indexOf(this.settings.gfx || 'medium');
+      if (P.stuck >= 4 && this.settings.gfxAuto !== false && i >= 0 && i < order.length - 1) {
+        this.settings.gfx = order[i + 1]; this.settings.gfxAuto = true; if (BR.saveSettings) BR.saveSettings();
+        this.applyGraphics(); this.hud.toast('Graphics lowered to ' + order[i + 1].toUpperCase() + ' to keep the game smooth', 2600);
+        const el = document.getElementById('set-gfx'); if (el) el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === this.settings.gfx));
+      }
+    } else if (P.slow > 10 && P.scale <= mn + 0.01 && this.fogFar > fogMin) {         // v1.25: still slow at the lowest resolution: it's draw calls, not pixels, so draw less far
+      this.fogFar = Math.max(fogMin, this.fogFar * 0.85); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; P.slow = 0; P.good = 0; P.shrunk = true;
+    } else if (P.slow > 10 && P.scale > mn) {
+      P.cap = Math.min(P.cap, P.scale - 0.01); P.scale = Math.max(mn, P.scale * 0.88); P.slow = 0; P.good = 0; P.calm = 0;
       this.renderer.setPixelRatio(this.basePR * P.scale); this.resize();
     } else if (ms < goodMs) {
       P.good += ms / 1000; P.calm = (P.calm || 0) + ms / 1000;
@@ -21012,11 +21130,13 @@ BR.Game = class Game {
   applyGraphics() {
     const g = BR.CONFIG.graphics[this.settings.gfx] || BR.CONFIG.graphics.medium;
     this.basePR = Math.min(window.devicePixelRatio || 1, g.pixelRatio);
-    this.perf = { scale: 1, cap: 1, slow: 0, good: 0 };
+    this.perf = { scale: 1, cap: 1, slow: 0, good: 0, min: g.minScale || 0.55, stuck: 0 };
+    BR.fxScale = g.fx || 1; BR.gfxLite = this.settings.gfx === 'lite';
+    document.body.classList.toggle('gfx-lite', this.settings.gfx === 'lite' || this.settings.gfx === 'low');      // v1.40: no blur / heavy shadows in the HUD
     this.renderer.setPixelRatio(this.basePR);
     this.fogFar = g.fogFar;
     this.detail = g.detail;
-    if (this.world) { this.world.lodScale = (this.settings.gfx || 'medium') === 'low' ? 0.6 : 1; if (this.world.lodSets) this.world.lodSets.forEach(L => { L.cx = 1e9; }); }
+    if (this.world) { this.world.lodScale = g.lod || 1; if (this.world.lodSets) this.world.lodSets.forEach(L => { L.cx = 1e9; }); }
     if (this.scene && this.scene.fog) this.scene.fog.far = g.fogFar;
     this.resize();
     if (this.sun) this.applyShadows();
@@ -21126,7 +21246,7 @@ BR.Game = class Game {
     this.sun = sun;
     this.world = new BR.World(seed, opts);
     this.world.buildMeshes(this.scene, this.detail);
-    this.world.lodScale = (this.settings.gfx || 'medium') === 'low' ? 0.6 : 1;      // v1.37: Low switches to the cheap scenery models sooner
+    this.world.lodScale = (BR.CONFIG.graphics[this.settings.gfx] || {}).lod || 1;      // v1.37: Low switches to the cheap scenery models sooner
     // sky, clouds and far mountains are already painted in display colours: keep them out of the filmic curve
     this.scene.traverse(o => { const m = o.material; if (m && m.isMeshBasicMaterial && m.fog === false) m.toneMapped = false; });
     this.hud.setStaticMap(this.world.renderMinimap(1024));
@@ -22512,7 +22632,20 @@ BR.Game = class Game {
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
+  // v1.40: first launch on a weak device starts on a lighter graphics setting (the player can change it any time)
+  BR.deviceTier = () => {
+    if (navigator.webdriver) return 'medium';          // (automated tests always run the standard setting)
+    try {
+      const mem = navigator.deviceMemory || 0, cores = navigator.hardwareConcurrency || 0; let gpu = '';
+      try { const c = document.createElement('canvas').getContext('webgl'); const x = c && c.getExtension('WEBGL_debug_renderer_info'); gpu = String((x && c.getParameter(x.UNMASKED_RENDERER_WEBGL)) || '').toLowerCase(); const l = c && c.getExtension('WEBGL_lose_context'); if (l) l.loseContext(); } catch (e) { /* hidden */ }
+      const weakGpu = /swiftshader|llvmpipe|software|mali-4|mali-t[67]|mali-g5[12]\b|adreno \(tm\) [345]\d\d|adreno [345]\d\d|powervr (sgx|rogue g6)|intel.*(hd graphics [2345]\d{3}|gma|hd graphics\))|videocore/.test(gpu);
+      if ((mem && mem <= 2) || (cores && cores <= 2) || weakGpu) return 'lite';
+      if ((mem && mem <= 4) || (cores && cores <= 4)) return 'low';
+    } catch (e) { /* unknown */ }
+    return 'medium';
+  };
   const settings = Object.assign({}, DEFAULTS, stored);
+  if (stored.gfx === undefined) { settings.gfx = BR.deviceTier(); settings.gfxAuto = true; }
   settings.xh = Object.assign({}, DEFAULTS.xh, stored.xh || {});
   settings.duel = Object.assign({}, DEFAULTS.duel, stored.duel || {});
   const save = () => BR.util.save('velocity-royale.settings', settings);
@@ -22594,7 +22727,7 @@ BR.Game = class Game {
     el.addEventListener('change', () => { settings[key] = el.checked; save(); });
   };
   seg('set-diff', 'difficulty');
-  seg('set-gfx', 'gfx', () => game.applyGraphics());
+  seg('set-gfx', 'gfx', () => { settings.gfxAuto = false; save(); game.applyGraphics(); });      // (a manual pick turns off the automatic lowering)
   seg('set-fpsmode', 'fps', () => game.applyFps());      // v1.38: 60 / 120 FPS
   if (!settings.highlight) settings.highlight = 'subtle';
   seg('set-hl', 'highlight', () => game.applyHighlight());

@@ -7,7 +7,7 @@
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.39.0',
+  version: '1.40.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -244,7 +244,8 @@ BR.CONFIG = {
   },
 
   graphics: {
-    low:    { pixelRatio: 1.0, fogFar: 170, detail: 0.4 },    // pixelRatio is capped by the device's own;
+    lite:   { pixelRatio: 0.8, fogFar: 125, detail: 0.2, lod: 0.4, fx: 0.4, minScale: 0.5 },      // v1.40: for weak phones / old laptops (set automatically on first launch when the device looks slow)
+    low:    { pixelRatio: 1.0, fogFar: 170, detail: 0.4, lod: 0.6, fx: 0.7 },    // pixelRatio is capped by the device's own;
     medium: { pixelRatio: 1.6, fogFar: 230, detail: 0.8 },    // (v1.25: 1.6 keeps a 60 Hz phone at 60 fps; still sharp on a 6 inch screen)    // adaptive resolution lowers it if frames drop
     high:   { pixelRatio: 3.0, fogFar: 300, detail: 1.0 },
   },

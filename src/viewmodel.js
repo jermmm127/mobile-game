@@ -325,7 +325,7 @@
     onMelee() { this.swingT = 0.42; this.swingDir *= -1; this.inspectT = 0; }
     onShell() { this.shellT = 0.2; }
     onLand(speed) { this.pos.y.vel -= Math.min(1.6, speed * 0.07); this.rot.x.vel -= Math.min(2, speed * 0.08); }
-    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 2.8 : w.id === 'tracker' ? 5.0 : BAYLIKE(w.id) ? 4.6 : w.def.melee ? 3.0 : 2.1; this.lastBflyT = 0; this.spinSwish = 0; }
+    startInspect(w) { if (!w) return; this.inspectDur = this.inspectT = w.id === 'butterfly' ? 3.2 : w.id === 'tracker' ? 5.4 : BAYLIKE(w.id) ? 5.4 : w.def.melee ? 4.0 : 2.1;      /* v1.40: timed against the reference videos (butterfly 3.2 s, Tracker + M9 5.4 s, karambit 4.0 s) */ this.lastBflyT = 0; this.spinSwish = 0; }
 
     hide() { if (this.sparks) { for (const q of this.sparks) { q.life = 0; q.m.visible = false; } for (const q of this.rings) { q.life = 0; q.m.visible = false; } }      // v1.11.1: no frozen white spark boxes while skydiving
       if (this.bfTrail) { this.bfTrail.mesh.visible = false; this.bfTrail.tips.length = this.bfTrail.mids.length = 0; } if (this.vmNade) this.vmNade.visible = false; if (this.knifeHands) this.knifeHands.R.visible = this.knifeHands.L.visible = this.knifeHands.RB.visible = this.knifeHands.RP.visible = false; this.lookDown = 0; this.ropeValid = false; if (this.launcher) this.launcher.visible = false; if (this.injector) this.injector.visible = false; this.root.visible = false; for (const s of ['R', 'L']) { this.arms[s].hand.visible = this.arms[s].fore.visible = false; } }
@@ -363,7 +363,7 @@
       // New weapon in hand: draw animation
       if (w !== this.lastWeapon) {
         this.lastWeapon = w;
-        this.drawDur = this.drawT = def.melee ? 0.85 : def.drawTime || 0.55;     // v1.36: snappier, cleaner knife draws
+        this.drawDur = this.drawT = def.melee ? (w.id === 'tracker' || BAYLIKE(w.id) ? 0.6 : 0.8) : def.drawTime || 0.55;      // v1.40: draw lengths from the reference videos (M9 + Tracker 0.6 s, karambit + butterfly 0.8 s)     // v1.36: snappier, cleaner knife draws
         this.inspectT = 0; this.spinSwish = 0; this.lastReloadK = 0; this.lastBflyT = 0; this.boltT = 0; this.boltDelay = 0; this.pumpT = 0; this.pumpDelay = 0;
         if (def.melee) BR.Audio.unsheathe(); else BR.Audio.mech('draw');
       }

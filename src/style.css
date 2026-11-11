@@ -1715,3 +1715,71 @@ body.touch .desk-only { display: none !important; }     /* v1.30: POP OUT is a d
 
 /* v1.38 frame rate hint under the FPS setting */
 #settings .row.hint, .row.hint { font-size: 11px; opacity: 0.7; line-height: 1.35; margin-top: -4px; padding: 0 2px; }
+
+/* v1.40 Lite / Low graphics: the HUD and menus skip the expensive effects (blur behind panels, big soft shadows) */
+body.gfx-lite * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+body.gfx-lite #play * { box-shadow: none !important; }
+body.gfx-lite #grade, body.gfx-lite #speedfx { display: none !important; }
+
+/* =============================================================================
+   v1.40 UI polish layer: same purple theme, more modern surfaces.
+   Glass panels with a soft purple edge light, pill controls, real sliders,
+   lifted cards, thin scrollbars and a gentle open animation.
+   ============================================================================= */
+:root { --glass: linear-gradient(165deg, rgba(34, 24, 58, 0.92), rgba(13, 11, 24, 0.94) 55%, rgba(10, 9, 18, 0.96)); --edge: rgba(178, 107, 255, 0.28); --r-lg: 20px; --r-md: 13px; }
+.overlay:not(.menu) { background: radial-gradient(120% 90% at 50% 0%, rgba(74, 38, 140, 0.34), rgba(6, 6, 12, 0.78) 62%); }
+.overlay:not(.menu) > .panel, .overlay:not(.menu) > .settings, .overlay:not(.menu) > .modes {
+  background: var(--glass); border: 1px solid var(--edge); border-radius: var(--r-lg);
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.03) inset, 0 1px 0 rgba(255, 255, 255, 0.09) inset, 0 0 46px -14px rgba(140, 80, 255, 0.5);
+  animation: ui-rise 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+@keyframes ui-rise { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
+.panel h2, .settings h2, .panel > h1 { letter-spacing: 0.02em; position: relative; padding-bottom: 9px; }
+.panel h2::after, .settings h2::after { content: ''; position: absolute; left: 0; bottom: 0; width: 44px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--accent), rgba(178, 107, 255, 0)); }
+.panel:not(.wide) h2::after { left: 50%; transform: translateX(-50%); background: linear-gradient(90deg, rgba(178, 107, 255, 0), var(--accent), rgba(178, 107, 255, 0)); width: 70px; }
+
+/* buttons */
+.mbtn { border-radius: var(--r-md); transition: transform 0.12s ease, background 0.16s, border-color 0.16s, box-shadow 0.16s, filter 0.16s; }
+.mbtn:hover { box-shadow: 0 6px 18px -10px rgba(178, 107, 255, 0.8); transform: translateY(-1px); }
+.mbtn:active { transform: translateY(0) scale(0.975); }
+.mbtn.hot { background: linear-gradient(135deg, #c79bff, var(--accent) 45%, var(--accent-2)); box-shadow: 0 10px 26px -12px rgba(140, 70, 255, 0.95), 0 1px 0 rgba(255, 255, 255, 0.35) inset; }
+.mbtn.hot:hover { box-shadow: 0 14px 30px -12px rgba(150, 80, 255, 1), 0 1px 0 rgba(255, 255, 255, 0.4) inset; }
+
+/* segmented controls + chips: soft pills with a glowing selection */
+.seg { border-radius: 999px; padding: 4px; background: rgba(8, 6, 16, 0.6); border-color: rgba(255, 255, 255, 0.07); }
+.seg button { border-radius: 999px; padding: 8px 6px; transition: background 0.18s, color 0.18s, box-shadow 0.18s; }
+.seg button.sel { background: linear-gradient(135deg, #c79bff, var(--accent)); box-shadow: 0 4px 14px -6px rgba(178, 107, 255, 0.9), 0 1px 0 rgba(255, 255, 255, 0.4) inset; }
+.chips button { transition: background 0.16s, color 0.16s, border-color 0.16s, transform 0.12s; }
+.chips button:hover { color: var(--text); border-color: rgba(178, 107, 255, 0.5); }
+.chips button.sel { background: linear-gradient(135deg, #c79bff, var(--accent)); box-shadow: 0 4px 12px -6px rgba(178, 107, 255, 0.9); }
+
+/* sliders: a filled purple track + a round thumb (was the browser default) */
+input[type=range] { -webkit-appearance: none; appearance: none; height: 22px; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, rgba(178, 107, 255, 0.55), rgba(124, 58, 237, 0.25)); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset; }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, rgba(178, 107, 255, 0.55), rgba(124, 58, 237, 0.25)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #d9c2ff 45%, var(--accent)); border: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(178, 107, 255, 0.18); transition: box-shadow 0.15s, transform 0.12s; }
+input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #d9c2ff 45%, var(--accent)); border: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(178, 107, 255, 0.18); }
+input[type=range]:hover::-webkit-slider-thumb, input[type=range]:active::-webkit-slider-thumb { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 7px rgba(178, 107, 255, 0.28); transform: scale(1.06); }
+
+/* cards + tiles: a touch of depth, lift on hover / press */
+.card, .gcard { border-radius: 14px; background: linear-gradient(170deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.02)); transition: transform 0.14s ease, border-color 0.16s, background 0.16s, box-shadow 0.16s; }
+.card:hover, .gcard:hover { transform: translateY(-2px); border-color: rgba(178, 107, 255, 0.45); box-shadow: 0 10px 22px -14px rgba(0, 0, 0, 0.9), 0 0 18px -8px rgba(178, 107, 255, 0.7); }
+.card:active, .gcard:active { transform: translateY(0) scale(0.985); }
+.card.sel, .gcard.sel { box-shadow: 0 0 0 1px var(--accent), 0 0 22px -6px rgba(178, 107, 255, 0.75); }
+.mode { border-radius: 16px; transition: transform 0.16s ease, box-shadow 0.18s, border-color 0.18s; }
+.mode:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.9), 0 0 26px -10px rgba(178, 107, 255, 0.8); }
+
+/* toggles */
+label.tg input[type=checkbox] { accent-color: var(--accent); width: 17px; height: 17px; }
+
+/* scrollbars: thin, purple, out of the way */
+.overlay *, .overlay { scrollbar-width: thin; scrollbar-color: rgba(178, 107, 255, 0.45) transparent; }
+.overlay ::-webkit-scrollbar { width: 6px; height: 6px; }
+.overlay ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(199, 155, 255, 0.6), rgba(124, 58, 237, 0.5)); border-radius: 6px; }
+.overlay ::-webkit-scrollbar-track { background: transparent; }
+
+/* toast: a glass pill */
+#toast { border-radius: 999px; border: 1px solid var(--edge); background: linear-gradient(165deg, rgba(40, 26, 70, 0.9), rgba(12, 10, 22, 0.92)); box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.9), 0 0 24px -10px rgba(178, 107, 255, 0.7); }
+
+@media (prefers-reduced-motion: reduce) { .overlay:not(.menu) > .panel, .overlay:not(.menu) > .settings, .overlay:not(.menu) > .modes { animation: none; } .mbtn:hover, .card:hover, .gcard:hover, .mode:hover { transform: none; } }
+body.gfx-lite .overlay:not(.menu) > .panel, body.gfx-lite .overlay:not(.menu) > .settings, body.gfx-lite .overlay:not(.menu) > .modes { animation: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset; }

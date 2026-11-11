@@ -5,6 +5,14 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.40.0', date: '2026-11-11', title: 'Lite graphics, fresh UI, cleaner blueprints', notes: [
+    'New LITE graphics setting for weak phones and old laptops: lower resolution, a shorter view distance, lighter scenery, fewer sparks and no blur or heavy shadows in the HUD. It draws about a third of what Medium does.',
+    'The game picks a graphics setting for your device the first time you play. If a match still runs slowly at the lowest resolution, it steps the setting down by itself and tells you. Choosing a setting yourself turns that off.',
+    'Menus got a visual refresh in the same purple theme: glass panels with a soft purple edge light, pill-shaped toggles and tabs, proper purple sliders, cards that lift when you hover or press, thin scrollbars and a smooth open animation.',
+    'Legendary, Mythic and Exotic blueprints look cleaner: the milky glow that washed out the gun is replaced by a crisp light that traces its edges, with pulses of energy running along it and a band of light sweeping down. The energy rings are thin hoops now. Works on guns and knives, and costs less to draw.',
+    'Knife draw and inspect timings now match the reference videos: M9 Bayonet and Tracker draw in 0.6 s and inspect for 5.4 s, the Karambit draws in 0.8 s and inspects for 4 s, the Butterfly draws in 0.8 s and inspects for 3.2 s.',
+    'District, Frostbite and Harbor got more cover on their long open stretches (containers, concrete barriers and crates), mirrored so both sides stay even and never placed on a spawn.',
+  ] },
   { v: '1.39.0', date: '2026-11-08', title: 'Smooth mouse, instant shooting poses', notes: [
     'Fixed the mouse skipping on PC. The game now asks the browser for raw mouse input (no OS acceleration, which also avoids the browser\'s pointer-lock jumps) and ignores the rare bogus jump event, while real fast flicks still go through.',
     'Fixed stutter on 75, 100, 144 and 165 Hz monitors: the 60 / 120 FPS cap now only applies when your screen is an exact multiple of it (120 Hz for 60, 240 Hz for 120). Otherwise the game runs at your screen\'s full rate.',

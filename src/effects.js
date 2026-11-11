@@ -268,6 +268,7 @@ BR.Effects = class Effects {
 
   // Burst of n sparks from p: color, speed, size, life, gravity
   burst(p, color, n, speed, size, life, grav) {
+    if (BR.fxScale && BR.fxScale < 1) n = Math.max(1, Math.round(n * BR.fxScale));      // v1.40: fewer sparks on Lite / Low
     for (let i = 0; i < n; i++) {
       const s = this.sparks[this.si++ % this.sparks.length];
       s.p.copy(p); s.m.position.copy(p);

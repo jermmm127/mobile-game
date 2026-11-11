@@ -7,7 +7,20 @@
     xh: { style: 'cross', color: '#ffffff', len: 8, thick: 2, gap: 6, op: 1, dot: true, ol: true, dyn: true } };
   const stored = BR.util.load('velocity-royale.settings', {});
   if (stored.bots === undefined && typeof stored.players === 'number') stored.bots = Math.max(0, stored.players - 1); // v0.2 -> v0.3
+  // v1.40: first launch on a weak device starts on a lighter graphics setting (the player can change it any time)
+  BR.deviceTier = () => {
+    if (navigator.webdriver) return 'medium';          // (automated tests always run the standard setting)
+    try {
+      const mem = navigator.deviceMemory || 0, cores = navigator.hardwareConcurrency || 0; let gpu = '';
+      try { const c = document.createElement('canvas').getContext('webgl'); const x = c && c.getExtension('WEBGL_debug_renderer_info'); gpu = String((x && c.getParameter(x.UNMASKED_RENDERER_WEBGL)) || '').toLowerCase(); const l = c && c.getExtension('WEBGL_lose_context'); if (l) l.loseContext(); } catch (e) { /* hidden */ }
+      const weakGpu = /swiftshader|llvmpipe|software|mali-4|mali-t[67]|mali-g5[12]\b|adreno \(tm\) [345]\d\d|adreno [345]\d\d|powervr (sgx|rogue g6)|intel.*(hd graphics [2345]\d{3}|gma|hd graphics\))|videocore/.test(gpu);
+      if ((mem && mem <= 2) || (cores && cores <= 2) || weakGpu) return 'lite';
+      if ((mem && mem <= 4) || (cores && cores <= 4)) return 'low';
+    } catch (e) { /* unknown */ }
+    return 'medium';
+  };
   const settings = Object.assign({}, DEFAULTS, stored);
+  if (stored.gfx === undefined) { settings.gfx = BR.deviceTier(); settings.gfxAuto = true; }
   settings.xh = Object.assign({}, DEFAULTS.xh, stored.xh || {});
   settings.duel = Object.assign({}, DEFAULTS.duel, stored.duel || {});
   const save = () => BR.util.save('velocity-royale.settings', settings);
@@ -89,7 +102,7 @@
     el.addEventListener('change', () => { settings[key] = el.checked; save(); });
   };
   seg('set-diff', 'difficulty');
-  seg('set-gfx', 'gfx', () => game.applyGraphics());
+  seg('set-gfx', 'gfx', () => { settings.gfxAuto = false; save(); game.applyGraphics(); });      // (a manual pick turns off the automatic lowering)
   seg('set-fpsmode', 'fps', () => game.applyFps());      // v1.38: 60 / 120 FPS
   if (!settings.highlight) settings.highlight = 'subtle';
   seg('set-hl', 'highlight', () => game.applyHighlight());

@@ -466,9 +466,10 @@ BR.Actor = class Actor {
     if (!cp) return this.syncMesh(dt);
     if (!me.visible) { me.position.copy(this.mover.pos); this._skipDt = 0; return; }
     const d = Math.abs(this.pos.x - cp.x) + Math.abs(this.pos.z - cp.z);
-    if (d > 70) {
+    const k = BR.gfxLite ? 0.45 : 1;                    // (v1.40 Lite: thinned out much closer)
+    if (d > 70 * k) {
       this._skipDt = (this._skipDt || 0) + dt; this._lodF = (this._lodF || 0) + 1;
-      if (this._lodF % (d > 140 ? 3 : 2)) { me.position.copy(this.mover.pos); return; }
+      if (this._lodF % (d > 140 * k ? 3 : 2)) { me.position.copy(this.mover.pos); return; }
       dt = Math.min(0.1, this._skipDt);
     }
     this._skipDt = 0;

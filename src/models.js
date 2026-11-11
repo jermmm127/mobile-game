@@ -2361,9 +2361,7 @@ BR.Models = (function () {
     const T = BR.Effects.tex(), C = new THREE.Color(col), tmp = new THREE.Color();
     if (!src.geometry.boundingBox) src.geometry.computeBoundingBox();
     const bb = src.geometry.boundingBox, ctr = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3()), len = Math.max(size.x, size.y, size.z);
-    const shells = [[1.02 + 0.006 * tier, 0.16 + 0.05 * tier], [1.05 + 0.01 * tier, 0.07 + 0.03 * tier]].map(([k, op]) => {
-      const m = new THREE.Mesh(src.geometry, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide, fog: false }));
-      m.scale.setScalar(k); m.position.copy(ctr).multiplyScalar(1 - k); m.userData.isFlash = true; m.userData.noUV = true; src.add(m); return { m, op }; });
+    const shells = [];      // (v1.40: the milky glow shells are gone; a crisp rim light replaces them, see the aura shader below)
     // sparkles drift along the weapon's long axis and twinkle (in the model's own space so they follow every pose)
     const P = src.parent || g, axis = size.z >= size.x && size.z >= size.y ? 'z' : size.y >= size.x ? 'y' : 'x', motes = [];
     for (let i = 0; i < 5 + tier * 3; i++) {
@@ -2371,20 +2369,24 @@ BR.Models = (function () {
       sp.userData.isFlash = true; P.add(sp); motes.push({ sp, o: Math.random(), a: Math.random() * 6.28, r: 0.4 + Math.random() * 0.6 });
     }
     const half = size.clone().multiplyScalar(0.5);
-    // v1.32: a band of light that sweeps down the weapon (two on Exotic, opposite ways), over the whole surface
+    // v1.40 aura: ONE additive pass over the weapon. A fresnel rim light traces every edge and silhouette in the
+    // blueprint's colour (so the gun's own finish stays readable instead of being washed out), a band of light sweeps
+    // down it (two on Exotic, opposite ways), and fine energy pulses run along the rim.
     const sweep = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide, fog: false,
-      uniforms: { t: { value: 0 }, col: { value: new THREE.Color(col) }, lo: { value: bb.min[axis] }, hi: { value: bb.max[axis] }, w: { value: 0.07 + 0.02 * tier }, k: { value: 0.55 + 0.2 * tier }, two: { value: tier >= 3 ? 1 : 0 } },
-      vertexShader: 'varying float a; uniform float lo, hi; void main(){ a = (position.' + axis + ' - lo) / max(1e-4, hi - lo); gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 1.004, 1.0); }',
-      fragmentShader: 'varying float a; uniform float t, w, k, two; uniform vec3 col; void main(){ float p = fract(t * 0.42); float b = smoothstep(w, 0.0, abs(a - (1.0 - p * 1.3 + 0.15)));'
-        + ' if (two > 0.5) b = max(b, smoothstep(w, 0.0, abs(a - (p * 1.3 - 0.15)))); gl_FragColor = vec4(col * b * k, b * k); }' });
-    const lite = !!(BR.game && BR.game.settings && BR.game.settings.gfx === 'low');          // (Low graphics: keep the glow + sparkles, skip the extra passes)
-    if (!lite) { const sm = new THREE.Mesh(src.geometry, sweep); sm.userData.isFlash = true; sm.userData.noUV = true; sm.renderOrder = 3; src.add(sm); }
+      uniforms: { t: { value: 0 }, col: { value: new THREE.Color(col) }, lo: { value: bb.min[axis] }, hi: { value: bb.max[axis] }, w: { value: 0.06 + 0.015 * tier }, k: { value: 0.5 + 0.18 * tier }, two: { value: tier >= 3 ? 1 : 0 }, rim: { value: 0.55 + 0.22 * tier } },
+      vertexShader: 'varying float a; varying vec3 vN; varying vec3 vV; uniform float lo, hi; void main(){ a = (position.' + axis + ' - lo) / max(1e-4, hi - lo); vec4 mv = modelViewMatrix * vec4(position * 1.003, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'varying float a; varying vec3 vN; varying vec3 vV; uniform float t, w, k, two, rim; uniform vec3 col; void main(){ float p = fract(t * 0.42); float b = smoothstep(w, 0.0, abs(a - (1.0 - p * 1.3 + 0.15)));'
+        + ' if (two > 0.5) b = max(b, smoothstep(w, 0.0, abs(a - (p * 1.3 - 0.15))));'
+        + ' float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.6); float pulse = 0.72 + 0.28 * sin(t * 2.4); float run = 0.75 + 0.25 * sin(a * 46.0 - t * 7.0);'
+        + ' float g = f * rim * pulse * run + b * k; vec3 c = mix(col, vec3(1.0), clamp(b * 0.55 + f * f * 0.35, 0.0, 0.8)); gl_FragColor = vec4(c * g, g); }' });
+    const lite = !!(BR.game && BR.game.settings && (BR.game.settings.gfx === 'low' || BR.game.settings.gfx === 'lite'));          // (Low / Lite graphics: the aura pass + sparkles, no rings)
+    { const sm = new THREE.Mesh(src.geometry, sweep); sm.userData.isFlash = true; sm.userData.noUV = true; sm.renderOrder = 3; src.add(sm); }
     // Mythic + Exotic: rings of energy that slide from the stock out past the muzzle and fade
     const rings = [];
     if (tier >= 2 && !lite) {
       const rr = Math.max(axis === 'z' ? Math.max(half.x, half.y) : Math.max(half.x, half.z), len * 0.03) * 0.85;
       for (let i = 0; i < (tier >= 3 ? 3 : 2); i++) {
-        const r = new THREE.Mesh(new THREE.TorusGeometry(rr, rr * 0.09, 6, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+        const r = new THREE.Mesh(new THREE.TorusGeometry(rr * 0.82, rr * 0.028, 6, 40), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
         if (axis === 'z') r.rotation.y = 0.5; else if (axis === 'x') r.rotation.y = Math.PI / 2 + 0.5; else r.rotation.x = Math.PI / 2;     // (tilted: reads as a ring from the side too)
         r.userData.isFlash = true; r.userData.noUV = true; r.userData.adsHide = true; P.add(r); rings.push(r);
       }
@@ -2392,7 +2394,7 @@ BR.Models = (function () {
     anim(g, t => {
       sweep.uniforms.t.value = t; if (tier === 3) sweep.uniforms.col.value.setHSL((t * 0.18 + 0.5) % 1, 1, 0.6);
       rings.forEach((r, i) => { const f = (t * 0.55 + i / rings.length) % 1; r.position.copy(ctr); r.position[axis] = bb.max[axis] - f * (bb.max[axis] - bb.min[axis]) * 1.15;
-        const sc = 0.7 + f * 0.6; r.scale.setScalar(sc); r.material.opacity = Math.sin(f * Math.PI) * (tier >= 3 ? 0.75 : 0.6);
+        const sc = 0.7 + f * 0.6; r.scale.setScalar(sc); r.material.opacity = Math.pow(Math.sin(f * Math.PI), 1.5) * (tier >= 3 ? 0.6 : 0.48); r.rotation.z = t * 0.9 + i;      // (v1.40: thin, elegant hoops)
         if (tier === 3) r.material.color.setHSL((t * 0.18 + i / rings.length) % 1, 1, 0.6); });
       const pulse = 0.65 + 0.35 * Math.sin(t * 2.4);
       if (tier === 3) C.setHSL((t * 0.18) % 1, 1, 0.6);

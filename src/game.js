@@ -106,10 +106,21 @@ BR.Game = class Game {
     // v1.38: the target frame time follows the FPS setting, but never faster than the screen can show
     const tgt = Math.max(this.settings.fps === '120' ? 1000 / 120 : 1000 / 60, this.screenMs || 0), slowMs = tgt * 1.055, goodMs = tgt * 1.012;
     if (ms > slowMs) P.slow += 1; else P.slow = Math.max(0, P.slow - 0.2);          // v1.25: aim for a solid frame rate
-    if (P.slow > 10 && P.scale <= 0.56 && this.fogFar > 140) {         // v1.25: still slow at the lowest resolution: it's draw calls, not pixels, so draw less far
-      this.fogFar = Math.max(140, this.fogFar * 0.85); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; P.slow = 0; P.good = 0; P.shrunk = true;
-    } else if (P.slow > 10 && P.scale > 0.55) {
-      P.cap = Math.min(P.cap, P.scale - 0.01); P.scale = Math.max(0.55, P.scale * 0.88); P.slow = 0; P.good = 0; P.calm = 0;
+    const mn = P.min || 0.55, fogMin = BR.gfxLite ? 95 : 140;
+    // v1.40: still slow at the lowest resolution and the shortest view distance -> drop one graphics setting (once it has
+    // clearly stayed slow; only while the setting is still on automatic)
+    if (P.slow > 10 && P.scale <= mn + 0.01 && this.fogFar <= fogMin) {
+      P.slow = 0; P.stuck = (P.stuck || 0) + 1;
+      const order = ['high', 'medium', 'low', 'lite'], i = order.indexOf(this.settings.gfx || 'medium');
+      if (P.stuck >= 4 && this.settings.gfxAuto !== false && i >= 0 && i < order.length - 1) {
+        this.settings.gfx = order[i + 1]; this.settings.gfxAuto = true; if (BR.saveSettings) BR.saveSettings();
+        this.applyGraphics(); this.hud.toast('Graphics lowered to ' + order[i + 1].toUpperCase() + ' to keep the game smooth', 2600);
+        const el = document.getElementById('set-gfx'); if (el) el.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === this.settings.gfx));
+      }
+    } else if (P.slow > 10 && P.scale <= mn + 0.01 && this.fogFar > fogMin) {         // v1.25: still slow at the lowest resolution: it's draw calls, not pixels, so draw less far
+      this.fogFar = Math.max(fogMin, this.fogFar * 0.85); if (this.scene && this.scene.fog) this.scene.fog.far = this.fogFar; P.slow = 0; P.good = 0; P.shrunk = true;
+    } else if (P.slow > 10 && P.scale > mn) {
+      P.cap = Math.min(P.cap, P.scale - 0.01); P.scale = Math.max(mn, P.scale * 0.88); P.slow = 0; P.good = 0; P.calm = 0;
       this.renderer.setPixelRatio(this.basePR * P.scale); this.resize();
     } else if (ms < goodMs) {
       P.good += ms / 1000; P.calm = (P.calm || 0) + ms / 1000;
@@ -132,11 +143,13 @@ BR.Game = class Game {
   applyGraphics() {
     const g = BR.CONFIG.graphics[this.settings.gfx] || BR.CONFIG.graphics.medium;
     this.basePR = Math.min(window.devicePixelRatio || 1, g.pixelRatio);
-    this.perf = { scale: 1, cap: 1, slow: 0, good: 0 };
+    this.perf = { scale: 1, cap: 1, slow: 0, good: 0, min: g.minScale || 0.55, stuck: 0 };
+    BR.fxScale = g.fx || 1; BR.gfxLite = this.settings.gfx === 'lite';
+    document.body.classList.toggle('gfx-lite', this.settings.gfx === 'lite' || this.settings.gfx === 'low');      // v1.40: no blur / heavy shadows in the HUD
     this.renderer.setPixelRatio(this.basePR);
     this.fogFar = g.fogFar;
     this.detail = g.detail;
-    if (this.world) { this.world.lodScale = (this.settings.gfx || 'medium') === 'low' ? 0.6 : 1; if (this.world.lodSets) this.world.lodSets.forEach(L => { L.cx = 1e9; }); }
+    if (this.world) { this.world.lodScale = g.lod || 1; if (this.world.lodSets) this.world.lodSets.forEach(L => { L.cx = 1e9; }); }
     if (this.scene && this.scene.fog) this.scene.fog.far = g.fogFar;
     this.resize();
     if (this.sun) this.applyShadows();
@@ -246,7 +259,7 @@ BR.Game = class Game {
     this.sun = sun;
     this.world = new BR.World(seed, opts);
     this.world.buildMeshes(this.scene, this.detail);
-    this.world.lodScale = (this.settings.gfx || 'medium') === 'low' ? 0.6 : 1;      // v1.37: Low switches to the cheap scenery models sooner
+    this.world.lodScale = (BR.CONFIG.graphics[this.settings.gfx] || {}).lod || 1;      // v1.37: Low switches to the cheap scenery models sooner
     // sky, clouds and far mountains are already painted in display colours: keep them out of the filmic curve
     this.scene.traverse(o => { const m = o.material; if (m && m.isMeshBasicMaterial && m.fog === false) m.toneMapped = false; });
     this.hud.setStaticMap(this.world.renderMinimap(1024));

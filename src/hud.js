@@ -414,7 +414,7 @@ BR.HUD = class HUD {
       <div class="row"><label>ENEMY HIGHLIGHT</label><div class="seg" id="set-hl">
         <button data-v="off">OFF</button><button data-v="subtle">SUBTLE</button><button data-v="bright">BRIGHT</button></div></div>
       <div class="row"><label>GRAPHICS</label><div class="seg" id="set-gfx">
-        <button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
+        <button data-v="lite">LITE</button><button data-v="low">LOW</button><button data-v="medium">MED</button><button data-v="high">HIGH</button></div></div>
       <div class="row"><label>FRAME RATE</label><div class="seg" id="set-fpsmode">
         <button data-v="60">60 FPS</button><button data-v="120">120 FPS</button></div></div>
       <div class="row hint" id="fps-hint"></div>

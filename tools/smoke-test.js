@@ -254,7 +254,7 @@ const server = http.createServer((req, res) => {
     r.fpAnims = { injSeen, injGone, launchSeen, launchGone: !vm.launcher.visible };
     // shockwave grenade: throw at your feet -> launched; pickup refills; styled tracer beads; damage-number stacking
     {
-      const P2 = g.player; P2.mover.world = flat; P2.mover.pos.set(0, 0, 0); P2.mover.vel.set(0, 0, 0); P2.mover.onGround = true;
+      const P2 = g.player; P2.mover.world = realWorld; P2.mover.pos.copy(realPos); P2.mover.pos.y = realWorld.groundAt(realPos.x, realPos.z, realPos.y + 2); P2.mover.vel.set(0, 0, 0); P2.mover.onGround = true;      // (on the real map: the grenade bounces off the game's world, not a stand-in)
       g.practiceSpawn('nades'); const n0 = P2.nades; P2.pitch = -1.35; P2.nadeCd = 0;
       const y0 = P2.pos.y; let maxY = y0; g.input.press('grenade');
       for (let i = 0; i < 120; i++) { g.update(1 / 60); maxY = Math.max(maxY, P2.pos.y); }
@@ -644,7 +644,7 @@ const server = http.createServer((req, res) => {
     // v1.7.7: butterfly poses matched to the reference clip; victory sequence
     { P.data.equip.melee = 'butterfly'; g.settings.bots = 2; g.startMatch(); g.refreshCosmetics(); const pl = g.player, vm2 = g.vmr; pl.mover.dropping = false; pl.cur = 2; vm2.lastWeapon = null;
       const mdl = vm2.models.butterfly.userData.model, ud2 = mdl.userData; let upMid = 9, rollSeen = 0;
-      for (let i = 0; i < 70; i++) { vm2.update(1 / 60, 0, 0); if (i === 40) upMid = mdl.quaternion.angleTo(ud2.qUp); rollSeen = Math.max(rollSeen, Math.abs(ud2.inner.rotation.y)); }
+      for (let i = 0; i < 70; i++) { vm2.update(1 / 60, 0, 0); if (i === 37) upMid = mdl.quaternion.angleTo(ud2.qUp); rollSeen = Math.max(rollSeen, Math.abs(ud2.inner.rotation.y)); }
       const flatEnd = mdl.quaternion.angleTo(ud2.qIdle);
       vm2.startInspect(pl.weapon); let upInsp = 9; for (let i = 0; i < 90; i++) { vm2.update(1 / 60, 0, 0); if (i === 60) upInsp = mdl.quaternion.angleTo(ud2.qUp); }
       out.bfly2 = { upMid, flatEnd, rollSeen, upInsp, dur: vm2.inspectDur };
@@ -1367,7 +1367,7 @@ const server = http.createServer((req, res) => {
     BR.Lobby.skipRoll = true; BR.Lobby.preset = 'ffa'; BR.Lobby.size = 6; const pool = BR.Lobby.pool('ffa').map(m => m.id).sort().join();
     g.toMenu(); BR.Lobby.play({ map: 'district' }); await new Promise(r => setTimeout(r, 300)); for (let i = 0; i < 10; i++) g.update(1 / 30);
     const A = g.actors.filter(a => a.alive); let md = 1e9; for (const a of A) for (const o of A) if (a !== o) md = Math.min(md, a.pos.distanceTo(o.pos));
-    out.ffa = pool === 'district,killhouse,suburb' && g.world.mapId === 'district' && g.world.size >= 120 && md > 15;
+    out.ffa = pool === 'crossroads,district,frostbite,harbor,killhouse,suburb' && g.world.mapId === 'district' && g.world.size >= 120 && md > 15;
     // window vault (Killhouse north window)
     g.toMenu(); BR.Lobby.preset = 'duel'; BR.Lobby.size = 1; BR.Lobby.play({ map: 'killhouse' }); await new Promise(r => setTimeout(r, 300));
     const m = g.player.mover; g.mode.frozen = false; m.pos.set(0, 0, 7.9); m.vel.set(0, 0, 0); g.player.yaw = 0; for (let i = 0; i < 6; i++) g.update(1 / 30);
@@ -1416,6 +1416,27 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v140 = await page.evaluate(() => {
+    const g = BR.game, out = {}, S = g.settings, gfx0 = S.gfx, auto0 = S.gfxAuto;
+    // Lite graphics tier: lower resolution, shorter view, fewer sparks, scenery LOD closer, HUD effects off
+    S.gfx = 'lite'; g.applyGraphics();
+    out.lite = !!BR.CONFIG.graphics.lite && g.fogFar <= 130 && BR.fxScale < 0.5 && BR.gfxLite === true && document.body.classList.contains('gfx-lite') && g.perf.min <= 0.5 && !!document.querySelector('#set-gfx [data-v="lite"]');
+    S.gfx = gfx0 || 'medium'; S.gfxAuto = auto0; g.applyGraphics();
+    out.liteOff = !document.body.classList.contains('gfx-lite') && BR.fxScale === 1;
+    out.tier = BR.deviceTier() === 'medium';                       // (automated browsers always get the standard setting)
+    // blueprint aura: one rim-light pass, no glow shells
+    const B = BR.Models.BLUEPRINTS.rifle, id = Object.keys(B).find(k => B[k].rarity === 'Mythic'), m = BR.Models.weapon('rifle', 'default', 'none', id);
+    let rim = 0, shells = 0; m.traverse(o => { if (o.material && o.material.isShaderMaterial && o.material.uniforms && o.material.uniforms.rim) rim++; if (o.material && o.material.isMeshBasicMaterial && o.material.side === THREE.BackSide && o.material.blending === THREE.AdditiveBlending) shells++; });
+    out.aura = rim === 1 && shells === 0;
+    // extra cover on the open maps, never on a spawn
+    const W = new BR.World(1, { arena: true, map: 'district' }), W2 = new BR.World(1, { arena: true, map: 'harbor' });
+    const near = (w) => (w.ffaSpots || []).concat(w.spawns.map(q => [q.x, q.z])).every(([x, z]) => !w.boxes.some(b => !b.decor && b.tag !== 'edge' && b.y0 < 1 && x > b.x0 - 0.5 && x < b.x1 + 0.5 && z > b.z0 - 0.5 && z < b.z1 + 0.5));
+    out.cover = W.boxes.length > 225 && W2.boxes.length > 73 && near(W) && near(W2);
+    // knife timings from the reference videos
+    const v = g.vmr, D = id2 => { v.startInspect({ id: id2, def: BR.CONFIG.weapons[id2] }); const d = v.inspectDur; v.inspectT = 0; return d; };
+    out.knifeTimes = D('bayonet') === 5.4 && D('tracker') === 5.4 && D('knife') === 4.0 && D('butterfly') === 3.2;
+    return out;
+  });
   const v139 = await page.evaluate(() => {
     const g = BR.game, out = {}; BR.AntiCheat._testing = true;
     g.startMatch({ practice: true }); for (let i = 0; i < 20; i++) g.update(1 / 30);
@@ -1504,7 +1525,7 @@ const server = http.createServer((req, res) => {
     out.staysCutAndLands = !reopened && !m.dropping && m.onGround;
     m.pos.set(x, gy + 40, z); m.vel.set(0, 0, 0); m.onGround = false; go(5); go(1, { jump: true }); const opened = m.dropping && m.chute; go(3); go(1, { jump: true });
     out.jumpCuts = opened && m.dropping && !m.chute && m.chuteCut;
-    out.knifeDraw = (() => { const g = BR.game; g.startMatch({ practice: true }); const p = g.player; const k = p.slots.findIndex(w => w && BR.CONFIG.weapons[w.id] && BR.CONFIG.weapons[w.id].melee); if (k < 0) { g.toMenu(); return false; } p.cur = k === 0 ? 1 : 0; g.update(1 / 60); g.render(); p.cur = k; g.update(1 / 60); g.render(); const ok = Math.abs(g.vmr.drawDur - 0.85) < 0.01; g.toMenu(); return ok; })();
+    out.knifeDraw = (() => { const g = BR.game; g.startMatch({ practice: true }); const p = g.player; const k = p.slots.findIndex(w => w && BR.CONFIG.weapons[w.id] && BR.CONFIG.weapons[w.id].melee); if (k < 0) { g.toMenu(); return false; } p.cur = k === 0 ? 1 : 0; g.update(1 / 60); g.render(); p.cur = k; g.update(1 / 60); g.render(); const ok = g.vmr.drawDur >= 0.59 && g.vmr.drawDur <= 0.81; g.toMenu(); return ok; })();
     const can = canopyGeometry(5), pine = pineGeometry(0), bush = bushGeometry(3), tuft = grassTuftGeometry(), trunk = trunkGeometry();
     out.models = can.attributes.position.count >= 8 * 240 && !!can.attributes.color && pine.attributes.position.count > 5 * 100 && bush.attributes.position.count >= 4 * 240 && tuft.attributes.position.count === 15 && trunk.attributes.position.count > 400;
     const sc = new THREE.Scene(); W.buildMeshes(sc, 0.3); out.skyFollows = !!(W.skyRig && W.skyRig.length >= 3);
@@ -1909,6 +1930,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.40 Lite graphics tier + device detection, rim-light blueprint aura, cover on the open maps, knife timings from the videos', Object.values(v140).every(Boolean), v140],
     ['v1.39 gun snaps out of the sprint / carry pose when shooting, mouse spike filter keeps flicks, frame cap only on clean refresh multiples', Object.values(v139).every(Boolean), v139],
     ['v1.38 knockdown freeze frame in team modes, 60 / 120 FPS setting, full-body run, smooth device-independent view sway', Object.values(v138).every(Boolean), v138],
     ['v1.37 mobile performance: scenery LOD (detailed models only near you), tiled ground, hidden objects skip matrix updates, triangle + draw-call budget, grade in shaders, loot grid, far bots hidden', ['lod', 'nearColors', 'groundTiles', 'budget', 'skipHidden', 'grade', 'grid', 'farHidden'].every(k => v137[k]), v137],
@@ -2102,7 +2124,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v139, v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v140, v139, v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

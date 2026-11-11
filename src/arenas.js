@@ -134,6 +134,28 @@ Object.assign(BR.World.prototype, {
     }
   },
   arenaCrate(x, z, h) { this.addBox(x - 0.65, 0, z - 0.65, x + 0.65, h || 1.2, z + 0.65, 0xa77b4f); },
+  // v1.40: fill a map's big open stretches with cover, mirrored east/west so both sides stay fair. Each piece is only
+  // placed where nothing stands within 1.6 m and no spawn / respawn spot is within 4 m. kind: 'c' crate, 'C' tall crate,
+  // 'b' concrete barrier (along z), 'B' barrier (along x), 'k' container (along z), 'K' container (along x).
+  arenaCover(list) {
+    const spots = (this.ffaSpots || []).concat((this.spawns || []).map(q => [q.x, q.z]));
+    const clear = (x0, z0, x1, z1) => {
+      for (const q of this.boxes) { if (q.tag === 'edge' || q.decor || q.y0 > 2.4) continue; if (q.x1 > x0 - 1.6 && q.x0 < x1 + 1.6 && q.z1 > z0 - 1.6 && q.z0 < z1 + 1.6) return false; }
+      for (const [sx, sz] of spots) if (sx > x0 - 4 && sx < x1 + 4 && sz > z0 - 4 && sz < z1 + 4) return false;
+      const P = this.playBounds; return !P || (x0 > P.x0 + 1.5 && x1 < P.x1 - 1.5 && z0 > P.z0 + 1.5 && z1 < P.z1 - 1.5);
+    };
+    let n = 0;
+    for (const [kind, x, z] of list) for (const sx of x === 0 ? [1] : [-1, 1]) {
+      const px = sx * x;
+      const [hw, hd] = kind === 'b' ? [0.35, 2.2] : kind === 'B' ? [2.2, 0.35] : kind === 'k' ? [1.25, 3.1] : kind === 'K' ? [3.1, 1.25] : [0.65, 0.65];
+      if (!clear(px - hw, z - hd, px + hw, z + hd)) continue;
+      if (kind === 'c' || kind === 'C') this.arenaCrate(px, z, kind === 'C' ? 2.4 : 1.2);
+      else if (kind === 'b' || kind === 'B') { this.addBox(px - hw, 0, z - hd, px + hw, 1.2, z + hd, 0x8a8d90); this.addBox(px - hw - 0.04, 1.2, z - hd - 0.04, px + hw + 0.04, 1.27, z + hd + 0.04, 0xf2b234, { decor: true }); }
+      else this.arenaContainer(px, z, kind === 'K', 1);
+      n++;
+    }
+    return n;
+  },
   arenaShell(X, Z, WH, CON, CON2) {
     const B = (x0, y0, z0, x1, y1, z1, c, o) => this.addBox(x0, y0, z0, x1, y1, z1, c, o);
     this.playBounds = { x0: -X, x1: X, z0: -Z, z1: Z, y1: WH + 14 };       // v1.28.2: the hard play area (inside the walls)
@@ -291,6 +313,7 @@ Object.assign(BR.World.prototype, {
       Dc(sx * (X - 0.02), 1.0, -Z, sx * (X - 0.12), 2.2, Z, tc);
     }
     this.ffaSpots = [[-35, 0], [35, 0], [-35, 18], [35, -18], [-35, -18], [35, 18], [-5, 0], [5, 0], [-20, 17], [20, -17], [-20, -17], [20, 17], [-13, 6], [13, -6], [0, -20], [0, 20]];
+    this.arenaCover([['b', 20, 0], ['c', 24, -9], ['C', 24, 9], ['B', 10, -17], ['B', 10, 17], ['c', 0, -19], ['c', 0, 19], ['c', 26, 3.5]]);      // v1.40: cover round the frozen yard
     this.groundCols = [0xe8eef2, 0xd9e2e8, 0xf2f6f8];
   },
   generateHarbor() {
@@ -324,6 +347,7 @@ Object.assign(BR.World.prototype, {
     Dc(-X, 0.01, -Z, X, 0.02, -24.6, WATER); Dc(-X, 0.02, -24.6, X, 0.03, -24.4, 0xdff2ff);                                                         // water along the pier
     for (let x = -X; x < X; x += 1.6) Dc(x, 0.015, -20.2, x + 0.8, 0.02, -19.9, Y);
     this.ffaSpots = [[-35, 0], [35, 0], [-35, 18], [35, -18], [-35, -18], [35, 18], [-6, 0], [6, 0], [0, 12], [0, -15], [-20, 10], [20, -10], [-24, -16], [24, 16], [-13, -9], [13, 9]];
+    this.arenaCover([['k', 20, -1.5], ['c', 17, 6], ['C', 23, -7.5], ['B', 16, -13], ['c', 31, 10], ['b', 6, -12]]);      // v1.40: cover on the open lanes between the spawns and the warehouse
     this.groundCols = [0x6d6e6c, 0x626361, 0x77756f];
   },
 
@@ -378,6 +402,8 @@ Object.assign(BR.World.prototype, {
     for (let i = 0; i < 6; i++) Dc(-1.6 + i * 0.6, 0, 9, -1.3 + i * 0.6, 0.015, 12, 0xe8e4dc);
     this.ffaSpots = [[-46, 0], [46, 0], [-46, -32], [46, 32], [-46, 32], [46, -32], [0, -36], [0, 36], [-24, -17], [24, 17], [-24, 17], [24, -17],
       [-12, 0], [12, 0], [0, -10], [0, 10], [-34, -12], [34, 12], [-34, 14], [34, -14], [-14, 24], [14, -24], [-14, -24], [14, 24]];
+    // v1.40: cover across the long open streets and corners (placed only where there is room)
+    this.arenaCover([['K', 38, -8], ['K', 38, 8], ['b', 30, -26], ['b', 30, 26], ['C', 42, -18], ['C', 42, 18], ['c', 36, 0], ['B', 12, -30], ['B', 12, 30], ['c', 8, -14], ['c', 8, 14], ['b', 18, 0], ['c', 44, -8], ['c', 44, 9.3], ['B', 26, -34], ['B', 26, 34], ['k', 0, -27], ['c', 20, -30], ['c', 20, 30]]);
     this.groundCols = [0x7f7a70, 0x77736a, 0x8a8478];
   },
 });
