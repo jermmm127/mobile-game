@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.42.1', date: '2026-11-12', title: 'Bug sweep', notes: [
+    'Fixed a message from one match staying on screen in the next. For example, the Overdrive intro line could sit on top of the Team Deathmatch intro, or the daily reward line over the start of Zombies. Messages now clear when you leave a match and when a new one starts.',
+    'Removed two warnings the game printed in the browser console on every match (no visible change).',
+    'Checked by playing every mode and 13 map setups automatically with random movement, shooting, weapon swaps, grenades, attachments and kills: no errors, nobody stuck or falling through the map.',
+  ] },
   { v: '1.42.0', date: '2026-11-12', title: 'New look, new gun models', notes: [
     'A cleaner art style across the Battle Royale and Resurgence islands. Buildings are warm off-white plaster with slate roofs, concrete is pale instead of near-black, and containers and parkour pieces use clear accent colours.',
     'Surfaces are much calmer: walls lost most of their blotches, pits and streaks, and the ground is a soft green lawn instead of scribbly beige.',

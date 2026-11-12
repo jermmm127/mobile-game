@@ -1712,7 +1712,7 @@ BR.World = class World {
     scene.add(near);
 
     // Cumulus clouds: one merged cluster geometry (soft blobs, shaded underside), instanced
-    const blob = new THREE.IcosahedronGeometry(1, 1).toNonIndexed();
+    const blob = new THREE.IcosahedronGeometry(1, 1);          // (already one triangle per face)
     const parts = [[0, 0, 0, 1], [1.1, -0.15, 0.2, 0.8], [-1.05, -0.2, -0.1, 0.75], [0.45, 0.45, -0.2, 0.7], [-0.5, 0.35, 0.25, 0.65], [1.9, -0.35, 0, 0.5], [-1.8, -0.35, 0.1, 0.5]];
     const cp = [], ccol = [], cc2 = new THREE.Color();
     for (const [x, y, z, r] of parts) {
@@ -1800,7 +1800,7 @@ BR.World = class World {
     // ---- Natural rock: ridges / rocks / ledges are hidden collision boxes drawn as jittered,
     // moss-topped boulders; plateaus get rocky skirts so nothing reads as a box.
     const rockGeo = (seed, det) => {
-      const g = new THREE.IcosahedronGeometry(1, det === undefined ? 1 : det).toNonIndexed(), p = g.attributes.position, rr = BR.util.rng(seed), jit = {};      // v1.36: more facets, chiselled
+      const g = new THREE.IcosahedronGeometry(1, det === undefined ? 1 : det), p = g.attributes.position, rr = BR.util.rng(seed), jit = {};      // v1.36: more facets, chiselled
       for (let i = 0; i < p.count; i++) {
         const k0 = p.getX(i).toFixed(3) + p.getY(i).toFixed(3) + p.getZ(i).toFixed(3);
         const f = jit[k0] || (jit[k0] = 0.8 + rr() * 0.32);
@@ -1853,7 +1853,7 @@ BR.World = class World {
       }
     }
     if (chunks.length) {
-      const geos = [rockGeo(11), rockGeo(29)], mats = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+      const geos = [rockGeo(11), rockGeo(29)], mats = new THREE.MeshLambertMaterial({ vertexColors: true });
       const half = Math.ceil(chunks.length / 2), meshes = geos.map((gg, i) => this.collector(gg, mats, i ? chunks.length - half : half, { lo: rockGeo(i ? 29 : 11, 0), dist: 60 })); meshes.forEach(m => { m.noLift = true; });     // (rock chunks come from already-lifted boxes)
       const rcol = new THREE.Color();
       chunks.forEach((q, i) => {
@@ -1889,13 +1889,13 @@ BR.World = class World {
       o.position.set(q.x, q.tip ? 0.3 : 0.475, q.z); o.scale.set(1, 1, 1); o.rotation.set(q.tip ? Math.PI / 2 : 0, q.x * 3, 0);
     });
     if (drum) P.barrels.forEach((q, i) => drum.setColorAt(i, col.setHex(BC[q.c])));
-    const woodMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    const woodMat = new THREE.MeshLambertMaterial({ vertexColors: true });
     inst(twoTone(new THREE.CylinderGeometry(1, 1, 1, 9), 0x5e4129, 0xc9a46c), woodMat, P.logs, q => {
       o.position.set(q.x, q.r, q.z); o.scale.set(q.r, q.L, q.r); o.rotation.set(q.alongX ? 0 : Math.PI / 2, 0, q.alongX ? Math.PI / 2 : 0);
     });
     inst(twoTone(new THREE.CylinderGeometry(0.85, 1, 1, 9), 0x5e4129, 0xc9a46c), woodMat, P.stumps, q => { o.position.set(q.x, q.h / 2, q.z); o.scale.set(q.s, q.h, q.s); o.rotation.set(0, q.x, 0); });
     // loose boulders round the rocks
-    inst(rockGeo(41), new THREE.MeshLambertMaterial({ color: 0x9a9c96, vertexColors: true, flatShading: true }), P.boulders, q => {
+    inst(rockGeo(41), new THREE.MeshLambertMaterial({ color: 0x9a9c96, vertexColors: true }), P.boulders, q => {
       o.position.set(q.x, q.s * 0.55, q.z); o.scale.set(q.s * 2.3, q.s * 1.5, q.s * 2); o.rotation.set((q.x % 1) * 0.3, q.z, 0);
     }, { lo: rockGeo(41, 0), dist: 45 });
     // ponds: sandy shore, water, lily pads, reeds

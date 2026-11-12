@@ -1841,7 +1841,7 @@ body.gfx-lite .overlay:not(.menu) > .panel, body.gfx-lite .overlay:not(.menu) > 
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.42.0',
+  version: '1.42.1',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2137,6 +2137,11 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.42.1', date: '2026-11-12', title: 'Bug sweep', notes: [
+    'Fixed a message from one match staying on screen in the next. For example, the Overdrive intro line could sit on top of the Team Deathmatch intro, or the daily reward line over the start of Zombies. Messages now clear when you leave a match and when a new one starts.',
+    'Removed two warnings the game printed in the browser console on every match (no visible change).',
+    'Checked by playing every mode and 13 map setups automatically with random movement, shooting, weapon swaps, grenades, attachments and kills: no errors, nobody stuck or falling through the map.',
+  ] },
   { v: '1.42.0', date: '2026-11-12', title: 'New look, new gun models', notes: [
     'A cleaner art style across the Battle Royale and Resurgence islands. Buildings are warm off-white plaster with slate roofs, concrete is pale instead of near-black, and containers and parkour pieces use clear accent colours.',
     'Surfaces are much calmer: walls lost most of their blotches, pits and streaks, and the ground is a soft green lawn instead of scribbly beige.',
@@ -4781,7 +4786,7 @@ BR.World = class World {
     scene.add(near);
 
     // Cumulus clouds: one merged cluster geometry (soft blobs, shaded underside), instanced
-    const blob = new THREE.IcosahedronGeometry(1, 1).toNonIndexed();
+    const blob = new THREE.IcosahedronGeometry(1, 1);          // (already one triangle per face)
     const parts = [[0, 0, 0, 1], [1.1, -0.15, 0.2, 0.8], [-1.05, -0.2, -0.1, 0.75], [0.45, 0.45, -0.2, 0.7], [-0.5, 0.35, 0.25, 0.65], [1.9, -0.35, 0, 0.5], [-1.8, -0.35, 0.1, 0.5]];
     const cp = [], ccol = [], cc2 = new THREE.Color();
     for (const [x, y, z, r] of parts) {
@@ -4869,7 +4874,7 @@ BR.World = class World {
     // ---- Natural rock: ridges / rocks / ledges are hidden collision boxes drawn as jittered,
     // moss-topped boulders; plateaus get rocky skirts so nothing reads as a box.
     const rockGeo = (seed, det) => {
-      const g = new THREE.IcosahedronGeometry(1, det === undefined ? 1 : det).toNonIndexed(), p = g.attributes.position, rr = BR.util.rng(seed), jit = {};      // v1.36: more facets, chiselled
+      const g = new THREE.IcosahedronGeometry(1, det === undefined ? 1 : det), p = g.attributes.position, rr = BR.util.rng(seed), jit = {};      // v1.36: more facets, chiselled
       for (let i = 0; i < p.count; i++) {
         const k0 = p.getX(i).toFixed(3) + p.getY(i).toFixed(3) + p.getZ(i).toFixed(3);
         const f = jit[k0] || (jit[k0] = 0.8 + rr() * 0.32);
@@ -4922,7 +4927,7 @@ BR.World = class World {
       }
     }
     if (chunks.length) {
-      const geos = [rockGeo(11), rockGeo(29)], mats = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+      const geos = [rockGeo(11), rockGeo(29)], mats = new THREE.MeshLambertMaterial({ vertexColors: true });
       const half = Math.ceil(chunks.length / 2), meshes = geos.map((gg, i) => this.collector(gg, mats, i ? chunks.length - half : half, { lo: rockGeo(i ? 29 : 11, 0), dist: 60 })); meshes.forEach(m => { m.noLift = true; });     // (rock chunks come from already-lifted boxes)
       const rcol = new THREE.Color();
       chunks.forEach((q, i) => {
@@ -4958,13 +4963,13 @@ BR.World = class World {
       o.position.set(q.x, q.tip ? 0.3 : 0.475, q.z); o.scale.set(1, 1, 1); o.rotation.set(q.tip ? Math.PI / 2 : 0, q.x * 3, 0);
     });
     if (drum) P.barrels.forEach((q, i) => drum.setColorAt(i, col.setHex(BC[q.c])));
-    const woodMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    const woodMat = new THREE.MeshLambertMaterial({ vertexColors: true });
     inst(twoTone(new THREE.CylinderGeometry(1, 1, 1, 9), 0x5e4129, 0xc9a46c), woodMat, P.logs, q => {
       o.position.set(q.x, q.r, q.z); o.scale.set(q.r, q.L, q.r); o.rotation.set(q.alongX ? 0 : Math.PI / 2, 0, q.alongX ? Math.PI / 2 : 0);
     });
     inst(twoTone(new THREE.CylinderGeometry(0.85, 1, 1, 9), 0x5e4129, 0xc9a46c), woodMat, P.stumps, q => { o.position.set(q.x, q.h / 2, q.z); o.scale.set(q.s, q.h, q.s); o.rotation.set(0, q.x, 0); });
     // loose boulders round the rocks
-    inst(rockGeo(41), new THREE.MeshLambertMaterial({ color: 0x9a9c96, vertexColors: true, flatShading: true }), P.boulders, q => {
+    inst(rockGeo(41), new THREE.MeshLambertMaterial({ color: 0x9a9c96, vertexColors: true }), P.boulders, q => {
       o.position.set(q.x, q.s * 0.55, q.z); o.scale.set(q.s * 2.3, q.s * 1.5, q.s * 2); o.rotation.set((q.x % 1) * 0.3, q.z, 0);
     }, { lo: rockGeo(41, 0), dist: 45 });
     // ponds: sandy shore, water, lily pads, reeds
@@ -21002,6 +21007,8 @@ BR.HUD = class HUD {
     clearTimeout(this._dbTO); this._dbTO = setTimeout(() => el.classList.remove('on'), 2300);
   }
 
+  // v1.42.1: a message from the last match never carries over into the next one
+  clearToast() { clearTimeout(this._toastTO); if (this.el.toast) this.el.toast.classList.remove('on'); }
   toast(text, ms) {
     const t = this.el.toast;
     t.textContent = text;
@@ -21642,6 +21649,7 @@ BR.Game = class Game {
     this.resurgence = null; document.body.classList.remove('resurgence');
     if (this.scene) this.disposeScene();
     document.body.classList.remove('menulite');
+    if (this.hud && this.hud.clearToast) this.hud.clearToast();          // (a new match starts with a clean message line)
     const fogCol = 0xd2d9dc;                                    // v1.34: matches the warmer, softer horizon band of the sky dome
     this.scene = new THREE.Scene();
     // v1.37: hidden top-level objects (loot past 50 m, culled map tiles, pooled effects) skip the per-frame matrix pass.
@@ -22107,6 +22115,7 @@ BR.Game = class Game {
     this.hud.show('pause', false);
   }
   toMenu() {
+    if (this.hud && this.hud.clearToast) this.hud.clearToast();
     this.state = 'menu';
     if (this.brnet) this.brnet.stop();
     if (this.zm) { this.zm.dispose(); this.zm = null; document.body.classList.remove('zombies'); }

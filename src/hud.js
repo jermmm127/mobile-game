@@ -1004,6 +1004,8 @@ BR.HUD = class HUD {
     clearTimeout(this._dbTO); this._dbTO = setTimeout(() => el.classList.remove('on'), 2300);
   }
 
+  // v1.42.1: a message from the last match never carries over into the next one
+  clearToast() { clearTimeout(this._toastTO); if (this.el.toast) this.el.toast.classList.remove('on'); }
   toast(text, ms) {
     const t = this.el.toast;
     t.textContent = text;

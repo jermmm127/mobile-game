@@ -234,6 +234,7 @@ BR.Game = class Game {
     this.resurgence = null; document.body.classList.remove('resurgence');
     if (this.scene) this.disposeScene();
     document.body.classList.remove('menulite');
+    if (this.hud && this.hud.clearToast) this.hud.clearToast();          // (a new match starts with a clean message line)
     const fogCol = 0xd2d9dc;                                    // v1.34: matches the warmer, softer horizon band of the sky dome
     this.scene = new THREE.Scene();
     // v1.37: hidden top-level objects (loot past 50 m, culled map tiles, pooled effects) skip the per-frame matrix pass.
@@ -699,6 +700,7 @@ BR.Game = class Game {
     this.hud.show('pause', false);
   }
   toMenu() {
+    if (this.hud && this.hud.clearToast) this.hud.clearToast();
     this.state = 'menu';
     if (this.brnet) this.brnet.stop();
     if (this.zm) { this.zm.dispose(); this.zm = null; document.body.classList.remove('zombies'); }

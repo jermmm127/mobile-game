@@ -1436,6 +1436,8 @@ const server = http.createServer((req, res) => {
     const W = new BR.World(4, {}), lum = c => ((c >> 16) & 255) * 0.3 + ((c >> 8) & 255) * 0.59 + (c & 255) * 0.11; let dark = 0, n = 0;
     for (const b of W.boxes) { if (b.hidden || b.decor || b.tag === 'edge' || typeof b.color !== 'number') continue; n++; if (lum(b.color) < 70) dark++; }
     out.palette = n > 200 && dark / n < 0.12;
+    // v1.42.1: a toast from one match never shows in the next
+    g.startMode(BR.Overdrive, { overdrive: true }); g.hud.toast('STALE', 9000); g.toMenu(); const offMenu = !g.hud.el.toast.classList.contains('on'); g.hud.toast('STALE', 9000); g.startMatch({ practice: true }); out.toastClear = offMenu && !/STALE/.test(g.hud.el.toast.classList.contains('on') ? g.hud.el.toast.textContent : ''); g.toMenu();
     return out;
   });
   const v141 = await page.evaluate(() => {
@@ -1612,7 +1614,7 @@ const server = http.createServer((req, res) => {
     const g = BR.game, out = {}; g.startMatch({ practice: true });
     out.grade = !!document.getElementById('grade') && getComputedStyle(document.getElementById('grade')).pointerEvents === 'none';
     let sunI = 0; g.scene.traverse(o => { if (o.isDirectionalLight && o === g.sun) sunI = o.intensity; });
-    out.light = Math.abs(g.renderer.toneMappingExposure - 1) < 0.01 && sunI >= 1.4 && g.scene.fog.color.getHex() === 0xd2d9dc;
+    out.light = Math.abs(g.renderer.toneMappingExposure - 1) < 0.01 && sunI >= 1.25 && g.scene.fog.color.getHex() === 0xd2d9dc;      // (v1.42: a softer 1.3 sun with brighter ambient)
     g.toMenu(); return out;
   });
   const v1331 = await page.evaluate(() => {
