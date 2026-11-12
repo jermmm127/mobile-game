@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.43.0', date: '2026-11-12', title: 'New Red Dot and Holo Sight', notes: [
+    'The Red Dot attachment is rebuilt as a squat matte-black sight: a chunky arched hood with thick walls and a rounded top round a nearly square lens, on a low body with a two-screw clamp mount.',
+    'The Holo Sight attachment is rebuilt as a tall dark-grey unit: a thick hood with rounded top corners round a wide window, above a control face with a centre knob, two buttons, a label plate and two corner knobs, plus a battery tube and ribbed sides.',
+    'Both sit closer to your eye when you aim, so the sight fills the view the way a real one does, with the reticle in the middle of the window. The Holo reticle is a thin ring with a centre dot.',
+    'Both also show properly on the gun at the hip. The Legendary Apex Holo uses the new Holo body with gold trim and a cyan reticle.',
+  ] },
   { v: '1.42.1', date: '2026-11-12', title: 'Bug sweep', notes: [
     'Fixed a message from one match staying on screen in the next. For example, the Overdrive intro line could sit on top of the Team Deathmatch intro, or the daily reward line over the start of Zombies. Messages now clear when you leave a match and when a new one starts.',
     'Removed two warnings the game printed in the browser console on every match (no visible change).',

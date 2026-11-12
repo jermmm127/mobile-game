@@ -1841,7 +1841,7 @@ body.gfx-lite .overlay:not(.menu) > .panel, body.gfx-lite .overlay:not(.menu) > 
 window.BR = window.BR || {};
 
 BR.CONFIG = {
-  version: '1.42.1',
+  version: '1.43.0',
   autoFireDelay: 0.18,      // v1.29.3: seconds a target must stay under the crosshair before auto-fire shoots (phones + controllers only)
 
   map: {
@@ -2137,6 +2137,12 @@ BR.KNIFE_LEVEL = { tracker: 0, bayonet: 20, knife: 40, butterfly: 60 };
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.43.0', date: '2026-11-12', title: 'New Red Dot and Holo Sight', notes: [
+    'The Red Dot attachment is rebuilt as a squat matte-black sight: a chunky arched hood with thick walls and a rounded top round a nearly square lens, on a low body with a two-screw clamp mount.',
+    'The Holo Sight attachment is rebuilt as a tall dark-grey unit: a thick hood with rounded top corners round a wide window, above a control face with a centre knob, two buttons, a label plate and two corner knobs, plus a battery tube and ribbed sides.',
+    'Both sit closer to your eye when you aim, so the sight fills the view the way a real one does, with the reticle in the middle of the window. The Holo reticle is a thin ring with a centre dot.',
+    'Both also show properly on the gun at the hip. The Legendary Apex Holo uses the new Holo body with gold trim and a cyan reticle.',
+  ] },
   { v: '1.42.1', date: '2026-11-12', title: 'Bug sweep', notes: [
     'Fixed a message from one match staying on screen in the next. For example, the Overdrive intro line could sit on top of the Team Deathmatch intro, or the daily reward line over the start of Zombies. Messages now clear when you leave a match and when a new one starts.',
     'Removed two warnings the game printed in the browser console on every match (no visible change).',
@@ -18950,29 +18956,50 @@ BR.Attach = {
       const R = M[k === 'apex' ? 'cyan' : 'red'];
       let cy = 0.034, len = 0.05;
       box(0.024, 0.026, k === 'acog' ? 0.1 : 0.06, M.steel, 0, -0.003, 0, o);                         // rail mount + riser
-      if (k === 'reddot') { tube(0.021, 0.021, 0.05, M.body, 0, cy, 0, o, true); box(0.008, 0.008, 0.012, M.steel, 0.024, cy, 0, o); }
+      // v1.43 shape helpers: an extruded frame (outline minus window), each with rounded top corners
+      const rr = (path, x, y0, y1, r) => { path.moveTo(-x, y0); path.lineTo(x, y0); path.lineTo(x, y1 - r); path.quadraticCurveTo(x, y1, x - r, y1); path.lineTo(-x + r, y1); path.quadraticCurveTo(-x, y1, -x, y1 - r); path.closePath(); return path; };
+      const frame = (ox, oy0, oy1, orad, ix, iy0, iy1, irad, depth, mat, y, z) => { const sh = rr(new THREE.Shape(), ox, oy0, oy1, orad); sh.holes.push(rr(new THREE.Path(), ix, iy0, iy1, irad));
+        const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: true, bevelThickness: 0.0012, bevelSize: 0.0012, bevelSegments: 2, curveSegments: 10 }), mat); m.position.set(0, y, z - depth / 2); o.add(m); return m; };
+      if (k === 'reddot') {
+        // v1.43 red dot: a squat matte-black sight. A chunky ARCHED hood (thick walls, a fully rounded top) round a
+        // nearly square lens, standing on a low body with an emitter block at the back, on a two-screw clamp mount.
+        cy = 0.04; const X = 0.0225, top = 0.022, wall = 0.0052;
+        box(0.034, 0.012, 0.062, M.body, 0, 0.0115, 0.002, o);                                            // clamp mount
+        for (const z of [-0.016, 0.02]) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.0048, 0.0048, 0.046, 10), M.steel); s.rotation.z = Math.PI / 2; s.position.set(0, 0.011, z); o.add(s); }
+        box(0.047, 0.01, 0.05, M.body, 0, 0.0215, 0.0, o);                                               // sight body
+        box(0.03, 0.012, 0.016, M.body, 0, 0.026, 0.022, o);                                             // emitter block (rear)
+        frame(X, -0.0165, top, 0.016, X - wall, -0.0125, top - wall, 0.0115, 0.036, M.body, cy, -0.004);
+        for (const sx of [-1, 1]) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.004, 10), M.steel); s.rotation.z = Math.PI / 2; s.position.set(sx * (X + 0.002), cy - 0.008, 0.002); o.add(s); }      // windage screws
+        const glass = new THREE.MeshBasicMaterial({ color: 0xa8c8ff, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide });
+        mark(box((X - wall) * 2, top - wall + 0.0125, 0.0005, glass, 0, cy + (top - wall - 0.0125) / 2, -0.016, o));
+        { const gl = mark(box(0.005, 0.04, 0.0004, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, depthWrite: false, blending: THREE.AdditiveBlending }), -0.006, cy + 0.003, -0.0156, o)); gl.rotation.z = -0.5; }
+      }
       else if (k === 'reflex') { cy = 0.036; box(0.03, 0.008, 0.04, M.body, 0, 0.012, 0.006, o); for (const sx of [-1, 1]) box(0.003, 0.042, 0.004, M.body, sx * 0.022, cy, -0.012, o); box(0.047, 0.003, 0.004, M.body, 0, cy + 0.021, -0.012, o); mark(box(0.041, 0.039, 0.0006, M.lens, 0, cy, -0.012, o)); }
       else if (k === 'holo' || k === 'apex') {
-        // v1.42 holographic sight: a low housing with a battery cap + buttons, a thin chamfered hood round a wide window,
-        // swept side guards, coated glass with a soft glare, and a fine glowing ring reticle
-        cy = 0.04; len = 0.036; const W = 0.023, Hh = 0.018, T = 0.0024, trim = k === 'apex' ? M.gold : M.steel;
-        box(0.05, 0.016, 0.072, M.body, 0, 0.016, 0.006, o);                                              // housing
-        box(0.052, 0.003, 0.074, trim, 0, 0.0085, 0.006, o);                                              // base plate
-        { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0085, 0.02, 14), M.steel); c.rotation.z = Math.PI / 2; c.position.set(0.028, 0.017, 0.03); o.add(c);      // battery cap
-          const c2 = new THREE.Mesh(new THREE.CylinderGeometry(0.0062, 0.0062, 0.004, 12), M.body); c2.rotation.z = Math.PI / 2; c2.position.set(0.0395, 0.017, 0.03); o.add(c2); }
-        for (const z of [0.012, 0.024]) box(0.006, 0.0022, 0.008, M.steel, -0.0262, 0.019, z, o);          // brightness buttons
-        box(0.03, 0.004, 0.02, M.steel, 0, 0.0255, 0.03, o);                                              // rear deck
-        // hood: an extruded frame (outer outline with chamfered top corners, minus the window)
-        const sh = new THREE.Shape(), X = W + T, Y = Hh + T, ch = 0.006;
-        sh.moveTo(-X, -Y); sh.lineTo(X, -Y); sh.lineTo(X, Y - ch); sh.lineTo(X - ch, Y); sh.lineTo(-X + ch, Y); sh.lineTo(-X, Y - ch); sh.closePath();
-        const hole = new THREE.Path(), hc = 0.004; hole.moveTo(-W, -Hh); hole.lineTo(-W, Hh - hc); hole.lineTo(-W + hc, Hh); hole.lineTo(W - hc, Hh); hole.lineTo(W, Hh - hc); hole.lineTo(W, -Hh); hole.closePath(); sh.holes.push(hole);
-        const hood = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: false }), M.body); hood.position.set(0, cy, -len / 2 - 0.004); o.add(hood);
-        const rim = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.002, bevelEnabled: false }), trim); rim.position.set(0, cy, len / 2 - 0.0045); rim.scale.set(1.03, 1.04, 1); o.add(rim);      // bright rear lip
-        for (const sx of [-1, 1]) { const w = box(0.0022, 0.03, 0.03, M.body, sx * (X + 0.0035), cy - 0.006, -0.012, o); w.rotation.x = 0.35; w.rotation.z = -sx * 0.1; }      // side guards
-        // glass: a faint cool coating + a diagonal glare streak (both additive-light, never hide the target)
-        const glass = new THREE.MeshBasicMaterial({ color: k === 'apex' ? 0x8ff6ff : 0x9fe8d8, transparent: true, opacity: 0.085, depthWrite: false, side: THREE.DoubleSide });
-        mark(box(W * 2, Hh * 2, 0.0005, glass, 0, cy, -len / 2 + 0.002, o));
-        { const gl = mark(box(0.006, Hh * 2.6, 0.0004, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.07, depthWrite: false, blending: THREE.AdditiveBlending }), -0.008, cy, -len / 2 + 0.0024, o)); gl.rotation.z = -0.5; }
+        // v1.43 holographic sight: a tall grey-green unit. A THICK hood with rounded top corners round a wide window, on a
+        // deep body whose rear face (the part you look at when aiming) carries a centre knob, two buttons, a label plate and
+        // two corner knobs; a battery tube along the right, ribbed sides, on a base clamp.
+        cy = 0.07; const hb = this._hb || (this._hb = { body: new THREE.MeshPhongMaterial({ color: 0x35383a, specular: 0x3a3d40, shininess: 18 }), dark: new THREE.MeshPhongMaterial({ color: 0x222426, specular: 0x30332e, shininess: 20 }), btn: new THREE.MeshPhongMaterial({ color: 0x1c1e1d, specular: 0x444844, shininess: 30 }), plate: new THREE.MeshPhongMaterial({ color: 0x8b8f86, specular: 0x555, shininess: 30 }) });
+        const trim = k === 'apex' ? M.gold : hb.dark, BW = 0.06, RZ = 0.012;                              // body width, rear face z
+        box(BW + 0.006, 0.01, 0.07, hb.dark, 0, 0.011, -0.004, o);                                         // base clamp
+        box(BW, 0.036, 0.05, hb.body, 0, 0.034, -0.013, o);                                               // body
+        { const sl = box(BW, 0.01, 0.02, hb.body, 0, 0.05, 0.004, o); sl.rotation.x = 0.55; }                // sloped shoulder up to the hood
+        for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) box(0.002, 0.026, 0.004, hb.dark, sx * (BW / 2 + 0.0008), 0.034, -0.026 + i * 0.011, o);      // side ribs
+        { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0085, 0.05, 14), hb.dark); c.rotation.x = Math.PI / 2; c.position.set(BW / 2 + 0.006, 0.026, -0.006, ); o.add(c); }      // battery tube
+        // rear control face
+        box(BW - 0.004, 0.032, 0.002, hb.dark, 0, 0.034, RZ + 0.0005, o);
+        { const kn = new THREE.Mesh(new THREE.CylinderGeometry(0.0054, 0.0054, 0.005, 18), hb.plate); kn.rotation.x = Math.PI / 2; kn.position.set(0, 0.04, RZ + 0.003); o.add(kn);
+          const k2 = new THREE.Mesh(new THREE.CylinderGeometry(0.0034, 0.0034, 0.006, 14), hb.btn); k2.rotation.x = Math.PI / 2; k2.position.set(0, 0.04, RZ + 0.004); o.add(k2); }
+        for (const sx of [-1, 1]) { box(0.012, 0.0085, 0.003, hb.btn, sx * 0.016, 0.031, RZ + 0.002, o); box(0.012, 0.0012, 0.0032, hb.plate, sx * 0.016, 0.0365, RZ + 0.002, o);
+          const cn = new THREE.Mesh(new THREE.CylinderGeometry(0.0062, 0.0062, 0.006, 14), hb.btn); cn.rotation.x = Math.PI / 2; cn.position.set(sx * (BW / 2 - 0.004), 0.019, RZ + 0.002); o.add(cn); }
+        box(0.02, 0.005, 0.0025, hb.plate, 0, 0.0245, RZ + 0.0015, o);                                    // label plate
+        // hood + window
+        const X = 0.031, top = 0.021, bot = -0.02, wall = 0.0062;
+        frame(X, bot, top, 0.012, X - wall, bot + 0.0045, top - wall, 0.007, 0.04, hb.body, cy, -0.006);
+        if (k === 'apex') frame(X + 0.001, bot, top + 0.001, 0.013, X - 0.0012, bot + 0.0012, top - 0.0012, 0.011, 0.003, trim, cy, 0.0145);          // a thin gold edge line round the hood
+        const glass = new THREE.MeshBasicMaterial({ color: k === 'apex' ? 0x8ff6ff : 0xbfe6d8, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide });
+        mark(box((X - wall) * 2, top - wall - bot - 0.0045, 0.0005, glass, 0, cy + (top - wall + bot + 0.0045) / 2, -0.02, o));
+        { const gl = mark(box(0.006, 0.05, 0.0004, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.055, depthWrite: false, blending: THREE.AdditiveBlending }), -0.009, cy, -0.0196, o)); gl.rotation.z = -0.5; }
       }
       else { len = k === 'acog' ? 0.12 : k === 'tube2' ? 0.095 : 0.075; const r = k === 'acog' ? 0.022 : 0.021; cy = 0.036;
         tube(r, r * (k === 'acog' ? 0.86 : 1), len, M.body, 0, cy, 0, o, true); tube(r + 0.003, r + 0.003, 0.012, M.steel, 0, cy, -len / 2 + 0.006, o, true); tube(r + 0.002, r + 0.002, 0.01, M.steel, 0, cy, len / 2 - 0.005, o, true);
@@ -18980,21 +19007,21 @@ BR.Attach = {
         box(0.012, 0.014, 0.02, M.steel, 0, 0.016, 0, o);
         mark(tube(r * 0.94, r * 0.94, 0.0006, M.lens, 0, cy, -len / 2 + 0.004, o, false, 20)); }
       // reticle on the aim line (drawn over the lens)
-      const ret = new THREE.Group(); ret.position.set(0, cy, k === 'reflex' ? -0.012 : 0); o.add(ret);
+      const ret = new THREE.Group(); ret.position.set(0, cy, k === 'reflex' ? -0.012 : k === 'reddot' ? -0.0155 : k === 'holo' || k === 'apex' ? -0.0195 : 0); o.add(ret);
       const dot = (r, mat) => mark(new THREE.Mesh(new THREE.CircleGeometry(r, 14), mat));
       if (k === 'holo' || k === 'apex') {
-        // a fine 1-dot ring with four ticks, plus a soft glow copy so it reads as projected light
-        const glow = new THREE.MeshBasicMaterial({ color: R.color.getHex(), transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending });
-        ret.add(mark(new THREE.Mesh(new THREE.RingGeometry(0.0046, 0.0074, 36), glow))); ret.add(mark(new THREE.Mesh(new THREE.CircleGeometry(0.0022, 16), glow)));
-        ret.add(mark(new THREE.Mesh(new THREE.RingGeometry(0.0057, 0.0063, 40), R))); ret.add(dot(0.00085, R));
-        for (const [x, y] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) mark(box(x ? 0.0024 : 0.0006, y ? 0.0024 : 0.0006, 0.0001, R, x * 0.0074, y * 0.0074, 0, ret));
+        // a thin ring with a centre dot (and four small ticks), with a faint glow so it reads as projected light
+        const glow = new THREE.MeshBasicMaterial({ color: R.color.getHex(), transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending });
+        ret.add(mark(new THREE.Mesh(new THREE.RingGeometry(0.0034, 0.0052, 36), glow)));
+        ret.add(mark(new THREE.Mesh(new THREE.RingGeometry(0.0041, 0.0045, 44), R))); ret.add(dot(0.00065, R));
+        for (const [x, y] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) mark(box(x ? 0.0014 : 0.0004, y ? 0.0014 : 0.0004, 0.0001, R, x * 0.0052, y * 0.0052, 0, ret));
       }
       else if (k === 'acog') { const sh = new THREE.Shape(); sh.moveTo(0, 0.0012); sh.lineTo(0.0034, -0.0034); sh.lineTo(0.0022, -0.0034); sh.lineTo(0, -0.0006); sh.lineTo(-0.0022, -0.0034); sh.lineTo(-0.0034, -0.0034); sh.closePath(); ret.add(mark(new THREE.Mesh(new THREE.ShapeGeometry(sh), R))); mark(box(0.0006, 0.007, 0.0001, R, 0, -0.0075, 0, ret)); }
       else if (k === 'tube' || k === 'tube2') { ret.add(dot(0.001, R)); for (const sx of [-1, 1]) mark(box(0.006, 0.0006, 0.0001, R, sx * 0.0075, 0, 0, ret)); mark(box(0.0006, 0.006, 0.0001, R, 0, -0.0075, 0, ret)); }
       else ret.add(dot(0.0014, R));
       // aim through the centre of the optic, held a little closer so the window is big on screen
       const aim = new THREE.Object3D(); aim.position.set(sp.x, sp.y + 0.006 + cy, sp.z); model.add(aim);
-      ud.sight = aim; ud.sightDist = k === 'acog' ? 0.27 : k === 'tube2' ? 0.23 : k === 'tube' ? 0.2 : 0.21; ud.attOptic = on.optic;
+      ud.sight = aim; ud.sightDist = k === 'acog' ? 0.27 : k === 'tube2' ? 0.23 : k === 'tube' ? 0.2 : k === 'holo' || k === 'apex' ? 0.14 : k === 'reddot' ? 0.18 : 0.21; ud.attOptic = on.optic;      // (holo + red dot sit close to your eye so they fill the view like the real thing)
     }
     // ---- muzzle device: on the end of the barrel; the flash moves out to its tip (and is hidden when suppressed)
     if (on.muzzle && ud.flash) {
