@@ -249,12 +249,12 @@ BR.Game = class Game {
     // and a faint cool fill from the other side so shaded faces aren't flat
     // v1.21 art direction: a touch more contrast (warmer, stronger key; darker bounce) so forms read clearly
     // v1.34 golden hour: a warm, stronger key sun, a cooler sky and a deeper warm bounce, so lit faces glow and shade turns blue
-    this.scene.add(new THREE.HemisphereLight(0xbfd6ff, 0x5a4532, 0.66));
-    const sun = new THREE.DirectionalLight(0xffd6a0, 1.5);
+    this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x8a7c68, 0.78));      // v1.42: brighter, softer ambient (shaded sides are no longer near-black)
+    const sun = new THREE.DirectionalLight(0xffe2b8, 1.3);
     this.sunDir = new THREE.Vector3(420, 300, 300).normalize();
     sun.position.copy(this.sunDir);
     this.scene.add(sun, sun.target);
-    const fill = new THREE.DirectionalLight(0x8fb2ff, 0.32); fill.position.set(-0.5, 0.35, -0.6); this.scene.add(fill);
+    const fill = new THREE.DirectionalLight(0xa9c4ff, 0.42); fill.position.set(-0.5, 0.35, -0.6); this.scene.add(fill);
     this.muzzleLight = new THREE.PointLight(0xffc27a, 0, 9, 2); this.scene.add(this.muzzleLight);   // flashes on your shots
     this.sun = sun;
     this.world = new BR.World(seed, opts);

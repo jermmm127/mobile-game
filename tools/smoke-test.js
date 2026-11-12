@@ -1416,6 +1416,28 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v142 = await page.evaluate(() => {
+    const out = {}, M = BR.Models, g = BR.game, cnt = m => { let n = 0; m.traverse(o => { if (o.isMesh) n++; }); return n; };
+    // the Talon, Riot and Hornet are their own hand-built models (not another gun's sculpt), with every anchor the game needs
+    const built = id => { const m = M.weapon(id, 'default', 'none', null), u = m.userData; return { m, u, ok: !u.imported && !!u.sight && !!u.flash && !!u.muzzle && !!u.grip && !!u.fore && !!u.mag && cnt(m) > 60 }; };
+    const B = built('burst'), R = built('riot'), H = built('mpistol');
+    out.unique = B.ok && R.ok && H.ok && !BR.IMPORTED.burst && !BR.IMPORTED.riot && !BR.IMPORTED.mpistol;
+    out.talon = !!B.u.holoReticle && B.u.mag.position !== undefined && (() => { const bb = new THREE.Box3().setFromObject(B.u.mag); return bb.getCenter(new THREE.Vector3()).z > B.u.grip.z + 0.1; })();      // bullpup: the magazine is behind the grip
+    out.pump = cnt(M.weapon('pump', 'default', 'none', null)) > 190;
+    // they still shoot, reload and aim in a match
+    BR.AntiCheat._testing = true; g.startMatch({ practice: true }); const p = g.player; let ok = true;
+    for (const id of ['burst', 'riot', 'mpistol', 'pump']) { p.slots[0] = BR.Weapons.create(id); p.cur = 0; g.vmr.lastWeapon = null; p.ammo[p.weapon.def.ammo] = 99; for (let i = 0; i < 30; i++) g.update(1 / 60);
+      const m0 = p.weapon.mag; p.weapon.cool = 0; BR.Weapons.tryFire(g, p); for (let i = 0; i < 20; i++) g.update(1 / 60); const fired = p.weapon.mag < m0;
+      for (let i = 0; i < 40; i++) { p.ads = true; g.vmr.update(1 / 60, 0, 0); } const aimed = g.vmr.adsW > 0.9; p.ads = false;
+      g.input.press('reload'); for (let i = 0; i < 500; i++) g.update(1 / 60);
+      ok = ok && fired && aimed && p.weapon.mag === m0; }
+    out.play = ok; g.toMenu();
+    // art pass: lighter palette + ambient (nothing near-black on the island)
+    const W = new BR.World(4, {}), lum = c => ((c >> 16) & 255) * 0.3 + ((c >> 8) & 255) * 0.59 + (c & 255) * 0.11; let dark = 0, n = 0;
+    for (const b of W.boxes) { if (b.hidden || b.decor || b.tag === 'edge' || typeof b.color !== 'number') continue; n++; if (lum(b.color) < 70) dark++; }
+    out.palette = n > 200 && dark / n < 0.12;
+    return out;
+  });
   const v141 = await page.evaluate(() => {
     const g = BR.game, out = {}, A = BR.Attach, D = BR.Profile.data, keep = { owned: D.owned.attach.slice(), eq: JSON.stringify(D.equip.attach), coins: D.coins };
     // slots: none on the Sniper / Launcher / knives; built-in optics keep theirs; pistols take no grip or stock
@@ -1648,7 +1670,7 @@ const server = http.createServer((req, res) => {
     out.detail = count(pm) > 120;
     let wood = false; pm.traverse(o => { if (o.isMesh && o.material === (pm.userData.walnut || o.material) && o.material.map && o.material.map.image && o.material.map.image.width === 512) wood = true; }); out.wood = wood;
     out.loot = BR.CONFIG.loot.tables.every(t => t.pump) && Object.values(M.BLUEPRINTS.pump).some(b => b.rarity === 'Mythic');
-    out.variants = count(M.weapon('riot', 'default', 'none', null)) > count(M.weapon('shotgun', 'default', 'none', null)) + 40 && count(M.weapon('burst', 'default', 'none', null)) > count(M.weapon('holoar', 'default', 'none', null)) + 12;
+    out.variants = count(M.weapon('riot', 'default', 'none', null)) > count(M.weapon('shotgun', 'default', 'none', null)) + 40 && count(M.weapon('burst', 'default', 'none', null)) > 60;
     return out;
   });
   const v132 = await page.evaluate(async () => {
@@ -1662,7 +1684,7 @@ const server = http.createServer((req, res) => {
     const cm = M.weapon('smg', 'u_woodland', 'none', null); let uvSpread = 0; cm.traverse(o => { if (o.isMesh && o.geometry.attributes.uv && o.geometry.attributes.position.count > 500) { const a = o.geometry.attributes.uv.array; let lo = 1e9, hi = -1e9; for (let i = 0; i < a.length; i += 2) { lo = Math.min(lo, a[i]); hi = Math.max(hi, a[i]); } uvSpread = Math.max(uvSpread, hi - lo); } });
     out.camoUV = uvSpread > 1;
     // new guns: real models (sculpt variants with their own parts), in the loot, shop, duels; the burst fires 3 on one tap
-    out.models = ['burst', 'riot', 'mpistol'].every(id => { const m = M.weapon(id, 'default', 'none', null); return m.userData.imported === id && !!m.userData.muzzle && !!m.userData.grip; }) && !!M.weapon('riot', 'default', 'none', null).userData.mag;
+    out.models = ['burst', 'riot', 'mpistol'].every(id => { const m = M.weapon(id, 'default', 'none', null); return !m.userData.imported && !!m.userData.muzzle && !!m.userData.grip; })      /* (v1.42: hand-built models now) */ && !!M.weapon('riot', 'default', 'none', null).userData.mag;
     out.loot = BR.CONFIG.loot.tables.every(t => t.burst && t.riot && t.mpistol);
     BR.AntiCheat._testing = true; g.startMatch({ practice: true }); const p = g.player;
     p.slots[0] = BR.Weapons.create('burst'); p.cur = 0; p.ammo.heavy = 300; for (let i = 0; i < 40; i++) g.update(1 / 60);
@@ -1960,6 +1982,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.42 unique Talon / Riot / Hornet models (anchors, bullpup mag, fire + aim + reload), richer Pump, lighter world palette', Object.values(v142).every(Boolean), v142],
     ['v1.41 attachments (slots, case-only, stats on your gun only, first-person parts, Attachment Case rolls + duplicate refund, UI) and kill-hitch fixes', Object.values(v141).every(Boolean), v141],
     ['v1.40 Lite graphics tier + device detection, rim-light blueprint aura, cover on the open maps, knife timings from the videos', Object.values(v140).every(Boolean), v140],
     ['v1.39 gun snaps out of the sprint / carry pose when shooting, mouse spike filter keeps flicks, frame cap only on clean refresh multiples', Object.values(v139).every(Boolean), v139],
@@ -2155,7 +2178,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v141, v140, v139, v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v142, v141, v140, v139, v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

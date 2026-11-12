@@ -5,6 +5,15 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.42.0', date: '2026-11-12', title: 'New look, new gun models', notes: [
+    'A cleaner art style across the Battle Royale and Resurgence islands. Buildings are warm off-white plaster with slate roofs, concrete is pale instead of near-black, and containers and parkour pieces use clear accent colours.',
+    'Surfaces are much calmer: walls lost most of their blotches, pits and streaks, and the ground is a soft green lawn instead of scribbly beige.',
+    'Lighting is brighter and softer, so the shaded side of a building still reads as a wall instead of a dark block. The screen-edge darkening is lighter too.',
+    'TALON BURST has its own model: a tan bullpup with the magazine behind the grip, a ported handguard, its own holo sight on a top rail, a cheek pad and a three-prong flash hider. (It used to be the Holo AR with parts added.)',
+    'RIOT AUTO has its own model: a boxy olive semi-auto shotgun with a vented handguard, a ported brake, ghost-ring sights, a skeleton stock and its 8-shell drum. (It used to be the Breacher with a drum.)',
+    'HORNET has its own model: a compact machine pistol with a vented barrel shroud, a long magazine through the grip, a folding foregrip, a top cocking knob, a side laser and a wire stock. (It used to be the Pistol with parts added.)',
+    'The PUMP ACTION, already its own model, got more detail: a weapon light by the magazine tube, a rib along the barrel, an engraved receiver panel and a leather shell loop on the stock.',
+  ] },
   { v: '1.41.1', date: '2026-11-12', title: 'Better Holo Sight', notes: [
     'The Holo Sight attachment has a new model: a low housing with a battery cap and brightness buttons, a thin hood with chamfered corners round a wider window, swept side guards and coated glass with a soft glare.',
     'Its reticle is finer and glows like projected light: a thin ring with four ticks and a small centre dot, so it covers less of your target.',

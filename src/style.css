@@ -80,7 +80,7 @@ body.in-menu #play > *:not(#view) { display: none !important; }
 body.hint-off #joy-hint, body.hint-off #look-hint { display: none !important; }
 
 /* v1.34 cinematic grade: soft cool vignette framing the view + a faint warm wash from the sun side (cheap: one static gradient layer) */
-#grade { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 46%, transparent 58%, rgba(12, 16, 34, 0.34) 100%), linear-gradient(200deg, rgba(255, 196, 130, 0.07), transparent 45%); }
+#grade { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 80% 75% at 50% 46%, transparent 64%, rgba(12, 16, 34, 0.2) 100%), linear-gradient(200deg, rgba(255, 210, 160, 0.05), transparent 45%); }
 body.menulite #grade { display: none; }
 #vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(200, 20, 50, 0.6) 100%); transition: opacity 0.2s; }
 #zone-tint { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(138, 107, 255, 0.04) 30%, rgba(138, 107, 255, 0.42) 100%); transition: opacity 0.3s; }

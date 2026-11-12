@@ -7,13 +7,15 @@
 // =============================================================================
 const PAL = {
   // Muted, grounded palette (concrete, plaster, steel, weathered paint) for a competitive-shooter read
-  ground: 0x6f8a4e, cliff: 0x5a6150,
-  walls: [0xb9b4aa, 0xa9a59c, 0x9ea2a2, 0xb2a790, 0x9b988f, 0xa6a194],
-  floor: 0x6f6a62, roof: 0x4a4845,
-  containers: [0x8a5a3c, 0x45607a, 0x763a35, 0x4d6650, 0x8c784a],
-  crate: 0x7a6247, rock: 0x7b7a74, trunk: 0x5a4330, leaves: 0x4a6a38,
-  parkour: 0xa8854a, parkourAlt: 0x363b42, cover: 0x8a8882, tower: 0x585e66,
-  pad: 0x38c2dc, padBase: 0x2a3036, trim: 0x47433f, lamp: 0x2e3135, lampGlow: 0xffe6b0, fence: 0x6e5a44, pillar: 0x6b7077,
+  // v1.42 art pass: a lighter, cleaner palette. Warm off-white plaster, pale concrete, slate roofs, and clear accent
+  // colours on containers and parkour pieces. Nothing is near-black any more, so shaded sides still read as surfaces.
+  ground: 0x7fa554, cliff: 0x6c7462,
+  walls: [0xd6cfc2, 0xcdc7bb, 0xc4cbcc, 0xd4c8ae, 0xc2c7c2, 0xcfc4b3],
+  floor: 0x9a958c, roof: 0x6a7482,
+  containers: [0xd9774a, 0x4a86b8, 0xc8524c, 0x5f9a6a, 0xe0b24a],
+  crate: 0xb08a5c, rock: 0x8f9088, trunk: 0x5a4330, leaves: 0x4a6a38,
+  parkour: 0xe0a04a, parkourAlt: 0x8f99a6, cover: 0xb9b6ae, tower: 0x8a939e,
+  pad: 0x38c2dc, padBase: 0x4a525c, trim: 0x6b6660, lamp: 0x4a4f56, lampGlow: 0xffe6b0, fence: 0x8a7252, pillar: 0x99a0a9,
 };
 
 BR.World = class World {
@@ -1560,8 +1562,8 @@ BR.World = class World {
     gt.repeat.set(S / 5, S / 5);
     const geo = new THREE.PlaneGeometry(S, S, segs, segs);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
-    const GC = this.groundCols || [0x6f8f45, 0x55733a, 0xa89a5c];      // v1.34: richer, sunnier grass
-    const grass = new THREE.Color(GC[0]), grass2 = new THREE.Color(GC[1]), dry = new THREE.Color(GC[2]), dirt = new THREE.Color(0x9c8460);
+    const GC = this.groundCols || [0x5c9a3a, 0x4a8431, 0x86a04c];      // v1.42: fresher greens; dry patches are pale green-gold, not beige
+    const grass = new THREE.Color(GC[0]), grass2 = new THREE.Color(GC[1]), dry = new THREE.Color(GC[2]), dirt = new THREE.Color(0xa08a62);
     const c = new THREE.Color();
     const towns = this.towns || [];
     for (let i = 0; i < pos.count; i++) {
@@ -2175,17 +2177,17 @@ function makeTileTexture(grass) {
       const x = r() * S2, y = r() * S2, rad = 8 + r() * 26, dark = r() < 0.5;
       for (const [ox, oy] of [[0, 0], [S2, 0], [-S2, 0], [0, S2], [0, -S2]]) {
         const gr = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
-        gr.addColorStop(0, dark ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,230,0.08)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        gr.addColorStop(0, dark ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,230,0.05)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = gr; ctx.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
       }
     }
     ctx.lineWidth = 1.3; ctx.lineCap = 'round';
-    for (let i = 0; i < 3200; i++) {
+    for (let i = 0; i < 1500; i++) {      // (v1.42: fewer, softer blades: a calm lawn instead of scribbles)
       const x = r() * S2, y = r() * S2, l = 3 + r() * 5, a = -Math.PI / 2 + (r() - 0.5) * 1.1, dk = r() < 0.55;
-      ctx.strokeStyle = dk ? `rgba(20,40,10,${0.1 + r() * 0.12})` : `rgba(255,255,210,${0.08 + r() * 0.12})`;
+      ctx.strokeStyle = dk ? `rgba(20,40,10,${0.05 + r() * 0.06})` : `rgba(255,255,210,${0.05 + r() * 0.07})`;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke();
     }
-    for (let i = 0; i < 400; i++) { ctx.fillStyle = `rgba(90,70,40,${0.1 + r() * 0.1})`; ctx.fillRect(r() * S2, r() * S2, 2, 2); }  // grit
+    for (let i = 0; i < 120; i++) { ctx.fillStyle = `rgba(90,70,40,${0.05 + r() * 0.05})`; ctx.fillRect(r() * S2, r() * S2, 2, 2); }  // grit
     const tex = new THREE.CanvasTexture(cv);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.anisotropy = 4;
@@ -2200,14 +2202,14 @@ function makeTileTexture(grass) {
     const x = r() * S3, y = r() * S3, rad = 6 + r() * 40, dark = r() < 0.55;
     for (const [ox, oy] of [[0, 0], [S3, 0], [-S3, 0], [0, S3], [0, -S3]]) {
       const gr = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
-      gr.addColorStop(0, dark ? `rgba(0,0,0,${0.035 + r() * 0.05})` : `rgba(255,255,255,${0.04 + r() * 0.05})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      gr.addColorStop(0, dark ? `rgba(0,0,0,${0.012 + r() * 0.022})` : `rgba(255,255,255,${0.02 + r() * 0.03})`); gr.addColorStop(1, 'rgba(0,0,0,0)');      // (v1.42: clean plaster, only a hint of mottling)
       ctx.fillStyle = gr; ctx.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
     }
   }
-  for (let i = 0; i < 5000; i++) { const v = r(); ctx.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.03 + r() * 0.05})` : `rgba(255,255,255,${0.03 + r() * 0.05})`; ctx.fillRect(r() * S3, r() * S3, 1, 1); }
-  for (let i = 0; i < 120; i++) { ctx.fillStyle = `rgba(0,0,0,${0.12 + r() * 0.12})`; const x = r() * S3, y = r() * S3, w = 1 + r() * 2; ctx.fillRect(x, y, w, w); }   // pits
-  for (let i = 0; i < 14; i++) { const x = r() * S3, l = 30 + r() * 90, gr = ctx.createLinearGradient(0, 0, 0, l);     // rain streaks
-    gr.addColorStop(0, 'rgba(0,0,0,0.06)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.fillRect(x, r() * S3, 2 + r() * 4, l); }
+  for (let i = 0; i < 2200; i++) { const v = r(); ctx.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.015 + r() * 0.025})` : `rgba(255,255,255,${0.02 + r() * 0.03})`; ctx.fillRect(r() * S3, r() * S3, 1, 1); }
+  for (let i = 0; i < 30; i++) { ctx.fillStyle = `rgba(0,0,0,${0.05 + r() * 0.05})`; const x = r() * S3, y = r() * S3, w = 1 + r() * 2; ctx.fillRect(x, y, w, w); }   // pits
+  for (let i = 0; i < 4; i++) { const x = r() * S3, l = 30 + r() * 90, gr = ctx.createLinearGradient(0, 0, 0, l);     // rain streaks
+    gr.addColorStop(0, 'rgba(0,0,0,0.025)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.fillRect(x, r() * S3, 2 + r() * 4, l); }
   ctx.fillStyle = 'rgba(0,0,0,0.07)'; ctx.fillRect(0, 127, S3, 1.5);                                   // faint formwork seam
   ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, 129, S3, 1);
   const tex = new THREE.CanvasTexture(cv);
