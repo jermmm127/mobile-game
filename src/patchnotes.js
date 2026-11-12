@@ -5,6 +5,11 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.41.1', date: '2026-11-12', title: 'Better Holo Sight', notes: [
+    'The Holo Sight attachment has a new model: a low housing with a battery cap and brightness buttons, a thin hood with chamfered corners round a wider window, swept side guards and coated glass with a soft glare.',
+    'Its reticle is finer and glows like projected light: a thin ring with four ticks and a small centre dot, so it covers less of your target.',
+    'The Legendary Apex Holo gets the same new model with gold trim and a cyan reticle.',
+  ] },
   { v: '1.41.0', date: '2026-11-11', title: 'Attachments', notes: [
     'New: ATTACHMENTS. Fit an optic, a muzzle, a grip and a stock to every gun except the Sniper and the Shockwave Launcher. Open them from the ATTACHMENTS button in your Inventory. Once you own an attachment it fits every gun that has that slot.',
     'Optics: Red Dot, Reflex Sight, Holo Sight, 1.5x Optic, Delta 2x, ACOG 3x and the Legendary Apex Holo. Each sits on the gun in first person with a working reticle, sets its own zoom and lines up on your aim point.',

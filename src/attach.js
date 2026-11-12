@@ -127,9 +127,28 @@ BR.Attach = {
       box(0.024, 0.026, k === 'acog' ? 0.1 : 0.06, M.steel, 0, -0.003, 0, o);                         // rail mount + riser
       if (k === 'reddot') { tube(0.021, 0.021, 0.05, M.body, 0, cy, 0, o, true); box(0.008, 0.008, 0.012, M.steel, 0.024, cy, 0, o); }
       else if (k === 'reflex') { cy = 0.036; box(0.03, 0.008, 0.04, M.body, 0, 0.012, 0.006, o); for (const sx of [-1, 1]) box(0.003, 0.042, 0.004, M.body, sx * 0.022, cy, -0.012, o); box(0.047, 0.003, 0.004, M.body, 0, cy + 0.021, -0.012, o); mark(box(0.041, 0.039, 0.0006, M.lens, 0, cy, -0.012, o)); }
-      else if (k === 'holo' || k === 'apex') { cy = 0.036; len = 0.05; box(0.05, 0.004, len, M.body, 0, cy + 0.021, 0, o); box(0.05, 0.004, len, M.body, 0, cy - 0.021, 0, o); for (const sx of [-1, 1]) box(0.004, 0.046, len, M.body, sx * 0.025, cy, 0, o);
-        if (k === 'apex') { box(0.052, 0.002, len + 0.002, M.gold, 0, cy + 0.0235, 0, o); }
-        mark(box(0.046, 0.038, 0.0006, M.lens, 0, cy, -len / 2 + 0.002, o)); }
+      else if (k === 'holo' || k === 'apex') {
+        // v1.42 holographic sight: a low housing with a battery cap + buttons, a thin chamfered hood round a wide window,
+        // swept side guards, coated glass with a soft glare, and a fine glowing ring reticle
+        cy = 0.04; len = 0.036; const W = 0.023, Hh = 0.018, T = 0.0024, trim = k === 'apex' ? M.gold : M.steel;
+        box(0.05, 0.016, 0.072, M.body, 0, 0.016, 0.006, o);                                              // housing
+        box(0.052, 0.003, 0.074, trim, 0, 0.0085, 0.006, o);                                              // base plate
+        { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0085, 0.02, 14), M.steel); c.rotation.z = Math.PI / 2; c.position.set(0.028, 0.017, 0.03); o.add(c);      // battery cap
+          const c2 = new THREE.Mesh(new THREE.CylinderGeometry(0.0062, 0.0062, 0.004, 12), M.body); c2.rotation.z = Math.PI / 2; c2.position.set(0.0395, 0.017, 0.03); o.add(c2); }
+        for (const z of [0.012, 0.024]) box(0.006, 0.0022, 0.008, M.steel, -0.0262, 0.019, z, o);          // brightness buttons
+        box(0.03, 0.004, 0.02, M.steel, 0, 0.0255, 0.03, o);                                              // rear deck
+        // hood: an extruded frame (outer outline with chamfered top corners, minus the window)
+        const sh = new THREE.Shape(), X = W + T, Y = Hh + T, ch = 0.006;
+        sh.moveTo(-X, -Y); sh.lineTo(X, -Y); sh.lineTo(X, Y - ch); sh.lineTo(X - ch, Y); sh.lineTo(-X + ch, Y); sh.lineTo(-X, Y - ch); sh.closePath();
+        const hole = new THREE.Path(), hc = 0.004; hole.moveTo(-W, -Hh); hole.lineTo(-W, Hh - hc); hole.lineTo(-W + hc, Hh); hole.lineTo(W - hc, Hh); hole.lineTo(W, Hh - hc); hole.lineTo(W, -Hh); hole.closePath(); sh.holes.push(hole);
+        const hood = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: false }), M.body); hood.position.set(0, cy, -len / 2 - 0.004); o.add(hood);
+        const rim = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.002, bevelEnabled: false }), trim); rim.position.set(0, cy, len / 2 - 0.0045); rim.scale.set(1.03, 1.04, 1); o.add(rim);      // bright rear lip
+        for (const sx of [-1, 1]) { const w = box(0.0022, 0.03, 0.03, M.body, sx * (X + 0.0035), cy - 0.006, -0.012, o); w.rotation.x = 0.35; w.rotation.z = -sx * 0.1; }      // side guards
+        // glass: a faint cool coating + a diagonal glare streak (both additive-light, never hide the target)
+        const glass = new THREE.MeshBasicMaterial({ color: k === 'apex' ? 0x8ff6ff : 0x9fe8d8, transparent: true, opacity: 0.085, depthWrite: false, side: THREE.DoubleSide });
+        mark(box(W * 2, Hh * 2, 0.0005, glass, 0, cy, -len / 2 + 0.002, o));
+        { const gl = mark(box(0.006, Hh * 2.6, 0.0004, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.07, depthWrite: false, blending: THREE.AdditiveBlending }), -0.008, cy, -len / 2 + 0.0024, o)); gl.rotation.z = -0.5; }
+      }
       else { len = k === 'acog' ? 0.12 : k === 'tube2' ? 0.095 : 0.075; const r = k === 'acog' ? 0.022 : 0.021; cy = 0.036;
         tube(r, r * (k === 'acog' ? 0.86 : 1), len, M.body, 0, cy, 0, o, true); tube(r + 0.003, r + 0.003, 0.012, M.steel, 0, cy, -len / 2 + 0.006, o, true); tube(r + 0.002, r + 0.002, 0.01, M.steel, 0, cy, len / 2 - 0.005, o, true);
         if (k === 'acog') box(0.006, 0.004, 0.07, M.red, 0, cy + r + 0.002, -0.005, o);                       // fibre-optic strip
@@ -138,7 +157,13 @@ BR.Attach = {
       // reticle on the aim line (drawn over the lens)
       const ret = new THREE.Group(); ret.position.set(0, cy, k === 'reflex' ? -0.012 : 0); o.add(ret);
       const dot = (r, mat) => mark(new THREE.Mesh(new THREE.CircleGeometry(r, 14), mat));
-      if (k === 'holo' || k === 'apex') { ret.add(mark(new THREE.Mesh(new THREE.RingGeometry(0.0062, 0.0072, 28), R))); ret.add(dot(0.0011, R)); for (const [x, y] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const t = mark(box(x ? 0.003 : 0.0008, y ? 0.003 : 0.0008, 0.0001, R, x * 0.0085, y * 0.0085, 0, ret)); void t; } }
+      if (k === 'holo' || k === 'apex') {
+        // a fine 1-dot ring with four ticks, plus a soft glow copy so it reads as projected light
+        const glow = new THREE.MeshBasicMaterial({ color: R.color.getHex(), transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending });
+        ret.add(mark(new THREE.Mesh(new THREE.RingGeometry(0.0046, 0.0074, 36), glow))); ret.add(mark(new THREE.Mesh(new THREE.CircleGeometry(0.0022, 16), glow)));
+        ret.add(mark(new THREE.Mesh(new THREE.RingGeometry(0.0057, 0.0063, 40), R))); ret.add(dot(0.00085, R));
+        for (const [x, y] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) mark(box(x ? 0.0024 : 0.0006, y ? 0.0024 : 0.0006, 0.0001, R, x * 0.0074, y * 0.0074, 0, ret));
+      }
       else if (k === 'acog') { const sh = new THREE.Shape(); sh.moveTo(0, 0.0012); sh.lineTo(0.0034, -0.0034); sh.lineTo(0.0022, -0.0034); sh.lineTo(0, -0.0006); sh.lineTo(-0.0022, -0.0034); sh.lineTo(-0.0034, -0.0034); sh.closePath(); ret.add(mark(new THREE.Mesh(new THREE.ShapeGeometry(sh), R))); mark(box(0.0006, 0.007, 0.0001, R, 0, -0.0075, 0, ret)); }
       else if (k === 'tube' || k === 'tube2') { ret.add(dot(0.001, R)); for (const sx of [-1, 1]) mark(box(0.006, 0.0006, 0.0001, R, sx * 0.0075, 0, 0, ret)); mark(box(0.0006, 0.006, 0.0001, R, 0, -0.0075, 0, ret)); }
       else ret.add(dot(0.0014, R));
