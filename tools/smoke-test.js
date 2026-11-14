@@ -1417,13 +1417,14 @@ const server = http.createServer((req, res) => {
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
   const v144 = await page.evaluate(() => {
-    const A = BR.Audio, out = {}, keep = { ctx: A.ctx, voices: A.voices, gate: A._gate };
+    const A = BR.Audio, out = {}, keep = { ctx: A.ctx, voices: A.voices, gate: A._gate, lite: A.lite }; A.lite = false;          // (test the standard budget; weaker devices get a smaller one)
     // one decision per sound: with the budget nearly full, a sound's layers are all admitted or all refused (never part)
     let started = 0; const fake = { state: 'running', currentTime: 0 }; A.ctx = fake; A._gate = [undefined, undefined];
     A.voices = 43; const a1 = A.ok(false); A.voices = 60; const a2 = A.ok(false); out.whole = a1 === true && a2 === true;          // decided at the first layer, held for the rest of the sound
     A._gate = [undefined, undefined]; A.voices = 60; out.refuses = A.ok(false) === false && A.ok(true) === true;                  // over the normal budget: far sounds wait, yours still play
     A._gate = [undefined, undefined]; A.voices = 200; out.cap = A.ok(true) === false;
-    A.ctx = keep.ctx; A.voices = keep.voices; A._gate = [undefined, undefined]; void started;
+    A.lite = true; A._gate = [undefined, undefined]; A.voices = 30; out.liteBudget = A.ok(false) === false && A.ok(true) === true;
+    A.ctx = keep.ctx; A.voices = keep.voices; A.lite = keep.lite; A._gate = [undefined, undefined]; void started;
     out.engine = /disconnect/.test(String(A._done)) && /_farQ/.test(String(A.shot)) && /_force = true/.test(String(A.hit)) && /_force = true/.test(String(A.kill));
     return out;
   });
