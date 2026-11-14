@@ -1416,6 +1416,17 @@ const server = http.createServer((req, res) => {
     return out;
   });
   // v1.30: key guard (in a match, browser shortcuts are cancelled and leaving asks first) + pop-out window helpers
+  const v144 = await page.evaluate(() => {
+    const A = BR.Audio, out = {}, keep = { ctx: A.ctx, voices: A.voices, gate: A._gate };
+    // one decision per sound: with the budget nearly full, a sound's layers are all admitted or all refused (never part)
+    let started = 0; const fake = { state: 'running', currentTime: 0 }; A.ctx = fake; A._gate = [undefined, undefined];
+    A.voices = 43; const a1 = A.ok(false); A.voices = 60; const a2 = A.ok(false); out.whole = a1 === true && a2 === true;          // decided at the first layer, held for the rest of the sound
+    A._gate = [undefined, undefined]; A.voices = 60; out.refuses = A.ok(false) === false && A.ok(true) === true;                  // over the normal budget: far sounds wait, yours still play
+    A._gate = [undefined, undefined]; A.voices = 200; out.cap = A.ok(true) === false;
+    A.ctx = keep.ctx; A.voices = keep.voices; A._gate = [undefined, undefined]; void started;
+    out.engine = /disconnect/.test(String(A._done)) && /_farQ/.test(String(A.shot)) && /_force = true/.test(String(A.hit)) && /_force = true/.test(String(A.kill));
+    return out;
+  });
   const v142 = await page.evaluate(() => {
     const out = {}, M = BR.Models, g = BR.game, cnt = m => { let n = 0; m.traverse(o => { if (o.isMesh) n++; }); return n; };
     // the Talon, Riot and Hornet are their own hand-built models (not another gun's sculpt), with every anchor the game needs
@@ -1984,6 +1995,7 @@ const server = http.createServer((req, res) => {
     return out;
   });
   const checks = [
+    ['v1.44 audio: one admission per sound (no half-played sounds), your sounds always play, nodes released on end', Object.values(v144).every(Boolean), v144],
     ['v1.42 unique Talon / Riot / Hornet models (anchors, bullpup mag, fire + aim + reload), richer Pump, lighter world palette', Object.values(v142).every(Boolean), v142],
     ['v1.41 attachments (slots, case-only, stats on your gun only, first-person parts, Attachment Case rolls + duplicate refund, UI) and kill-hitch fixes', Object.values(v141).every(Boolean), v141],
     ['v1.40 Lite graphics tier + device detection, rim-light blueprint aura, cover on the open maps, knife timings from the videos', Object.values(v140).every(Boolean), v140],
@@ -2180,7 +2192,7 @@ const server = http.createServer((req, res) => {
     ['bots finish a match', match.alive === 1],
     ['no page errors', errors.length === 0],
   ];
-  console.log(JSON.stringify({ v142, v141, v140, v139, v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
+  console.log(JSON.stringify({ v144, v142, v141, v140, v139, v138, v137, v136, v135, v134, v1331, v133, v1323, v1322, v1321, v132, v131, v1301, v130, v1292, v1291, v1284, v1282, v128, v127, v126, v123, v121, v120, v119, v17, walls, sensAdv, v15, mech, combat, acct, extra, death, queue, duel, perf, loadMs, match, errors }, null, 1));
   let ok = true;
   for (const [name, pass] of checks) { console.log((pass ? 'PASS ' : 'FAIL ') + name); ok = ok && pass; }
   await browser.close();

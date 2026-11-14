@@ -22,13 +22,17 @@ BR.Audio = {
       const c = this.ctx = new AC();
       this.master = c.createGain(); this.master.gain.value = this.volume;
       const comp = c.createDynamicsCompressor(); comp.threshold.value = -12; comp.knee.value = 18; comp.ratio.value = 3; comp.attack.value = 0.008; comp.release.value = 0.3;     // v1.28.2: gentler, so shots don't audibly duck everything else
-      this.bus = c.createGain(); this.bus.gain.value = 1; this.bus.connect(comp); comp.connect(this.master); this.master.connect(c.destination);
+      // v1.44: a fast limiter last in the chain, so a loud moment (many guns at once, a high volume setting) is turned down
+      // for an instant instead of clipping. Clipping was the crackle in big fights.
+      const lim = c.createDynamicsCompressor(); lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.07;
+      this.bus = c.createGain(); this.bus.gain.value = 1; this.bus.connect(comp); comp.connect(this.master); this.master.connect(lim); lim.connect(c.destination);
+      this.lite = !!(BR.gfxLite || (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4));      // weaker devices get a smaller budget
       const len = c.sampleRate * 1.0;
       this.noise = c.createBuffer(1, len, c.sampleRate);
       const d = this.noise.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       // reverb: early reflections + a decaying diffuse tail, slightly different per ear
-      const rl = Math.floor(c.sampleRate * 1.8), ir = c.createBuffer(2, rl, c.sampleRate);
+      const rl = Math.floor(c.sampleRate * 1.1), ir = c.createBuffer(2, rl, c.sampleRate);      // (v1.44: 1.1 s tail, was 1.8: the reverb is the most expensive node)
       for (let ch = 0; ch < 2; ch++) { const o = ir.getChannelData(ch);
         for (let i = 0; i < rl; i++) { const t = i / c.sampleRate; o[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rl, 2.6) * (t < 0.012 ? 0 : 0.55); }
         for (const [tt, g] of [[0.017, 0.6], [0.031, 0.45], [0.052, 0.35], [0.083, 0.25], [0.12, 0.18]]) { const i = Math.floor((tt + ch * 0.003) * c.sampleRate); o[i] += g; o[i + 1] -= g * 0.5; } }
@@ -42,17 +46,31 @@ BR.Audio = {
 
   setVolume(v) { this.volume = v; if (this.master) this.master.gain.value = v; },
 
-  // v1.28.2: a soft voice limit for far / ambient layers, a much higher one for your own and nearby sounds (they used to get dropped mid-fight)
-  ok(force) { return this.ctx && this.ctx.state === 'running' && this.voices < (force || this._force ? 140 : 80); },
+  // v1.44 voice budget. One sound is built from several layers; the limit used to be checked per LAYER, so in a busy fight
+  // a shot could lose its crack or its body: that was the chopped, stuttering audio. Now the decision is made once per
+  // sound (every layer started in the same instant shares it), so a sound plays whole or not at all. The budgets are also
+  // lower (fewer, complete sounds instead of many broken ones), lower still on weaker devices.
+  ok(force) {
+    if (!this.ctx || this.ctx.state !== 'running') return false;
+    const f = force || this._force ? 1 : 0, G = this._gate || (this._gate = [undefined, undefined]);
+    if (G[f] === undefined) {
+      G[f] = this.voices < (f ? (this.lite ? 64 : 96) : (this.lite ? 26 : 44));
+      if (!this._gateQ) { this._gateQ = true; Promise.resolve().then(() => { this._gateQ = false; G[0] = G[1] = undefined; }); }
+    }
+    return G[f];
+  },
 
   // routing helper: gain -> (pan) -> dry bus + reverb send
   _out(node, pan, rev) {
-    const c = this.ctx; let out = node;
-    if (c.createStereoPanner && pan) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); out.connect(p); out = p; }
+    const c = this.ctx; let out = node; const made = [node];
+    if (c.createStereoPanner && pan && Math.abs(pan) > 0.08) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); out.connect(p); out = p; made.push(p); }      // (v1.44: no panner for centred sounds)
     out.connect(this.bus || this.master);
-    if (rev && this.verbIn) { const s = c.createGain(); s.gain.value = rev; out.connect(s); s.connect(this.verbIn); }
+    if (rev >= 0.09 && this.verbIn && !(this.lite && rev < 0.3)) { const s = c.createGain(); s.gain.value = rev; out.connect(s); s.connect(this.verbIn); made.push(s); }      // (tiny reverb sends are inaudible: skipped)
+    this._made = made;
   },
-  _done(src) { this.voices++; src.onended = () => { this.voices--; }; },
+  // v1.44: when a layer ends its nodes are unplugged straight away, so the audio thread stops processing them (they used to
+  // stay wired in until the browser's garbage collector got round to it)
+  _done(src) { this.voices++; const made = this._made; this._made = null; src.onended = () => { this.voices--; try { src.disconnect(); if (made) for (const n of made) n.disconnect(); } catch (e) { /* already gone */ } }; },
   // noise layer: filter sweeps f0 -> f1 (exponential), attack then exponential decay
   nz(o) {
     if (this._k) o.vol *= this._k;
@@ -87,7 +105,7 @@ BR.Audio = {
   // a short metallic hit: a click of noise plus a few inharmonic ringing partials (brass, steel, mag springs)
   metal(f, vol, dur, at, pan, rev) {
     this.nz({ f0: f * 1.6, q: 2.2, type: 'bandpass', dur: 0.03, vol: vol, at, pan, rev: rev || 0.08 });
-    for (const [k, v] of [[1, 1], [2.76, 0.55], [5.4, 0.3]]) this.osc({ f0: f * k, f1: f * k * 0.995, dur: dur * (1.2 - k * 0.12), vol: vol * 0.22 * v, at, pan, rev: rev || 0.08 });
+    for (const [k, v] of [[1, 1], [2.76, 0.62]]) this.osc({ f0: f * k, f1: f * k * 0.995, dur: dur * (1.2 - k * 0.12), vol: vol * 0.22 * v, at, pan, rev: rev || 0.08 });
   },
 
   // Old generic primitives (kept for the zombie / UI sounds), now through the new bus with a touch of room
@@ -115,6 +133,9 @@ BR.Audio = {
   shot(id, dist, pan, suppressed) {
     dist = dist || 0;
     if (!this.ok(dist < 18)) return;
+    // v1.44: other people's shots are thinned when lots of them land in the same moment (at most 5 every 100 ms beyond
+    // 18 m, nearest first as they arrive); your own and close shots always play
+    if (dist >= 18) { const now = this.ctx.currentTime, Q = this._farQ || (this._farQ = []); while (Q.length && now - Q[0] > 0.1) Q.shift(); if (Q.length >= (this.lite ? 3 : 5)) return; Q.push(now); }
     const near = 1 / (1 + dist / 22), far = Math.min(1, dist / 90), delay = Math.min(0.35, dist / 343);
     const air = 1 - 0.85 * far;                                         // distant shots lose their highs
     if (id === 'launcher') {                                           // hollow thump, compressed-gas hiss
@@ -135,23 +156,23 @@ BR.Audio = {
       return;
     }
     // 1) the crack: a very short bright transient
-    if (dist < 60) this.nz({ type: 'highpass', f0: G.crack * j, dur: 0.018, vol: v * 0.55 * air, at: delay, pan, attack: 0.0005 });
+    if (dist < 45) this.nz({ type: 'highpass', f0: G.crack * j, dur: 0.018, vol: v * 0.55 * air, at: delay, pan, attack: 0.0005 });
     // 2) the punch: saturated low sine dropping in pitch (felt more than heard)
     this.osc({ f0: G.body * 2.2 * j, f1: G.body * 0.55, sweep: 0.5, dur: G.bodyDur * (1 + far), vol: v * (0.85 - far * 0.5), drive: 2.8, lp: 900, at: delay, pan, rev: 0.1 });
     // 3) the blast: wide-band noise whose lowpass sweeps down fast (the "boom")
     this.nz({ f0: G.lp0 * air * j, f1: G.lp1, sweep: 0.45, dur: G.boom * (1 + far * 0.8), vol: v * 0.8, q: 0.6, at: delay, pan, rev: G.tail * (0.6 + far) });
     // 4) mid-range body grit
-    this.nz({ type: 'bandpass', f0: 1400 * j, f1: 600, dur: G.boom * 0.6, vol: v * 0.35, q: 1.1, at: delay, pan, rev: 0.1 });
+    if (dist < 40) this.nz({ type: 'bandpass', f0: 1400 * j, f1: 600, dur: G.boom * 0.6, vol: v * 0.35, q: 1.1, at: delay, pan });
     // 5) the action: bolt carrier / slide clack right behind the shot (close only)
     if (G.mech && dist < 10) this.metal(G.mech * j, 0.07 * near, 0.04, delay + 0.035, pan);
     // 5b) v1.32 your own shots: a slapback off the surroundings (left then right) and, on heavy guns, a sub thump you feel
     if (dist < 1) {
-      this.nz({ type: 'bandpass', f0: 1100 * j, f1: 420, dur: G.boom * 1.3, vol: v * 0.16, q: 0.9, at: delay + 0.045, pan: -0.6, rev: 0.2 });
-      this.nz({ type: 'bandpass', f0: 950 * j, f1: 380, dur: G.boom * 1.4, vol: v * 0.12, q: 0.9, at: delay + 0.075, pan: 0.6, rev: 0.25 });
+      this._slap = -(this._slap || 1);          // (v1.44: one slapback per shot, alternating left / right, instead of two)
+      this.nz({ type: 'bandpass', f0: 1050 * j, f1: 400, dur: G.boom * 1.35, vol: v * 0.2, q: 0.9, at: delay + 0.055, pan: 0.6 * this._slap, rev: 0.22 });
       if (G.body < 110) this.osc({ f0: 72 * j, f1: 34, dur: 0.2, vol: v * 0.45, lp: 180, at: delay });
     }
     // 6) far away: a delayed echo off the terrain
-    if (dist > 25) this.nz({ f0: 1200 * air, f1: 300, dur: G.boom * 2.2, vol: v * 0.25, at: delay + 0.18 + Math.random() * 0.1, pan: -pan * 0.5, rev: 0.6 });
+    if (dist > 25 && !this.lite) this.nz({ f0: 1200 * air, f1: 300, dur: G.boom * 2.2, vol: v * 0.25, at: delay + 0.18 + Math.random() * 0.1, pan: -pan * 0.5, rev: 0.6 });
   },
   // weapon handling foley: mag out / in, charging handle, bolts, pump, revolver crane, shells, draw
   mech(kind) {
@@ -186,7 +207,7 @@ BR.Audio = {
   // Hits: a tight, dry "tick" plus a meaty low thud (body); shields crack like a ceramic plate; headshots add a hard
   // helmet "tink". Short and clean so rapid fire doesn't smear.
   hit(head, shield) {
-    this._k = 1.7; try { this._hit(head, shield); } finally { this._k = 1; }
+    this._k = 1.7; this._force = true; try { this._hit(head, shield); } finally { this._k = 1; this._force = false; }      // (v1.44: your hit confirmation always plays)
   },
   _hit(head, shield) {
     this.nz({ type: 'bandpass', f0: 3400, f1: 2400, dur: 0.035, vol: 0.2, q: 1.6 });
@@ -213,7 +234,8 @@ BR.Audio = {
   // v1.32 low ammo: a quiet hollow ping on each shot of the last quarter of the mag (higher as it runs out)
   lowAmmo(frac) { this.osc({ f0: 1300 + (1 - frac) * 500, f1: 1250, dur: 0.06, vol: 0.05, type: 'triangle', at: 0.02 }); },
   // Kills: a deep body drop + a single bright confirm ping (higher on a streak, a doubled ping on a headshot)
-  kill(head, streak) {
+  kill(head, streak) { this._force = true; try { this._kill(head, streak); } finally { this._force = false; } },      // (v1.44: the kill sound always plays)
+  _kill(head, streak) {
     const st = Math.pow(1.06, Math.min((streak || 1) - 1, 6));
     this.osc({ f0: 160, f1: 40, dur: 0.35, vol: 0.5, drive: 2.5, rev: 0.15 });
     this.nz({ f0: 1800, f1: 200, dur: 0.22, vol: 0.18, rev: 0.2 });

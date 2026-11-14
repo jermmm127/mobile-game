@@ -5,6 +5,12 @@
 // and bump CONFIG.version to match.
 // =============================================================================
 BR.PATCH_NOTES = [
+  { v: '1.44.0', date: '2026-11-14', title: 'Audio no longer chops', notes: [
+    'Fixed audio chopping and stuttering in fights. Each sound is built from several layers, and in a busy fight the game was dropping individual layers, so a gunshot could lose its crack or its punch. Now a sound either plays complete or not at all.',
+    'Your own shots, hit confirmations, kill sounds and reloads always play.',
+    'Fights ask about half as much of your device\'s audio: a gunshot uses fewer layers, finished sounds are released straight away, the echo is shorter, and distant gunfire is thinned when lots of it arrives at once. Weaker devices get a smaller budget still.',
+    'Added a limiter so loud moments, or a high volume setting, are turned down for an instant instead of crackling.',
+  ] },
   { v: '1.43.0', date: '2026-11-12', title: 'New Red Dot and Holo Sight', notes: [
     'The Red Dot attachment is rebuilt as a squat matte-black sight: a chunky arched hood with thick walls and a rounded top round a nearly square lens, on a low body with a two-screw clamp mount.',
     'The Holo Sight attachment is rebuilt as a tall dark-grey unit: a thick hood with rounded top corners round a wide window, above a control face with a centre knob, two buttons, a label plate and two corner knobs, plus a battery tube and ribbed sides.',
